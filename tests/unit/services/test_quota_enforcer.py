@@ -91,7 +91,8 @@ class TestCheckMissionQuota:
 
         locked_result = MagicMock()
         locked_result.scalar_one_or_none.return_value = MagicMock()
-        session.execute = AsyncMock(side_effect=[locked_result, count_result, usage_result])
+        advisory_lock_result = MagicMock()  # result of pg_advisory_xact_lock
+        session.execute = AsyncMock(side_effect=[advisory_lock_result, locked_result, count_result, usage_result])
 
         with patch("app.services.billing.quota_enforcer.async_session_maker", return_value=session):
             enforcer = QuotaEnforcer()

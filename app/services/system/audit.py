@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from fastapi import Request
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,7 +40,12 @@ async def log_event(
             user_agent=user_agent,
         )
 
-        # Compute integrity hash chain
+        # Compute integrity hash chain — advisory lock prevents concurrent
+        # inserts from reading the same prev_hash (hash chain race).
+        await session.execute(
+            text("SELECT pg_advisory_xact_lock(:lock_id)"),
+            {"lock_id": hash("audit_hash_chain") & 0x7FFFFFFF},
+        )
         try:
             prev_hash = await repo.get_latest_hash() or "genesis"
         except Exception:

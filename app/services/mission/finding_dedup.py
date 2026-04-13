@@ -6,6 +6,8 @@ extracted from the Mission class for reuse and testability.
 
 from __future__ import annotations
 
+import asyncio
+import functools
 from typing import Any
 
 # CVE relatedness groups — CVEs often published together for the same root cause
@@ -119,3 +121,15 @@ def is_duplicate_finding(findings: list[dict[str, Any]], finding: dict[str, Any]
             return True
 
     return False
+
+
+async def async_is_duplicate_finding(findings: list[dict[str, Any]], finding: dict[str, Any]) -> bool:
+    """Async version of is_duplicate_finding that offloads to a thread pool.
+
+    For missions with 200+ findings, the O(n) SequenceMatcher calls can block
+    the event loop.  This runs the check in the default executor.
+    """
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        None, functools.partial(is_duplicate_finding, findings, finding)
+    )

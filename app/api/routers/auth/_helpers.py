@@ -50,7 +50,7 @@ def _get_redis_for_totp():
         if url and url.startswith(("redis://", "rediss://")):
             return aioredis.from_url(url, socket_timeout=2)
     except Exception:
-        logger.debug("Redis connection failed for TOTP, falling back to in-memory", exc_info=True)
+        logger.warning("Redis connection failed for TOTP replay tracking, falling back to in-memory", exc_info=True)
     return None
 
 
@@ -66,7 +66,7 @@ async def _consume_totp_code_async(user_id: str, code: str) -> bool:
             await r.aclose()
             return existing is not None  # True if key was newly set (not a replay)
         except Exception:
-            logger.debug("Redis TOTP replay check failed, falling back to in-memory", exc_info=True)
+            logger.warning("Redis TOTP replay check failed, falling back to in-memory", exc_info=True)
             with contextlib.suppress(Exception):
                 await r.aclose()
 

@@ -327,16 +327,16 @@ async function showAvailablePlans() {
                             <div class="text-sm font-semibold text-white">${escapeHtml(p.display_name)}</div>
                             ${p.description ? `<div class="text-xs text-slate-400 mt-0.5">${escapeHtml(p.description)}</div>` : ''}
                             <div class="flex gap-3 mt-2 text-xs text-slate-500">
-                                <span>${p.max_missions_per_month || '∞'} missions/mo</span>
-                                <span>${p.max_targets || '∞'} targets</span>
-                                <span>${p.max_storage_mb} MB</span>
+                                <span>${escapeHtml(String(p.max_missions_per_month || '∞'))} missions/mo</span>
+                                <span>${escapeHtml(String(p.max_targets || '∞'))} targets</span>
+                                <span>${escapeHtml(String(p.max_storage_mb || 0))} MB</span>
                             </div>
                         </div>
                         <div>
                             ${isCurrent
                                 ? '<span class="px-2 py-1 text-xs font-medium rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">Current</span>'
                                 : hasPrice
-                                    ? `<button data-action="startCheckout" data-value="${p.id}" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg transition-colors">Select</button>`
+                                    ? `<button data-action="startCheckout" data-value="${escapeHtml(String(p.id || ''))}" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg transition-colors">Select</button>`
                                     : '<span class="px-2 py-1 text-xs text-slate-500">Not available</span>'}
                         </div>
                     </div>

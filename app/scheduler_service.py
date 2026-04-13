@@ -30,6 +30,13 @@ _EXPLOIT_REFRESH_LOCK_ID: int = hash("spectra_exploit_refresh") & 0x7FFFFFFF
 _STALE_JOB_LOCK_ID: int = hash("spectra_stale_jobs") & 0x7FFFFFFF
 _DOCKER_CLEANUP_LOCK_ID: int = hash("spectra_docker_cleanup") & 0x7FFFFFFF
 _IMAGE_UPDATE_LOCK_ID: int = hash("spectra_image_update") & 0x7FFFFFFF
+_SANDBOX_WATCHDOG_LOCK_ID: int = hash("spectra_sandbox_watchdog") & 0x7FFFFFFF
+_METRICS_COLLECTOR_LOCK_ID: int = hash("spectra_metrics_collector") & 0x7FFFFFFF
+_HEALTH_REPORTER_LOCK_ID: int = hash("spectra_health_reporter") & 0x7FFFFFFF
+_CACHE_CLEANUP_LOCK_ID: int = hash("spectra_cache_cleanup") & 0x7FFFFFFF
+_PERIODIC_CLEANUP_LOCK_ID: int = hash("spectra_periodic_cleanup") & 0x7FFFFFFF
+_CAPACITY_MONITOR_LOCK_ID: int = hash("spectra_capacity_monitor") & 0x7FFFFFFF
+_DISK_MONITOR_LOCK_ID: int = hash("spectra_disk_monitor") & 0x7FFFFFFF
 _SCHEDULER_LEADER_LOCK_ID: int = 8675309  # Global leader election for the scheduler
 
 
@@ -71,7 +78,11 @@ class SchedulerService:
         self.tasks = list(self._named_tasks.values())
 
         logger.info("Scheduler running with %d tasks", len(self.tasks))
-        await asyncio.gather(*self.tasks, return_exceptions=True)
+        task_names = list(self._named_tasks.keys())
+        results = await asyncio.gather(*self.tasks, return_exceptions=True)
+        for task_name, result in zip(task_names, results or []):
+            if isinstance(result, Exception):
+                logger.error("Scheduler task '%s' failed: %s", task_name, result, exc_info=result)
 
     async def stop(self):
         self.running = False
@@ -99,6 +110,11 @@ class SchedulerService:
         """Check for stale sandbox containers and clean them up. Runs every 60s."""
         while self.running:
             try:
+                async with async_session_maker() as session:
+                    if not await _try_advisory_lock(session, _SANDBOX_WATCHDOG_LOCK_ID):
+                        await asyncio.sleep(60)
+                        continue
+
                 from app.core.background_tasks import sandbox_watchdog_loop
 
                 await sandbox_watchdog_loop()
@@ -135,6 +151,11 @@ class SchedulerService:
         """Collect and aggregate metrics. Runs every 30s."""
         while self.running:
             try:
+                async with async_session_maker() as session:
+                    if not await _try_advisory_lock(session, _METRICS_COLLECTOR_LOCK_ID):
+                        await asyncio.sleep(30)
+                        continue
+
                 from app.core.metrics_store import get_metrics_store
 
                 store = get_metrics_store()
@@ -148,6 +169,11 @@ class SchedulerService:
         """Report own health status periodically. Runs every 15s."""
         while self.running:
             try:
+                async with async_session_maker() as session:
+                    if not await _try_advisory_lock(session, _HEALTH_REPORTER_LOCK_ID):
+                        await asyncio.sleep(15)
+                        continue
+
                 from app.core.cache import get_cache
 
                 cache = get_cache()
@@ -219,6 +245,11 @@ class SchedulerService:
         """Delegate to the shared cache_cleanup_loop with automatic restart on failure."""
         while self.running:
             try:
+                async with async_session_maker() as session:
+                    if not await _try_advisory_lock(session, _CACHE_CLEANUP_LOCK_ID):
+                        await asyncio.sleep(60)
+                        continue
+
                 from app.core.background_tasks import cache_cleanup_loop
 
                 await cache_cleanup_loop()
@@ -232,6 +263,11 @@ class SchedulerService:
         """Delegate to the shared periodic_cleanup_loop with automatic restart on failure."""
         while self.running:
             try:
+                async with async_session_maker() as session:
+                    if not await _try_advisory_lock(session, _PERIODIC_CLEANUP_LOCK_ID):
+                        await asyncio.sleep(60)
+                        continue
+
                 from app.core.background_tasks import periodic_cleanup_loop
 
                 await periodic_cleanup_loop()
@@ -248,6 +284,10 @@ class SchedulerService:
             if not self.running:
                 break
             try:
+                async with async_session_maker() as session:
+                    if not await _try_advisory_lock(session, _CAPACITY_MONITOR_LOCK_ID):
+                        continue
+
                 from app.core.config import get_settings
 
                 settings = get_settings()
@@ -528,6 +568,10 @@ class SchedulerService:
             if not self.running:
                 break
             try:
+                async with async_session_maker() as session:
+                    if not await _try_advisory_lock(session, _DISK_MONITOR_LOCK_ID):
+                        continue
+
                 import shutil
 
                 usage = shutil.disk_usage("/")

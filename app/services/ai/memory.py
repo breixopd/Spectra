@@ -35,6 +35,9 @@ logger = logging.getLogger(__name__)
 
 MEMORY_DIR = data_path("cache")
 
+# Files containing potentially sensitive data (exploit chains, credentials)
+_ENCRYPTED_FILES: frozenset[str] = frozenset({"exploit_lessons.json"})
+
 
 def _memory_dir_for_user(user_id: str | None) -> Path:
     if not user_id:
@@ -164,11 +167,23 @@ class MissionMemory:
             # Try loading from backup
             return self._load_with_fallback(filename, model_cls)
         try:
-            data = json.loads(path.read_text())
+            raw = self._read_maybe_encrypted(path, filename)
+            data = json.loads(raw)
             return [model_cls(**item) for item in data if isinstance(item, dict)]
         except (OSError, ValueError) as e:
             logger.warning("Failed to load %s: %s — trying backups", filename, e)
             return self._load_with_fallback(filename, model_cls)
+
+    def _read_maybe_encrypted(self, path: Path, filename: str) -> str:
+        """Read a file, decrypting it if it's in the encrypted set."""
+        if filename in _ENCRYPTED_FILES:
+            try:
+                from app.core.encryption import decrypt_file
+                return decrypt_file(path).decode("utf-8")
+            except Exception:
+                # Fall back to plaintext (pre-encryption data or missing key)
+                pass
+        return path.read_text()
 
     def _load_raw(self, filename: str) -> Any:
         """Load raw JSON data."""
@@ -262,12 +277,21 @@ class MissionMemory:
             self._save_file("false_positives.json", list(self.false_positives))
 
     def _save_file(self, filename: str, data: Any) -> None:
-        """Save data to a JSON file atomically with backup rotation."""
+        """Save data to a JSON file atomically with backup rotation.
+
+        Files listed in _ENCRYPTED_FILES are encrypted at rest.
+        """
         path = self.memory_dir / filename
         self._rotate_backup(path)
         tmp = path.with_suffix(".tmp")
         try:
             tmp.write_text(json.dumps(data, indent=2, default=str))
+            if filename in _ENCRYPTED_FILES:
+                try:
+                    from app.core.encryption import encrypt_file
+                    encrypt_file(tmp)
+                except Exception as e:
+                    logger.warning("Failed to encrypt %s (saving plaintext): %s", filename, e)
             tmp.rename(path)
         except OSError as e:
             logger.warning("Failed to save %s: %s", filename, e)
