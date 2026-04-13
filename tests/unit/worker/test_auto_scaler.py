@@ -146,12 +146,22 @@ class TestAutoScaler:
         decisions = await scaler.evaluate(metrics)
         assert all(d.action == "none" for d in decisions)
 
-    @pytest.mark.asyncio
-    async def test_scale_up_on_high_queue_depth(self, scaler):
+    def test_scale_up_on_high_queue_depth(self, scaler):
+        policy = scaler.policies["worker"]
         metrics = {"queue_depth": 20, "worker_replicas": 1, "worker_utilization": 0.5}
-        decisions = await scaler.evaluate(metrics)
-        worker_decisions = [d for d in decisions if "worker" in d.service]
-        assert any(d.action == "scale_up" for d in worker_decisions)
+
+        decision = scaler._evaluate_policy(
+            "worker",
+            policy,
+            metrics,
+            now=1000.0,
+            effective_max_replicas=policy.max_replicas,
+        )
+
+        assert decision.action == "scale_up"
+        assert decision.service == policy.service_name
+        assert decision.current_replicas == 1
+        assert decision.desired_replicas == 5
 
     @pytest.mark.asyncio
     async def test_scale_up_respects_max(self, scaler):
@@ -175,13 +185,24 @@ class TestAutoScaler:
         worker_decisions2 = [d for d in decisions2 if "worker" in d.service and d.action == "scale_up"]
         assert len(worker_decisions2) == 0
 
-    @pytest.mark.asyncio
-    async def test_scale_down_on_idle(self, scaler):
-        scaler._queue_idle_since["worker"] = time.monotonic() - 700
+    def test_scale_down_on_idle(self, scaler):
+        policy = scaler.policies["worker"]
+        now = 1000.0
+        scaler._queue_idle_since["worker"] = now - policy.idle_timeout_secs - 100
         metrics = {"queue_depth": 0, "worker_replicas": 3, "worker_utilization": 0.1}
-        decisions = await scaler.evaluate(metrics)
-        worker_decisions = [d for d in decisions if "worker" in d.service]
-        assert any(d.action == "scale_down" for d in worker_decisions)
+
+        decision = scaler._evaluate_policy(
+            "worker",
+            policy,
+            metrics,
+            now=now,
+            effective_max_replicas=policy.max_replicas,
+        )
+
+        assert decision.action == "scale_down"
+        assert decision.service == policy.service_name
+        assert decision.current_replicas == 3
+        assert decision.desired_replicas == 2
 
     @pytest.mark.asyncio
     async def test_no_scale_down_below_min(self, scaler):
