@@ -56,7 +56,7 @@ jobs:
           filtered_requirements=requirements/dev-ci-filtered.txt
           trap 'rm -f "$filtered_requirements"' EXIT
           grep -v '^pytest-asyncio==' requirements/dev.txt > "$filtered_requirements"
-          pip install -r "$filtered_requirements" numpy
+          pip install -r "$filtered_requirements" numpy docker psutil
           pip install --no-deps pytest-asyncio==0.24.0
       - name: Validate TensorZero config
         run: |
@@ -126,7 +126,7 @@ jobs:
           filtered_requirements=requirements/dev-ci-filtered.txt
           trap 'rm -f "$filtered_requirements"' EXIT
           grep -v '^pytest-asyncio==' requirements/dev.txt > "$filtered_requirements"
-          pip install -r "$filtered_requirements" numpy
+          pip install -r "$filtered_requirements" numpy docker psutil
           pip install --no-deps pytest-asyncio==0.24.0
       - name: Run integration tests
         run: |
