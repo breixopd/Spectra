@@ -384,6 +384,68 @@ async def test_backup_scheduler_handles_backup_errors():
 
 
 @pytest.mark.asyncio
+async def test_image_update_check_skips_registry_when_auto_update_disabled():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+    settings = SimpleNamespace(IMAGE_AUTO_UPDATE=False, IMAGE_CHECK_INTERVAL=0)
+    image_updater = SimpleNamespace(check_and_update_services=AsyncMock())
+
+    async def stop_after_sleep(seconds):
+        service.running = False
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(
+            sys.modules,
+            "app.core.config",
+            make_module("app.core.config", get_settings=lambda: settings),
+        )
+        mp.setitem(
+            sys.modules,
+            "app.services.scaling.image_updater",
+            make_module("app.services.scaling.image_updater", check_and_update_services=image_updater.check_and_update_services),
+        )
+        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock(side_effect=stop_after_sleep))
+        await service._image_update_check()
+
+    image_updater.check_and_update_services.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_image_update_check_runs_when_auto_update_enabled():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+    settings = SimpleNamespace(IMAGE_AUTO_UPDATE=True, IMAGE_CHECK_INTERVAL=0)
+    image_updater = SimpleNamespace(
+        check_and_update_services=AsyncMock(side_effect=lambda **kwargs: setattr(service, "running", False) or []),
+    )
+
+    @asynccontextmanager
+    async def fake_lock_owner(lock_id, *, connection_factory):
+        yield object()
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(
+            sys.modules,
+            "app.core.config",
+            make_module("app.core.config", get_settings=lambda: settings),
+        )
+        mp.setitem(
+            sys.modules,
+            "app.services.scaling.image_updater",
+            make_module("app.services.scaling.image_updater", check_and_update_services=image_updater.check_and_update_services),
+        )
+        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        await service._image_update_check()
+
+    image_updater.check_and_update_services.assert_awaited_once_with(apply=True)
+
+
+@pytest.mark.asyncio
 async def test_health_reports_scheduler_running_state():
     from app import scheduler_service
 

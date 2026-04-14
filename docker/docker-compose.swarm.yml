@@ -137,10 +137,27 @@ services:
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       AI_SERVICE_URL: http://ai-svc:5010
       SCHEDULER_SERVICE_URL: http://scheduler:5011
+      TMPDIR: /tmp
+      TMP: /tmp
+      TEMP: /tmp
     expose:
       - "5000"
     volumes:
-      - app_data:/app/data
+      - type: volume
+        source: app_data
+        target: /app/data
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 268435456
+      - type: tmpfs
+        target: /var/tmp
+        tmpfs:
+          size: 268435456
+      - type: tmpfs
+        target: /app/logs
+        tmpfs:
+          size: 67108864
     networks:
       frontend:
         aliases:
@@ -166,9 +183,6 @@ services:
       - garage_admin_token
       - redis_password
     read_only: true
-    tmpfs:
-      - /tmp
-      - /app/logs
     logging: *default-logging
     <<: *security-stateful
 
@@ -201,8 +215,25 @@ services:
       SECRET_KEY_FILE: /run/secrets/secret_key
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       SKIP_MIGRATIONS: "true"
+      TMPDIR: /tmp
+      TMP: /tmp
+      TEMP: /tmp
     volumes:
-      - app_data:/app/data
+      - type: volume
+        source: app_data
+        target: /app/data
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 268435456
+      - type: tmpfs
+        target: /var/tmp
+        tmpfs:
+          size: 268435456
+      - type: tmpfs
+        target: /app/logs
+        tmpfs:
+          size: 67108864
     networks:
       - frontend
       - backend
@@ -221,9 +252,6 @@ services:
       - garage_secret_key
       - garage_admin_token
     read_only: true
-    tmpfs:
-      - /tmp
-      - /app/logs
     logging: *default-logging
     <<: *security-stateful
 
@@ -257,9 +285,29 @@ services:
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       BACKUP_ENABLED: "true"
       SKIP_MIGRATIONS: "true"
+      TMPDIR: /tmp
+      TMP: /tmp
+      TEMP: /tmp
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - app_data:/app/data
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+      - type: volume
+        source: app_data
+        target: /app/data
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 268435456
+      - type: tmpfs
+        target: /var/tmp
+        tmpfs:
+          size: 268435456
+      - type: tmpfs
+        target: /app/logs
+        tmpfs:
+          size: 67108864
     networks:
       - frontend
       - backend
@@ -278,9 +326,6 @@ services:
       - garage_admin_token
       - redis_password
     read_only: true
-    tmpfs:
-      - /tmp
-      - /app/logs
     logging: *default-logging
     <<: *security-stateful
 

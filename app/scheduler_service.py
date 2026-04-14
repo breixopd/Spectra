@@ -550,6 +550,9 @@ class SchedulerService:
             await asyncio.sleep(settings.IMAGE_CHECK_INTERVAL)
             if not self.running:
                 break
+            if not settings.IMAGE_AUTO_UPDATE:
+                logger.debug("Image auto-update disabled; skipping registry polling")
+                continue
             try:
                 async with advisory_lock_owner(
                     _IMAGE_UPDATE_LOCK_ID,
