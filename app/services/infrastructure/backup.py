@@ -10,6 +10,8 @@ from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
+_RUNTIME_TMP_PARTS = ("runtime", "tmp")
+
 
 class BackupService:
     """Creates/restores PostgreSQL backups stored in S3."""
@@ -23,13 +25,20 @@ class BackupService:
     def _bucket(self) -> str:
         return self.settings.S3_BUCKET_BACKUPS
 
+    def _temp_root(self) -> Path:
+        from app.core.paths import data_path
+
+        tmp_root = data_path(*_RUNTIME_TMP_PARTS)
+        tmp_root.mkdir(parents=True, exist_ok=True)
+        return tmp_root
+
     async def create_backup(self, backup_type: str = "full") -> dict:
         """pg_dump → upload to S3 → prune old. Returns metadata dict."""
         timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         backup_id = f"backup_{timestamp}"
         s3_key = f"backups/{backup_id}.dump"
 
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory(dir=self._temp_root()) as tmpdir:
             dump_file = Path(tmpdir) / f"{backup_id}.dump"
             try:
                 parsed = urlparse(str(self.settings.DATABASE_URL.get_secret_value()).replace("+asyncpg", ""))
@@ -108,7 +117,7 @@ class BackupService:
         if not await storage.exists(self._bucket, s3_key):
             return {"status": "failed", "error": f"Backup '{backup_id}' not found in S3"}
 
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory(dir=self._temp_root()) as tmpdir:
             dump_file = Path(tmpdir) / f"{backup_id}.dump"
             try:
                 await storage.download_file(self._bucket, s3_key, str(dump_file))

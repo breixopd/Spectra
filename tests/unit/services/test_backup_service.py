@@ -1,5 +1,6 @@
 """Tests for BackupService — S3-native backup and restore."""
 
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -18,15 +19,20 @@ def _wait_for_wrapper(recorded_timeouts: list[int | None]):
 
 
 @pytest.fixture
-def backup_svc():
+def backup_svc(tmp_path):
     mock_settings = MagicMock()
     mock_settings.DATABASE_URL.get_secret_value.return_value = "postgresql+asyncpg://spectra:pass@db:5432/spectra"
     mock_settings.S3_BUCKET_BACKUPS = "spectra-backups"
     mock_settings.BACKUP_RETENTION_COUNT = 5
+    temp_root = tmp_path / "runtime" / "tmp"
 
-    with patch("app.services.infrastructure.backup.BackupService.__init__", return_value=None):
+    with (
+        patch("app.services.infrastructure.backup.BackupService.__init__", return_value=None),
+        patch("app.core.paths.data_path", return_value=temp_root),
+    ):
         svc = BackupService()
         svc.settings = mock_settings
+        svc._test_temp_root = temp_root
         yield svc
 
 
@@ -42,11 +48,25 @@ async def test_create_backup_success(backup_svc):
     mock_storage.upload_file = AsyncMock()
     mock_storage.list_objects = AsyncMock(return_value=[])
     mock_storage.delete = AsyncMock()
+    temp_dirs: list[Path] = []
+
+    def fake_temp_dir(*args, **kwargs):
+        temp_dirs.append(Path(kwargs["dir"]))
+
+        class _Ctx:
+            def __enter__(self):
+                return "/tmp/test-backup-dir"
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        return _Ctx()
 
     with (
         patch("asyncio.create_subprocess_exec", return_value=mock_proc),
         patch("asyncio.wait_for", new=_wait_for_wrapper(timeouts)),
         patch(STORAGE_PATCH, return_value=mock_storage),
+        patch("tempfile.TemporaryDirectory", side_effect=fake_temp_dir),
         patch("pathlib.Path.stat") as mock_stat,
     ):
         mock_stat.return_value.st_size = 1024
@@ -56,6 +76,7 @@ async def test_create_backup_success(backup_svc):
     assert result["status"] == "success"
     assert "backup_id" in result
     assert timeouts == [600]
+    assert temp_dirs == [backup_svc._test_temp_root]
     mock_proc.communicate.assert_awaited_once()
 
 
@@ -141,22 +162,43 @@ async def test_restore_backup_returns_success_when_pg_restore_only_warns(backup_
     mock_storage.exists = AsyncMock(return_value=True)
     mock_storage.download_file = AsyncMock()
     timeouts: list[int | None] = []
+    temp_dirs: list[Path] = []
 
     mock_proc = AsyncMock()
     mock_proc.communicate = AsyncMock(return_value=(b"", b"warning only"))
     mock_proc.returncode = 1
 
+    def fake_temp_dir(*args, **kwargs):
+        temp_dirs.append(Path(kwargs["dir"]))
+
+        class _Ctx:
+            def __enter__(self):
+                return "/tmp/test-restore-dir"
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        return _Ctx()
+
     with (
         patch(STORAGE_PATCH, return_value=mock_storage),
         patch("asyncio.create_subprocess_exec", return_value=mock_proc),
         patch("asyncio.wait_for", new=_wait_for_wrapper(timeouts)),
+        patch("tempfile.TemporaryDirectory", side_effect=fake_temp_dir),
     ):
         result = await backup_svc.restore_backup("backup_20260329_130000")
 
     assert result["status"] == "success"
     assert result["restored_from"].endswith("backups/backup_20260329_130000.dump")
     assert timeouts == [600]
+    assert temp_dirs == [backup_svc._test_temp_root]
     mock_proc.communicate.assert_awaited_once()
+
+
+def test_temp_root_uses_runtime_data_directory(backup_svc):
+    temp_root = backup_svc._temp_root()
+
+    assert temp_root == backup_svc._test_temp_root
 
 
 @pytest.mark.asyncio

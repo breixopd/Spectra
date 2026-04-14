@@ -376,8 +376,8 @@ class Settings(BaseSettings):
     DOCKER_CLEANUP_INTERVAL: int = Field(default=604800, description="Docker resource pruning interval in seconds (7 days)")
 
     # --- Image Auto-Update ---
-    IMAGE_AUTO_UPDATE: bool = Field(default=True, description="Auto-apply image updates when new digests are found")
-    IMAGE_CHECK_INTERVAL: int = Field(default=60, description="Seconds between image update checks")
+    IMAGE_AUTO_UPDATE: bool = Field(default=False, description="Enable automatic registry polling and rollout when new image digests are found")
+    IMAGE_CHECK_INTERVAL: int = Field(default=60, description="Seconds between automatic image update checks when enabled")
 
     @field_validator("IMAGE_CHECK_INTERVAL")
     @classmethod
