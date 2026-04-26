@@ -9,14 +9,14 @@
 
 ### Current Layout
 ```
-app/static/
+static/
 ├── css/           # 10 CSS files (input.css, output.css, landing.css, base.css, auth.css, admin.css, dashboard.css, errors.css, legal.css, observability.css, dark-theme-tokens.css)
 ├── js/            # Root-level scripts (api.js, confirm.js, dashboard.js, landing.js, targets.js, settings.js, toolbox.js, cookie-consent.js)
 │   ├── modules/   # Reusable JS (modal.js, toast.js, accordion.js, delegated-events.js, tabs.js, utils.js, severity.js)
 │   └── pages/     # Page-specific JS (admin/, dashboard/, settings/, manual-tools/)
 └── vendor/        # Third-party libraries
 
-app/templates/
+templates/
 ├── partials/      # _delete_mission_modal.html, _cookie_consent.html, head.html, shield_svg.html
 ├── macros/        # forms.html, layout.html
 ├── admin/         # _users.html, _plans.html, _dashboard.html, _services.html, _scaling.html, _sidebar.html

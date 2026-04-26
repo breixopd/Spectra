@@ -14,6 +14,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app._meta.version import __version__
 from app.core.config import settings
 from app.core.database import async_session_maker
 from app.core.enums import MissionStatus
@@ -35,7 +36,6 @@ from app.services.auth.email_verification import (
 )
 from app.services.billing.entitlements import sync_user_plan_mirror
 from app.utils.html_sanitization import sanitize_legal_html
-from app.version import __version__
 
 logger = logging.getLogger(__name__)
 

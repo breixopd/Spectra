@@ -28,9 +28,9 @@ Each mode maps to a specific set of router modules via `SERVICE_ROUTERS` in `app
 | Service | Entry Point | Port | Image Size | Purpose | Status |
 |---------|-------------|------|------------|---------|--------|
 | **App (Core API)** | `scripts/start.sh` | 5000 | ~1.34 GB | Web UI, REST API, mission orchestration | **Done** |
-| **AI Service** | `app.ai_service:app` | 5010 | ~1.13 GB | LLM routing, embeddings, RAG queries | **Done** |
-| **Scheduler** | `app.scheduler_service:app` | 5011 | ~558 MB | Background tasks, backups, sandbox watchdog, metrics | **Done** |
-| **Worker** | `app.worker_service:app` | 5012 | ~4.13 GB | Tool execution from PG job queue | **Done** |
+| **AI Service** | `app.services.ai.__main__:app` | 5010 | ~1.13 GB | LLM routing, embeddings, RAG queries | **Done** |
+| **Scheduler** | `app.services.scheduler.__main__:app` | 5011 | ~558 MB | Background tasks, backups, sandbox watchdog, metrics | **Done** |
+| **Worker** | `app.worker.__main__:app` | 5012 | ~4.13 GB | Tool execution from PG job queue | **Done** |
 
 Supporting infrastructure:
 
@@ -88,9 +88,9 @@ python3 scripts/check_import_boundaries.py
 Forbidden top-level imports in shared packages:
 - `app.api.*`
 - `app.worker.*`
-- `app.ai_service`
-- `app.scheduler_service`
-- `app.worker_service`
+- `app.services.ai.__main__`
+- `app.services.scheduler.__main__`
+- `app.worker.__main__`
 
 Lazy imports inside functions are allowed. This keeps the dependency direction clean: services depend on shared code, never the reverse.
 
@@ -129,7 +129,7 @@ Dedicated LLM routing, embedding generation, and RAG queries.
 
 | Attribute | Value |
 |-----------|-------|
-| **Source** | `app/ai_service.py` |
+| **Source** | `app/services/ai/__main__.py` |
 | **Dockerfile Target** | `ai` |
 | **Requirements** | `requirements/ai.txt` |
 | **Port** | 5010 |
@@ -145,7 +145,7 @@ Headless background task runner.
 
 | Attribute | Value |
 |-----------|-------|
-| **Source** | `app/scheduler_service.py` |
+| **Source** | `app/services/scheduler/__main__.py` |
 | **Dockerfile Target** | `scheduler` |
 | **Requirements** | `requirements/scheduler.txt` |
 | **Port** | 5011 (health endpoint only) |
@@ -159,7 +159,7 @@ Executes tool jobs from the PostgreSQL job queue.
 
 | Attribute | Value |
 |-----------|-------|
-| **Source** | `app/worker_service.py` |
+| **Source** | `app/worker/__main__.py` |
 | **Dockerfile Target** | Uses `api` target with `SERVICE_MODE=worker` override |
 | **Requirements** | `requirements/worker.txt` |
 | **Port** | 5012 (health endpoint only) |

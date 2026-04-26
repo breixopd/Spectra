@@ -4,7 +4,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_setup_template_exposes_current_gateway_setup():
-    content = (REPO_ROOT / "app/templates/setup.html").read_text(encoding="utf-8")
+    content = (REPO_ROOT / "templates/setup.html").read_text(encoding="utf-8")
 
     assert "System Setup" in content
     assert "AI Gateway" in content
@@ -16,7 +16,7 @@ def test_setup_template_exposes_current_gateway_setup():
 
 
 def test_settings_template_exposes_current_gateway_summary():
-    content = (REPO_ROOT / "app/templates/settings.html").read_text(encoding="utf-8")
+    content = (REPO_ROOT / "templates/settings.html").read_text(encoding="utf-8")
 
     assert "System Settings" in content
     assert "AI Gateway" in content
@@ -28,7 +28,7 @@ def test_settings_template_exposes_current_gateway_summary():
 
 
 def test_settings_template_exposes_sandbox_pool_controls():
-    content = (REPO_ROOT / "app/templates/settings.html").read_text(encoding="utf-8")
+    content = (REPO_ROOT / "templates/settings.html").read_text(encoding="utf-8")
 
     assert "Sandbox Pool" in content
     assert "sandbox_max_containers" in content
@@ -50,7 +50,7 @@ def test_settings_template_exposes_sandbox_pool_controls():
 
 
 def test_settings_js_handles_sandbox_fields():
-    content = (REPO_ROOT / "app/static/js/settings.js").read_text(encoding="utf-8")
+    content = (REPO_ROOT / "static/js/settings.js").read_text(encoding="utf-8")
 
     assert "sandbox_max_containers" in content
     assert "sandbox_memory_limit" in content

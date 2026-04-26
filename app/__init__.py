@@ -20,7 +20,7 @@ Key Features:
 - Iterative exploitation with adaptive replanning
 """
 
-from app.version import __version__
+from app._meta.version import __version__
 
 __author__ = "Spectra Team"
 

@@ -115,9 +115,9 @@ Spectra runs as four microservices controlled by `SERVICE_MODE`. Import boundari
 **Service-specific packages** (only loaded by their respective service):
 - `app/api/` — routers, schemas, UI (API service)
 - `app/worker/` — job queue consumer (Worker service)
-- `app/ai_service.py` — AI service entry point
-- `app/scheduler_service.py` — Scheduler entry point
-- `app/worker_service.py` — Worker entry point
+- `app/services/ai/__main__.py` — AI service entry point
+- `app/services/scheduler/__main__.py` — Scheduler entry point
+- `app/worker/__main__.py` — Worker entry point
 
 **Verify boundaries before submitting a PR:**
 
@@ -125,7 +125,7 @@ Spectra runs as four microservices controlled by `SERVICE_MODE`. Import boundari
 python3 scripts/check_import_boundaries.py
 ```
 
-This checks that `app/core/` and `app/models/` have no top-level imports of service-specific modules (`app.api`, `app.worker`, `app.ai_service`, etc.). Lazy imports inside functions are allowed.
+This checks that `app/core/` and `app/models/` have no top-level imports of service-specific modules (`app.api`, `app.worker`, `app.services.ai.__main__`, etc.). Lazy imports inside functions are allowed.
 
 ### Per-Service Requirements
 

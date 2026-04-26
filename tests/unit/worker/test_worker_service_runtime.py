@@ -32,7 +32,7 @@ class _AwaitableTask:
 
 @pytest.mark.asyncio
 async def test_lifespan_starts_and_cancels_worker_task():
-    from app import worker_service
+    from app.worker import __main__ as worker_service
 
     task = _AwaitableTask(exc=asyncio.CancelledError())
 
@@ -54,7 +54,7 @@ async def test_lifespan_starts_and_cancels_worker_task():
 async def test_health_reports_worker_task_state():
     from unittest.mock import AsyncMock, patch
 
-    from app import worker_service
+    from app.worker import __main__ as worker_service
 
     task = MagicMock()
     task.done.return_value = False
@@ -78,7 +78,7 @@ async def test_health_reports_worker_task_state():
 
 @pytest.mark.asyncio
 async def test_work_loop_calls_startup_worker_loop_and_shutdown_in_finally():
-    from app import worker_service
+    from app.worker import __main__ as worker_service
 
     order: list[str] = []
     startup = AsyncMock(side_effect=lambda: order.append("startup"))

@@ -301,7 +301,7 @@ Lines 45–73 of `conftest.py` inject an init script that **suppresses 401→/lo
 - **Security**: Bandit scan with HIGH severity + HIGH confidence
 - **Docker build**: Verifies all 5 Dockerfiles build + Trivy CVE scan (CRITICAL only)
 - **Deps**: pip-audit with `--fix --dry-run` (soft enforcement, uses `|| true`)
-- **Version check**: Verifies `app/version.py` has `__version__`
+- **Version check**: Verifies `app/_meta/version.py` has `__version__`
 
 **Gaps**:
 - Integration tests **skip all `@pytest.mark.live` tests** (`-k 'not live and not e2e'`)
@@ -311,7 +311,7 @@ Lines 45–73 of `conftest.py` inject an init script that **suppresses 401→/lo
 
 ### 7.2 `.github/workflows/ui-e2e.yml`
 
-**Triggered by**: path changes to `app/templates/**`, `app/static/**`, `tests/e2e/**`, `run_ui_tests.sh`, `Dockerfile.playwright`, `Dockerfile.api`, `docker-compose.test.yml`
+**Triggered by**: path changes to `templates/**`, `static/**`, `tests/e2e/**`, `run_ui_tests.sh`, `Dockerfile.playwright`, `Dockerfile.api`, `docker-compose.test.yml`
 
 **Timeout**: 120 minutes
 

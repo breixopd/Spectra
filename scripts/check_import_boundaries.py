@@ -5,15 +5,15 @@ Shared packages must not depend on:
 - app.api.*
 - app.worker.*
 - app.services.ai.* (except via lazy imports inside functions)
-- app.ai_service
-- app.scheduler_service
-- app.worker_service
+- app.services.ai.__main__
+- app.services.scheduler.__main__
+- app.worker.__main__
 
 Microservice entry points must not import from other services:
-- app/scheduler_service.py must not import from app.api, app.worker
-- app/worker_service.py must not import from app.api, app.scheduler_service, app.ai_service
-- app/ai_service.py must not import from app.api, app.worker, app.scheduler_service
-- app/worker/** must not import from app.api, app.scheduler_service, app.ai_service
+- app/services/scheduler/__main__.py must not import from app.api, app.worker
+- app/worker/__main__.py must not import from app.api, app.services.scheduler.__main__, app.services.ai.__main__
+- app/services/ai/__main__.py must not import from app.api, app.worker, app.services.scheduler.__main__
+- app/worker/** must not import from app.api, app.services.scheduler.__main__, app.services.ai.__main__
 
 This keeps the shared → service dependency direction clean for future extraction.
 """
@@ -26,17 +26,17 @@ SHARED_PACKAGES = ["app/core", "app/models"]
 FORBIDDEN_IMPORTS = [
     "app.api",
     "app.worker",
-    "app.ai_service",
-    "app.scheduler_service",
-    "app.worker_service",
+    "app.services.ai.__main__",
+    "app.services.scheduler.__main__",
+    "app.worker.__main__",
 ]
 
 # Cross-service boundary rules: {file_or_dir: [forbidden_import_prefixes]}
 SERVICE_BOUNDARIES: dict[str, list[str]] = {
-    "app/scheduler_service.py": ["app.api", "app.worker"],
-    "app/worker_service.py": ["app.api", "app.scheduler_service", "app.ai_service"],
-    "app/ai_service.py": ["app.api", "app.worker", "app.scheduler_service"],
-    "app/worker": ["app.api", "app.scheduler_service", "app.ai_service"],
+    "app/services/scheduler/__main__.py": ["app.api", "app.worker"],
+    "app/worker/__main__.py": ["app.api", "app.services.scheduler.__main__", "app.services.ai.__main__"],
+    "app/services/ai/__main__.py": ["app.api", "app.worker", "app.services.scheduler.__main__"],
+    "app/worker": ["app.api", "app.services.scheduler.__main__", "app.services.ai.__main__"],
     # API layer must not import AI inference modules at top level.
     # Pure-data submodules (cost_tracker, cve_intel, etc.) use lazy imports only.
     "app/api": ["app.services.ai"],

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response,
 from fastapi.params import Query as QueryParam
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app._meta.version import __version__
 from app.api.dependencies import (
     _decode_access_payload,
     _extract_request_token,
@@ -15,7 +16,6 @@ from app.api.dependencies import (
 from app.core.config import get_settings as _get_settings
 from app.core.database import get_async_session
 from app.services.system.health import collect_platform_health, probe_http_health, readiness_from_health
-from app.version import __version__
 
 logger = logging.getLogger(__name__)
 

@@ -19,8 +19,8 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app._meta.version import __version__
 from app.core.config import get_settings
-from app.version import __version__
 
 HealthMap = dict[str, Any]
 

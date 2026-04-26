@@ -2,7 +2,7 @@
 
 **Date**: 2026-04-27
 **Auditor**: Automated Codebase Analysis
-**Version Audited**: `2026.03.07` (from `app/version.py`)
+**Version Audited**: `2026.03.07` (from `app/_meta/version.py`)
 
 ---
 
@@ -40,11 +40,9 @@ Spectra/
 - Root-level files (Makefile, pyproject.toml, README, CONTRIBUTING) are minimal and focused
 
 **Issues:**
-1. **`app/static/` and `app/templates/`** are nested inside the Python application package. They should be either:
-   - Top-level directories (`static/`, `templates/`) alongside `app/`, or
-   - In a dedicated `frontend/` or `ui/` package
-2. **Service entry points at wrong level**: `app/ai_service.py`, `app/scheduler_service.py`, `app/worker_service.py` are root-level files in `app/` rather than within their respective service modules
-3. **`app/version.py`** is at the `app/` root; it belongs in `app/_meta/` or `app/core/`
+1. ~~**`app/static/` and `app/templates/`** are nested inside the Python application package.~~ ✅ **RESOLVED** — Moved to top-level directories (`static/`, `templates/`).
+2. ~~**Service entry points at wrong level**: `app/ai_service.py`, `app/scheduler_service.py`, `app/worker_service.py` are root-level files in `app/` rather than within their respective service modules~~ ✅ **RESOLVED** — Moved to `app/services/ai/__main__.py`, `app/services/scheduler/__main__.py`, and `app/worker/__main__.py`.
+3. ~~**`app/version.py`** is at the `app/` root; it belongs in `app/_meta/` or `app/core/`~~ ✅ **RESOLVED** — Moved to `app/_meta/version.py`.
 4. **`app/__init__.py`** imports `app.core` for pytest resolution — this is a known workaround but indicates a pytest path issue
 
 ---
@@ -59,19 +57,19 @@ The project enforces a **strict layered + service split**:
 |-------|------|------|
 | **Shared** | `app/core/`, `app/models/`, `app/repositories/` | Used by all services. Must NOT import service-specific code. |
 | **API Service** | `app/api/`, `app/main.py` | Web UI, REST API |
-| **AI Service** | `app/ai_service.py`, `app/services/ai/` | LLM clients, agents, RAG |
-| **Worker Service** | `app/worker_service.py`, `app/worker/` | Job queue consumer, tool execution |
-| **Scheduler Service** | `app/scheduler_service.py` | Background maintenance tasks |
+| **AI Service** | `app/services/ai/__main__.py`, `app/services/ai/` | LLM clients, agents, RAG |
+| **Worker Service** | `app/worker/__main__.py`, `app/worker/` | Job queue consumer, tool execution |
+| **Scheduler Service** | `app/services/scheduler/__main__.py` | Background maintenance tasks |
 
 ### Enforcement Mechanism: `scripts/check_import_boundaries.py`
 
 ```python
 SHARED_PACKAGES = ["app/core", "app/models"]
 SERVICE_BOUNDARIES = {
-    "app/scheduler_service.py": ["app.api", "app.worker"],
-    "app/worker_service.py": ["app.api", "app.scheduler_service", "app.ai_service"],
-    "app/ai_service.py": ["app.api", "app.worker", "app.scheduler_service"],
-    "app/worker": ["app.api", "app.scheduler_service", "app.ai_service"],
+    "app/services/scheduler/__main__.py": ["app.api", "app.worker"],
+    "app/worker/__main__.py": ["app.api", "app.services.scheduler.__main__", "app.services.ai.__main__"],
+    "app/services/ai/__main__.py": ["app.api", "app.worker", "app.services.scheduler.__main__"],
+    "app/worker": ["app.api", "app.services.scheduler.__main__", "app.services.ai.__main__"],
     "app/api": ["app.services.ai"],  # top-level only; lazy imports allowed
 }
 ```
@@ -190,9 +188,9 @@ Spectra runs as 4 independently deployable services controlled by `SERVICE_MODE`
 | Service | Entry Point | Port | Key Dependencies |
 |---------|-------------|------|------------------|
 | **API** | `app/main.py` + `app/__init__.py` | 5000 | FastAPI, SQLAlchemy, all services |
-| **AI** | `app/ai_service.py` | 5010 | TensorZero, embeddings, RAG |
-| **Scheduler** | `app/scheduler_service.py` | 5011 | PostgreSQL advisory locks, all services |
-| **Worker** | `app/worker_service.py` | 5012 | Docker SDK, job queue |
+| **AI** | `app/services/ai/__main__.py` | 5010 | TensorZero, embeddings, RAG |
+| **Scheduler** | `app/services/scheduler/__main__.py` | 5011 | PostgreSQL advisory locks, all services |
+| **Worker** | `app/worker/__main__.py` | 5012 | Docker SDK, job queue |
 
 ### Could This Be Split into Multiple Installable Packages?
 
@@ -200,13 +198,13 @@ Spectra runs as 4 independently deployable services controlled by `SERVICE_MODE`
 
 **Extractable as separate packages:**
 - `spectra-core` → `app/core/`, `app/models/`, `app/repositories/`, `app/api/schemas/`
-- `spectra-ai` → `app/services/ai/`, `app/ai_service.py`
-- `spectra-worker` → `app/worker/`, `app/worker_service.py`
+- `spectra-ai` → `app/services/ai/`
+- `spectra-worker` → `app/worker/`
 
 **Coupling points preventing clean split today:**
-1. `app/ai_service.py` imports `app.services.ai.embeddings`, `app.services.ai.router`, `app.services.ai.rag` — all internal to AI service
-2. `app/scheduler_service.py` imports from `app/services/billing/`, `app/services/infrastructure/backup.py`, `app/services/scaling/`, `app/core/background_tasks.py` — crosses multiple service boundaries
-3. `app/worker_service.py` imports `app.worker.lifecycle`, `app.core.queue`, `app.services/shell/session_manager.py` — crosses into multiple services
+1. `app/services/ai/__main__.py` imports `app.services.ai.embeddings`, `app.services.ai.router`, `app.services.ai.rag` — all internal to AI service
+2. `app/services/scheduler/__main__.py` imports from `app/services/billing/`, `app/services/infrastructure/backup.py`, `app/services/scaling/`, `app/core/background_tasks.py` — crosses multiple service boundaries
+3. `app/worker/__main__.py` imports `app.worker.lifecycle`, `app.core.queue`, `app.services/shell/session_manager.py` — crosses into multiple services
 4. `app/core/` is truly shared but has some AI-specific code paths (telemetry, events)
 5. Database models (`app/models/`) are shared but have relationships that couple them (Mission → Finding → Exploit → Target)
 
@@ -451,7 +449,7 @@ scripts/
 ### Issues:
 - No `pre-commit` hook configured (only CI enforcement)
 - No automated code quality checks before merge (only `make check` locally)
-- `scripts/version.py` and `app/version.py` serve similar purposes — potential duplication
+- `scripts/version.py` and `app/_meta/version.py` serve similar purposes — potential duplication
 - `scripts/first_run.sh` — needs review for idempotency
 
 ---
@@ -465,8 +463,8 @@ spectra/                          # Root — no change needed
 ├── app/                          # APPLICATION PACKAGE
 │   ├── __init__.py               # Keep workaround for pytest
 │   ├── main.py                   # API entry point (keep here or move to app/api/__main__.py)
-│   │                           # NOTE: ai_service.py, scheduler_service.py, worker_service.py
-│   │                           # should move to app/services/<name>/__main__.py
+│   │                           # NOTE: ai_service, scheduler, worker entry points
+│   │                           # moved to app/services/<name>/__main__.py and app/worker/__main__.py
 │   ├── _meta/                    # NEW: Metadata (moved from app root)
 │   │   ├── __init__.py
 │   │   └── version.py            # MOVED: from app/version.py
@@ -538,7 +536,7 @@ spectra/                          # Root — no change needed
 
 1. **`app/api/` → `app/services/ai/`** — Allowed as lazy imports. The API service reads AI data (cost tracking, CVE intel, memory) but doesn't call LLM inference directly.
 2. **`app/worker/` → `app/services/ai/`** — Known coupling for RAG features; flagged as warning in boundary checker.
-3. **`app/scheduler_service.py` → `app/services/*`** — Imports from billing, infrastructure/backup, scaling, core/background_tasks — very high coupling.
+3. **`app/services/scheduler/__main__.py` → `app/services/*`** — Imports from billing, infrastructure/backup, scaling, core/background_tasks — very high coupling.
 4. **`app/services/mission/` → `app/services/tools/`** — Mission executor depends on tool registry and sandbox.
 5. **`app/core/` → `app/services/`** — No direct imports (enforced); but core does emit events that services subscribe to.
 
@@ -548,7 +546,7 @@ spectra/                          # Root — no change needed
 
 | Area | Status | Score | Key Issue |
 |------|--------|-------|-----------|
-| **Top-Level Structure** | 🟡 Needs Work | 7/10 | `static/` and `templates/` inside `app/`; entry points at wrong level |
+| **Top-Level Structure** | 🟢 Strong | 8/10 | `static/` and `templates/` moved to top-level; entry points moved to service modules |
 | **Submodule Boundaries** | 🟢 Strong | 9/10 | Well-enforced with AST checker; minor gap with lazy import detection |
 | **Dynamic Codebase** | 🟡 Partial | 6/10 | Plugin system is data-driven only; no code-based extension points |
 | **Package Architecture** | 🟡 Monorepo | 7/10 | Could split into `spectra-core`, `spectra-ai`, `spectra-worker` but coupling is moderate |
@@ -561,9 +559,9 @@ spectra/                          # Root — no change needed
 
 ## Recommended Priority Actions
 
-1. **High Priority**: Move `app/static/` and `app/templates/` to top-level directories (`static/` and `templates/`)
-2. **High Priority**: Move service entry points (`ai_service.py`, `scheduler_service.py`, `worker_service.py`) into their respective service submodules as `__main__.py`
-3. **Medium Priority**: Create `app/_meta/` submodule and move `app/version.py` there
+1. ~~**High Priority**: Move `app/static/` and `app/templates/` to top-level directories (`static/` and `templates/`)~~ ✅ **DONE**
+2. ~~**High Priority**: Move service entry points (`ai_service.py`, `scheduler_service.py`, `worker_service.py`) into their respective service submodules as `__main__.py`~~ ✅ **DONE**
+3. ~~**Medium Priority**: Create `app/_meta/` submodule and move `app/version.py` there~~ ✅ **DONE**
 4. **Medium Priority**: Add image scanning (Trivy) to CI pipeline
 5. **Medium Priority**: Add pre-commit hooks for import boundary checks and ruff linting
 6. **Low Priority**: Update wiki documentation to reflect current `SERVICE_MODE` architecture
