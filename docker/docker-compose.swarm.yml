@@ -24,6 +24,7 @@ x-common-env: &common-env
   S3_SECRET_KEY_FILE: /run/secrets/garage_secret_key
   GARAGE_ADMIN_TOKEN_FILE: /run/secrets/garage_admin_token
   GARAGE_ADMIN_URL: http://garage:3903
+  REDIS_PASSWORD_FILE: /run/secrets/redis_password
   TENSORZERO_GATEWAY_URL: http://tensorzero:3000
 
 services:
@@ -53,6 +54,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
+      - frontend
       - backend
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a \"$$(cat /run/secrets/redis_password)\" ping"]

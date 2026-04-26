@@ -52,7 +52,7 @@ export_bundle() {
     # 1. Database dump
     log "Dumping database..."
     docker compose -f docker/docker-compose.yml exec -T db \
-        pg_dump -U spectra_user spectra -Fc > "${output}/db/spectra.dump"
+        pg_dump -U spectra spectra -Fc > "${output}/db/spectra.dump"
     log "Database dump: $(du -h "${output}/db/spectra.dump" | cut -f1)"
 
     # 2. S3 data export
@@ -104,7 +104,7 @@ import_bundle() {
     if [[ "${skip_db}" != "true" ]] && [[ -f "${bundle}/db/spectra.dump" ]]; then
         log "Restoring database..."
         docker compose -f docker/docker-compose.yml exec -T db \
-            pg_restore -U spectra_user -d spectra --clean --if-exists \
+            pg_restore -U spectra -d spectra --clean --if-exists \
             < "${bundle}/db/spectra.dump" 2>/dev/null || warn "Some restore warnings (expected for clean install)"
         log "Database restored"
     fi
@@ -126,12 +126,12 @@ verify_migration() {
     # Check DB
     local user_count
     user_count=$(docker compose -f docker/docker-compose.yml exec -T db \
-        psql -U spectra_user -d spectra -t -c "SELECT COUNT(*) FROM users;" 2>/dev/null | tr -d ' ')
+        psql -U spectra -d spectra -t -c "SELECT COUNT(*) FROM users;" 2>/dev/null | tr -d ' ')
     log "Users in database: ${user_count}"
 
     local mission_count
     mission_count=$(docker compose -f docker/docker-compose.yml exec -T db \
-        psql -U spectra_user -d spectra -t -c "SELECT COUNT(*) FROM missions;" 2>/dev/null | tr -d ' ')
+        psql -U spectra -d spectra -t -c "SELECT COUNT(*) FROM missions;" 2>/dev/null | tr -d ' ')
     log "Missions in database: ${mission_count}"
 
     log "Verification complete"

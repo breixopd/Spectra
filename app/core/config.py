@@ -189,6 +189,7 @@ class Settings(BaseSettings):
     # Use Caddy's rate_limit module only if you intentionally want rate
     # limiting to live entirely at the reverse proxy edge.
     RATE_LIMIT_STORAGE: str = "redis://redis:6379/0"
+    REDIS_PASSWORD: SecretStr = SecretStr("")
 
     CONNECT_BACK_HOST: str = "spectra-app"
 
@@ -446,6 +447,11 @@ def get_settings() -> Settings:
     if not settings_instance.SERVICE_AUTH_SECRET.get_secret_value():
         settings_instance.SERVICE_AUTH_SECRET = SecretStr(_secrets.token_urlsafe(32))
 
+    if settings_instance.RATE_LIMIT_STORAGE == "redis://redis:6379/0":
+        redis_password = settings_instance.REDIS_PASSWORD.get_secret_value()
+        if redis_password:
+            settings_instance.RATE_LIMIT_STORAGE = f"redis://:{redis_password}@redis:6379/0"
+
     # Auto-generate ENCRYPTION_KEY if empty
     if not settings_instance.ENCRYPTION_KEY:
         # Persist to filesystem so the key survives container restarts
@@ -467,7 +473,7 @@ def get_settings() -> Settings:
                 os.replace(str(tmp_path), str(key_path))
                 settings_instance.ENCRYPTION_KEY = new_key
         else:
-            settings_instance.ENCRYPTION_KEY = _secrets.token_urlsafe(32)
+            settings_instance.ENCRYPTION_KEY = env_explicit
 
     return settings_instance
 

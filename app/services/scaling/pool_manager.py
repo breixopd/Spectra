@@ -314,7 +314,7 @@ class ServerPoolManager:
             node = ServerNode(
                 service_type="all",
                 name=hostname,
-                url="http://127.0.0.1:8000",
+                url="http://127.0.0.1:5000",
                 is_active=True,
                 is_primary=True,
                 weight=1,

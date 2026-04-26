@@ -290,6 +290,7 @@ services:
           cpus: '1'
           memory: 512M
     networks:
+      - frontend
       - backend
     logging: *default-logging
     <<: *security-stateful
