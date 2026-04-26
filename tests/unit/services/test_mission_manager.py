@@ -2,6 +2,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sqlalchemy.exc import SQLAlchemyError
 
 
 def _safe_create_task(coro, **kwargs):
@@ -133,6 +134,18 @@ async def test_start_mission(mock_manager_context):
         assert mission_id in manager.active_missions
         repo.create.assert_called_once()
         mock_create_task.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_start_mission_fails_when_db_persistence_fails(mock_manager_context):
+    manager = mock_manager_context["manager"]
+    repo = mock_manager_context["repo"]
+    repo.create.side_effect = SQLAlchemyError("db unavailable")
+
+    with pytest.raises(RuntimeError, match="Mission could not be persisted"):
+        await manager.start_mission("127.0.0.1", "test directive")
+
+    assert manager.active_missions == {}
 
 
 @pytest.mark.asyncio

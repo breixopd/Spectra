@@ -91,8 +91,10 @@ class MissionLifecycleManager:
             raise
         except SQLAlchemyError as e:
             logger.error("Failed to persist mission start (DB error): %s", e)
+            raise RuntimeError("Mission could not be persisted") from e
         except (OSError, RuntimeError, TypeError, AttributeError) as e:
             logger.error("Failed to persist mission start (Unexpected): %s", e)
+            raise RuntimeError("Mission could not be persisted") from e
 
         self.active_missions[mission.id] = mission
 
