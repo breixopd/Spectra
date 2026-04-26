@@ -18,62 +18,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: pip install ruff
-      - run: ruff check app/
-      - name: Check import boundaries
-        run: python3 scripts/check_import_boundaries.py
+      - name: Build Docker test runner
+        run: docker build -f docker/Dockerfile.test -t spectra-test-ci .
+      - name: Run lint in Docker
+        run: docker run --rm spectra-test-ci python -m ruff check app/ tests/
+      - name: Check import boundaries in Docker
+        run: docker run --rm spectra-test-ci python scripts/check_import_boundaries.py
 
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
     env:
       ENCRYPTION_KEY: test-encryption-key
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: spectra
-          POSTGRES_PASSWORD: spectra_test
-          POSTGRES_DB: spectra_test
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd "pg_isready -U spectra -d spectra_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-      - name: Install test dependencies
-        run: |
-          filtered_requirements=requirements/dev-ci-filtered.txt
-          trap 'rm -f "$filtered_requirements"' EXIT
-          grep -v '^pytest-asyncio==' requirements/dev.txt > "$filtered_requirements"
-          pip install -r "$filtered_requirements" numpy docker psutil botocore
-          pip install --no-deps pytest-asyncio==0.24.0
+      - name: Build Docker unit runner
+        run: docker compose -f docker/docker-compose.test.yml build unit-test-runner
       - name: Validate TensorZero config
+        run: docker compose -f docker/docker-compose.test.yml run --rm --no-deps unit-test-runner "python -c \"import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')\""
+      - name: Run unit tests with coverage in Docker
         run: |
-          python3 -c "import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')"
-      - name: Run unit tests with coverage
-        run: |
-          # Full unit coverage last validated locally at 67.59%.
-          python3 -m pytest tests/unit/ -q \
-            --cov=app \
-            --cov-report=term-missing \
-            --cov-report=xml:coverage.xml \
-            --cov-fail-under=67.4
-        env:
-          DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5433/spectra_test"
-          TENSORZERO_GATEWAY_URL: "http://localhost:3000"
-          JWT_SECRET_KEY: test-key
-          PLUGIN_SAFE_MODE: "false"
+          set +e
+          docker compose -f docker/docker-compose.test.yml run --name spectra-unit-coverage unit-test-runner \
+            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=app --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=67.4"
+          status=$?
+          docker cp spectra-unit-coverage:/tmp/coverage.xml coverage.xml 2>/dev/null || true
+          docker rm -f spectra-unit-coverage >/dev/null 2>&1 || true
+          exit "$status"
       - name: Coverage summary
         if: always()
         run: |
@@ -96,63 +67,33 @@ jobs:
           name: coverage-report
           path: coverage.xml
           retention-days: 30
+      - name: Remove copied coverage artifact
+        if: always()
+        run: rm -f coverage.xml
 
   integration-test:
     name: Integration Tests
     runs-on: ubuntu-latest
     env:
       ENCRYPTION_KEY: test-encryption-key
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: spectra
-          POSTGRES_PASSWORD: spectra_test
-          POSTGRES_DB: spectra_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U spectra -d spectra_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-      - name: Install test dependencies
+      - name: Build Docker integration runner
+        run: docker compose -f docker/docker-compose.test.yml build test-runner
+      - name: Run integration tests in Docker
         run: |
-          filtered_requirements=requirements/dev-ci-filtered.txt
-          trap 'rm -f "$filtered_requirements"' EXIT
-          grep -v '^pytest-asyncio==' requirements/dev.txt > "$filtered_requirements"
-          pip install -r "$filtered_requirements" numpy docker psutil botocore
-          pip install --no-deps pytest-asyncio==0.24.0
-      - name: Run integration tests
-        run: |
-          python3 -m pytest tests/integration/ -v --tb=short \
-            --timeout=120 \
-            --override-ini="addopts=" \
-            -k "not live and not e2e"
-        env:
-          DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5432/spectra_test"
-          TENSORZERO_GATEWAY_URL: "http://localhost:3000"
-          JWT_SECRET_KEY: test-key
-          PLUGIN_SAFE_MODE: "false"
+          docker compose -f docker/docker-compose.test.yml run --rm test-runner \
+            "python -m pytest tests/integration/ -v --tb=short --timeout=120 --override-ini=addopts= -k 'not live and not e2e'"
 
   security:
     name: Security Scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-      - run: pip install bandit[toml]
-      - run: bandit -r app/ -c pyproject.toml -f json -o bandit-report.json || true
-      - run: bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high
+      - name: Build Docker test runner
+        run: docker build -f docker/Dockerfile.test -t spectra-test-ci .
+      - name: Run Bandit in Docker
+        run: docker run --rm spectra-test-ci bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high
 
   docker-build:
     name: Docker Build Verification
@@ -206,35 +147,35 @@ jobs:
       - name: Validate Swarm compose
         run: docker compose --env-file .env.example -f docker/docker-compose.swarm.yml config --quiet
       - name: Scan API image for critical CVEs
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: spectra-api:ci
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: "1"
       - name: Scan AI image for critical CVEs
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: spectra-ai:ci
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: "1"
       - name: Scan scheduler image for critical CVEs
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: spectra-scheduler:ci
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: "1"
       - name: Scan worker image for critical CVEs
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: spectra-worker:ci
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: "1"
       - name: Scan Caddy image for critical CVEs
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: spectra-caddy:ci
           severity: CRITICAL

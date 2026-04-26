@@ -13,6 +13,7 @@ import time
 from collections.abc import Iterable
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlparse
 
 from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
@@ -25,6 +26,8 @@ HealthMap = dict[str, Any]
 
 _HEALTHY_STATES = {"healthy", "ok", "running", "ready", "not_configured", "not configured", "disabled"}
 _DEGRADED_STATES = {"degraded", "warning", "fallback", "standby"}
+_CONTROL_PLANE_HEALTH_HOSTS = {"app", "spectra-app", "scheduler", "worker", "ai-svc", "localhost", "127.0.0.1"}
+_CONTROL_PLANE_SERVICE_TYPES = {"app", "api", "scheduler", "worker", "ai", "ai-svc"}
 
 
 def _now() -> str:
@@ -56,6 +59,18 @@ def _normalize_status(value: Any) -> str:
     if status in {"unhealthy", "unavailable", "disconnected"}:
         return "unhealthy"
     return status
+
+
+def _is_control_plane_health_url(url: str, service_type: str, metadata: dict[str, Any]) -> bool:
+    if metadata.get("target_probe") is True:
+        return False
+    if service_type not in _CONTROL_PLANE_SERVICE_TYPES:
+        return False
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    host = parsed.hostname or ""
+    return host in _CONTROL_PLANE_HEALTH_HOSTS or host.endswith(".spectra.local")
 
 
 def _result(
@@ -130,7 +145,7 @@ async def _check_database(db: AsyncSession) -> HealthMap:
     try:
         await db.execute(text("SELECT 1"))
         return _result("healthy", latency_ms=_latency_ms(start))
-    except (OSError, SQLAlchemyError) as exc:
+    except (OSError, SQLAlchemyError, Exception) as exc:
         return _result("unhealthy", latency_ms=_latency_ms(start), error=type(exc).__name__)
 
 
@@ -310,7 +325,10 @@ async def _collect_nodes(db: AsyncSession, *, live_probe: bool) -> dict[str, lis
         if live_probe:
             metadata = node.get("metadata") if isinstance(node.get("metadata"), dict) else {}
             path = metadata.get("health_path") or "/health"
-            probes.append(probe_http_health(node["url"], path=path, timeout=5.0, critical=False))
+            if _is_control_plane_health_url(str(node.get("url", "")), str(node.get("service_type", "")), metadata):
+                probes.append(probe_http_health(node["url"], path=path, timeout=5.0, critical=False))
+            else:
+                probes.append(asyncio.sleep(0, result=_result("not_configured", critical=False, error="live_probe_not_allowed")))
         else:
             probes.append(asyncio.sleep(0, result=None))
 
@@ -333,7 +351,8 @@ async def _collect_nodes(db: AsyncSession, *, live_probe: bool) -> dict[str, lis
         }
         if live:
             item["live_probe"] = live
-            item["status"] = live.get("status", item["status"])
+            if live.get("error") != "live_probe_not_allowed":
+                item["status"] = live.get("status", item["status"])
             if live.get("latency_ms") is not None:
                 item["latency_ms"] = live["latency_ms"]
         grouped.setdefault(service_type, []).append(item)

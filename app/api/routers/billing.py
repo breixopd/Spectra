@@ -25,9 +25,7 @@ def _plan_checkout_available(plan: Plan, *, payment_provider: str) -> bool:
     provider_name = (payment_provider or "manual").strip().lower()
     if provider_name == "stripe":
         return bool(plan.stripe_price_id)
-    if provider_name == "crypto":
-        return True
-    return False
+    return provider_name == "crypto"
 
 
 @router.get("/plans")

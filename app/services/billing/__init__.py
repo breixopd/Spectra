@@ -19,16 +19,16 @@ from app.services.billing.quota_enforcer import QuotaEnforcer
 from app.services.billing.usage_tracker import UsageTracker
 
 __all__ = [
+    "ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES",
     "NoopPaymentAdapter",
     "PaymentAdapter",
     "PaymentService",
     "StripePaymentAdapter",
-    "ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES",
-    "UserEntitlement",
     "UsageTracker",
+    "UserEntitlement",
+    "get_payment_adapter",
     "get_user_entitlement",
     "get_user_entitlement_plan",
-    "get_payment_adapter",
     "subscription_grants_access",
     "sync_user_plan_mirror",
 ]

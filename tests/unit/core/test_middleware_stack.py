@@ -162,7 +162,7 @@ class TestSecurityHeadersMiddleware:
     async def test_cookie_authenticated_api_post_requires_csrf(self, client):
         resp = await client.post(
             "/api/submit",
-            cookies={"access_token": "cookie-auth", "csrf_token": "csrf-value"},
+            headers={"cookie": "access_token=cookie-auth; csrf_token=csrf-value"},
         )
         assert resp.status_code == 403
 
@@ -170,8 +170,7 @@ class TestSecurityHeadersMiddleware:
     async def test_cookie_authenticated_api_post_passes_with_valid_csrf(self, client):
         resp = await client.post(
             "/api/submit",
-            cookies={"access_token": "cookie-auth", "csrf_token": "csrf-value"},
-            headers={"x-csrf-token": "csrf-value"},
+            headers={"x-csrf-token": "csrf-value", "cookie": "access_token=cookie-auth; csrf_token=csrf-value"},
         )
         assert resp.status_code == 200
         assert resp.json() == {"received": True}
@@ -189,8 +188,7 @@ class TestSecurityHeadersMiddleware:
     async def test_api_key_authenticated_api_post_skips_csrf_with_access_cookie(self, client):
         resp = await client.post(
             "/api/submit",
-            headers={"x-api-key": "test-key"},
-            cookies={"access_token": "cookie-auth"},
+            headers={"x-api-key": "test-key", "cookie": "access_token=cookie-auth"},
         )
         assert resp.status_code == 200
         assert resp.json() == {"received": True}

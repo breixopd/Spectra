@@ -540,7 +540,8 @@ class TestEmailVerifyIdempotency:
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
             await verify_email_page(request, token="fake-verify-token")
 
-        call_context = mock_tmpl.TemplateResponse.call_args[0][1]
+        args = mock_tmpl.TemplateResponse.call_args[0]
+        call_context = args[1] if isinstance(args[0], str) else args[2]
         assert call_context["success"] is True
         assert "already" in call_context["message"].lower()
         mock_session.commit.assert_not_awaited()

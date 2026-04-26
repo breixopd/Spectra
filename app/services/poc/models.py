@@ -41,4 +41,5 @@ class POCResult(BaseModel):
     success: bool
     content: str | None = None
     metadata: POCMetadata | None = None
+    evidence: dict[str, Any] | None = None
     error: str | None = None

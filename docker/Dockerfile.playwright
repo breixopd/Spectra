@@ -1,5 +1,8 @@
 FROM mcr.microsoft.com/playwright/python:v1.58.0-noble
 
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_ROOT_USER_ACTION=ignore
+
 WORKDIR /app
 
 COPY . .

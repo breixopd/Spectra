@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.api.routers.health import health_check, readiness_check, service_health
-from app.services.system.health import collect_platform_health, probe_http_health
+from app.services.system.health import _is_control_plane_health_url, collect_platform_health, probe_http_health
 
 
 def _mock_response():
@@ -53,6 +53,13 @@ def _settings(**overrides):
     }
     values.update(overrides)
     return MagicMock(**values)
+
+
+def test_control_plane_health_url_blocks_target_probe_urls():
+    assert _is_control_plane_health_url("http://worker:5012", "worker", {}) is True
+    assert _is_control_plane_health_url("http://example.com", "worker", {}) is False
+    assert _is_control_plane_health_url("http://worker:5012", "target", {}) is False
+    assert _is_control_plane_health_url("http://worker:5012", "worker", {"target_probe": True}) is False
 
 
 @pytest.mark.asyncio

@@ -1,9 +1,9 @@
 """Tests for billing service basics — UsageTracker and PaymentAdapter."""
 
-from fastapi import HTTPException
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 
 from app.services.billing.payment_adapter import (
     ManualPaymentAdapter,

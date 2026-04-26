@@ -54,7 +54,8 @@ clean: ## Clean caches and build artifacts
 	@find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name .ruff_cache -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name '*.pyc' -delete 2>/dev/null || true
-	@rm -rf reports/coverage htmlcov .coverage 2>/dev/null || true
+	@rm -rf reports/live-smoke reports/coverage reports/playwright htmlcov .coverage coverage.xml test-results playwright-report 2>/dev/null || true
+	@rm -rf logs/spectra_testing.log 2>/dev/null || true
 	@echo "Cleaned."
 
 docker-build: ## Build Docker images

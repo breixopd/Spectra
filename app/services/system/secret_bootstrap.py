@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import os
 import secrets as _secrets
+from inspect import isawaitable
 
 from pydantic import SecretStr
 from sqlalchemy import select, text
@@ -96,12 +97,14 @@ async def ensure_persistent_secrets(session: AsyncSession) -> None:
                 existing.is_secret = True
                 existing.value = value_to_persist
             else:
-                session.add(SystemConfig(
+                add_result = session.add(SystemConfig(
                     key=db_key,
                     _value=value_to_persist,  # will be encrypted by before_insert event
                     is_secret=True,
                     description=f"Auto-managed secret: {db_key}",
                 ))
+                if isawaitable(add_result):
+                    await add_result
             _apply_secret(attr_name, value_to_persist)
             changes += 1
             logger.info("Secret '%s' persisted to DB (first boot or new secret)", db_key)

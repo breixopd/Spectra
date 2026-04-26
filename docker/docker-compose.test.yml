@@ -10,6 +10,7 @@ x-test-env: &test-env
   TENSORZERO_GATEWAY_URL: http://tensorzero:3000
   TOOL_QUEUE_NAME: tools
   PLUGIN_SAFE_MODE: "false"
+  COVERAGE_FILE: /tmp/spectra-coverage/.coverage
 
 services:
   db:
@@ -101,7 +102,7 @@ services:
       DATABASE_POOL_SIZE: "8"
       DATABASE_MAX_OVERFLOW: "8"
       SKIP_MIGRATIONS: "true"
-      EMBEDDING_API_KEY: ${OPENAI_API_KEY}
+      EMBEDDING_API_KEY: ${OPENAI_API_KEY:-}
       EMBEDDING_BASE_URL: ${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
     depends_on:
       db:
@@ -182,6 +183,8 @@ services:
       - RATE_LIMIT_REGISTER=100/minute
       - RATE_LIMIT_SETUP=100/minute
       - AI_SERVICE_URL=http://ai-svc:5010
+      - WORKER_SERVICE_URL=http://worker:5012
+      - CONNECT_BACK_HOST=worker
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-test-service-secret-key}
     volumes:
@@ -206,7 +209,6 @@ services:
         aliases:
           - spectra-ui-app
       backend:
-      targets:
 
   app-replica:
     build:
@@ -231,6 +233,8 @@ services:
       - RATE_LIMIT_REGISTER=100/minute
       - RATE_LIMIT_SETUP=100/minute
       - AI_SERVICE_URL=http://ai-svc:5010
+      - WORKER_SERVICE_URL=http://worker:5012
+      - CONNECT_BACK_HOST=worker
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-test-service-secret-key}
     volumes:
@@ -257,7 +261,6 @@ services:
         aliases:
           - spectra-ui-app-replica
       backend:
-      targets:
 
   caddy:
     build:
@@ -319,7 +322,6 @@ services:
     networks:
       targets:
         ipv4_address: 172.21.0.50
-      backend:
 
   # DVWA
   dvwa:
@@ -329,7 +331,6 @@ services:
     networks:
       targets:
         ipv4_address: 172.21.0.51
-      backend:
     # DVWA on port 80
 
   # Test runner
@@ -396,6 +397,7 @@ services:
         condition: service_healthy
     networks:
       - frontend
+      - backend
 
   load-test-runner:
     build:
@@ -425,6 +427,7 @@ services:
       - ../app:/app/app:ro
       - ../tests:/app/tests:ro
       - ../pyproject.toml:/app/pyproject.toml:ro
+      - ../docker:/app/docker:ro
       - ../alembic:/app/alembic:ro
       - ../config/alembic.ini:/app/config/alembic.ini:ro
       - ../plugins:/app/plugins:ro
@@ -477,6 +480,7 @@ services:
       - ../app:/app/app:ro
       - ../tests:/app/tests:ro
       - ../pyproject.toml:/app/pyproject.toml:ro
+      - ../docker:/app/docker:ro
       - ../alembic:/app/alembic:ro
       - ../config/alembic.ini:/app/config/alembic.ini:ro
       - ../plugins:/app/plugins:ro
@@ -510,6 +514,7 @@ services:
       - ../app:/app/app:ro
       - ../tests:/app/tests:ro
       - ../pyproject.toml:/app/pyproject.toml:ro
+      - ../docker:/app/docker:ro
       - ../alembic:/app/alembic:ro
       - ../config/alembic.ini:/app/config/alembic.ini:ro
       - ../plugins:/app/plugins:ro

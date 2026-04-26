@@ -20,6 +20,7 @@ def manager():
     mgr = ShellSessionManager()
     mgr.loop = MagicMock()
     mgr.listeners = {}
+    mgr.listener_records = {}
     mgr.sessions = {}
     return mgr
 
@@ -73,7 +74,7 @@ class TestShellSession:
     @pytest.mark.asyncio
     async def test_write_no_socket(self):
         session = ShellSession("s1", "10.0.0.1")
-        await session.write("test")  # Should not raise
+        await session.write("test")
 
     @pytest.mark.asyncio
     async def test_write_socket_error_deactivates(self):
@@ -95,15 +96,12 @@ class TestShellSession:
         assert session.buffer == b""
 
     def test_broadcast_with_websocket(self):
-
         session = ShellSession("s1", "10.0.0.1")
         session.websocket = AsyncMock()
         mock_loop = MagicMock()
         session._loop = mock_loop
         session.broadcast_output(b"hello")
-        # The function uses asyncio.run_coroutine_threadsafe which calls call_soon_threadsafe
-        # Just verify it doesn't crash and data was handled
-        assert session.buffer == b""  # Buffer not needed when ws exists
+        assert session.buffer == b""
 
     def test_missions_survived_default(self):
         session = ShellSession("s1", "10.0.0.1")
@@ -144,9 +142,8 @@ class TestShellSessionManagerAllocatePort:
             assert 4444 <= port <= 4500
 
     def test_allocate_port_no_free_raises(self, manager):
-        # Fill all ports
-        for p in range(4444, 4501):
-            manager.listeners[p] = MagicMock()
+        for port in range(4444, 4501):
+            manager.listeners[port] = MagicMock()
 
         with pytest.raises(RuntimeError, match="No free ports"):
             manager.allocate_port()
@@ -154,13 +151,19 @@ class TestShellSessionManagerAllocatePort:
 
 class TestShellSessionManagerStartListener:
     def test_start_with_specific_port(self, manager):
-        with patch("threading.Thread") as mock_thread:
+        with (
+            patch("app.services.shell.session_manager._get_service_mode", return_value="worker"),
+            patch("threading.Thread") as mock_thread,
+            patch("threading.Timer") as mock_timer,
+        ):
             mock_thread_inst = MagicMock()
             mock_thread.return_value = mock_thread_inst
 
             port = manager.start_listener("s1", "10.0.0.1", port=4444)
             assert port == 4444
             mock_thread_inst.start.assert_called_once()
+            assert manager.listener_records["s1"]["port"] == 4444
+            assert mock_timer.called
 
     def test_start_with_dynamic_port(self, manager):
         with patch("socket.socket") as mock_socket_cls:
@@ -168,17 +171,28 @@ class TestShellSessionManagerStartListener:
             mock_socket_cls.return_value = mock_sock
             mock_sock.bind.return_value = None
 
-            with patch("threading.Thread") as mock_thread:
+            with (
+                patch("app.services.shell.session_manager._get_service_mode", return_value="worker"),
+                patch("threading.Thread") as mock_thread,
+                patch("threading.Timer"),
+            ):
                 mock_thread_inst = MagicMock()
                 mock_thread.return_value = mock_thread_inst
 
                 port = manager.start_listener("s1", "10.0.0.1", port=0)
                 assert 4444 <= port <= 4500
+                assert manager.listener_records["s1"]["port"] == port
 
     def test_start_on_already_active_port(self, manager):
         manager.listeners[4444] = MagicMock()
-        port = manager.start_listener("s1", "10.0.0.1", port=4444)
-        assert port == 4444  # Returns existing port
+        with patch("app.services.shell.session_manager._get_service_mode", return_value="worker"):
+            port = manager.start_listener("s1", "10.0.0.1", port=4444)
+        assert port == 4444
+
+    def test_direct_listener_denied_outside_worker_mode(self, manager):
+        with patch("app.services.shell.session_manager._get_service_mode", return_value="api"):
+            with pytest.raises(RuntimeError, match="worker service mode"):
+                manager.start_listener("s1", "10.0.0.1", port=4444)
 
 
 class TestShellSessionManagerSessions:

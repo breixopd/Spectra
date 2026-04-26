@@ -7,12 +7,17 @@ Orchestrates the creation and verification of custom POCs.
 import logging
 
 from app.core.config import settings
+from app.core.database import async_session_maker
+from app.models.audit_log import AuditEventType
 from app.services.ai.agents.base import AgentContext
 from app.services.ai.agents.poc_developer import POCDeveloperAgent, POCDeveloperInput
 from app.services.ai.consensus import QualityGate, VotingSystem
 from app.services.ai.llm import LLMClient
+from app.services.mission.artifact_workspace import MissionArtifactWorkspace
 from app.services.poc.models import POCMetadata, POCRequest, POCResult
-from app.services.shell.session_manager import shell_manager
+from app.services.security.capabilities import Capability, CapabilityRequest, require_capability
+from app.services.shell.relay_client import shell_relay_client
+from app.services.system.audit import log_event as audit_log_event
 from app.services.tools.service import StandaloneMissionAdapter, ToolExecutionService
 
 logger = logging.getLogger(__name__)
@@ -33,14 +38,48 @@ class POCService:
         """
         Full lifecycle: Generate -> Validate -> Execute -> Store.
         """
+        decision = require_capability(
+            CapabilityRequest(
+                capability=Capability.CUSTOM_POC_EXECUTION,
+                context=context,
+                target=request.target,
+                requires_callback=True,
+                ttl_seconds=900,
+            )
+        )
+        if not decision.allowed:
+            if context.user_id:
+                try:
+                    async with async_session_maker() as db_session:
+                        await audit_log_event(
+                            db_session,
+                            AuditEventType.MISSION_CAPABILITY_DENIED,
+                            user_id=context.user_id,
+                            details={
+                                "mission_id": context.mission_id,
+                                "target": request.target,
+                                "capability": decision.capability,
+                                "reason": decision.reason,
+                            },
+                        )
+                except Exception as exc:
+                    logger.debug("Failed to write custom POC denial audit event: %s", exc)
+            return POCResult(
+                success=False,
+                error=f"Custom POC execution denied by mission capability policy: {decision.reason}",
+            )
+
         try:
             # 1. Prepare Callback (if needed)
-            callback_port = 4444  # Dynamic allocation in real impl
             callback_host = settings.CONNECT_BACK_HOST
 
-            # Start listener if reverse shell
-            # Allocate a free port
-            shell_manager.start_listener(callback_port, context.session_id, request.target)
+            callback_port = await shell_relay_client.start_listener(
+                session_id=context.session_id,
+                target=request.target,
+                mission_id=context.mission_id,
+                port=0,
+                ttl_seconds=900,
+            )
 
             # 2. Generate Code
             dev_input = POCDeveloperInput(
@@ -99,9 +138,22 @@ class POCService:
                 language=poc_output.language,
                 shell_type="reverse_shell",
             )
+            artifact = await MissionArtifactWorkspace(context.mission_id).put_artifact(
+                filename=f"{metadata.name}.{poc_output.language}",
+                content=poc_output.code_content.encode(),
+                kind="custom_poc",
+                labels=["custom_poc", "generated_payload", request.target],
+                ttl_seconds=30 * 86400,
+            )
+            evidence = {
+                "artifact_id": artifact.id,
+                "s3_key": artifact.key,
+                "sha256": artifact.sha256,
+                "kind": artifact.kind,
+            }
 
-            return POCResult(success=True, content=poc_output.code_content, metadata=metadata)
+            return POCResult(success=True, content=poc_output.code_content, metadata=metadata, evidence=evidence)
 
-        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
+        except Exception as e:
             logger.error("POC Service error: %s", e, exc_info=True)
             return POCResult(success=False, error=str(e))

@@ -562,10 +562,14 @@ class TaskDispatcher:
             context_copy = AgentContext(
                 mission_id=context.mission_id,
                 session_id=context.session_id,
+                user_id=context.user_id,
+                user_role=context.user_role,
+                plan_features=context.plan_features,
+                tenant_quotas=context.tenant_quotas,
                 target=context.target,
                 mission=context.mission,
+                phase="post_exploitation",
             )
-            context_copy.phase = "post_exploitation"
 
             params = dict(task.parameters) if task.parameters else {}
             params["verify_access"] = True

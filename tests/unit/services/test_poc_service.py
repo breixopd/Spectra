@@ -42,6 +42,10 @@ def agent_context():
         mission_id="m-test",
         target="192.168.1.100",
         session_id="test-session",
+        user_id="u-test",
+        user_role="user",
+        plan_features={"custom_poc_execution": True, "shell_access": True},
+        phase="poc",
     )
 
 
@@ -77,6 +81,16 @@ class TestPOCModels:
 
 class TestPOCServiceGenerate:
     @pytest.mark.asyncio
+    async def test_custom_poc_execution_denied_when_target_out_of_scope(self, poc_service, poc_request, agent_context):
+        out_of_scope_context = agent_context.model_copy(update={"target": "10.0.0.5"})
+
+        result = await poc_service.generate_and_execute_poc(out_of_scope_context, poc_request)
+
+        assert not result.success
+        assert "capability policy" in result.error
+        assert "target" in result.error
+
+    @pytest.mark.asyncio
     async def test_generate_success(self, poc_service, poc_request, agent_context):
         # Mock developer agent success
         mock_action = MagicMock()
@@ -99,21 +113,27 @@ class TestPOCServiceGenerate:
         mock_exec.stderr = ""
         poc_service.tool_service.execute_custom_script = AsyncMock(return_value=mock_exec)
 
-        # Mock shell_manager
-        with patch("app.services.poc.service.shell_manager") as mock_shell:
-            mock_shell.start_listener = MagicMock(return_value=4444)
+        with (
+            patch("app.services.poc.service.shell_relay_client") as mock_relay,
+            patch("app.services.poc.service.MissionArtifactWorkspace") as mock_workspace,
+        ):
+            mock_relay.start_listener = AsyncMock(return_value=4444)
+            mock_workspace.return_value.put_artifact = AsyncMock(
+                return_value=MagicMock(id="artifact-1", key="m-test/workspace/artifacts/a/poc.py", sha256="abc", kind="custom_poc")
+            )
             result = await poc_service.generate_and_execute_poc(agent_context, poc_request)
 
         assert result.success
         assert result.content == "import socket; print('exploit')"
+        assert result.evidence["artifact_id"] == "artifact-1"
 
     @pytest.mark.asyncio
     async def test_generate_agent_failure(self, poc_service, poc_request, agent_context):
         poc_service.developer_agent = AsyncMock()
         poc_service.developer_agent.execute = AsyncMock(return_value=AgentResult(success=False, error="LLM timeout"))
 
-        with patch("app.services.poc.service.shell_manager") as mock_shell:
-            mock_shell.start_listener = MagicMock(return_value=4444)
+        with patch("app.services.poc.service.shell_relay_client") as mock_relay:
+            mock_relay.start_listener = AsyncMock(return_value=4444)
             result = await poc_service.generate_and_execute_poc(agent_context, poc_request)
 
         assert not result.success
@@ -134,8 +154,8 @@ class TestPOCServiceGenerate:
         mock_vote.escalation_reason = "Too dangerous"
         poc_service.consensus.validate_at_gate = AsyncMock(return_value=mock_vote)
 
-        with patch("app.services.poc.service.shell_manager") as mock_shell:
-            mock_shell.start_listener = MagicMock(return_value=4444)
+        with patch("app.services.poc.service.shell_relay_client") as mock_relay:
+            mock_relay.start_listener = AsyncMock(return_value=4444)
             result = await poc_service.generate_and_execute_poc(agent_context, poc_request)
 
         assert not result.success
@@ -160,8 +180,8 @@ class TestPOCServiceGenerate:
         mock_exec.stderr = "SyntaxError: invalid syntax"
         poc_service.tool_service.execute_custom_script = AsyncMock(return_value=mock_exec)
 
-        with patch("app.services.poc.service.shell_manager") as mock_shell:
-            mock_shell.start_listener = MagicMock(return_value=4444)
+        with patch("app.services.poc.service.shell_relay_client") as mock_relay:
+            mock_relay.start_listener = AsyncMock(return_value=4444)
             result = await poc_service.generate_and_execute_poc(agent_context, poc_request)
 
         assert not result.success
@@ -172,8 +192,8 @@ class TestPOCServiceGenerate:
         poc_service.developer_agent = AsyncMock()
         poc_service.developer_agent.execute = AsyncMock(side_effect=RuntimeError("Unexpected"))
 
-        with patch("app.services.poc.service.shell_manager") as mock_shell:
-            mock_shell.start_listener = MagicMock(return_value=4444)
+        with patch("app.services.poc.service.shell_relay_client") as mock_relay:
+            mock_relay.start_listener = AsyncMock(return_value=4444)
             result = await poc_service.generate_and_execute_poc(agent_context, poc_request)
 
         assert not result.success

@@ -167,7 +167,7 @@ class WarmPoolManager:
             environment = {
                 "QUEUE_NAME": queue_name,
                 "IS_TOOLS_CONTAINER": "true",
-                "CONNECT_BACK_HOST": "spectra-app",
+                "CONNECT_BACK_HOST": settings.CONNECT_BACK_HOST,
                 "PLUGIN_SAFE_MODE": str(settings.PLUGIN_SAFE_MODE).lower(),
                 "DATABASE_URL": _sandbox_database_url(settings.DATABASE_URL.get_secret_value()),
                 "DATA_ROOT": "/app/data",

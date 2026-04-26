@@ -42,7 +42,6 @@ from app.services.tools.models import (
 )
 from app.services.tools.registry import ToolRegistry, initialize_registry
 
-
 # === REAL TOOL REGISTRY TESTS ===
 
 

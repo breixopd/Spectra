@@ -418,9 +418,8 @@ class SchedulerService:
                         logger.debug("DB maintenance lock not acquired — skipping")
                         continue
 
-                    from sqlalchemy.ext.asyncio import create_async_engine
-
                     from sqlalchemy import text
+                    from sqlalchemy.ext.asyncio import create_async_engine
 
                     engine = create_async_engine(
                         settings.DATABASE_URL.get_secret_value(),

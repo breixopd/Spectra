@@ -12,7 +12,6 @@ from httpx import ASGITransport, AsyncClient
 
 from app.core.security import create_access_token
 
-
 API_AUTH_PREFIX = "/api/v1/auth"
 
 

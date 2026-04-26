@@ -23,6 +23,7 @@ from app.models.audit_log import AuditEventType
 from app.models.finding import Finding
 from app.models.mission import Mission
 from app.models.user import User
+from app.services.shell.relay_client import shell_relay_client
 from app.services.shell.session_manager import shell_manager
 from app.services.system.audit import log_event as audit_log_event
 
@@ -147,6 +148,47 @@ async def list_sessions(request: Request, _current_user: User = Depends(get_curr
         user_mission_ids = {row[0] for row in result.all()}
 
     return [s for s in all_sessions if not s.get("mission_id") or s["mission_id"] in user_mission_ids]
+
+
+@router.get("/listeners")
+@limiter.limit(RateLimits.SHELL_SESSIONS)
+async def list_listeners(request: Request, _current_user: User = Depends(get_current_active_user)):
+    """List managed callback listeners with TTLs, scoped to the user's missions."""
+    try:
+        all_listeners = await shell_relay_client.list_listeners()
+    except Exception as exc:
+        logger.warning("Worker listener inventory unavailable: %s", exc)
+        raise HTTPException(status_code=503, detail="Worker listener service unavailable") from exc
+    if _current_user.is_superuser:
+        return all_listeners
+
+    user_id = str(_current_user.id)
+    async with async_session_maker() as db:
+        result = await db.execute(select(Mission.id).where(Mission.user_id == user_id))
+        user_mission_ids = {row[0] for row in result.all()}
+    return [item for item in all_listeners if item.get("mission_id") in user_mission_ids]
+
+
+@router.delete("/listeners/{session_id}", status_code=204)
+async def stop_listener(session_id: str, _current_user: User = Depends(get_current_active_user)) -> None:
+    """Stop a managed callback listener."""
+    try:
+        listeners = await shell_relay_client.list_listeners()
+    except Exception as exc:
+        logger.warning("Worker listener inventory unavailable: %s", exc)
+        raise HTTPException(status_code=503, detail="Worker listener service unavailable") from exc
+    listener = next((item for item in listeners if item.get("session_id") == session_id), None)
+    if not listener:
+        raise HTTPException(status_code=404, detail="Listener not found")
+
+    if not _current_user.is_superuser:
+        mission_id = listener.get("mission_id")
+        async with async_session_maker() as db:
+            result = await db.execute(select(Mission.id).where(Mission.id == mission_id, Mission.user_id == str(_current_user.id)))
+            if result.scalar_one_or_none() is None:
+                raise HTTPException(status_code=403, detail="Not authorized to stop this listener")
+    if not await shell_relay_client.stop_listener(session_id):
+        raise HTTPException(status_code=404, detail="Listener not found")
 
 
 @router.post("/reconnect/{finding_id}")

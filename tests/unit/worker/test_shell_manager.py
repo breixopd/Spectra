@@ -14,6 +14,7 @@ def shell_manager():
     manager.loop = MagicMock()
     # Ensure listeners dict is fresh
     manager.listeners = {}
+    manager.listener_records = {}
     manager.sessions = {}
     return manager
 
@@ -43,7 +44,11 @@ async def test_start_listener(shell_manager):
         mock_socket.accept.return_value = (MagicMock(), ("127.0.0.1", 12345))
 
         # Mock threading to not actually start thread but just setup
-        with patch("threading.Thread") as mock_thread:
+        with (
+            patch("app.services.shell.session_manager._get_service_mode", return_value="worker"),
+            patch("threading.Thread") as mock_thread,
+            patch("threading.Timer") as mock_timer,
+        ):
             # We also need to mock allocate_port since start_listener calls it if port=0
             # And allocate_port also creates a socket to check availability
 
@@ -59,7 +64,9 @@ async def test_start_listener(shell_manager):
 
             assert result_port == 4444
             assert 4444 in shell_manager.listeners
+            assert shell_manager.listener_records["test-session"]["port"] == 4444
             assert mock_thread.called
+            assert mock_timer.called
 
 
 @pytest.mark.asyncio

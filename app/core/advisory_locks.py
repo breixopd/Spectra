@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import logging
 import hashlib
 import inspect
+import logging
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 

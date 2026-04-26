@@ -28,20 +28,6 @@ jobs:
       packages: write
     env:
       ENCRYPTION_KEY: test-encryption-key
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: spectra
-          POSTGRES_PASSWORD: spectra_test
-          POSTGRES_DB: spectra_test
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd "pg_isready -U spectra -d spectra_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     concurrency:
       group: release
       cancel-in-progress: false
@@ -66,11 +52,6 @@ jobs:
         id: release_ref
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-
       # ── Determine release version from manual input ───────────
       - name: Set version
         id: version
@@ -92,48 +73,25 @@ jobs:
           echo "Release version: ${VERSION}"
 
       # ── Run tests before release ──────────────────────────────
-      - name: Install dependencies
-        run: |
-          filtered_requirements=requirements/dev-ci-filtered.txt
-          trap 'rm -f "$filtered_requirements"' EXIT
-          grep -v '^pytest-asyncio==' requirements/dev.txt > "$filtered_requirements"
-          pip install -r "$filtered_requirements" numpy docker psutil botocore
-          pip install --no-deps pytest-asyncio==0.24.0
+      - name: Build Docker test runners
+        run: docker compose -f docker/docker-compose.test.yml build unit-test-runner test-runner
 
       - name: Validate TensorZero config
-        run: |
-          python3 -c "import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')"
+        run: docker compose -f docker/docker-compose.test.yml run --rm --no-deps unit-test-runner "python -c \"import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')\""
 
-      - name: Run unit tests with coverage
+      - name: Run unit tests with coverage in Docker
         run: |
-          python3 -m pytest tests/unit/ -q \
-            --cov=app \
-            --cov-report=term-missing \
-            --cov-report=xml:coverage.xml \
-            --cov-fail-under=67.4
-        env:
-          DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5433/spectra_test"
-          TENSORZERO_GATEWAY_URL: "http://localhost:3000"
-          JWT_SECRET_KEY: test-key
-          PLUGIN_SAFE_MODE: "false"
+          docker compose -f docker/docker-compose.test.yml run --rm unit-test-runner \
+            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=app --cov-report=term-missing --cov-fail-under=67.4"
 
-      - name: Run integration tests
+      - name: Run integration tests in Docker
         run: |
-          python3 -m pytest tests/integration/ -v --tb=short \
-            --timeout=120 \
-            --override-ini="addopts=" \
-            -k "not live and not e2e"
-        env:
-          DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5433/spectra_test"
-          TENSORZERO_GATEWAY_URL: "http://localhost:3000"
-          JWT_SECRET_KEY: test-key
-          PLUGIN_SAFE_MODE: "false"
+          docker compose -f docker/docker-compose.test.yml run --rm test-runner \
+            "python -m pytest tests/integration/ -v --tb=short --timeout=120 --override-ini=addopts= -k 'not live and not e2e'"
 
       # ── Security gate ─────────────────────────────────────────
       - name: Security scan (bandit)
-        run: |
-          pip install bandit[toml]
-          bandit -r app/ -c pyproject.toml --severity-filter HIGH --confidence-filter HIGH
+        run: docker compose -f docker/docker-compose.test.yml run --rm --no-deps unit-test-runner "bandit -r app/ -c pyproject.toml --severity-filter HIGH --confidence-filter HIGH"
 
       - name: Validate Docker Compose config
         run: docker compose --env-file .env.example -f docker/docker-compose.yml config --quiet
@@ -245,7 +203,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Scan API image for critical CVEs
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: ${{ env.APP_IMAGE }}:${{ steps.version.outputs.version }}
           severity: CRITICAL
@@ -253,7 +211,7 @@ jobs:
           exit-code: "1"
 
       - name: Scan AI image for critical CVEs
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: ${{ env.AI_IMAGE }}:${{ steps.version.outputs.version }}
           severity: CRITICAL
@@ -261,7 +219,7 @@ jobs:
           exit-code: "1"
 
       - name: Scan scheduler image for critical CVEs
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: ${{ env.SCHEDULER_IMAGE }}:${{ steps.version.outputs.version }}
           severity: CRITICAL
@@ -269,7 +227,7 @@ jobs:
           exit-code: "1"
 
       - name: Scan worker image for critical CVEs
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: ${{ env.WORKER_IMAGE }}:${{ steps.version.outputs.version }}
           severity: CRITICAL
@@ -277,7 +235,7 @@ jobs:
           exit-code: "1"
 
       - name: Scan Caddy image for critical CVEs
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: ${{ env.CADDY_IMAGE }}:${{ steps.version.outputs.version }}
           severity: CRITICAL

@@ -331,7 +331,7 @@ async def test_hydrate_bootstrap_only_vars_skip_env_override():
     session.execute.return_value = result
 
     with (
-        patch("app.services.system.runtime_settings.settings") as mock_settings,
+        patch("app.services.system.runtime_settings.settings"),
         patch(
             "app.services.system.runtime_settings.reset_runtime_ai_caches",
             new_callable=AsyncMock,

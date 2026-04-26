@@ -54,7 +54,13 @@ class _CorrelationFilter(logging.Filter):
     """Injects correlation_id into every log record."""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        record.correlation_id = correlation_id_var.get() or ""  # type: ignore[attr-defined]
+        if sys.meta_path is None:
+            record.correlation_id = ""  # type: ignore[attr-defined]
+            return True
+        try:
+            record.correlation_id = correlation_id_var.get() or ""  # type: ignore[attr-defined]
+        except (LookupError, RuntimeError):
+            record.correlation_id = ""  # type: ignore[attr-defined]
         return True
 
 
@@ -71,9 +77,14 @@ class SensitiveFieldFilter(logging.Filter):
     ]
 
     def filter(self, record: logging.LogRecord) -> bool:
+        if sys.meta_path is None:
+            return True
         if isinstance(record.msg, str):
-            for pattern, replacement in self.PATTERNS:
-                record.msg = pattern.sub(replacement, record.msg)
+            try:
+                for pattern, replacement in self.PATTERNS:
+                    record.msg = pattern.sub(replacement, record.msg)
+            except (RuntimeError, ImportError):
+                return True
         return True
 
 
@@ -105,11 +116,16 @@ class HumanFormatter(logging.Formatter):
     DATEFMT = "%Y-%m-%d %H:%M:%S"
 
     def format(self, record: logging.LogRecord) -> str:
-        cid = getattr(record, "correlation_id", "")
-        if cid:
-            record.msg = f"[{cid}] {record.msg}"
         self._style._fmt = self.FMT
         self.datefmt = self.DATEFMT
+        cid = getattr(record, "correlation_id", "")
+        if cid:
+            original_msg = record.msg
+            record.msg = f"[{cid}] {record.msg}"
+            try:
+                return super().format(record)
+            finally:
+                record.msg = original_msg
         return super().format(record)
 
 

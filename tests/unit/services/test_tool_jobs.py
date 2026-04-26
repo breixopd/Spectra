@@ -122,6 +122,7 @@ async def test_execute_tool_job_handles_command_build_failure():
             "app.services.tools.adapter.parser",
             make_module("app.services.tools.adapter.parser", OutputParser=_Parser),
         )
+        mp.setattr(tool_jobs, "_is_tool_installed", lambda tool: True)
         result = await tool_jobs.execute_tool_job("nmap", "example.com")
 
     assert result["success"] is False
@@ -171,6 +172,7 @@ async def test_execute_tool_job_adjusts_cidr_timeout_and_marks_timeout_with_pars
         )
         mp.setattr(tool_jobs, "_run_command", run_command)
         mp.setattr(tool_jobs, "_track_tool_stats", track_stats)
+        mp.setattr(tool_jobs, "_is_tool_installed", lambda tool: True)
         result = await tool_jobs.execute_tool_job("nmap", "10.0.0.0/30", output_dir=str(tmp_path))
 
     assert result["success"] is False
@@ -230,6 +232,7 @@ async def test_execute_tool_job_flags_oom_results_and_returns_parsed_findings(tm
         )
         mp.setattr(tool_jobs, "_run_command", run_command)
         mp.setattr(tool_jobs, "_track_tool_stats", track_stats)
+        mp.setattr(tool_jobs, "_is_tool_installed", lambda tool: True)
         result = await tool_jobs.execute_tool_job("httpx", "example.com", output_dir=str(tmp_path))
 
     assert result["success"] is False

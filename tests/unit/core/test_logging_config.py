@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,6 +12,7 @@ from app.core.logging_config import (
     CorrelationIdMiddleware,
     HumanFormatter,
     JSONFormatter,
+    SensitiveFieldFilter,
     _CorrelationFilter,
     configure_logging,
     correlation_id_var,
@@ -73,6 +75,54 @@ class TestCorrelationFilter:
         result = filt.filter(record)
         assert result is True
         assert record.correlation_id == ""  # type: ignore[attr-defined]
+
+    def test_shutdown_safe_when_import_system_is_gone(self):
+        filt = _CorrelationFilter()
+        record = logging.LogRecord(
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="hello",
+            args=(),
+            exc_info=None,
+        )
+        with patch.object(sys, "meta_path", None):
+            assert filt.filter(record) is True
+        assert record.correlation_id == ""  # type: ignore[attr-defined]
+
+
+class TestSensitiveFieldFilter:
+    """Tests for shutdown-safe sensitive data redaction."""
+
+    def test_redacts_sensitive_fields(self):
+        filt = SensitiveFieldFilter()
+        record = logging.LogRecord(
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="password=secret token=abc",
+            args=(),
+            exc_info=None,
+        )
+        assert filt.filter(record) is True
+        assert "secret" not in record.msg
+        assert "abc" not in record.msg
+
+    def test_shutdown_safe_when_import_system_is_gone(self):
+        filt = SensitiveFieldFilter()
+        record = logging.LogRecord(
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="password=secret",
+            args=(),
+            exc_info=None,
+        )
+        with patch.object(sys, "meta_path", None):
+            assert filt.filter(record) is True
 
 
 class TestJSONFormatter:
@@ -161,6 +211,7 @@ class TestHumanFormatter:
         output = fmt.format(record)
         assert "[cid-xyz]" in output
         assert "traced log" in output
+        assert record.msg == "traced log"
 
 
 class TestConfigureLogging:

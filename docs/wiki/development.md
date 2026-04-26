@@ -45,10 +45,10 @@ The primary CI test command is:
 docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner
 ```
 
-For local iteration, run unit tests directly:
+For local iteration, run unit tests through Docker:
 
 ```bash
-python3 -m pytest tests/unit/ -q
+./scripts/test.sh unit
 ```
 
 For the full verification matrix, release gate criteria, load/performance/soak harnesses, and known gaps, see [Testing Strategy](testing-strategy.md).

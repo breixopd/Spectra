@@ -230,7 +230,7 @@ class TestDeployToNode:
     @pytest.mark.asyncio
     async def test_forwards_pinned_known_host_from_node_metadata(self):
         from app.api.routers.admin.servers import deploy_to_node
-        from app.services.infrastructure.deploy import DeployResult, DeploymentStatus
+        from app.services.infrastructure.deploy import DeploymentStatus, DeployResult
 
         node = MagicMock()
         node.id = 42

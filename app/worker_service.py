@@ -5,9 +5,11 @@ import logging
 import os
 from contextlib import asynccontextmanager, suppress
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
 
 from app.core.tasks import create_safe_task
+from app.services.shell.session_manager import shell_manager
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +67,43 @@ async def health():
         status["database"] = "disconnected"
         status["status"] = "degraded"
     return status
+
+
+class ListenerCreateRequest(BaseModel):
+    session_id: str = Field(min_length=1, max_length=128)
+    target: str = Field(min_length=1, max_length=255)
+    mission_id: str | None = Field(default=None, max_length=128)
+    port: int = Field(default=0, ge=0, le=65535)
+    ttl_seconds: int = Field(default=900, ge=60, le=3600)
+
+
+@app.post("/internal/shell/listeners")
+async def internal_start_shell_listener(request: ListenerCreateRequest) -> dict[str, int | str | None]:
+    """Start a callback listener on the worker data plane."""
+    try:
+        port = shell_manager.start_listener(
+            session_id=request.session_id,
+            target=request.target,
+            mission_id=request.mission_id,
+            port=request.port,
+            ttl_seconds=request.ttl_seconds,
+        )
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return {"session_id": request.session_id, "mission_id": request.mission_id, "port": port}
+
+
+@app.get("/internal/shell/listeners")
+async def internal_list_shell_listeners() -> list[dict]:
+    """List callback listeners owned by this worker."""
+    return shell_manager.list_listeners()
+
+
+@app.delete("/internal/shell/listeners/{session_id}", status_code=204)
+async def internal_stop_shell_listener(session_id: str) -> None:
+    """Stop a callback listener owned by this worker."""
+    if not shell_manager.stop_listener(session_id=session_id):
+        raise HTTPException(status_code=404, detail="Listener not found")
 
 
 async def _run_heartbeat():

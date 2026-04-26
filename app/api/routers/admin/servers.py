@@ -8,6 +8,12 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.routers.admin.server_schemas import (
+    DeprovisionRequest,
+    ProvisionRequest,
+    ServerConnectionRequest,
+    UpdateServerNodeRequest,
+)
 from app.core.database import async_session_maker, get_async_session
 from app.core.rbac import Permission, require_permission
 from app.models.audit_log import AuditEventType
@@ -17,42 +23,6 @@ from app.services.system.audit import log_event as audit_log_event
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-# --- Pydantic request models ---
-
-
-class ServerConnectionRequest(BaseModel):
-    host: str
-    port: int = 22
-    username: str = "root"
-    password: str | None = None
-    private_key: str | None = None
-    ssh_known_host: str | None = None
-
-
-class ProvisionRequest(ServerConnectionRequest):
-    service_type: str
-    service_port: int = 8080
-    extra_env: dict[str, str] = Field(default_factory=dict)
-
-
-class DeprovisionRequest(ServerConnectionRequest):
-    service_type: str = "sandbox_worker"
-
-
-class UpdateServerNodeRequest(BaseModel):
-    name: str | None = None
-    url: str | None = None
-    api_key: str | None = None
-    is_active: bool | None = None
-    is_primary: bool | None = None
-    weight: int | None = Field(None, ge=1, le=100)
-    max_capacity: int | None = Field(None, ge=1, le=1000)
-    service_type: str | None = Field(
-        None,
-        pattern=r"^(sandbox_worker|app_worker|tools_worker|db_replica|db_backup|storage)$",
-    )
 
 
 @router.post("/api/admin/servers/verify")
@@ -657,6 +627,7 @@ async def get_scaling_status(
         "autoscale_idle_secs": getattr(settings, "AUTOSCALE_IDLE_SECS", 600),
         "autoscale_cpu_up_threshold": getattr(settings, "AUTOSCALE_CPU_UP_THRESHOLD", 75),
         "autoscale_cpu_down_threshold": getattr(settings, "AUTOSCALE_CPU_DOWN_THRESHOLD", 25),
+        "auto_heal_enabled": getattr(settings, "AUTO_HEAL_ENABLED", True),
         "infra_monitor_enabled": getattr(settings, "INFRA_MONITOR_ENABLED", True),
         "infra_monitor_pg_threshold": getattr(settings, "INFRA_MONITOR_PG_THRESHOLD", 80),
         "infra_monitor_redis_threshold": getattr(settings, "INFRA_MONITOR_REDIS_THRESHOLD", 85),
@@ -721,6 +692,7 @@ class ScalingConfigUpdate(BaseModel):
     autoscale_idle_secs: int | None = Field(None, ge=60, le=7200)
     autoscale_cpu_up_threshold: int | None = Field(None, ge=50, le=99)
     autoscale_cpu_down_threshold: int | None = Field(None, ge=5, le=50)
+    auto_heal_enabled: bool | None = None
     infra_monitor_enabled: bool | None = None
     infra_monitor_pg_threshold: int | None = Field(None, ge=50, le=99)
     infra_monitor_redis_threshold: int | None = Field(None, ge=50, le=99)
@@ -740,6 +712,7 @@ _SCALING_FIELD_TO_DB_KEY: dict[str, tuple[str, str]] = {
     "autoscale_idle_secs": ("AUTOSCALE_IDLE_SECS", "int"),
     "autoscale_cpu_up_threshold": ("AUTOSCALE_CPU_UP_THRESHOLD", "int"),
     "autoscale_cpu_down_threshold": ("AUTOSCALE_CPU_DOWN_THRESHOLD", "int"),
+    "auto_heal_enabled": ("AUTO_HEAL_ENABLED", "bool"),
     "infra_monitor_enabled": ("INFRA_MONITOR_ENABLED", "bool"),
     "infra_monitor_pg_threshold": ("INFRA_MONITOR_PG_THRESHOLD", "int"),
     "infra_monitor_redis_threshold": ("INFRA_MONITOR_REDIS_THRESHOLD", "int"),

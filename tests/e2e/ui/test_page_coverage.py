@@ -75,9 +75,9 @@ def test_reports_page(fresh_authenticated_page: Page, app_url: str):
 # ---------------------------------------------------------------------------
 
 
-def test_toolbox_page(fresh_authenticated_page: Page, app_url: str):
+def test_toolbox_page(logged_in_page: Page, app_url: str):
     """Navigate to /toolbox, verify heading and tools list/grid."""
-    page = fresh_authenticated_page
+    page = logged_in_page
     page.goto(f"{app_url}/toolbox", wait_until="networkidle")
 
     heading = page.locator("h2")
