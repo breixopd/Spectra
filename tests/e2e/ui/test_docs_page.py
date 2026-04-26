@@ -18,7 +18,7 @@ def test_api_docs_loads(authenticated_page: Page, app_url: str):
 def test_api_docs_search(authenticated_page: Page, app_url: str):
     """Search filters endpoints."""
     authenticated_page.goto(f"{app_url}/docs/api", wait_until="networkidle")
-    search = authenticated_page.locator("input[placeholder*='Search']")
+    search = authenticated_page.get_by_test_id("api-docs-search")
     expect(search).to_be_visible(timeout=15_000)
     search.fill("health")
     # Should filter to health-related endpoints
