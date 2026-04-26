@@ -52,6 +52,7 @@ class Settings(BaseSettings):
 
     # --- Application ---
     APP_NAME: str = "Spectra"
+    APP_ENV: str = "development"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "text"  # "json" for structured logs in production, "text" for dev
@@ -433,19 +434,26 @@ def get_settings() -> Settings:
     import secrets as _secrets
 
     settings_instance = Settings()
+    production_like = settings_instance.APP_ENV.lower() in {"production", "prod"} and not settings_instance.DEBUG
 
     # Auto-generate JWT secret if empty or using placeholder
     jwt_val = settings_instance.JWT_SECRET_KEY.get_secret_value()
     if not jwt_val or jwt_val.startswith("change-me"):
+        if production_like:
+            raise ValueError("JWT_SECRET_KEY must be explicitly set in production")
         settings_instance.JWT_SECRET_KEY = SecretStr(_secrets.token_urlsafe(32))
 
     # Auto-generate SECRET_KEY if empty or default
     secret_val = settings_instance.SECRET_KEY.get_secret_value()
     if not secret_val or secret_val == "change-me-in-production":
+        if production_like:
+            raise ValueError("SECRET_KEY must be explicitly set in production")
         settings_instance.SECRET_KEY = SecretStr(_secrets.token_urlsafe(32))
 
     # Auto-generate SERVICE_AUTH_SECRET if empty
     if not settings_instance.SERVICE_AUTH_SECRET.get_secret_value():
+        if production_like:
+            raise ValueError("SERVICE_AUTH_SECRET must be explicitly set in production")
         settings_instance.SERVICE_AUTH_SECRET = SecretStr(_secrets.token_urlsafe(32))
 
     if settings_instance.RATE_LIMIT_STORAGE == "redis://redis:6379/0":
@@ -458,21 +466,26 @@ def get_settings() -> Settings:
         # Persist to filesystem so the key survives container restarts
         env_explicit = os.environ.get("ENCRYPTION_KEY")
         if not env_explicit:
+            if production_like:
+                raise ValueError("ENCRYPTION_KEY must be explicitly set in production")
             key_path = Path("/app/data") / ".encryption_key"
-            if key_path.is_file():
-                settings_instance.ENCRYPTION_KEY = key_path.read_text().strip()
-            else:
-                new_key = _secrets.token_urlsafe(32)
-                key_path.parent.mkdir(parents=True, exist_ok=True)
-                # Atomic write with restrictive permissions
-                tmp_path = key_path.with_suffix(".tmp")
-                fd = os.open(str(tmp_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-                try:
-                    os.write(fd, new_key.encode())
-                finally:
-                    os.close(fd)
-                os.replace(str(tmp_path), str(key_path))
-                settings_instance.ENCRYPTION_KEY = new_key
+            try:
+                if key_path.is_file():
+                    settings_instance.ENCRYPTION_KEY = key_path.read_text().strip()
+                else:
+                    new_key = _secrets.token_urlsafe(32)
+                    key_path.parent.mkdir(parents=True, exist_ok=True)
+                    # Atomic write with restrictive permissions
+                    tmp_path = key_path.with_suffix(".tmp")
+                    fd = os.open(str(tmp_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                    try:
+                        os.write(fd, new_key.encode())
+                    finally:
+                        os.close(fd)
+                    os.replace(str(tmp_path), str(key_path))
+                    settings_instance.ENCRYPTION_KEY = new_key
+            except OSError:
+                settings_instance.ENCRYPTION_KEY = _secrets.token_urlsafe(32)
         else:
             settings_instance.ENCRYPTION_KEY = env_explicit
 

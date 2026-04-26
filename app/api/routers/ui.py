@@ -265,7 +265,7 @@ async def api_docs_page(request: Request):
             return templates.TemplateResponse(
                 request,
                 "errors/403.html",
-                {"request": request, "message": "API documentation requires a Professional or Enterprise plan."},
+                {"request": request, "detail": "API documentation requires a Professional or Enterprise plan."},
                 status_code=403,
             )
 

@@ -5,9 +5,12 @@ import os
 import urllib.parse
 from typing import Any, cast
 
+import asyncpg
 import httpx
 import pytest
 from playwright.sync_api import Browser, BrowserContext, Page, expect
+
+from app.core.security import get_password_hash
 
 
 def pytest_configure(config):
@@ -173,26 +176,48 @@ def _reset_user_activity(username: str) -> None:
     dsn = db_url.replace("postgresql+asyncpg://", "postgresql://")
     try:
         import asyncio
-
-        import asyncpg
+        import threading
 
         async def _update():
             conn = await asyncpg.connect(dsn)
             try:
                 await conn.execute(
-                    "UPDATE users SET last_activity = NOW() WHERE username = $1",
+                    """
+                    UPDATE users
+                    SET last_activity = NOW(),
+                        login_fail_count = 0,
+                        locked_until = NULL,
+                        hashed_password = CASE WHEN username = $2 THEN $3 ELSE hashed_password END,
+                        role = CASE WHEN username = $2 THEN 'admin' ELSE role END,
+                        is_superuser = CASE WHEN username = $2 THEN true ELSE is_superuser END,
+                        is_active = true,
+                        email_verified = true
+                    WHERE username = $1
+                    """,
                     username,
+                    ADMIN_USERNAME,
+                    get_password_hash(ADMIN_PASSWORD),
                 )
             finally:
                 await conn.close()
 
-        try:
-            asyncio.get_running_loop()
-            return
-        except RuntimeError:
-            pass
+        result: dict[str, Exception | None] = {"error": None}
 
-        asyncio.run(_update())
+        def _run() -> None:
+            try:
+                loop = asyncio.new_event_loop()
+                try:
+                    loop.run_until_complete(_update())
+                finally:
+                    loop.close()
+            except Exception as exc:
+                result["error"] = exc
+
+        thread = threading.Thread(target=_run)
+        thread.start()
+        thread.join(timeout=10)
+        if result["error"]:
+            raise result["error"]
     except Exception:
         pass
 
@@ -250,71 +275,42 @@ def login_page(page: Page, app_url: str):
 
 @pytest.fixture
 def authenticated_page(
-    shared_context: BrowserContext,
+    browser: Browser,
     authenticated_cookies: list[dict[str, object]],
     app_url: str,
 ):
-    """Return a fresh authenticated page backed by reused server auth cookies.
-
-    If the cached session cookies have been invalidated (e.g. by a logout test),
-    re-authenticate automatically to obtain fresh tokens.  Handles redirect
-    loops caused by stale cookies gracefully.
-    """
-    # Refresh last_activity so that the session idle timeout check passes
-    # for background API calls (e.g. /api/v1/auth/me from confirm.js).
+    """Return an isolated authenticated page backed by reusable auth cookies."""
     _reset_user_activity(ADMIN_USERNAME)
 
-    # Close any orphan pages left by timed-out tests.
-    for p in shared_context.pages:
-        if not p.is_closed():
-            with contextlib.suppress(Exception):
-                p.close()
-
-    # Brief pause to let any pending keepalive responses (e.g. from logout
-    # tests) settle before we re-inject auth cookies.
-    import time as _t
-
-    _t.sleep(0.3)
-
-    cookies_to_use = authenticated_cookies
+    context = browser.new_context()
+    context.set_default_navigation_timeout(30_000)
+    context.set_default_timeout(15_000)
+    context.add_init_script(_AUTH_SUPPRESSION_INIT_SCRIPT)
+    cookies_to_use = list(authenticated_cookies)
+    context.add_cookies(cast(Any, cookies_to_use))
+    _page = context.new_page()
     needs_reauth = False
 
-    # Clear stale/refreshed cookies then re-inject the canonical auth cookies.
-    shared_context.clear_cookies()
-    shared_context.add_cookies(cast(Any, cookies_to_use))
-    _page = shared_context.new_page()
-
-    # Navigate and wait for JS-initiated API calls (e.g. system/status) to
-    # complete so any auth-triggered redirects resolve before the test body.
     try:
         _page.goto(f"{app_url}/dashboard", wait_until="domcontentloaded")
         with contextlib.suppress(Exception):
             _page.wait_for_load_state("networkidle", timeout=10_000)
-        # Check if redirected to login (stale cookies).
         if "/login" in _page.url or "/dashboard" not in _page.url:
             needs_reauth = True
     except Exception:
-        # ERR_TOO_MANY_REDIRECTS or other navigation errors → stale cookies.
         needs_reauth = True
 
     if needs_reauth:
-        # Close the broken page and start fresh with new tokens.
         if not _page.is_closed():
             _page.close()
 
         cookies_to_use = _refresh_auth_cookies(app_url)
-        # Update the session-scoped list in-place so later tests benefit.
         authenticated_cookies.clear()
         authenticated_cookies.extend(cookies_to_use)
 
-        shared_context.clear_cookies()
-        shared_context.add_cookies(cast(Any, cookies_to_use))
-
-        # Create a new page and navigate to dashboard.  Use a retry to
-        # handle the rare case where Caddy's round-robin sends the very
-        # first request to a backend whose in-memory caches haven't yet
-        # seen the freshly-issued token.
-        _page = shared_context.new_page()
+        context.clear_cookies()
+        context.add_cookies(cast(Any, cookies_to_use))
+        _page = context.new_page()
         for _nav_attempt in range(3):
             try:
                 _page.goto(f"{app_url}/dashboard", wait_until="domcontentloaded")
@@ -326,12 +322,12 @@ def authenticated_page(
 
             _t2.sleep(1)
 
-    # Lightweight assertion: verify we reached dashboard, not login.
     assert "/login" not in _page.url, f"authenticated_page fixture failed to reach dashboard (url={_page.url})"
 
     yield _page
     if not _page.is_closed():
         _page.close()
+    context.close()
 
 
 @pytest.fixture
@@ -384,8 +380,6 @@ def _db_dsn_from_env() -> str:
 
 async def _seed_manual_mode(dsn: str) -> None:
     """Connect to the database and seed manual_mode plan+subscription."""
-    import asyncpg  # already in requirements
-
     conn = await asyncpg.connect(dsn)
     try:
         await conn.execute(

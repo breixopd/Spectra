@@ -39,22 +39,23 @@ def test_settings_sandbox_status_indicator(authenticated_page: Page, app_url: st
     )
 
 
-def test_settings_sandbox_fields_populated(authenticated_page: Page, app_url: str):
+def test_settings_sandbox_fields_populated(fresh_authenticated_page: Page, app_url: str):
     """Sandbox fields should be present and visible."""
-    authenticated_page.goto(f"{app_url}/settings", wait_until="networkidle")
-    max_containers = authenticated_page.locator("[name='sandbox_max_containers']")
+    fresh_authenticated_page.goto(f"{app_url}/settings", wait_until="networkidle")
+    expect(fresh_authenticated_page.get_by_role("heading", name="Sandbox Pool", exact=True)).to_be_visible(timeout=15_000)
+    max_containers = fresh_authenticated_page.locator("[name='sandbox_max_containers']")
     expect(max_containers).to_be_visible(timeout=15_000)
     # The field should be present and interactable even if JS hasn't populated
     # a value yet (the API call may be suppressed in tests).
     assert max_containers.is_visible(), "Sandbox max_containers field should be visible"
 
 
-def test_settings_platform_section_visible(authenticated_page: Page, app_url: str):
+def test_settings_platform_section_visible(fresh_authenticated_page: Page, app_url: str):
     """Platform section should be visible with domain and base URL fields."""
-    authenticated_page.goto(f"{app_url}/settings", wait_until="networkidle")
-    expect(authenticated_page.locator("[name='platform_domain']")).to_be_visible(timeout=15_000)
-    expect(authenticated_page.locator("[name='platform_base_url']")).to_be_visible()
-    expect(authenticated_page.locator("[name='platform_exposed']")).to_be_attached()
+    fresh_authenticated_page.goto(f"{app_url}/settings", wait_until="networkidle")
+    expect(fresh_authenticated_page.locator("[name='platform_domain']")).to_be_visible(timeout=15_000)
+    expect(fresh_authenticated_page.locator("[name='platform_base_url']")).to_be_visible()
+    expect(fresh_authenticated_page.locator("[name='platform_exposed']")).to_be_attached()
 
 
 def test_settings_data_management_visible(authenticated_page: Page, app_url: str):

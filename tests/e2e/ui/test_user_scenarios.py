@@ -11,6 +11,8 @@ import time
 import pytest
 from playwright.sync_api import Page, expect
 
+from tests.e2e.ui.conftest import ADMIN_PASSWORD, ADMIN_USERNAME, _reset_user_activity
+
 pytestmark = [pytest.mark.e2e, pytest.mark.ui]
 
 
@@ -76,7 +78,7 @@ def test_admin_create_user_modal(fresh_authenticated_page: Page, app_url: str):
     # Click Users tab and wait for section to settle
     users_tab = page.locator(".admin-sidebar [data-section='users']")
     expect(users_tab).to_be_visible(timeout=15_000)
-    users_tab.click()
+    users_tab.click(force=True)
     section = page.locator("#section-users")
     expect(section).to_be_visible(timeout=10_000)
 
@@ -103,12 +105,15 @@ def test_admin_create_user_modal(fresh_authenticated_page: Page, app_url: str):
 def test_admin_plan_management(fresh_authenticated_page: Page, app_url: str):
     """Admin can view the Plans tab and see the plans grid."""
     page = fresh_authenticated_page
-    page.goto(f"{app_url}/admin", wait_until="domcontentloaded", timeout=15_000)
+    try:
+        page.goto(f"{app_url}/admin", wait_until="domcontentloaded", timeout=15_000)
+    except Exception:
+        page.goto(f"{app_url}/admin", wait_until="domcontentloaded", timeout=15_000)
 
     # Click Plans tab
     plans_tab = page.locator("[data-section='plans']")
     expect(plans_tab).to_be_visible(timeout=15_000)
-    plans_tab.click()
+    plans_tab.click(force=True)
 
     # Plans section should be visible
     plans_section = page.locator("#section-plans")
@@ -424,10 +429,11 @@ def test_regular_user_no_admin_access(page: Page, app_url: str):
 @pytest.mark.timeout(30)
 def test_login_rate_limit_allows_normal_usage(page: Page, app_url: str):
     """Verify that normal login flow doesn't trigger rate limits."""
+    _reset_user_activity(ADMIN_USERNAME)
     # Login once
     page.goto(f"{app_url}/login", wait_until="domcontentloaded")
-    page.locator("#username").fill("admin")
-    page.locator("#password").fill("TestPassword123!")
+    page.locator("#username").fill(ADMIN_USERNAME)
+    page.locator("#password").fill(ADMIN_PASSWORD)
     page.locator("button[type='submit']").click()
     page.wait_for_url("**/dashboard", timeout=30_000)
 

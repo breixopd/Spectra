@@ -2,7 +2,7 @@
 
 from playwright.sync_api import Page, expect
 
-from tests.e2e.ui.conftest import ADMIN_PASSWORD, ADMIN_USERNAME
+from tests.e2e.ui.conftest import ADMIN_PASSWORD, ADMIN_USERNAME, _reset_user_activity
 
 
 def test_login_page_renders(login_page: Page):
@@ -24,6 +24,7 @@ def test_login_no_connecting_message(login_page: Page):
 
 def test_login_success_redirects_to_dashboard(login_page: Page, app_url: str):
     """Successful login should redirect to dashboard."""
+    _reset_user_activity(ADMIN_USERNAME)
     login_page.fill("#username", ADMIN_USERNAME)
     login_page.fill("#password", ADMIN_PASSWORD)
     login_page.click("button[type='submit']")

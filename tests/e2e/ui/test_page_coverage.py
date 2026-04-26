@@ -57,14 +57,14 @@ def test_history_page(logged_in_page: Page, app_url: str):
 # ---------------------------------------------------------------------------
 
 
-def test_reports_page(logged_in_page: Page, app_url: str):
+def test_reports_page(fresh_authenticated_page: Page, app_url: str):
     """Navigate to /reports, verify heading and reports container."""
-    page = logged_in_page
+    page = fresh_authenticated_page
     page.goto(f"{app_url}/reports", wait_until="networkidle")
 
-    heading = page.locator("h1")
-    expect(heading).to_be_visible(timeout=10_000)
-    expect(heading).to_contain_text("Assessment Reports")
+    expect(page).to_have_url(f"{app_url}/reports", timeout=15_000)
+    heading = page.get_by_role("heading", name="Assessment Reports", exact=True)
+    expect(heading).to_be_visible(timeout=15_000)
 
     reports_section = page.locator("#reports, .reports-container, .reports-section, main")
     expect(reports_section.first).to_be_attached(timeout=10_000)
@@ -75,9 +75,9 @@ def test_reports_page(logged_in_page: Page, app_url: str):
 # ---------------------------------------------------------------------------
 
 
-def test_toolbox_page(logged_in_page: Page, app_url: str):
+def test_toolbox_page(fresh_authenticated_page: Page, app_url: str):
     """Navigate to /toolbox, verify heading and tools list/grid."""
-    page = logged_in_page
+    page = fresh_authenticated_page
     page.goto(f"{app_url}/toolbox", wait_until="networkidle")
 
     heading = page.locator("h2")
