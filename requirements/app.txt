@@ -5,7 +5,7 @@
 # For lighter per-service deps, see: ai.txt, scheduler.txt, worker.txt.
 
 # Core Framework (all services)
-fastapi==0.119.1
+fastapi==0.136.1
 uvicorn[standard]==0.34.2
 pydantic[email]==2.12.5
 pydantic-settings==2.13.1
@@ -19,14 +19,14 @@ alembic==1.18.4
 openai==2.26.0
 tensorzero==2025.6.0
 httpx==0.28.1
-fastembed==0.4.0
+fastembed==0.8.0
 
 # Web & Templates (API only)
 jinja2==3.1.6
 nh3==0.3.4
-python-multipart==0.0.22
+python-multipart==0.0.26
 websockets==14.2
-aiohttp==3.13.3
+aiohttp==3.13.5
 aiofiles==25.1.0
 
 # Rate Limiting (API only)
@@ -35,8 +35,8 @@ redis[hiredis]==5.2.1
 
 # Security (all services)
 bcrypt==4.3.0
-PyJWT[crypto]==2.10.1
-cryptography==44.0.3
+PyJWT[crypto]==2.12.1
+cryptography==47.0.0
 
 # TOTP / MFA (API only)
 pyotp==2.9.0
@@ -48,15 +48,16 @@ asyncssh==2.22.0
 jsonschema==4.26.0
 orjson==3.11.7
 json-repair==0.58.5
+defusedxml==0.7.1
 
 # S3/MinIO (API only)
-aioboto3==12.0.0
+aioboto3==15.5.0
 
 # Docker SDK (API only — sandbox container management)
 docker==7.0.0
 
 # PDF report generation (API only)
-xhtml2pdf==0.2.16
+xhtml2pdf==0.2.17
 blinker==1.9.0
 
 # Email (API only — SMTP provider)

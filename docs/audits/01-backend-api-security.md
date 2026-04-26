@@ -19,4 +19,5 @@
 
 - Fixed env encryption-key branch.
 - Fixed malformed content length handling.
+- Ran `pip-audit` per service requirements. Upgraded vulnerable direct and transitive dependency parents; audit is clean for `requirements/app.txt`, `requirements/ai.txt`, `requirements/worker.txt`, and `requirements/scheduler.txt`.
 - Leave production secret fail-fast, webhook idempotency, MCP RAG scoping, and staff permission tightening for next backend pass with tests.

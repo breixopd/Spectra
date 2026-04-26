@@ -14,6 +14,12 @@
 - No automated container RSS/CPU/image-size budget checks.
 - Load harness still pip-installs dependencies in runner.
 
+## VPS Resource Snapshot
+
+- Idle-ish test stack memory: app ~147 MiB, app replica ~155 MiB, AI service ~56 MiB, scheduler ~103 MiB, worker ~96 MiB, tools ~662 MiB, ClickHouse ~663 MiB.
+- Largest local images on VPS: Playwright UI runner ~3.8 GiB, Metasploitable ~2.3 GiB, app/app-replica ~1.16 GiB, worker/tools ~1.1 GiB, AI service ~860 MiB, test runners ~937 MiB.
+- Docker disk usage on VPS after test stack: images ~56.4 GiB, build cache ~11.46 GiB, volumes ~5.15 GiB. Cleanup/prune policy matters for small hosts.
+
 ## First Fixes
 
 - Keep `Dockerfile.test` as default test runner path.
