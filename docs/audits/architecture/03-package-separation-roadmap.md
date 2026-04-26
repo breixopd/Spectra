@@ -21,6 +21,10 @@ This document tracks incremental moves away from “flat” module roots toward 
 - **`.env.test`**: local-only, gitignored. Use **`.env.test.example`** in CI and on fresh clones; add real keys only on developer machines or CI secrets (never in git).
 - **Embeddings**: with `EMBEDDING_API_KEY` empty and default `EMBEDDING_MODEL=local/...`, embeddings use local fastembed; API path is optional.
 
+## E2E test support code
+
+- Prefer **`tests/e2e/ui/harness/`** (and similar feature-local helpers under `tests/e2e/`) for DB/browser setup, instead of duplicating asyncpg + thread glue in every test file.
+
 ## Review cadence
 
 Revisit this file when a new domain (e.g. reporting, compliance exports) would otherwise add more root-level files.
