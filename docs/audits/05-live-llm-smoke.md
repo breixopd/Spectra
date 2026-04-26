@@ -17,7 +17,7 @@
 ## Issues Found
 
 - TensorZero had no outbound DNS/egress because it was attached only to the internal backend network. It needs outbound provider access while keeping no published ports. Fix: attach TensorZero to the non-internal frontend network in Compose/Swarm.
-- Previous free model IDs were stale or currently unavailable. OpenRouter returned `404` for `qwen/qwen3-30b-a3b:free`, and `429` for several larger free Gemma/Qwen models. Fix: configure currently working free models: `google/gemma-3-4b-it:free`, `qwen/qwen3-coder:free`, and `cognitivecomputations/dolphin-mistral-24b-venice-edition:free`.
+- Previous free model IDs were stale or currently unavailable. OpenRouter returned `404` for `qwen/qwen3-30b-a3b:free`, `400` for Gemma 3 with TensorZero developer-role messages, and `429` for several free Gemma/Qwen/Mistral models. Fix: configure currently working developer-role-compatible free models: `inclusionai/ling-2.6-flash:free`, `inclusionai/ling-2.6-1t:free`, and `google/gemma-4-31b-it:free`.
 - Manual compose operations must use `--env-file .env.test`; otherwise recreated services can fall back to default `SERVICE_AUTH_SECRET` and break service auth.
 - AI container warned that `defusedxml` was missing, leaving XML parsing vulnerable to XXE. Fix: add `defusedxml` to AI and worker service requirements.
 
