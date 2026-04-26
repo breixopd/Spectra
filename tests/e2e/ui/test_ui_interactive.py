@@ -10,6 +10,8 @@ import re
 import pytest
 from playwright.sync_api import Page, expect
 
+from tests.e2e.ui.harness.navigation import goto_authenticated_app_path
+
 pytestmark = [pytest.mark.e2e, pytest.mark.ui]
 
 APP_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
@@ -136,7 +138,7 @@ def test_navigation_sidebar(logged_in_page: Page, app_url: str):
         if sidebar_link.count() == 0:
             continue
         expect(sidebar_link).to_be_visible(timeout=15_000)
-        page.goto(f"{app_url}{path}", wait_until="networkidle")
+        goto_authenticated_app_path(page, app_url, path)
         assert page.url == f"{app_url}{path}" or page.url.startswith(f"{app_url}{path}#")
 
 
@@ -163,7 +165,7 @@ _ADMIN_TABS = [
 def test_admin_panel_tabs(logged_in_page: Page, app_url: str):
     """Go to /admin, click each tab, verify the section loads."""
     page = logged_in_page
-    page.goto(f"{app_url}/admin", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/admin")
 
     for section_id, _label in _ADMIN_TABS:
         tab_link = page.locator(f".admin-sidebar [data-section='{section_id}']")
@@ -184,7 +186,7 @@ def test_admin_panel_tabs(logged_in_page: Page, app_url: str):
 def test_profile_page(logged_in_page: Page, app_url: str):
     """Navigate to /profile, verify profile form with username field."""
     page = logged_in_page
-    page.goto(f"{app_url}/profile", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/profile")
 
     username_field = page.locator("#profile-username")
     expect(username_field).to_be_visible(timeout=15_000)
@@ -201,7 +203,7 @@ def test_profile_page(logged_in_page: Page, app_url: str):
 def test_observability_page(logged_in_page: Page, app_url: str):
     """Go to /observability, verify metrics/charts section loads."""
     page = logged_in_page
-    page.goto(f"{app_url}/observability", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/observability")
 
     heading = page.locator("h1", has_text="Observability")
     expect(heading).to_be_visible(timeout=15_000)

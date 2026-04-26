@@ -14,6 +14,7 @@ from tests.e2e.ui.harness.db_user import (
     grant_user_plan_features,
     ui_login,
 )
+from tests.e2e.ui.harness.navigation import goto_authenticated_app_path
 
 pytestmark = [pytest.mark.e2e, pytest.mark.ui]
 
@@ -37,7 +38,7 @@ def test_api_docs_hides_admin_routes_for_api_access_user(page: Page, app_url: st
     grant_user_plan_features(user_id, {"api_access": True})
     ui_login(page, app_url, username)
 
-    page.goto(f"{app_url}/docs/api", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/docs/api")
 
     expect(page.locator(".doc-sidebar")).to_be_visible(timeout=15_000)
     expect(page.locator(".endpoint-card").first).to_be_visible(timeout=15_000)

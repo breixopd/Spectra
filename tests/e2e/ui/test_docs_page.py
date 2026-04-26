@@ -3,12 +3,14 @@
 import pytest
 from playwright.sync_api import Page, expect
 
+from tests.e2e.ui.harness.navigation import goto_authenticated_app_path
+
 pytestmark = [pytest.mark.ui]
 
 
 def test_api_docs_loads(authenticated_page: Page, app_url: str):
     """API docs page loads and shows route groups."""
-    authenticated_page.goto(f"{app_url}/docs/api", wait_until="networkidle")
+    goto_authenticated_app_path(authenticated_page, app_url, "/docs/api")
     sidebar = authenticated_page.locator(".doc-sidebar")
     expect(sidebar).to_be_visible(timeout=15_000)
     groups = authenticated_page.locator(".group-btn")
@@ -17,7 +19,7 @@ def test_api_docs_loads(authenticated_page: Page, app_url: str):
 
 def test_api_docs_search(authenticated_page: Page, app_url: str):
     """Search filters endpoints."""
-    authenticated_page.goto(f"{app_url}/docs/api", wait_until="networkidle")
+    goto_authenticated_app_path(authenticated_page, app_url, "/docs/api")
     search = authenticated_page.get_by_test_id("api-docs-search")
     expect(search).to_be_visible(timeout=15_000)
     search.fill("health")
@@ -28,7 +30,7 @@ def test_api_docs_search(authenticated_page: Page, app_url: str):
 
 def test_help_page_tabs(authenticated_page: Page, app_url: str):
     """Help page shows all guide sections."""
-    authenticated_page.goto(f"{app_url}/help", wait_until="networkidle")
+    goto_authenticated_app_path(authenticated_page, app_url, "/help")
     sections = ["Getting Started", "Manual Pentest", "API Access", "Services", "Plugins", "Troubleshooting"]
     for section in sections:
         expect(authenticated_page.locator(f"text={section}").first).to_be_visible(timeout=15_000)
@@ -36,7 +38,7 @@ def test_help_page_tabs(authenticated_page: Page, app_url: str):
 
 def test_help_getting_started_expands(authenticated_page: Page, app_url: str):
     """Getting started section is expandable."""
-    authenticated_page.goto(f"{app_url}/help", wait_until="networkidle")
+    goto_authenticated_app_path(authenticated_page, app_url, "/help")
     # Click Getting Started
     btn = authenticated_page.locator("text=Getting Started").first
     btn.click()
