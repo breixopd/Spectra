@@ -32,6 +32,14 @@ _DANGEROUS_PATTERN_STRINGS: tuple[str, ...] = (
     r";\s*(?:rm|wget|curl|bash|sh|nc|python|perl|ruby|cat\s*/etc)",  # semicolon + dangerous command
     r"&&\s*(?:rm|wget|curl|bash|sh|nc|python|perl|ruby|cat\s*/etc)",  # && + dangerous command
     r"\|\|\s*(?:rm|wget|curl|bash|sh|nc|python|perl|ruby|cat\s*/etc)",  # || + dangerous command
+    # Output file overwrites (nmap, ffuf, and other security tools)
+    r"-oA\s+\S+",  # nmap output all formats
+    r"-oX\s+\S+",  # nmap XML output
+    r"-oN\s+\S+",  # nmap Nmap output
+    r"-oG\s+\S+",  # nmap Grepable output
+    r"-o\s+\S+",  # nmap output to file
+    r"--output\s+",  # generic output flag
+    r"--output-dir\s+",  # generic output directory flag
 )
 
 # Pre-compiled patterns for O(1) matching per pattern

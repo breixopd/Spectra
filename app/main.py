@@ -48,6 +48,7 @@ from app.core.lifespan import lifespan
 from app.core.logging_config import CorrelationIdMiddleware, configure_logging
 from app.core.middleware import AdminIPAllowlistMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import (
+    RateLimits,
     limiter,
     rate_limit_exceeded_handler_sync,
 )
@@ -319,6 +320,7 @@ for _entry in _ERROR_HANDLERS:
 
 # --- Internal node metrics (all service modes) ---
 @app.get("/internal/metrics")
+@limiter.limit(RateLimits.INTERNAL_METRICS)
 async def internal_node_metrics(request: Request):
     """Return local system metrics. Requires service auth."""
     from app.services.scaling.node_metrics import collect_node_metrics
