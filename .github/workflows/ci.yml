@@ -165,7 +165,8 @@ jobs:
           context: .
           file: docker/Dockerfile.caddy
           push: false
-          load: false
+          load: true
+          tags: spectra-caddy:ci
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -178,13 +179,15 @@ jobs:
           context: .
           file: docker/Dockerfile.ai
           push: false
-          load: false
+          load: true
+          tags: spectra-ai:ci
       - uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/Dockerfile.scheduler
           push: false
-          load: false
+          load: true
+          tags: spectra-scheduler:ci
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -209,10 +212,31 @@ jobs:
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+      - name: Scan AI image for critical CVEs
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: spectra-ai:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Scan scheduler image for critical CVEs
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: spectra-scheduler:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
       - name: Scan worker image for critical CVEs
         uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: spectra-worker:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Scan Caddy image for critical CVEs
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: spectra-caddy:ci
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: "1"

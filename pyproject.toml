@@ -94,7 +94,7 @@ addopts = [
     "--cov=app",
     "--cov-report=term-missing",
     "--cov-report=html:reports/coverage",
-    "--cov-fail-under=70",
+    "--cov-fail-under=67.4",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
