@@ -1,6 +1,6 @@
 # UI Audit: Test Coverage, Flakiness, Benchmarks
 
-Status: loop 2 in progress
+Status: loop 3 in progress
 Scope: Playwright, Docker test runners, live smoke, skipped tests, warnings, performance/UX benchmarks.
 
 ## Current Verified Baseline
@@ -86,3 +86,11 @@ To see all skip reasons in one run: `pytest -ra tests/`.
 - **GitHub Action** `.github/workflows/ui-e2e.yml` runs `tests/run_ui_tests.sh` on path-scoped PRs, `main` / `develop` pushes, and `workflow_dispatch` (not part of the default every-file CI gate, to keep PR feedback fast).
 - **`tests/run_ui_tests.sh`**: Playwright now uses `APP_BASE_URL=http://app:5000` (same Docker network as the API). The previous `host.docker.internal:15000` was invalid with the default compose (no service on that host port); use Caddy on `localhost:15080` only for manual cross-browser testing.
 - **`test_multi_role`**: user creation uses full-UUID usernames and retries on HTTP 409 instead of skipping, reducing ambiguous skips and collision edge cases.
+
+## Loop 3 — Entitlement E2E + shared harness
+
+- **`tests/e2e/ui/harness/db_user.py`**: shared DB seeding (verified users, plan `features` JSON) and `ui_login` for Playwright.
+- **`tests/e2e/ui/test_entitlement_sidebar.py`**: sidebar `data-entitlement-gate` matrix (api_access, manual_mode) including admin bypass and upgrade link visibility.
+- **`test_release_candidate_flows.py`**: refactored to use the harness (less duplication).
+- **Docs:** `09-entitlement-ui-patterns.md`, `10-product-ux-hardening-checklist.md`, `11-pytest-skip-inventory.md`, `architecture/04-missions-core-router-split.md`.
+- **Skips:** “Run every test in one CI job” is still discouraged; `11-pytest-skip-inventory.md` lists reasons and the intended layered jobs.
