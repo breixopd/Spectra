@@ -239,9 +239,13 @@ async def limit_request_body_size(request: Request, call_next):
     """
     content_length = request.headers.get("content-length")
     if content_length:
+        try:
+            body_size = int(content_length)
+        except ValueError:
+            return StarletteResponse("Invalid Content-Length", status_code=400)
         content_type = request.headers.get("content-type", "")
         max_size = settings.MAX_UPLOAD_SIZE if "multipart/form-data" in content_type else settings.MAX_REQUEST_BODY_SIZE
-        if int(content_length) > max_size:
+        if body_size > max_size:
             return StarletteResponse("Request body too large", status_code=413)
     response = await call_next(request)
     return response

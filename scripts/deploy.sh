@@ -255,7 +255,7 @@ verify_maintenance_services() {
     # Verify scheduler service is running and healthy
     local scheduler_healthy=false
     for i in 1 2 3 4 5; do
-        local scheduler_url="http://localhost:5020/health"
+        local scheduler_url="http://localhost:5011/health"
         if curl -sf --max-time 5 "$scheduler_url" 2>/dev/null | grep -q '"status"'; then
             scheduler_healthy=true
             break

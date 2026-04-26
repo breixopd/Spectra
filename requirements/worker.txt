@@ -11,6 +11,7 @@ python-dotenv==1.2.2
 # Tool output parsing
 orjson==3.11.7
 aiofiles==25.1.0
+defusedxml==0.7.1
 
 # Database (for status updates)
 sqlalchemy[asyncio]==2.0.48
