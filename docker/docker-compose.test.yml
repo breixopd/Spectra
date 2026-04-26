@@ -365,7 +365,7 @@ services:
       - PERMISSION_BOUNDARY=172.21.0.0/24
       - APP_BASE_URL=http://caddy
       - APP_USERNAME=admin
-      - APP_PASSWORD=TestPassword123!
+      - APP_PASSWORD=${ADMIN_PASSWORD:-Admin123!}
       - AI_SERVICE_URL=http://ai-svc:5010
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-test-service-secret-key}
@@ -543,6 +543,7 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - frontend
+      - backend
 
   # ── Vulnerable Test Targets (--profile targets) ─────────────
   # Lightweight purpose-built containers for live scan testing.

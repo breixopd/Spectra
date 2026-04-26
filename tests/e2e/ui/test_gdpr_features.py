@@ -38,9 +38,9 @@ def test_download_my_data_button(authenticated_page: Page, app_url: str):
 
 
 @pytest.mark.timeout(30)
-def test_restrict_processing_toggle(authenticated_page: Page, app_url: str):
+def test_restrict_processing_toggle(fresh_authenticated_page: Page, app_url: str):
     """Data & Privacy section has processing restriction toggle."""
-    page = authenticated_page
+    page = fresh_authenticated_page
     page.goto(f"{app_url}/profile", wait_until="domcontentloaded")
     page.evaluate("""() => {
         document.querySelectorAll('.profile-section').forEach(s => s.classList.remove('active'));
@@ -52,9 +52,9 @@ def test_restrict_processing_toggle(authenticated_page: Page, app_url: str):
 
 
 @pytest.mark.timeout(30)
-def test_training_data_toggle(authenticated_page: Page, app_url: str):
+def test_training_data_toggle(fresh_authenticated_page: Page, app_url: str):
     """Data & Privacy section has training data sharing toggle."""
-    page = authenticated_page
+    page = fresh_authenticated_page
     page.goto(f"{app_url}/profile", wait_until="domcontentloaded")
     page.evaluate("""() => {
         document.querySelectorAll('.profile-section').forEach(s => s.classList.remove('active'));
@@ -66,9 +66,9 @@ def test_training_data_toggle(authenticated_page: Page, app_url: str):
 
 
 @pytest.mark.timeout(30)
-def test_delete_account_button(authenticated_page: Page, app_url: str):
+def test_delete_account_button(fresh_authenticated_page: Page, app_url: str):
     """Data & Privacy section has Delete My Account button (do NOT click it)."""
-    page = authenticated_page
+    page = fresh_authenticated_page
     page.goto(f"{app_url}/profile", wait_until="domcontentloaded")
     page.evaluate("""() => {
         document.querySelectorAll('.profile-section').forEach(s => s.classList.remove('active'));

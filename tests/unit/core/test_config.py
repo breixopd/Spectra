@@ -288,3 +288,22 @@ class TestGetSettings:
         # extra="ignore" in model_config should let this pass
         s = Settings(UNKNOWN_FIELD="whatever", _env_file=None)
         assert not hasattr(s, "UNKNOWN_FIELD")
+
+    def test_production_requires_explicit_shared_secrets(self, monkeypatch):
+        import os
+        from unittest.mock import patch
+
+        from app.core.config import get_settings
+
+        get_settings.cache_clear()
+        with patch.dict(os.environ, {}, clear=True):
+            monkeypatch.setenv("APP_ENV", "production")
+            monkeypatch.setenv("DEBUG", "false")
+            monkeypatch.setenv("SECRET_KEY", "change-me-in-production")
+            monkeypatch.setenv("JWT_SECRET_KEY", "")
+            monkeypatch.setenv("SERVICE_AUTH_SECRET", "")
+            monkeypatch.setenv("ENCRYPTION_KEY", "")
+
+            with pytest.raises(ValueError, match="JWT_SECRET_KEY"):
+                get_settings()
+        get_settings.cache_clear()

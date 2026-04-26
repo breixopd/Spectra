@@ -31,6 +31,7 @@ from app.core.rbac import Permission, require_permission
 from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.repositories.mission import MissionRepository
+from app.services.compliance.mission_abuse import evaluate_mission_abuse
 from app.services.mission.manager import mission_manager
 from app.services.mission.output_model import (
     get_mission_finding_counts,
@@ -211,6 +212,27 @@ async def start_mission(
             detail="You must confirm that you own the target or have explicit written authorization to test it.",
         )
 
+    abuse_decision = evaluate_mission_abuse(
+        target=mission_request.target,
+        directive=mission_request.directive,
+        requirements=mission_request.requirements,
+        authorization_confirmed=mission_request.authorization_confirmed,
+        requires_approval=mission_request.requires_approval,
+    )
+    if not abuse_decision.allowed:
+        await audit_log_event(
+            db,
+            AuditEventType.MISSION_LAUNCH_BLOCKED,
+            user_id=str(_current_user.id),
+            details={
+                "target": mission_request.target,
+                "risk_score": abuse_decision.risk_score,
+                "reasons": abuse_decision.reasons,
+            },
+            request=request,
+        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Mission requires admin review before launch")
+
     await check_mission_limit(_current_user, db)
     await check_storage_limit(_current_user, db)
     await check_feature_allowed(_current_user, db, "autonomous_mode")
@@ -237,6 +259,8 @@ async def start_mission(
             "mission_id": mission_id,
             "target": mission_request.target,
             "authorization_confirmed": mission_request.authorization_confirmed,
+            "abuse_risk_score": abuse_decision.risk_score,
+            "requires_review": abuse_decision.requires_review,
         },
         request=request,
     )
