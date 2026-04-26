@@ -69,7 +69,8 @@ def auth_headers():
 @pytest.fixture(scope="module")
 def client():
     """HTTP client for API calls."""
-    return httpx.Client(base_url=SPECTRA_URL, timeout=60)
+    with httpx.Client(base_url=SPECTRA_URL, timeout=60) as http_client:
+        yield http_client
 
 
 @pytest.fixture(scope="module")
@@ -497,8 +498,6 @@ class TestMissionExecution:
             # Check task tree endpoint
             tree_resp = client.get(f"/api/v1/missions/{mission_id}/task-tree", headers=auth_headers)
             assert tree_resp.status_code == 200
-
-            return mission_id
 
     def test_mission_list(self, client, auth_headers):
         resp = client.get("/api/v1/missions", headers=auth_headers)

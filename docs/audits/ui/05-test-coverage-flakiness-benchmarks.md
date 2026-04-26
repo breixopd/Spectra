@@ -65,3 +65,18 @@ Scope: Playwright, Docker test runners, live smoke, skipped tests, warnings, per
 - Fixed the manual-mode Playwright fixture so it no longer passes parameters into a PostgreSQL `DO $$` block.
 - `test_manual_tools_page` now runs and passes instead of skipping due to fixture setup failure.
 - Sidebar navigation tests now accept canonical in-page hash navigation for tabbed pages such as `/manual#manual-tabs-execute`.
+
+## Why Some Tests Are Skipped (and how to run “everything”)
+
+Skips fall into a few buckets:
+
+| Bucket | Example | Can we unskip in default CI? |
+|--------|---------|------------------------------|
+| Optional integrations | RAG tests when embeddings not seeded | Only in a job that provisions vector data |
+| Live / expensive | Full mission flow against real LLM + DB | Separate `live-mission` or manual job; needs keys and time |
+| Entitlement setup | Admin-only flows when no admin token | Already handled in UI stack; use `pytest -ra` to list reasons |
+| Provider mock | `require_real_llm` in `test_live_targets` | Run with real `AI_PROVIDER` and working OpenRouter key in env |
+
+**Running every test in one command is possible but not recommended:** the default “verify” job would pull in long-running network tests, flaky external rate limits, and env-specific infrastructure. Instead, use **layered jobs** (unit → integration subset → UI → live) and treat `pytest -m "not live"` (or project-specific markers) as the default gate.
+
+To see all skip reasons in one run: `pytest -ra tests/`.
