@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
+from app.core.rbac import Permission, require_permission
 from app.core.database import get_async_session
 from app.models.user import User
 from app.services.mission.output_model import get_mission_finding_counts
@@ -120,7 +121,7 @@ async def get_exploit_chains(
 @router.post("/exploit-chains")
 async def create_exploit_chain(
     chain_in: CreateChainRequest,
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_TOOLS),
 ) -> dict[str, Any]:
     """Create a custom exploit chain."""
     from app.services.mission.chain_builder import ChainBuilder, save_custom_chain

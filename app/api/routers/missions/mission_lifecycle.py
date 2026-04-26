@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import check_resource_owner, get_current_active_user, validate_uuid_param
+from app.api.dependencies import check_resource_owner, validate_uuid_param
 from app.api.schemas import MissionDeleteResponse, StatusResponse
 from app.core.database import get_async_session
 from app.core.rate_limit import RateLimits, limiter
@@ -91,11 +91,13 @@ async def stop_mission(
     _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
     session: AsyncSession = Depends(get_async_session),
 ) -> StatusResponse:
-    """Stop a running mission. Requires superuser privileges."""
+    """Stop a running mission."""
     validate_uuid_param(mission_id, "mission_id")
-    active = await mission_manager.get_mission(mission_id)
-    if active:
-        check_resource_owner(active, _current_user, "mission")
+    repo = MissionRepository(session)
+    mission = await repo.get_by_id(mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+    check_resource_owner(mission, _current_user, "mission")
     result = await mission_manager.stop_mission(mission_id)
     if not result:
         raise HTTPException(status_code=404, detail="Mission not found or not active")
@@ -122,14 +124,16 @@ async def pause_mission(
     request: Request,
     response: Response,
     mission_id: str,
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
     session: AsyncSession = Depends(get_async_session),
 ) -> StatusResponse:
     """Pause a running mission."""
     validate_uuid_param(mission_id, "mission_id")
-    active = await mission_manager.get_mission(mission_id)
-    if active:
-        check_resource_owner(active, _current_user, "mission")
+    repo = MissionRepository(session)
+    mission = await repo.get_by_id(mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+    check_resource_owner(mission, _current_user, "mission")
     result = await mission_manager.pause_mission(mission_id)
     if not result:
         raise HTTPException(status_code=404, detail="Mission not found or not active")
@@ -156,14 +160,16 @@ async def resume_mission(
     request: Request,
     response: Response,
     mission_id: str,
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
     session: AsyncSession = Depends(get_async_session),
 ) -> StatusResponse:
     """Resume a paused mission."""
     validate_uuid_param(mission_id, "mission_id")
-    active = await mission_manager.get_mission(mission_id)
-    if active:
-        check_resource_owner(active, _current_user, "mission")
+    repo = MissionRepository(session)
+    mission = await repo.get_by_id(mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+    check_resource_owner(mission, _current_user, "mission")
     result = await mission_manager.resume_mission(mission_id)
     if not result:
         raise HTTPException(status_code=404, detail="Mission not found or not active")
