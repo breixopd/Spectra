@@ -23,6 +23,18 @@ from starlette.responses import Response
 correlation_id_var: ContextVar[str | None] = ContextVar("correlation_id", default=None)
 
 
+def _logging_runtime_ok() -> bool:
+    """False during interpreter shutdown — avoid work that can raise ImportError in filters."""
+    try:
+        if sys.is_finalizing():
+            return False
+        if sys.meta_path is None:
+            return False
+    except (AttributeError, RuntimeError, TypeError, ValueError):
+        return False
+    return True
+
+
 def get_correlation_id() -> str | None:
     """Return the current correlation ID, if set."""
     return correlation_id_var.get()
@@ -54,12 +66,12 @@ class _CorrelationFilter(logging.Filter):
     """Injects correlation_id into every log record."""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        if sys.meta_path is None:
+        if not _logging_runtime_ok():
             record.correlation_id = ""  # type: ignore[attr-defined]
             return True
         try:
             record.correlation_id = correlation_id_var.get() or ""  # type: ignore[attr-defined]
-        except (LookupError, RuntimeError):
+        except (LookupError, RuntimeError, ImportError, SystemError):
             record.correlation_id = ""  # type: ignore[attr-defined]
         return True
 
@@ -77,13 +89,13 @@ class SensitiveFieldFilter(logging.Filter):
     ]
 
     def filter(self, record: logging.LogRecord) -> bool:
-        if sys.meta_path is None:
+        if not _logging_runtime_ok():
             return True
         if isinstance(record.msg, str):
             try:
                 for pattern, replacement in self.PATTERNS:
                     record.msg = pattern.sub(replacement, record.msg)
-            except (RuntimeError, ImportError):
+            except (RuntimeError, ImportError, SystemError, OSError, ValueError):
                 return True
         return True
 
