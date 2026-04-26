@@ -12,8 +12,9 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-import docker
 from docker.errors import APIError, DockerException, NotFound
+
+import docker
 
 logger = logging.getLogger(__name__)
 
