@@ -110,6 +110,7 @@ Use the real commands already present in this repo.
 | Live integration tests | `./tests/run_live_tests.sh` |
 | Live target-only tests | `./tests/run_live_tests.sh --targets` |
 | Browser/UI tests | `./tests/run_ui_tests.sh` |
+| UI E2E in CI (path-scoped) | GitHub Action `ui-e2e` (`.github/workflows/ui-e2e.yml`) |
 | Lint | `ruff check app/` |
 | Security scan | `bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high` |
 | Dependency audit | See the dependency-audit note below. |
@@ -120,6 +121,8 @@ Use the real commands already present in this repo.
 | Deep health check | `HEALTH_CHECK_FULL=1 ./scripts/health_check.sh http://localhost:5000/api/health` |
 | Backup inventory | Admin UI → Backups or `GET /api/admin/backups` |
 | Backup integrity check | Admin UI → Backups → Verify |
+
+`run_ui_tests.sh` sets `APP_BASE_URL=http://app:5000` for the `ui-test-runner` container (same Docker network as the API). Manual checks in a normal browser usually go through Caddy at `http://localhost:15080`.
 
 Dependency-audit note: use `pip-audit --fix --dry-run -l --ignore-vuln PYSEC-2024-65 --ignore-vuln PYSEC-2024-66 || true` when you need the exact CI-friendly command.
 

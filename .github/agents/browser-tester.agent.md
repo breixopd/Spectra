@@ -26,6 +26,8 @@ docker compose -f docker/docker-compose.test.yml ps --format "table {{.Name}}\t{
 
 The app is accessible at `http://localhost:15080` (through Caddy reverse proxy).
 
+For the automated harness (`tests/run_ui_tests.sh` and CI’s `ui-e2e` workflow), Playwright runs in `ui-test-runner` with `APP_BASE_URL=http://app:5000` on the Compose network, so Caddy is not required on that path.
+
 ## Running Tests
 
 ### Full UI test suite
