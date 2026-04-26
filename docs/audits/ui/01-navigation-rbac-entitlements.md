@@ -11,7 +11,7 @@ Scope: `app/templates/base.html`, shared auth/nav scripts, UI role tests, plan/f
 
 ## Findings
 
-- Feature gating is still too ad hoc on the client. `confirm.js` disables `[data-feature]` elements, but pages do not consistently use a shared gated component contract with reason text, upgrade link, and server-confirmed entitlement.
+- Feature gating is still too ad hoc on the client. `confirm.js` now uses `data-entitlement-gate` for gated navigation, but pages do not consistently use a shared gated component contract with reason text, upgrade link, and server-confirmed entitlement.
 - Navigation is mostly page/file driven rather than permission driven. The UI would be easier to keep correct if a single navigation manifest defined path, label, icon, required permission, required feature, and locked-state copy.
 - Current role tests cover important admin/staff/user paths, but do not yet exercise a complete role x plan matrix across every nav item and primary action.
 - The admin link depended on client-side async auth state; rate limits and background requests can leave the UI in a stale hidden state unless server-rendered privilege hints or resilient hydration are used.
@@ -31,6 +31,13 @@ Scope: `app/templates/base.html`, shared auth/nav scripts, UI role tests, plan/f
 - Add Playwright matrix tests for admin, staff, user, free, professional, enterprise, and restricted-processing states.
 - Add direct-route tests for every route linked from sidebar and every admin section tab.
 - Add server-rendered nav state where practical, then hydrate with `/auth/me` as a verification layer rather than the only source of visibility.
+
+## Loop 1 Fixes Applied
+
+- Sidebar docs link now targets `/docs/api`, the canonical customer API documentation route.
+- Sidebar manual tools link now targets `/manual`, matching the implemented route.
+- Client plan gating now uses `data-entitlement-gate` to avoid colliding with plan-editor `data-feature` checkboxes.
+- Upgrade links now target `/profile#plan`.
 
 ## Verification Targets
 

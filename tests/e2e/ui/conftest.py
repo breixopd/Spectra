@@ -382,33 +382,37 @@ async def _seed_manual_mode(dsn: str) -> None:
     """Connect to the database and seed manual_mode plan+subscription."""
     conn = await asyncpg.connect(dsn)
     try:
+        user_id = await conn.fetchval(
+            "SELECT id FROM users WHERE username = $1",
+            ADMIN_USERNAME,
+        )
+        if user_id is None:
+            raise RuntimeError(f"User {ADMIN_USERNAME!r} not found")
+
+        plan_id = await conn.fetchval(
+            """
+            INSERT INTO plans (
+                id, name, display_name, features, is_active,
+                max_concurrent_missions, max_api_requests_per_hour,
+                max_api_requests_per_day, sandbox_max_containers,
+                max_storage_mb, sort_order
+            )
+            VALUES (
+                gen_random_uuid(), 'test_manual_mode', 'Test Manual Mode',
+                '{"manual_mode": true}'::jsonb, true, 1, 100, 1000, 1, 500, 0
+            )
+            ON CONFLICT (name) DO UPDATE SET features = '{"manual_mode": true}'::jsonb
+            RETURNING id
+            """
+        )
         await conn.execute(
             """
-            DO $$
-            DECLARE
-                v_user_id UUID;
-                v_plan_id UUID;
-            BEGIN
-                SELECT id INTO v_user_id FROM users WHERE username = $1;
-                IF v_user_id IS NULL THEN
-                    RAISE EXCEPTION 'User not found';
-                END IF;
-
-                INSERT INTO plans (id, name, display_name, features, is_active,
-                                  max_concurrent_missions, max_api_requests_per_hour,
-                                  max_api_requests_per_day, sandbox_max_containers,
-                                  max_storage_mb, sort_order)
-                VALUES (gen_random_uuid(), 'test_manual_mode', 'Test Manual Mode',
-                        '{"manual_mode": true}'::jsonb, true, 1, 100, 1000, 1, 500, 0)
-                ON CONFLICT (name) DO UPDATE SET features = '{"manual_mode": true}'::jsonb
-                RETURNING id INTO v_plan_id;
-
-                INSERT INTO subscriptions (id, user_id, plan_id, status, current_period_start)
-                VALUES (gen_random_uuid(), v_user_id, v_plan_id, 'active', now())
-                ON CONFLICT (user_id) DO UPDATE SET plan_id = v_plan_id, status = 'active';
-            END $$;
+            INSERT INTO subscriptions (id, user_id, plan_id, status, current_period_start)
+            VALUES (gen_random_uuid(), $1, $2, 'active', now())
+            ON CONFLICT (user_id) DO UPDATE SET plan_id = $2, status = 'active'
             """,
-            ADMIN_USERNAME,
+            user_id,
+            plan_id,
         )
     finally:
         await conn.close()

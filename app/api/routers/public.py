@@ -151,7 +151,7 @@ async def sitemap(request: Request):
         ("", "1.0", "monthly"),
         ("/changelog", "0.5", "weekly"),
         ("/help", "0.5", "monthly"),
-        ("/docs", "0.7", "weekly"),
+        ("/docs/api", "0.7", "weekly"),
         ("/login", "0.3", "monthly"),
         ("/register", "0.3", "monthly"),
     ]

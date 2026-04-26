@@ -59,3 +59,9 @@ Scope: Playwright, Docker test runners, live smoke, skipped tests, warnings, per
 - `pytest -ra` output explains every skip.
 - No broad "skip if cannot authenticate" paths in core verification jobs.
 - UI tests run deterministically from clean Docker state and do not depend on prior test order.
+
+## Loop 1 Fixes Applied
+
+- Fixed the manual-mode Playwright fixture so it no longer passes parameters into a PostgreSQL `DO $$` block.
+- `test_manual_tools_page` now runs and passes instead of skipping due to fixture setup failure.
+- Sidebar navigation tests now accept canonical in-page hash navigation for tabbed pages such as `/manual#manual-tabs-execute`.

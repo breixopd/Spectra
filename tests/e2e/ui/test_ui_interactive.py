@@ -116,6 +116,8 @@ _SIDEBAR_LINKS = [
     ("/history", "History"),
     ("/targets", "Targets"),
     ("/reports", "Reports"),
+    ("/docs/api", "Documentation"),
+    ("/manual", "Manual Tools"),
     ("/overseer", "Agents"),
     ("/toolbox", "Toolbox"),
     ("/observability", "Observability"),
@@ -135,7 +137,7 @@ def test_navigation_sidebar(logged_in_page: Page, app_url: str):
             continue
         expect(sidebar_link).to_be_visible(timeout=15_000)
         page.goto(f"{app_url}{path}", wait_until="networkidle")
-        expect(page).to_have_url(f"{app_url}{path}", timeout=15_000)
+        assert page.url == f"{app_url}{path}" or page.url.startswith(f"{app_url}{path}#")
 
 
 # ---------------------------------------------------------------------------
