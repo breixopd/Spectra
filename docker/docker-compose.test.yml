@@ -525,6 +525,8 @@ services:
       - backend
 
   # Playwright UI test runner
+  # Default APP_BASE_URL is Caddy on the host (manual browser + full stack). CI uses
+  # `tests/run_ui_tests.sh`, which sets APP_BASE_URL=http://app:5000 for same-network access.
   ui-test-runner:
     build:
       context: ..

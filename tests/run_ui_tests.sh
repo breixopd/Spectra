@@ -62,6 +62,8 @@ except urllib.error.HTTPError as exc:
 # Run Playwright tests
 echo "Running UI tests..."
 docker compose -f "${COMPOSE_FILE}" build ui-test-runner
-docker compose -f "${COMPOSE_FILE}" run --rm -e APP_BASE_URL=http://host.docker.internal:15000 ui-test-runner tests/e2e/ui/ -v --tb=short -x --no-cov --confcutdir=tests/e2e/ui --override-ini=addopts= "$@"
+# Playwright runs in ui-test-runner on the compose network: reach the API as service `app:5000`
+# (Caddy on host :15080 is for manual browser testing, not this job.)
+docker compose -f "${COMPOSE_FILE}" run --rm -e APP_BASE_URL=http://app:5000 ui-test-runner tests/e2e/ui/ -v --tb=short -x --no-cov --confcutdir=tests/e2e/ui --override-ini=addopts= "$@"
 
 echo "=== Done ==="

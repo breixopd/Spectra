@@ -1,0 +1,50 @@
+# Playwright UI tests against the Docker test stack (app reachable at http://app:5000 from ui-test-runner).
+# This is slower than unit/integration; it runs on path-scoped PRs, main/develop pushes, and manual dispatch.
+name: UI E2E
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, develop]
+    paths:
+      - "app/templates/**"
+      - "app/static/**"
+      - "tests/e2e/**"
+      - "tests/run_ui_tests.sh"
+      - "docker/Dockerfile.playwright"
+      - "docker/Dockerfile.api"
+      - "docker/docker-compose.test.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "app/templates/**"
+      - "app/static/**"
+      - "tests/e2e/**"
+      - "tests/run_ui_tests.sh"
+      - "docker/Dockerfile.playwright"
+      - "docker/Dockerfile.api"
+      - "docker/docker-compose.test.yml"
+
+concurrency:
+  group: ui-e2e-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  ui-e2e:
+    name: Playwright (Docker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      ENCRYPTION_KEY: test-encryption-key
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure .env.test for Docker Compose
+        run: test -f .env.test || cp .env.test.example .env.test
+      - name: Run UI E2E harness
+        run: bash tests/run_ui_tests.sh

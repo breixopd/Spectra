@@ -35,6 +35,11 @@ def _get_admin_bearer_token(app_url: str) -> str:
         return resp.json()["access_token"]
 
 
+def _unique_username(prefix: str) -> str:
+    """32 hex chars; avoids rare collisions vs 8-char suffix under parallel/retries."""
+    return f"{prefix}_{uuid.uuid4().hex}"
+
+
 def _create_user_via_admin_api(
     app_url: str,
     admin_cookies: list[dict],
@@ -60,6 +65,24 @@ def _create_user_via_admin_api(
         if "application/json" in ct:
             body = resp.json()
     return {"status": resp.status_code, "body": body}
+
+
+def _create_user_or_fail(
+    app_url: str,
+    admin_cookies: list[dict],
+    role: str,
+    prefix: str,
+) -> dict:
+    """Create a user with retry on 409 (username/email conflict)."""
+    last: dict = {}
+    for _ in range(4):
+        username = _unique_username(prefix)
+        last = _create_user_via_admin_api(app_url, admin_cookies, username, role=role)
+        if last["status"] == 201:
+            return last
+        if last["status"] != 409:
+            return last
+    return last
 
 
 def _login_as(page: Page, app_url: str, username: str, password: str = "TestPassword123!"):
@@ -135,16 +158,15 @@ def _verify_user_in_db(user_id: str) -> None:
 @pytest.mark.timeout(45)
 def test_operator_cannot_see_admin_link(page: Page, app_url: str, authenticated_cookies: list[dict]):
     """User role user should not see the admin navigation link."""
-    username = f"op_{uuid.uuid4().hex[:8]}"
-    result = _create_user_via_admin_api(app_url, authenticated_cookies, username, role="user")
-    if result["status"] == 409:
-        pytest.skip("User already exists from prior run")
+    result = _create_user_or_fail(app_url, authenticated_cookies, "user", "op")
     assert result["status"] == 201, f"Failed to create user: {result}"
+    username = result["body"].get("username", "")
+    assert username, f"Create response missing username: {result}"
 
     user_id = result["body"].get("id")
     activation_url = result["body"].get("activation_url")
     if user_id:
-        _activate_user_via_admin_api(app_url, authenticated_cookies, user_id, activation_url=activation_url)
+        _activate_user_via_admin_api(app_url, authenticated_cookies, str(user_id), activation_url=activation_url)
 
     _login_as(page, app_url, username)
 
@@ -162,16 +184,14 @@ def test_operator_cannot_see_admin_link(page: Page, app_url: str, authenticated_
 @pytest.mark.timeout(45)
 def test_operator_cannot_access_admin_page(page: Page, app_url: str, authenticated_cookies: list[dict]):
     """User role user cannot access the admin panel page."""
-    username = f"op_{uuid.uuid4().hex[:8]}"
-    result = _create_user_via_admin_api(app_url, authenticated_cookies, username, role="user")
-    if result["status"] == 409:
-        pytest.skip("User already exists from prior run")
+    result = _create_user_or_fail(app_url, authenticated_cookies, "user", "op2")
     assert result["status"] == 201, f"Failed to create user: {result}"
+    username = result["body"].get("username", "")
 
     user_id = result["body"].get("id")
     activation_url = result["body"].get("activation_url")
     if user_id:
-        _activate_user_via_admin_api(app_url, authenticated_cookies, user_id, activation_url=activation_url)
+        _activate_user_via_admin_api(app_url, authenticated_cookies, str(user_id), activation_url=activation_url)
 
     _login_as(page, app_url, username)
 
@@ -199,16 +219,14 @@ def test_operator_cannot_access_admin_page(page: Page, app_url: str, authenticat
 @pytest.mark.timeout(45)
 def test_viewer_cannot_see_admin_link(page: Page, app_url: str, authenticated_cookies: list[dict]):
     """Staff role user should not see the admin navigation link."""
-    username = f"vw_{uuid.uuid4().hex[:8]}"
-    result = _create_user_via_admin_api(app_url, authenticated_cookies, username, role="staff")
-    if result["status"] == 409:
-        pytest.skip("User already exists from prior run")
+    result = _create_user_or_fail(app_url, authenticated_cookies, "staff", "vw")
     assert result["status"] == 201, f"Failed to create staff user: {result}"
+    username = result["body"].get("username", "")
 
     user_id = result["body"].get("id")
     activation_url = result["body"].get("activation_url")
     if user_id:
-        _activate_user_via_admin_api(app_url, authenticated_cookies, user_id, activation_url=activation_url)
+        _activate_user_via_admin_api(app_url, authenticated_cookies, str(user_id), activation_url=activation_url)
 
     _login_as(page, app_url, username)
 
@@ -225,16 +243,14 @@ def test_viewer_cannot_see_admin_link(page: Page, app_url: str, authenticated_co
 @pytest.mark.timeout(45)
 def test_viewer_cannot_launch_mission(page: Page, app_url: str, authenticated_cookies: list[dict]):
     """Staff role user should not have a launch button on the dashboard."""
-    username = f"vw_{uuid.uuid4().hex[:8]}"
-    result = _create_user_via_admin_api(app_url, authenticated_cookies, username, role="staff")
-    if result["status"] == 409:
-        pytest.skip("User already exists from prior run")
+    result = _create_user_or_fail(app_url, authenticated_cookies, "staff", "vw2")
     assert result["status"] == 201, f"Failed to create staff user: {result}"
+    username = result["body"].get("username", "")
 
     user_id = result["body"].get("id")
     activation_url = result["body"].get("activation_url")
     if user_id:
-        _activate_user_via_admin_api(app_url, authenticated_cookies, user_id, activation_url=activation_url)
+        _activate_user_via_admin_api(app_url, authenticated_cookies, str(user_id), activation_url=activation_url)
 
     _login_as(page, app_url, username)
 
