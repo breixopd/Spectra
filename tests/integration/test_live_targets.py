@@ -486,7 +486,7 @@ class TestMissionExecution:
             mission_id = data.get("id") or data.get("mission_id")
             assert mission_id is not None
 
-            # Wait briefly and check status
+            # Wait for mission to be processed by background worker before checking status
             time.sleep(3)
             status_resp = client.get(f"/api/v1/missions/{mission_id}", headers=auth_headers)
             assert status_resp.status_code == 200
@@ -518,6 +518,7 @@ class TestMissionExecution:
         if resp.status_code in (200, 201):
             mission_id = resp.json().get("id") or resp.json().get("mission_id")
             if mission_id:
+                # Brief pause to allow mission state to update before pause/stop calls
                 time.sleep(1)
                 # Try to pause
                 pause_resp = client.post(f"/api/v1/missions/{mission_id}/pause", headers=auth_headers)

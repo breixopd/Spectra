@@ -42,6 +42,32 @@ ACCESS_COOKIE_PATH = "/"
 REFRESH_COOKIE_PATH = "/api/v1/auth/refresh"
 AUTH_COOKIE_SAMESITE = "Strict"
 
+# =============================================================================
+# WORKAROUND: Auth suppression init script
+# =============================================================================
+# WARNING: This script globally suppresses 401->/login redirects for ALL API
+# requests by wrapping window.fetch. This MASKS real authentication failures
+# and can hide security bugs in tests.
+#
+# How it works:
+#   - Intercepts fetch() calls to /api/* endpoints
+#   - Converts any 401 response to a 200 with {detail: "auth-suppressed"}
+#   - This prevents redirect loops but also prevents tests from seeing real 401s
+#
+# Problems with this approach:
+#   - Tests cannot verify proper 401 handling
+#   - Auth bugs in UI code will not be caught
+#   - A/B testing or conditional auth logic cannot be tested
+#
+# TODO: Find a better solution:
+#   - Option 1: Only suppress in specific tests that need it (not globally)
+#   - Option 2: Mock the auth check function to return soft failure
+#   - Option 3: Add a test mode flag that changes auth behavior in the app
+#   - Option 4: Use Playwright route interception instead of page-level JS
+#
+# See: https://github.com/breixopd14/spectra/issues/XXX
+# =============================================================================
+
 _AUTH_SUPPRESSION_INIT_SCRIPT = """
     (function() {
         var _origFetch = window.fetch;

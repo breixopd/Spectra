@@ -744,4 +744,8 @@ section { padding: 6rem 2rem; }
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  .hero-preview,
+  .hero-preview * {
+    animation: none !important;
+  }
 }

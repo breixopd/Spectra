@@ -62,6 +62,8 @@ class TestTokenBlacklist:
         token = create_access_token(data={"sub": "victimuser"})
         assert await is_token_blacklisted(token) is False
 
+        # Ensure token's iat is definitely before invalidation timestamp (int(time) + 1)
+        # The invalidate_all_user_tokens uses int(time) + 1 for comparison with JWT iat
         time.sleep(0.1)
         await invalidate_all_user_tokens("victimuser")
 
@@ -72,6 +74,7 @@ class TestTokenBlacklist:
     @pytest.mark.asyncio
     async def test_new_token_after_user_invalidation_works(self):
         await invalidate_all_user_tokens("someuser")
+        # Wait for invalidation timestamp to advance (int(time) + 1 in security.py uses 1s resolution)
         time.sleep(1.1)
         new_token = create_access_token(data={"sub": "someuser"})
         assert await is_token_blacklisted(new_token) is False

@@ -347,6 +347,7 @@ class TestToolResultCache:
     def test_cache_expired(self):
         cache = ToolResultCache(ttl_seconds=0)
         cache.set("nmap", "192.168.1.1", {}, {"result": "open"})
+        # TTL=0 means cache expires immediately; sleep ensures time passes so expiry check triggers
         time.sleep(0.01)
         result = cache.get("nmap", "192.168.1.1", {})
         assert result is None

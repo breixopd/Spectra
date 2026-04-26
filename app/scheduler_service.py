@@ -18,6 +18,7 @@ from fastapi import FastAPI, Response, status
 from app.core.advisory_locks import advisory_lock_owner, stable_lock_id
 from app.core.constants import SECONDS_PER_HOUR
 from app.core.database import advisory_lock_connection, async_session_maker
+from app.core.rate_limit import RateLimits, limiter
 from app.core.tasks import create_safe_task
 
 logger = logging.getLogger(__name__)
@@ -717,6 +718,7 @@ async def health(response: Response):
 
 
 @app.get("/internal/metrics")
+@limiter.limit(RateLimits.INTERNAL_METRICS)
 async def internal_node_metrics():
     """Return local system metrics. Service auth enforced by middleware."""
     from app.services.scaling.node_metrics import collect_node_metrics

@@ -187,6 +187,9 @@ class RateLimits:
     # Observability (internal admin data)
     OBSERVABILITY = "30/minute"
 
+    # Internal metrics endpoint (machine-to-machine, per node)
+    INTERNAL_METRICS = "10/minute"
+
     # Billing
     BILLING = "20/minute"
 

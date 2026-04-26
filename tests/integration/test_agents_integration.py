@@ -2,22 +2,18 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-pytestmark = pytest.mark.skip(reason="Mock LLM provider not implemented")
-
 from app.services.ai.agents.base import AgentContext, ToolAction
 from app.services.ai.agents.scope import ScopeAgent, ScopeInput
 from app.services.ai.agents.tool_selector import (
     ToolSelectorAgent,
     ToolSelectorInput,
 )
+from tests.mocks.llm import MockLLMClient
 
 
 @pytest.fixture
 def mock_llm():
-    from app.services.ai.llm import get_llm_client
-
-    # Reset singleton if needed or just get new one
-    client = get_llm_client(provider="mock")
+    client = MockLLMClient()
     client.reset()
     return client
 
