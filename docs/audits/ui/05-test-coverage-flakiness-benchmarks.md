@@ -1,6 +1,6 @@
 # UI Audit: Test Coverage, Flakiness, Benchmarks
 
-Status: loop 1 draft
+Status: loop 2 in progress
 Scope: Playwright, Docker test runners, live smoke, skipped tests, warnings, performance/UX benchmarks.
 
 ## Current Verified Baseline
@@ -80,3 +80,9 @@ Skips fall into a few buckets:
 **Running every test in one command is possible but not recommended:** the default “verify” job would pull in long-running network tests, flaky external rate limits, and env-specific infrastructure. Instead, use **layered jobs** (unit → integration subset → UI → live) and treat `pytest -m "not live"` (or project-specific markers) as the default gate.
 
 To see all skip reasons in one run: `pytest -ra tests/`.
+
+## Loop 2 — CI and Playwright
+
+- **GitHub Action** `.github/workflows/ui-e2e.yml` runs `tests/run_ui_tests.sh` on path-scoped PRs, `main` / `develop` pushes, and `workflow_dispatch` (not part of the default every-file CI gate, to keep PR feedback fast).
+- **`tests/run_ui_tests.sh`**: Playwright now uses `APP_BASE_URL=http://app:5000` (same Docker network as the API). The previous `host.docker.internal:15000` was invalid with the default compose (no service on that host port); use Caddy on `localhost:15080` only for manual cross-browser testing.
+- **`test_multi_role`**: user creation uses full-UUID usernames and retries on HTTP 409 instead of skipping, reducing ambiguous skips and collision edge cases.
