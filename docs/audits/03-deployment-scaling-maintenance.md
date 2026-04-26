@@ -22,3 +22,10 @@
 - Caddy upstreams should route only to healthy app instances.
 - Sessions must be stateless/shared: JWT/Redis/DB shared secrets and storage must match across replicas.
 - Stateful services need managed/external DB/Redis/S3 options or explicit replication/backup before automated host removal.
+
+## Live VPS Checks
+
+- VPS baseline: 4 CPU, 7.8 GiB RAM, 99 GiB free disk, Docker/Compose installed.
+- Full test stack live smoke passed on VPS through Caddy.
+- Internal direct AI smoke passed on VPS (`app` -> `ai-svc` -> TensorZero -> OpenRouter).
+- Caddy failover check passed: after stopping primary `app`, `/api/health` through Caddy stayed healthy via `app-replica`; primary app restarted cleanly.
