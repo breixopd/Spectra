@@ -156,7 +156,7 @@ class TestJWTTokens:
         # Create a token with a different secret
         token = jwt.encode(
             {"sub": "user", "exp": 9999999999},
-            "wrong_secret",
+            "wrong-secret-used-for-invalid-signature-tests",
             algorithm=settings.JWT_ALGORITHM,
         )
 

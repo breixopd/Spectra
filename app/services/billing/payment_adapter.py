@@ -13,7 +13,6 @@ from app.core.database import async_session_maker
 from app.models.plan import Plan, Subscription
 from app.services.billing.entitlements import (
     BILLING_PORTAL_MANAGEABLE_SUBSCRIPTION_STATUSES,
-    ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES,
     get_user_entitlement,
     subscription_allows_billing_portal,
     subscription_grants_access,

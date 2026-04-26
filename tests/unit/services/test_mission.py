@@ -85,6 +85,24 @@ class TestMissionToolTracking:
 
         assert mission.tools_run.count("nmap") == 1
 
+    def test_serialized_state_uses_snapshots(self):
+        """Mission snapshots should not expose mutable state lists to callers."""
+        mission = Mission("target.com", "test")
+        mission.log("started")
+        mission.add_finding({"title": "Open service", "severity": "info"})
+        mission.record_tool_run("nmap")
+
+        snapshot = mission.to_dict()
+        snapshot["logs"].append("external mutation")
+        snapshot["findings"].append({"title": "external mutation"})
+        snapshot["tools_run"].append("external mutation")
+        snapshot["tool_executions"].append({"tool": "external mutation"})
+
+        assert "external mutation" not in mission.logs
+        assert all(finding.get("title") != "external mutation" for finding in mission.findings)
+        assert "external mutation" not in mission.tools_run
+        assert all(record.get("tool") != "external mutation" for record in mission.tool_executions)
+
 
 class TestMissionServiceTracking:
     """Tests for get_known_services."""

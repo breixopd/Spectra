@@ -14,7 +14,7 @@ from app.api.dependencies import _is_admin_user, get_current_active_user, get_ui
 from app.api.schemas import SettingsUpdate
 from app.core.config import settings
 from app.core.database import async_session_maker, get_async_session
-from app.core.rbac import Permission, require_permission
+from app.core.rbac import Permission, has_permission, require_permission
 from app.core.templates import templates
 from app.models.user import User
 from app.services.billing.entitlements import ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES
@@ -362,8 +362,12 @@ async def help_page(request: Request):
 @router.get("/observability", response_class=HTMLResponse)
 async def observability_page(request: Request):
     """Serve the observability/monitoring page."""
-    if not await get_ui_user(request):
+    user_payload = await get_ui_user(request)
+    if not user_payload:
         return RedirectResponse(url="/login", status_code=303)
+    user = await _get_ui_db_user(user_payload.get("sub"))
+    if not user or not (_is_admin_user(user) or has_permission(user.role, Permission.MANAGE_SETTINGS)):
+        return HTMLResponse("Forbidden", status_code=403)
     return templates.TemplateResponse(
         request,
         "observability.html",

@@ -39,9 +39,9 @@ Covered subsystems include:
 
 | Layer | What it verifies | Current path | Status |
 | --- | --- | --- | --- |
-| Unit tests | Local logic, validation, rate-limit behavior, service helpers, model/repository logic | `python3 -m pytest tests/unit/ -q` or `./scripts/test.sh unit` | Implemented |
+| Unit tests | Local logic, validation, rate-limit behavior, service helpers, model/repository logic | `./scripts/test.sh unit` | Implemented |
 | Router/API contract tests | Endpoint behavior, request validation, response shape, auth/rate-limit decorators | `docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner` and targeted unit/integration tests | Implemented, but no standalone OpenAPI diff gate |
-| Service integration tests | App-to-DB, settings, service wiring, async flows, non-live integrations | `python3 -m pytest tests/integration/ -v --tb=short --timeout=120 -k "not live and not e2e"` | Implemented |
+| Service integration tests | App-to-DB, settings, service wiring, async flows, non-live integrations | `./scripts/test.sh integration` | Implemented |
 | Live integration tests | Real services, vulnerable targets, tool execution, live ops smoke | `./tests/run_live_tests.sh` and `./tests/run_live_tests.sh --targets` | Implemented |
 | Browser/UI tests | Rendered pages, login/setup flows, interactive user behavior | `./tests/run_ui_tests.sh` | Implemented |
 | Ops-script smoke tests | Backup/restore, S3, DB maintenance, incident workflows, health checks | `./tests/run_live_tests.sh` covers live ops smoke; manual script checks exist under `scripts/ops/` | Partial |
@@ -100,9 +100,7 @@ Use the real commands already present in this repo.
 
 | Purpose | Command |
 | --- | --- |
-| Unit tests | `python3 -m pytest tests/unit/ -q` |
 | Unit tests in Docker | `./scripts/test.sh unit` |
-| Non-live integration tests | `python3 -m pytest tests/integration/ -v --tb=short --timeout=120 -k "not live and not e2e"` |
 | Integration tests in Docker (may require live services) | `./scripts/test.sh integration` |
 | Full containerized test stack | `./scripts/test.sh compose` |
 | Load and burst harness | `./tests/run_load_tests.sh load` |

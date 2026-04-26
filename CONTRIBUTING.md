@@ -28,13 +28,6 @@ Thank you for your interest in contributing to Spectra! This guide covers everyt
 git clone https://github.com/breixopd14/spectra.git
 cd spectra
 
-# Create and activate a virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements/app.txt
-
 # Copy environment file
 cp .env.example .env
 # Edit .env with your local settings (DATABASE_URL, TENSORZERO_GATEWAY_URL, etc.)
@@ -214,11 +207,8 @@ tests/
 # Via Makefile (recommended)
 make test                            # Runs unit tests in Docker
 
-# Locally (requires .venv activated and .env.test present)
-pytest tests/unit/ -q
-
 # Run a specific test file
-pytest tests/unit/test_middleware_stack.py -q
+./scripts/test.sh file tests/unit/test_middleware_stack.py
 
 # --- Integration tests (requires running PostgreSQL, etc.) ---
 ./tests/run_live_tests.sh

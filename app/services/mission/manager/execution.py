@@ -64,6 +64,9 @@ class MissionExecutionManager:
         """Main execution loop for a mission."""
         recorder = self._init_demo_recorder(mission)
 
+        if not await self._llm_provider_healthy(mission):
+            return
+
         context = await self.lifecycle.initialize_mission(mission)
         if context is None:
             return
@@ -87,6 +90,24 @@ class MissionExecutionManager:
             await self.lifecycle.update_db_status(mission)
         finally:
             await self._cleanup_mission(mission)
+
+    async def _llm_provider_healthy(self, mission: Mission) -> bool:
+        """Fail visibly before a long mission if the LLM gateway is unavailable."""
+        try:
+            current_llm = await get_global_llm_client()
+            healthy = await current_llm.health_check()
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
+            healthy = False
+            logger.warning("Mission %s LLM health check failed: %s", mission.id, e)
+
+        if healthy:
+            return True
+
+        mission.set_status("failed")
+        mission.log("Mission failed before launch: TensorZero/LLM provider health check failed")
+        self._broadcast_state("mission_controller", "failed")
+        await self.lifecycle.update_db_status(mission)
+        return False
 
     def _init_demo_recorder(self, mission: Mission) -> Any:
         """Initialize demo recorder if requested."""

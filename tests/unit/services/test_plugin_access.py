@@ -15,6 +15,13 @@ def _make_user(user_id="user-1", is_superuser=False, role="user"):
     return u
 
 
+def _template_args(mock_templates):
+    args = mock_templates.TemplateResponse.call_args[0]
+    if isinstance(args[0], str):
+        return args[0], args[1]
+    return args[1], args[2]
+
+
 # ---------------------------------------------------------------------------
 # Plugin upload requires superuser
 # ---------------------------------------------------------------------------
@@ -73,8 +80,7 @@ class TestToolboxPageAccess:
 
             await toolbox_page(request)
 
-            call_args = mock_templates.TemplateResponse.call_args
-            context = call_args[0][1] if len(call_args[0]) > 1 else call_args[1].get("context", {})
+            _, context = _template_args(mock_templates)
             assert context.get("is_admin") is True
 
     async def test_toolbox_passes_is_admin_false_for_operator(self):
@@ -105,8 +111,7 @@ class TestToolboxPageAccess:
 
             await toolbox_page(request)
 
-            call_args = mock_templates.TemplateResponse.call_args
-            context = call_args[0][1] if len(call_args[0]) > 1 else call_args[1].get("context", {})
+            _, context = _template_args(mock_templates)
             assert context.get("is_admin") is False
 
 
@@ -175,7 +180,7 @@ class TestPluginCreatorAccess:
             await plugin_creator_page(request)
 
             mock_templates.TemplateResponse.assert_called_once()
-            tpl_name = mock_templates.TemplateResponse.call_args[0][0]
+            tpl_name, _ = _template_args(mock_templates)
             assert tpl_name == "plugin_creator.html"
 
     async def test_unauthenticated_redirected_to_login(self):

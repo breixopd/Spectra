@@ -268,6 +268,7 @@ class Settings(BaseSettings):
 
     # --- Shell Routing ---
     SHELL_ROUTING_MODE: str = Field(default="direct", description="Shell routing: direct, sandbox, or proxy")
+    SHELL_LISTEN_HOST: str = Field(default="127.0.0.1", description="Host/interface for worker-side callback listeners")
     SHELL_PROXY_NODES: list[str] = Field(default_factory=list, description="List of proxy node URLs for shell routing")
 
     @field_validator("SHELL_ROUTING_MODE")

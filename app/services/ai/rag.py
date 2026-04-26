@@ -9,6 +9,7 @@ import hashlib
 import json
 import logging
 from dataclasses import dataclass
+from inspect import isawaitable
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -192,7 +193,10 @@ class RAGService:
                     text("SELECT content_hash FROM rag_documents WHERE id = :id"),
                     {"id": doc.id},
                 )
-                if existing.scalar() == content_hash:
+                existing_hash = existing.scalar()
+                if isawaitable(existing_hash):
+                    existing_hash = await existing_hash
+                if existing_hash == content_hash:
                     return True  # Content unchanged, skip re-embedding
 
             embedding = await self.embeddings.embed(doc.content)

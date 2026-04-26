@@ -5,15 +5,17 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.advisory_locks import stable_lock_id
 from app.core.database import async_session_maker
 from app.core.events import events
+from app.models.user import User
 from app.repositories.mission import MissionRepository
 from app.services.ai.agents.base import AgentContext
 from app.services.ai.sanitizer import sanitize_for_prompt
+from app.services.billing.entitlements import get_user_entitlement_plan
 from app.services.billing.quota_enforcer import QuotaEnforcer
 from app.services.billing.usage_tracker import UsageTracker
 from app.services.mission.mission import Mission
@@ -22,6 +24,26 @@ from app.services.tools.output import cleanup_mission_workspace
 from app.utils.geoip import resolve_ip
 
 logger = logging.getLogger(__name__)
+
+
+async def _load_capability_context(user_id: str | None) -> tuple[str | None, dict[str, Any], dict[str, Any]]:
+    if not user_id:
+        return None, {}, {}
+    try:
+        async with async_session_maker() as db:
+            user = await db.scalar(select(User).where(User.id == user_id))
+            plan = await get_user_entitlement_plan(db, user_id)
+            quotas = {}
+            if plan:
+                quotas = {
+                    "max_concurrent_missions": plan.max_concurrent_missions,
+                    "sandbox_resource_tier": plan.sandbox_resource_tier,
+                    "sandbox_max_containers": plan.sandbox_max_containers,
+                }
+            return getattr(user, "role", None), dict(plan.features or {}) if plan else {}, quotas
+    except Exception as exc:
+        logger.warning("Failed to load capability context for user %s: %s", user_id, exc)
+        return None, {}, {}
 
 
 class MissionQuotaExceeded(Exception):
@@ -301,11 +323,15 @@ class MissionLifecycleManager:
                 sanitized_requirements = sanitize_for_prompt(mission.requirements, field_name="requirements")
             if sanitized_requirements:
                 effective_mission = f"{mission.directive}\n\nRequirements:\n{sanitized_requirements}"
+            user_role, plan_features, tenant_quotas = await _load_capability_context(mission.user_id)
 
             return AgentContext(
                 mission_id=mission.id,
                 session_id=mission.id,
                 user_id=mission.user_id,
+                user_role=user_role,
+                plan_features=plan_features,
+                tenant_quotas=tenant_quotas,
                 target=mission.target,
                 mission=effective_mission,
                 phase="scope",

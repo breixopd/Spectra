@@ -1,9 +1,25 @@
 """Test mobile responsive layout."""
 
+import contextlib
+
 import pytest
 from playwright.sync_api import Page, expect
 
 MOBILE_VIEWPORT = {"width": 375, "height": 812}
+
+
+def _body_scroll_width_after_navigation(page: Page) -> int:
+    """Read body width after any auth/status navigation races settle."""
+    for attempt in range(3):
+        with contextlib.suppress(Exception):
+            page.wait_for_load_state("networkidle", timeout=3_000)
+        try:
+            return int(page.evaluate("() => document.body.scrollWidth"))
+        except Exception:
+            if attempt == 2:
+                raise
+            page.wait_for_timeout(500)
+    return int(page.evaluate("() => document.body.scrollWidth"))
 
 
 @pytest.fixture
@@ -66,7 +82,7 @@ def test_settings_page_mobile(authenticated_page: Page, app_url: str):
     page.goto(f"{app_url}/settings", wait_until="domcontentloaded")
     expect(page.locator("h1, h2, .page-title").first).to_be_visible(timeout=15_000)
     # Page content should not overflow the mobile viewport
-    body_width = page.evaluate("() => document.body.scrollWidth")
+    body_width = _body_scroll_width_after_navigation(page)
     assert body_width <= MOBILE_VIEWPORT["width"] + 20, (
         f"Settings page overflows mobile viewport: {body_width}px"
     )

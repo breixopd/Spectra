@@ -106,7 +106,10 @@ class TestWebhookRegistration:
         session.add = MagicMock()
         svc = WebhookService(session)
 
-        with patch("app.services.webhooks.service.Webhook") as MockWH:
+        with (
+            patch("app.services.webhooks.service.is_safe_url", AsyncMock(return_value=True)),
+            patch("app.services.webhooks.service.Webhook") as MockWH,
+        ):
             instance = MagicMock()
             MockWH.return_value = instance
             await svc.register(
@@ -125,7 +128,10 @@ class TestWebhookRegistration:
     async def test_register_rejects_unsupported_events(self):
         session = AsyncMock()
         svc = WebhookService(session)
-        with pytest.raises(ValueError, match="Unsupported webhook events"):
+        with (
+            patch("app.services.webhooks.service.is_safe_url", AsyncMock(return_value=True)),
+            pytest.raises(ValueError, match="Unsupported webhook events"),
+        ):
             await svc.register(
                 user_id="u1",
                 url="https://example.com/hook",
@@ -136,7 +142,10 @@ class TestWebhookRegistration:
     async def test_register_rejects_mixed_valid_invalid_events(self):
         session = AsyncMock()
         svc = WebhookService(session)
-        with pytest.raises(ValueError):
+        with (
+            patch("app.services.webhooks.service.is_safe_url", AsyncMock(return_value=True)),
+            pytest.raises(ValueError),
+        ):
             await svc.register(
                 user_id="u1",
                 url="https://example.com/hook",
@@ -149,7 +158,10 @@ class TestWebhookRegistration:
         session.add = MagicMock()
         svc = WebhookService(session)
 
-        with patch("app.services.webhooks.service.Webhook") as MockWH:
+        with (
+            patch("app.services.webhooks.service.is_safe_url", AsyncMock(return_value=True)),
+            patch("app.services.webhooks.service.Webhook") as MockWH,
+        ):
             MockWH.return_value = MagicMock()
             await svc.register(
                 user_id="u1",

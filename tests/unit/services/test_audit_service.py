@@ -27,12 +27,18 @@ def mock_request():
     return req
 
 
+def _stub_repo(mock_repo):
+    repo_inst = mock_repo.return_value
+    repo_inst.create = AsyncMock(return_value=MagicMock(created_at=None))
+    repo_inst.get_latest_hash = AsyncMock(return_value=None)
+    return repo_inst
+
+
 class TestLogEvent:
     @pytest.mark.asyncio
     async def test_creates_audit_log(self, mock_session):
         with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
-            repo_inst = MockRepo.return_value
-            repo_inst.create = AsyncMock()
+            repo_inst = _stub_repo(MockRepo)
 
             await log_event(
                 mock_session,
@@ -51,8 +57,7 @@ class TestLogEvent:
     @pytest.mark.asyncio
     async def test_extracts_ip_from_request(self, mock_session, mock_request):
         with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
-            repo_inst = MockRepo.return_value
-            repo_inst.create = AsyncMock()
+            repo_inst = _stub_repo(MockRepo)
 
             await log_event(
                 mock_session,
@@ -67,8 +72,7 @@ class TestLogEvent:
     @pytest.mark.asyncio
     async def test_extracts_user_agent_from_request(self, mock_session, mock_request):
         with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
-            repo_inst = MockRepo.return_value
-            repo_inst.create = AsyncMock()
+            repo_inst = _stub_repo(MockRepo)
 
             await log_event(
                 mock_session,
@@ -82,8 +86,7 @@ class TestLogEvent:
     @pytest.mark.asyncio
     async def test_no_request_sets_none(self, mock_session):
         with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
-            repo_inst = MockRepo.return_value
-            repo_inst.create = AsyncMock()
+            repo_inst = _stub_repo(MockRepo)
 
             await log_event(mock_session, AuditEventType.LOGOUT)
 
@@ -98,8 +101,7 @@ class TestLogEvent:
         req.headers = {"user-agent": "Bot/1.0"}
 
         with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
-            repo_inst = MockRepo.return_value
-            repo_inst.create = AsyncMock()
+            repo_inst = _stub_repo(MockRepo)
 
             await log_event(mock_session, AuditEventType.LOGIN, request=req)
 
@@ -120,8 +122,7 @@ class TestLogEvent:
     @pytest.mark.asyncio
     async def test_all_event_types_valid(self, mock_session):
         with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
-            repo_inst = MockRepo.return_value
-            repo_inst.create = AsyncMock()
+            repo_inst = _stub_repo(MockRepo)
 
             for evt in AuditEventType:
                 await log_event(mock_session, evt, user_id="test")
@@ -131,8 +132,7 @@ class TestLogEvent:
     @pytest.mark.asyncio
     async def test_none_details_stored_as_none(self, mock_session):
         with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
-            repo_inst = MockRepo.return_value
-            repo_inst.create = AsyncMock()
+            repo_inst = _stub_repo(MockRepo)
 
             await log_event(mock_session, AuditEventType.LOGOUT, details=None)
 
@@ -147,8 +147,7 @@ class TestLogEvent:
         req.headers = {"user-agent": "X" * 1000}
 
         with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
-            repo_inst = MockRepo.return_value
-            repo_inst.create = AsyncMock()
+            repo_inst = _stub_repo(MockRepo)
 
             await log_event(mock_session, AuditEventType.LOGIN, request=req)
 

@@ -164,6 +164,7 @@ class TestEnsureKnownHost:
 
         with (
             patch.object(provisioner, "_known_hosts_path", return_value=known_hosts_path),
+            patch.object(provisioner, "_ssh_keyscan_executable", return_value="/usr/bin/ssh-keyscan"),
             patch("app.services.provisioning.provisioner.subprocess.run", return_value=scan_result) as mock_run,
             caplog.at_level("INFO"),
         ):
@@ -171,9 +172,8 @@ class TestEnsureKnownHost:
 
         assert result == known_hosts_path
         assert known_hosts_path.read_text(encoding="utf-8") == "[example.com]:2222 ssh-ed25519 AAAAC3new\n"
-        expected_executable = provisioner._ssh_keyscan_executable()
         mock_run.assert_called_once_with(
-            [expected_executable, "-p", "2222", "example.com"],
+            ["/usr/bin/ssh-keyscan", "-p", "2222", "example.com"],
             capture_output=True,
             text=True,
             check=True,
@@ -191,9 +191,10 @@ class TestEnsureKnownHost:
 
         with (
             patch.object(provisioner, "_known_hosts_path", return_value=known_hosts_path),
+            patch.object(provisioner, "_ssh_keyscan_executable", return_value="/usr/bin/ssh-keyscan"),
             patch("app.services.provisioning.provisioner.subprocess.run", side_effect=error),
         ):
-            with pytest.raises(RuntimeError, match="ssh-keyscan failed for bad.example:22"):
+            with pytest.raises(RuntimeError, match=r"ssh-keyscan failed for bad\.example:22"):
                 provisioner._ensure_known_host(ServerConfig(host="bad.example", password="pw"))
 
 

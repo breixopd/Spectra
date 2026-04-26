@@ -187,13 +187,10 @@ uvicorn app.main:app --reload --port 5000
 
 ```bash
 # General unit tests
-pytest tests/unit/ -q
+./scripts/test.sh unit
 
 # Targeted settings/router/setup validation
 docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner
-
-# Non-live integration tests
-python3 -m pytest tests/integration/ -v --tb=short --timeout=120 -k "not live and not e2e"
 
 # Integration tests in Docker (may require live services)
 ./scripts/test.sh integration

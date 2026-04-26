@@ -179,8 +179,10 @@ services:
       - ../.env
     environment:
       <<: *common-env
-      CONNECT_BACK_HOST: spectra-app
       AI_SERVICE_URL: http://ai-svc:5010
+      WORKER_SERVICE_URL: http://worker:5012
+      CONNECT_BACK_HOST: ${CALLBACK_RELAY_HOST:-worker}
+      SHELL_ROUTING_MODE: proxy
       # Shared Redis-backed rate limiting; use memory:// for tests
       RATE_LIMIT_STORAGE: "redis://:${REDIS_PASSWORD:-change-me-redis-pass}@redis:6379/0"
     volumes:
@@ -240,6 +242,9 @@ services:
     environment:
       <<: *common-env
       SKIP_MIGRATIONS: "true"
+      CONNECT_BACK_HOST: ${CALLBACK_RELAY_HOST:-worker}
+      SHELL_ROUTING_MODE: direct
+      SHELL_LISTEN_HOST: 0.0.0.0
     volumes:
       - spectra_data:/app/data
     read_only: true

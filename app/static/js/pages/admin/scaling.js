@@ -150,6 +150,7 @@ function populateScalingForm(cfg) {
     if (el('scaling-cooldown')) el('scaling-cooldown').value = cfg.autoscale_cooldown_secs ?? 300;
     if (el('scaling-cpu-up')) el('scaling-cpu-up').value = cfg.autoscale_cpu_up_threshold ?? 75;
     if (el('scaling-cpu-down')) el('scaling-cpu-down').value = cfg.autoscale_cpu_down_threshold ?? 25;
+    if (el('scaling-auto-heal-enabled')) el('scaling-auto-heal-enabled').checked = cfg.auto_heal_enabled ?? true;
     if (el('scaling-infra-enabled')) el('scaling-infra-enabled').checked = cfg.infra_monitor_enabled ?? true;
     if (el('scaling-pg-threshold')) el('scaling-pg-threshold').value = cfg.infra_monitor_pg_threshold ?? 80;
     if (el('scaling-redis-threshold')) el('scaling-redis-threshold').value = cfg.infra_monitor_redis_threshold ?? 85;
@@ -169,6 +170,7 @@ async function saveScalingConfig(e) {
         autoscale_cooldown_secs: parseInt(document.getElementById('scaling-cooldown').value),
         autoscale_cpu_up_threshold: parseInt(document.getElementById('scaling-cpu-up').value),
         autoscale_cpu_down_threshold: parseInt(document.getElementById('scaling-cpu-down').value),
+        auto_heal_enabled: document.getElementById('scaling-auto-heal-enabled')?.checked ?? true,
         infra_monitor_enabled: document.getElementById('scaling-infra-enabled').checked,
         infra_monitor_pg_threshold: parseInt(document.getElementById('scaling-pg-threshold').value),
         infra_monitor_redis_threshold: parseInt(document.getElementById('scaling-redis-threshold').value),
@@ -220,15 +222,7 @@ function _renderHealLog() {
     ).join('');
 }
 
-// --- Auto-heal toggle ---
-
-const healToggle = document.getElementById('scaling-auto-heal-enabled');
-if (healToggle) {
-    healToggle.addEventListener('change', async () => {
-        // No dedicated auto_heal_enabled config endpoint yet — piggyback on scaling config
-        _spectraToast(healToggle.checked ? 'Auto-heal enabled' : 'Auto-heal disabled', 'info');
-    });
-}
+// Auto-heal is persisted with the rest of the scaling form.
 
 // --- Refresh & auto-refresh ---
 

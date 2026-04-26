@@ -217,7 +217,11 @@ See [Security](security.md) for full security model.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `CONNECT_BACK_HOST` | str | `"spectra-app"` | Hostname tools containers use to reach the app |
+| `CONNECT_BACK_HOST` | str | `"spectra-app"` | Worker or callback-relay hostname embedded into connect-back payloads. It must not point at API/Caddy control-plane infrastructure in production. |
+| `SHELL_ROUTING_MODE` | str | `"direct"` | Callback listener routing mode. Production API services should use `proxy` and fail closed; worker services may use `direct`. |
+| `SHELL_LISTEN_HOST` | str | `"127.0.0.1"` | Worker-side listener bind host. Use `0.0.0.0` only on worker/callback-relay services that are isolated from control-plane networks. |
+
+Custom PoC execution and managed callback listeners are controlled by mission capability policy, plan entitlements, verified scope, and audit logging. They are not controlled by deployment-wide environment kill switches.
 
 ---
 

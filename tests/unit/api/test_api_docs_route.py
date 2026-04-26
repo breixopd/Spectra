@@ -6,6 +6,13 @@ import pytest
 from starlette.routing import Route
 
 
+def _template_call_context(mock_templates) -> tuple[str, dict]:
+    args = mock_templates.TemplateResponse.call_args[0]
+    if isinstance(args[0], str):
+        return args[0], args[1]
+    return args[1], args[2]
+
+
 class TestApiDocsRoute:
     """GET /docs/api returns documentation page."""
 
@@ -44,9 +51,8 @@ class TestApiDocsRoute:
 
                 assert result.status_code == 200
                 mock_templates.TemplateResponse.assert_called_once()
-                call_args = mock_templates.TemplateResponse.call_args
-                assert call_args[0][0] == "docs.html"
-                context = call_args[0][1]
+                template_name, context = _template_call_context(mock_templates)
+                assert template_name == "docs.html"
                 assert "route_groups" in context
                 assert "request" in context
 
@@ -102,8 +108,7 @@ class TestApiDocsRoute:
                     with patch("app.main.app", mock_app):
                         await api_docs_page(mock_request)
 
-                    call_args = mock_templates.TemplateResponse.call_args
-                    context = call_args[0][1]
+                    _, context = _template_call_context(mock_templates)
                     groups = context["route_groups"]
                     assert "v1" in groups
                     assert "admin" in groups
@@ -150,8 +155,7 @@ class TestApiDocsRoute:
                     with patch("app.main.app", mock_app):
                         await api_docs_page(mock_request)
 
-                    call_args = mock_templates.TemplateResponse.call_args
-                    context = call_args[0][1]
+                    _, context = _template_call_context(mock_templates)
                     groups = context["route_groups"]
                     assert "v1" in groups
                     assert "admin" not in groups
@@ -176,8 +180,8 @@ class TestHelpRoute:
 
                 assert result.status_code == 200
                 mock_templates.TemplateResponse.assert_called_once()
-                call_args = mock_templates.TemplateResponse.call_args
-                assert call_args[0][0] == "help.html"
+                template_name, _ = _template_call_context(mock_templates)
+                assert template_name == "help.html"
 
     @pytest.mark.asyncio
     async def test_help_redirects_when_unauthenticated(self):

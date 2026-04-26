@@ -21,6 +21,8 @@ async function loadServices() {
         if (!healthRes.error) svcHealth = healthRes.data;
         if (!settingsRes.error) svcSettings = settingsRes.data;
         renderServiceCards();
+        startSvcHealthPoll();
+        refreshNodesList();
     } catch(e) { console.error(e); _spectraToast('Error loading services', 'error'); grid.innerHTML = ''; }
     // Populate billing fields from settings
     loadBillingFields();
@@ -413,13 +415,7 @@ function startSvcHealthPoll() {
     svcHealthTimer = setInterval(pollMicroservicesHealth, 15000);
 }
 
-// Start polling when services tab active
-const origShowSection = window.showSection;
-window.showSection = function(name) {
-    if (typeof origShowSection === 'function') origShowSection(name);
-    if (name === 'services') { startSvcHealthPoll(); refreshNodesList(); }
-    else if (svcHealthTimer) { clearInterval(svcHealthTimer); svcHealthTimer = null; }
-};
+// Polling is started by loadServices when the services tab opens.
 
 // ---- Server Nodes Management ----
 async function refreshNodesList() {

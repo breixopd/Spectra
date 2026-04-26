@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import threading
 import uuid
 from datetime import UTC, datetime
 from typing import Any, ClassVar
@@ -78,6 +79,7 @@ class Mission:
         self.current_task_index = 0
         self.findings: list[dict[str, Any]] = []
         self.logs: list[str] = []
+        self._state_lock = threading.RLock()
         self._stop_event = asyncio.Event()
         self._paused_event = asyncio.Event()
         self._paused_event.set()  # Initially active (not paused)
@@ -188,7 +190,8 @@ class Mission:
         """Add a log message and broadcast to UI."""
         timestamp = datetime.now(UTC).strftime("%H:%M:%S")
         entry = f"[{timestamp}] [{self.id[:8]}] {message}"
-        self.logs.append(entry)
+        with self._state_lock:
+            self.logs.append(entry)
         self._logger.info("%s", message)
         # Broadcast to UI
         self._broadcast("log", entry)
@@ -257,13 +260,14 @@ class Mission:
     def add_finding(self, finding: FindingDict) -> None:
         """Add a finding to the mission, deduplicating by key fields."""
         finding_data = dict(finding)
-        if self._is_duplicate_finding(finding_data):
-            return
-        if self._is_known_false_positive(finding_data):
-            return
-        finding_data = self._apply_mitre_tags(finding_data)
-        finding_data["count"] = 1
-        self.findings.append(finding_data)
+        with self._state_lock:
+            if self._is_duplicate_finding(finding_data):
+                return
+            if self._is_known_false_positive(finding_data):
+                return
+            finding_data = self._apply_mitre_tags(finding_data)
+            finding_data["count"] = 1
+            self.findings.append(finding_data)
         self._broadcast("finding", finding_data)
 
     def _is_duplicate_finding(self, finding: dict[str, Any]) -> bool:
@@ -323,19 +327,20 @@ class Mission:
         error: str | None = None,
     ) -> None:
         """Record that a tool was executed with details."""
-        if tool_id not in self.tools_run:
-            self.tools_run.append(tool_id)
+        with self._state_lock:
+            if tool_id not in self.tools_run:
+                self.tools_run.append(tool_id)
 
-        # Store detailed execution record
-        record: ToolExecutionRecord = {
-            "tool": tool_id,
-            "args": args or {},
-            "command": command,
-            "success": success,
-            "error": error,
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
-        self.tool_executions.append(record)
+            # Store detailed execution record
+            record: ToolExecutionRecord = {
+                "tool": tool_id,
+                "args": args or {},
+                "command": command,
+                "success": success,
+                "error": error,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+            self.tool_executions.append(record)
 
     def get_known_services(self) -> list[ServiceInfo]:
         """Get discovered services as dicts for agent input."""
@@ -406,26 +411,27 @@ class Mission:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize mission to dictionary."""
-        return {
-            "id": self.id,
-            "target": self.target,
-            "directive": self.directive,
-            "requirements": self.requirements,
-            "status": self.status,
-            "start_time": self.start_time.isoformat(),
-            "current_task_index": self.current_task_index,
-            "findings_count": len(self.findings),
-            "findings": self.findings,
-            "logs_count": len(self.logs),
-            "logs": self.logs,
-            "geo_info": self.geo_info,
-            "attack_surface": self.attack_surface.get_summary(),
-            "tools_run": self.tools_run or [],  # Always return a list
-            "tool_executions": self.tool_executions,
-            "report_path": self.report_path,
-            "task_tree": self.task_tree.to_dict(),
-            "blackboard": self.blackboard.read_all(),
-        }
+        with self._state_lock:
+            return {
+                "id": self.id,
+                "target": self.target,
+                "directive": self.directive,
+                "requirements": self.requirements,
+                "status": self.status,
+                "start_time": self.start_time.isoformat(),
+                "current_task_index": self.current_task_index,
+                "findings_count": len(self.findings),
+                "findings": list(self.findings),
+                "logs_count": len(self.logs),
+                "logs": list(self.logs),
+                "geo_info": self.geo_info,
+                "attack_surface": self.attack_surface.get_summary(),
+                "tools_run": list(self.tools_run or []),
+                "tool_executions": list(self.tool_executions),
+                "report_path": self.report_path,
+                "task_tree": self.task_tree.to_dict(),
+                "blackboard": self.blackboard.read_all(),
+            }
 
     def save_checkpoint(self) -> dict[str, Any]:
         """Serialize mission state for checkpoint/resume.

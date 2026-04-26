@@ -61,6 +61,16 @@ async def run_debrief(
                 mission.log(f"[LEARN] {lesson}")
 
             try:
+                from app.services.ai.feedback import send_quality_score
+
+                inference_id = getattr(debrief, "_last_inference_id", "")
+                lesson_score = min(len(action.lessons_learned), 3) / 3
+                summary_score = 1.0 if action.executive_summary else 0.0
+                await send_quality_score(inference_id, round((lesson_score + summary_score) / 2, 2))
+            except (OSError, RuntimeError, ValueError, TypeError):
+                logger.debug("Failed to send debrief quality feedback (non-critical)")
+
+            try:
                 from app.services.ai.memory import get_memory
 
                 memory = get_memory(mission.user_id)
@@ -271,10 +281,13 @@ def _copy_task_context(context: AgentContext, phase: str) -> AgentContext:
         mission_id=context.mission_id,
         session_id=context.session_id,
         user_id=context.user_id,
+        user_role=context.user_role,
+        plan_features=context.plan_features,
+        tenant_quotas=context.tenant_quotas,
         target=context.target,
         mission=context.mission,
+        phase=phase,
     )
-    task_context.phase = phase
     return task_context
 
 

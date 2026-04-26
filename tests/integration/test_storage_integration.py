@@ -10,7 +10,10 @@ import os
 
 import pytest
 
+from app.core.config import settings
+
 REQUIRED_S3_ENV_VARS = ("S3_ENDPOINT_URL", "S3_ACCESS_KEY", "S3_SECRET_KEY")
+TEST_BUCKET = settings.S3_BUCKET_MISSIONS
 
 pytestmark = [
     pytest.mark.asyncio,
@@ -29,7 +32,7 @@ async def test_upload_download_roundtrip():
     storage = get_storage_service()
 
     test_data = b"integration test data"
-    bucket = "spectra-test"
+    bucket = TEST_BUCKET
     key = "integration/test.txt"
 
     uri = await storage.upload(bucket, key, test_data)
@@ -49,7 +52,7 @@ async def test_list_objects_with_prefix():
 
     storage = get_storage_service()
 
-    bucket = "spectra-test"
+    bucket = TEST_BUCKET
     await storage.upload(bucket, "list-test/a.txt", b"a")
     await storage.upload(bucket, "list-test/b.txt", b"b")
     await storage.upload(bucket, "other/c.txt", b"c")

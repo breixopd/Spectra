@@ -17,6 +17,7 @@
 #   SPECTRA_TEST_IMAGE  Override the Docker image (default: spectra-app)
 #   REBUILD=1           Force rebuild the test image before running
 #   START_STACK=1       Start docker/docker-compose.test.yml before live-smoke
+#   SPECTRA_KEEP_TEST_ARTIFACTS=1  Export coverage/smoke diagnostics to ./reports
 
 set -euo pipefail
 
@@ -63,9 +64,14 @@ build_image() {
 
 run_in_docker() {
     local pytest_args=("$@")
+    local artifact_mounts=()
     build_image
 
     echo -e "${CYAN}Running: pytest ${pytest_args[*]}${NC}"
+    if [[ "${SPECTRA_KEEP_TEST_ARTIFACTS:-0}" == "1" ]]; then
+        mkdir -p "$PROJECT_ROOT/reports"
+        artifact_mounts=(-v "$PROJECT_ROOT/reports:/app/reports")
+    fi
 
     docker run --rm \
         -e DATABASE_URL=sqlite+aiosqlite:///tmp/test.db \
@@ -73,6 +79,9 @@ run_in_docker() {
         -e JWT_SECRET_KEY=test-secret-key \
         -e FULLY_AUTOMATED=true \
         -e PLUGIN_SAFE_MODE=false \
+        -e COVERAGE_FILE=/tmp/spectra-coverage/.coverage \
+        --tmpfs /tmp:rw,nosuid,nodev,size=512m \
+        --tmpfs /app/data:rw,nosuid,nodev,size=256m \
         -v "$PROJECT_ROOT/app:/app/app:ro" \
         -v "$PROJECT_ROOT/tests:/app/tests:ro" \
         -v "$PROJECT_ROOT/pyproject.toml:/app/pyproject.toml:ro" \
@@ -80,7 +89,7 @@ run_in_docker() {
         -v "$PROJECT_ROOT/alembic:/app/alembic:ro" \
         -v "$PROJECT_ROOT/config/alembic.ini:/app/config/alembic.ini:ro" \
         -v "$PROJECT_ROOT/plugins:/app/plugins:ro" \
-        -v "$PROJECT_ROOT/data:/app/data" \
+        "${artifact_mounts[@]}" \
         --entrypoint sh "$IMAGE" \
         -c "pip install -q pytest pytest-asyncio pytest-dotenv aiosqlite aiohttp httpx pytest-cov 2>/dev/null && python3 -m pytest ${pytest_args[*]}"
 }
@@ -93,12 +102,15 @@ run_stack_harness() {
 }
 
 collect_compose_logs() {
-    local out_dir="$PROJECT_ROOT/reports/live-smoke"
+    local out_dir="/tmp/spectra-live-smoke"
+    if [[ "${SPECTRA_KEEP_TEST_ARTIFACTS:-0}" == "1" ]]; then
+        out_dir="$PROJECT_ROOT/reports/live-smoke"
+    fi
     mkdir -p "$out_dir"
     docker compose -f "$PROJECT_ROOT/docker/docker-compose.test.yml" ps > "$out_dir/compose-ps.txt" 2>&1 || true
     docker compose -f "$PROJECT_ROOT/docker/docker-compose.test.yml" logs --no-color --tail=300 \
         > "$out_dir/compose-logs.txt" 2>&1 || true
-    echo -e "${YELLOW}Compose diagnostics written to reports/live-smoke/${NC}"
+    echo -e "${YELLOW}Compose diagnostics written to ${out_dir}${NC}"
 }
 
 bootstrap_test_garage() {
@@ -138,10 +150,18 @@ case "$CMD" in
         run_in_docker tests/ -q --override-ini=addopts= --ignore=tests/e2e
         ;;
     coverage)
+        coverage_report="/tmp/spectra-coverage/html"
+        if [[ "${SPECTRA_KEEP_TEST_ARTIFACTS:-0}" == "1" ]]; then
+            coverage_report="reports/coverage"
+        fi
         run_in_docker tests/unit/ \
             --override-ini=addopts= \
-            --cov=app --cov-report=term-missing --cov-report=html:reports/coverage
-        echo -e "${GREEN}Coverage report: reports/coverage/index.html${NC}"
+            --cov=app --cov-report=term-missing --cov-report=html:"${coverage_report}"
+        if [[ "${SPECTRA_KEEP_TEST_ARTIFACTS:-0}" == "1" ]]; then
+            echo -e "${GREEN}Coverage report: reports/coverage/index.html${NC}"
+        else
+            echo -e "${GREEN}Coverage report kept inside container tmp storage${NC}"
+        fi
         ;;
     load)
         run_stack_harness load "${@:2}"

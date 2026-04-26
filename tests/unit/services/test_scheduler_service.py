@@ -91,12 +91,17 @@ async def test_sandbox_watchdog_loop_runs_single_iteration():
     service.running = True
     watchdog = AsyncMock(side_effect=lambda: setattr(service, "running", False))
 
+    @asynccontextmanager
+    async def fake_lock_owner(lock_id, *, connection_factory):
+        yield object()
+
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
             "app.core.background_tasks",
             make_module("app.core.background_tasks", sandbox_watchdog_loop=watchdog),
         )
+        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
         await service._sandbox_watchdog()
 
@@ -111,6 +116,10 @@ async def test_sandbox_watchdog_loop_handles_errors_and_continues():
     service.running = True
     watchdog = AsyncMock(side_effect=ValueError("watchdog failed"))
 
+    @asynccontextmanager
+    async def fake_lock_owner(lock_id, *, connection_factory):
+        yield object()
+
     async def stop_after_sleep(seconds):
         service.running = False
 
@@ -120,6 +129,7 @@ async def test_sandbox_watchdog_loop_handles_errors_and_continues():
             "app.core.background_tasks",
             make_module("app.core.background_tasks", sandbox_watchdog_loop=watchdog),
         )
+        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock(side_effect=stop_after_sleep))
         await service._sandbox_watchdog()
 
@@ -264,12 +274,17 @@ async def test_health_reporter_runs_single_iteration():
     service.running = True
     cache = SimpleNamespace(set=AsyncMock(side_effect=lambda *args, **kwargs: setattr(service, "running", False)))
 
+    @asynccontextmanager
+    async def fake_lock_owner(lock_id, *, connection_factory):
+        yield object()
+
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
             "app.core.cache",
             make_module("app.core.cache", get_cache=lambda: cache),
         )
+        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
         await service._health_reporter()
 
@@ -284,6 +299,10 @@ async def test_health_reporter_swallows_cache_errors():
     service.running = True
     cache = SimpleNamespace(set=AsyncMock(side_effect=OSError("cache down")))
 
+    @asynccontextmanager
+    async def fake_lock_owner(lock_id, *, connection_factory):
+        yield object()
+
     async def stop_after_sleep(seconds):
         service.running = False
 
@@ -293,6 +312,7 @@ async def test_health_reporter_swallows_cache_errors():
             "app.core.cache",
             make_module("app.core.cache", get_cache=lambda: cache),
         )
+        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock(side_effect=stop_after_sleep))
         await service._health_reporter()
 

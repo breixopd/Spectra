@@ -24,6 +24,8 @@ let currentUsers = [];
 const USER_ROLE_BADGE_CLASSES = {
     admin: 'badge-admin',
     operator: 'badge-operator',
+    staff: 'badge-operator',
+    user: 'badge-viewer',
     viewer: 'badge-viewer'
 };
 
@@ -130,13 +132,7 @@ document.querySelectorAll('.admin-sidebar [data-section]').forEach(a => {
     a.addEventListener('click', e => { e.preventDefault(); switchSection(a.dataset.section); });
 });
 
-// Restore section from URL hash
-(function() {
-    const hash = window.location.hash.slice(1);
-    if (hash && document.getElementById('section-' + hash)) {
-        switchSection(hash);
-    }
-})();
+// Section restore runs after all admin modules load.
 
 
 // ---- Dashboard (loaded from admin/dashboard.js) ----
@@ -676,58 +672,43 @@ async function performRollback(snapshotId) {
 
 // ---- Scaling (loaded from admin/scaling.js) ----
 
-// ---- Init ----
-loadStats();
-// Pre-load plans for user form plan select
-spectraApi.get('/api/admin/plans').then(r => !r.error ? r.data : []).then(p => { allPlans = Array.isArray(p) ? p : []; }).catch(() => {});
+function exposeAdminHandlers() {
+    [
+        'toggleMaintenance', 'switchSection', 'openCreateUserModal', 'openEditUserModal',
+        'resetPassword', 'deactivateUser', 'openCreatePlanModal', 'openEditPlanModal',
+        'activatePlan', 'deactivatePlan', 'checkAllHealth', 'openServiceConfigModal',
+        'testServiceConnection', 'resetServiceToLocal', 'saveBillingSettings',
+        'openProvisionModal', 'toggleProvAuth', 'updateProvisionDefaults',
+        'testServerConnection', 'provisionServer', 'deprovisionServer', 'refreshNodesList',
+        'deployToNode', 'viewNodeLogs', 'switchContentType', 'quickCreateUser',
+        'quickCreatePlan', 'openContentModal', 'closeContentModal', 'editContent',
+        'deleteContent', 'testTZConnection', 'saveTZConfig', 'loadTZConfig',
+        'createBackup', 'restoreBackup', 'saveEmailTemplate', 'sendTestEmail',
+        'loadTZStatus', 'loadTZInferences', 'loadTZFunctionStats', 'loadRollbackSnapshots',
+        'performRollback', 'loadScalingStatus', 'refreshScalingStatus', 'saveScalingConfig',
+        'scalingAction',
+    ].forEach((name) => {
+        if (typeof window[name] === 'function') {
+            window[name] = window[name];
+        }
+    });
+}
 
-// ---- Expose functions used by HTML onclick/onchange/onsubmit handlers ----
-window.toggleMaintenance = toggleMaintenance;
-window.switchSection = switchSection;
-window.openCreateUserModal = openCreateUserModal;
-window.openEditUserModal = openEditUserModal;
-window.resetPassword = resetPassword;
-window.deactivateUser = deactivateUser;
-window.openCreatePlanModal = openCreatePlanModal;
-window.openEditPlanModal = openEditPlanModal;
-window.deactivatePlan = deactivatePlan;
-window.checkAllHealth = checkAllHealth;
-window.openServiceConfigModal = openServiceConfigModal;
-window.testServiceConnection = testServiceConnection;
-window.resetServiceToLocal = resetServiceToLocal;
-window.saveBillingSettings = saveBillingSettings;
-window.openProvisionModal = openProvisionModal;
-window.toggleProvAuth = toggleProvAuth;
-window.updateProvisionDefaults = updateProvisionDefaults;
-window.testServerConnection = testServerConnection;
-window.provisionServer = provisionServer;
-window.deprovisionServer = deprovisionServer;
-window.refreshNodesList = refreshNodesList;
-window.deployToNode = deployToNode;
-window.viewNodeLogs = viewNodeLogs;
-window.switchContentType = switchContentType;
-window.quickCreateUser = quickCreateUser;
-window.quickCreatePlan = quickCreatePlan;
-window.openContentModal = openContentModal;
-window.closeContentModal = closeContentModal;
-window.editContent = editContent;
-window.deleteContent = deleteContent;
-window.testTZConnection = testTZConnection;
-window.saveTZConfig = saveTZConfig;
-window.loadTZConfig = loadTZConfig;
-window.createBackup = createBackup;
-window.restoreBackup = restoreBackup;
-window.saveEmailTemplate = saveEmailTemplate;
-window.sendTestEmail = sendTestEmail;
-window.loadTZStatus = loadTZStatus;
-window.loadTZInferences = loadTZInferences;
-window.loadTZFunctionStats = loadTZFunctionStats;
-window.loadRollbackSnapshots = loadRollbackSnapshots;
-window.performRollback = performRollback;
-window.loadScalingStatus = loadScalingStatus;
-window.refreshScalingStatus = refreshScalingStatus;
-window.saveScalingConfig = saveScalingConfig;
-window.scalingAction = scalingAction;
+function initializeAdminPage() {
+    exposeAdminHandlers();
+    const hash = window.location.hash.slice(1);
+    if (hash && document.getElementById('section-' + hash)) {
+        switchSection(hash);
+    } else {
+        loadStats();
+    }
+    spectraApi.get('/api/admin/plans')
+        .then(r => !r.error ? r.data : [])
+        .then(p => { allPlans = Array.isArray(p) ? p : []; })
+        .catch(() => {});
+}
+
+document.addEventListener('DOMContentLoaded', initializeAdminPage);
 
 function exportAuditLogsCSV() {
     const rows = document.querySelectorAll('#audit-tbody tr');

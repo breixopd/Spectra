@@ -3,9 +3,9 @@ Shell Session Manager.
 
 Manages active reverse shell connections and bridges them to WebSockets.
 Supports multiple routing modes:
-  - direct: listen on the app container (legacy default)
-  - sandbox: listen inside the mission's sandbox container (preferred)
-  - proxy: route through dedicated proxy nodes (future)
+  - direct: listen inside worker service mode only
+  - sandbox: listen inside the mission's sandbox container
+  - proxy: route through dedicated proxy nodes or fail closed
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ import contextlib
 import logging
 import socket
 import threading
+import time
 from typing import Any
 
 from fastapi import WebSocket
@@ -33,6 +34,20 @@ def _get_routing_mode() -> str:
     from app.core.config import get_settings
 
     return getattr(get_settings(), "SHELL_ROUTING_MODE", ROUTING_DIRECT)
+
+
+def _get_service_mode() -> str:
+    """Read current service mode from settings (import deferred to avoid cycles)."""
+    from app.core.config import get_settings
+
+    return getattr(get_settings(), "SERVICE_MODE", "api")
+
+
+def _get_listen_host() -> str:
+    """Read the listener bind host from settings."""
+    from app.core.config import get_settings
+
+    return getattr(get_settings(), "SHELL_LISTEN_HOST", "127.0.0.1")
 
 
 class ShellSession:
@@ -118,6 +133,7 @@ class ShellSessionManager:
         self._initialized = True
         self.sessions: dict[str, ShellSession] = {}
         self.listeners: dict[int, socket.socket | None] = {}
+        self.listener_records: dict[str, dict[str, Any]] = {}
 
         # Range for dynamic port allocation
         from app.core.constants import SHELL_CALLBACK_PORT_END, SHELL_CALLBACK_PORT_START
@@ -161,21 +177,81 @@ class ShellSessionManager:
     # Public entry point — dispatches to the right mode
     # ------------------------------------------------------------------
 
-    def start_listener(self, session_id: str, target: str, mission_id: str | None = None, port: int = 0) -> int:
+    def start_listener(
+        self,
+        session_id: str,
+        target: str,
+        mission_id: str | None = None,
+        port: int = 0,
+        ttl_seconds: int = 3600,
+    ) -> int:
         """Start a shell listener using the configured routing mode.
 
         Returns the port number the listener is bound on.
         """
+        if _get_service_mode() != "worker":
+            raise RuntimeError("Shell listeners are only allowed in worker service mode")
         mode = _get_routing_mode()
         if mode == ROUTING_SANDBOX and mission_id:
-            return self._start_sandbox_listener(session_id, target, mission_id, port)
-        # proxy mode falls back to direct until implemented
+            bound_port = self._start_sandbox_listener(session_id, target, mission_id, port)
+            self._record_listener(session_id, target, mission_id, bound_port, mode, ttl_seconds)
+            return bound_port
         if mode == ROUTING_PROXY:
-            logger.warning("Proxy routing not yet implemented, falling back to direct mode")
-        return self._start_direct_listener(session_id, target, mission_id, port)
+            raise RuntimeError("Shell proxy routing is unavailable; refusing API/control-plane listener fallback")
+        bound_port = self._start_direct_listener(session_id, target, mission_id, port)
+        self._record_listener(session_id, target, mission_id, bound_port, mode, ttl_seconds)
+        return bound_port
+
+    def _record_listener(
+        self,
+        session_id: str,
+        target: str,
+        mission_id: str | None,
+        port: int,
+        mode: str,
+        ttl_seconds: int,
+    ) -> None:
+        ttl = max(60, min(ttl_seconds, 24 * 3600))
+        self.listener_records[session_id] = {
+            "session_id": session_id,
+            "target": target,
+            "mission_id": mission_id,
+            "port": port,
+            "routing_mode": mode,
+            "created_at": time.time(),
+            "expires_at": time.time() + ttl,
+        }
+        timer = threading.Timer(ttl, self.stop_listener, kwargs={"session_id": session_id})
+        timer.daemon = True
+        timer.start()
+
+    def stop_listener(self, *, session_id: str | None = None, port: int | None = None) -> bool:
+        """Stop a managed listener by session ID or port."""
+        record = None
+        if session_id:
+            record = self.listener_records.pop(session_id, None)
+        elif port is not None:
+            for key, item in list(self.listener_records.items()):
+                if item.get("port") == port:
+                    record = self.listener_records.pop(key)
+                    session_id = key
+                    break
+        if not record:
+            return False
+        listener_port = int(record["port"])
+        server = self.listeners.pop(listener_port, None)
+        if server:
+            with contextlib.suppress(OSError):
+                server.close()
+        if session_id and session_id in self.sessions:
+            create_task = getattr(asyncio, "create_task", None)
+            if create_task:
+                with contextlib.suppress(RuntimeError):
+                    create_task(self.kill_session(session_id))
+        return True
 
     # ------------------------------------------------------------------
-    # Direct mode — listen on the app container (original behaviour)
+    # Direct mode — listen in worker service mode only
     # ------------------------------------------------------------------
 
     def _start_direct_listener(self, session_id: str, target: str, mission_id: str | None, port: int) -> int:
@@ -193,7 +269,7 @@ class ShellSessionManager:
             try:
                 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                server.bind(("127.0.0.1", port))
+                server.bind((_get_listen_host(), port))
                 server.listen(1)
                 logger.info("Shell listener started on port %s for session %s", port, session_id)
 
@@ -250,19 +326,15 @@ class ShellSessionManager:
             logger.warning("Listener already active on port %s", port)
             return port
 
+        container = self._get_sandbox_container(mission_id)
+        if container is None:
+            raise RuntimeError(f"No sandbox container found for mission {mission_id[:8]}; refusing direct listener fallback")
+
         self._ensure_loop()
         self.listeners[port] = None
 
         def _sandbox_listen():
             try:
-                container = self._get_sandbox_container(mission_id)
-                if container is None:
-                    logger.error("No sandbox container found for mission %s — falling back to direct", mission_id[:8])
-                    self.listeners.pop(port, None)
-                    # Fallback: start a direct listener instead
-                    self._start_direct_listener(session_id, target, mission_id, port)
-                    return
-
                 # Launch socat inside the sandbox: listen on TCP port, relay via stdin/stdout
                 cmd = f"socat TCP-LISTEN:{port},reuseaddr,fork STDIO"
                 exec_handle = container.exec_run(
@@ -340,6 +412,13 @@ class ShellSessionManager:
             for s in self.sessions.values()
         ]
 
+    def list_listeners(self, mission_id: str | None = None) -> list[dict[str, Any]]:
+        records = list(self.listener_records.values())
+        now = time.time()
+        if mission_id is not None:
+            records = [record for record in records if record.get("mission_id") == mission_id]
+        return [{**record, "ttl_seconds": max(0, int(record["expires_at"] - now))} for record in records]
+
     async def kill_session(self, session_id: str):
         if session_id in self.sessions:
             session = self.sessions[session_id]
@@ -376,6 +455,8 @@ class ShellSessionManager:
                     if session._exec_handle:
                         with contextlib.suppress(OSError):
                             session._exec_handle.output.close()
+                    self.listener_records.pop(session_id, None)
+                    self.sessions.pop(session_id, None)
 
 
 shell_manager = ShellSessionManager()

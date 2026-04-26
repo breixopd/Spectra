@@ -1,7 +1,7 @@
-from importlib.util import module_from_spec, spec_from_file_location
-from pathlib import Path
 import subprocess
 import sys
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -209,9 +209,10 @@ def test_server_deployer_keyscan_failure_raises_runtime_error(tmp_path):
 
     with (
         patch.object(deployer, "_known_hosts_path", return_value=known_hosts_path),
+        patch.object(deployer, "_ssh_keyscan_executable", return_value="/usr/bin/ssh-keyscan"),
         patch("app.services.infrastructure.deploy.subprocess.run", side_effect=error),
     ):
-        with pytest.raises(RuntimeError, match="ssh-keyscan failed for bad.example:22"):
+        with pytest.raises(RuntimeError, match=r"ssh-keyscan failed for bad\.example:22"):
             deployer._ensure_known_host(hostname="bad.example", port=22)
 
 
@@ -224,15 +225,15 @@ def test_server_deployer_keyscan_persists_scanned_host_keys(tmp_path):
 
     with (
         patch.object(deployer, "_known_hosts_path", return_value=known_hosts_path),
+        patch.object(deployer, "_ssh_keyscan_executable", return_value="/usr/bin/ssh-keyscan"),
         patch("app.services.infrastructure.deploy.subprocess.run", return_value=scan_result) as mock_run,
     ):
         result = deployer._ensure_known_host(hostname="example.com", port=2222)
 
     assert result == known_hosts_path
     assert known_hosts_path.read_text(encoding="utf-8") == "[example.com]:2222 ssh-ed25519 AAAASCAN\n"
-    expected_executable = deployer._ssh_keyscan_executable()
     mock_run.assert_called_once_with(
-        [expected_executable, "-p", "2222", "example.com"],
+        ["/usr/bin/ssh-keyscan", "-p", "2222", "example.com"],
         capture_output=True,
         text=True,
         check=True,

@@ -194,7 +194,7 @@ class RateLimits:
     MCP = "30/minute"
 
     # Session / account management
-    SESSION_READ = "30/minute"
+    SESSION_READ = "120/minute"
     SESSION_WRITE = "10/minute"
 
     def __init_subclass__(cls, **kwargs: object) -> None:

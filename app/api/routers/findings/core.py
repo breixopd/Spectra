@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import check_resource_owner, get_current_active_user, validate_uuid_param
@@ -56,6 +56,12 @@ class FindingCreate(BaseModel):
                 raise ValueError("Evidence values must be 5000 characters or fewer")
         return value
 
+    @model_validator(mode="after")
+    def require_artifact_for_high_severity(self) -> FindingCreate:
+        if self.severity in {Severity.HIGH, Severity.CRITICAL} and not _has_reproducible_evidence(self.evidence):
+            raise ValueError("High and critical findings require artifact_id, tool_execution_id, s3_key, or sha256 evidence")
+        return self
+
 
 class FindingUpdate(BaseModel):
     """Schema for updating a finding."""
@@ -94,6 +100,13 @@ def _finding_to_response(finding) -> FindingDetailResponse:
         evidence=finding.evidence,
         created_at=finding.created_at.isoformat(),
     )
+
+
+def _has_reproducible_evidence(evidence: dict[str, str] | None) -> bool:
+    if not evidence:
+        return False
+    required = {"artifact_id", "tool_execution_id", "s3_key", "sha256"}
+    return any(bool(evidence.get(key)) for key in required)
 
 
 def _finding_filters(
@@ -309,10 +322,16 @@ async def update_finding(
 ) -> FindingDetailResponse:
     """Update a finding."""
     repo = FindingRepository(db)
-    await _get_owned_finding_or_404(repo, finding_id, _current_user)
+    existing = await _get_owned_finding_or_404(repo, finding_id, _current_user)
 
     # Filter out None values
     update_data = finding_in.model_dump(exclude_unset=True)
+    requested_severity = update_data.get("severity")
+    if requested_severity in {Severity.HIGH, Severity.CRITICAL} and not _has_reproducible_evidence(existing.evidence):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="High and critical findings require artifact_id, tool_execution_id, s3_key, or sha256 evidence",
+        )
 
     updated = await repo.update(finding_id, **update_data)
 

@@ -30,6 +30,11 @@ def _mock_app_with_routes(routes):
     return app
 
 
+def _template_context(mock_tmpl):
+    args = mock_tmpl.TemplateResponse.call_args[0]
+    return args[1] if isinstance(args[0], str) else args[2]
+
+
 class TestDocsAdminVisibility:
     """Admin users see admin route groups; non-admins do not."""
 
@@ -57,7 +62,7 @@ class TestDocsAdminVisibility:
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
             await api_docs_page(MagicMock())
 
-        context = mock_tmpl.TemplateResponse.call_args[0][1]
+        context = _template_context(mock_tmpl)
         groups = context["route_groups"]
         assert "admin" in groups, "Admin user should see the admin route group"
 
@@ -85,7 +90,7 @@ class TestDocsAdminVisibility:
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
             await api_docs_page(MagicMock())
 
-        context = mock_tmpl.TemplateResponse.call_args[0][1]
+        context = _template_context(mock_tmpl)
         groups = context["route_groups"]
         assert "admin" not in groups, "Operator should not see admin route group"
         assert "v1" in groups, "Operator should still see /api/v1/* routes"
@@ -114,7 +119,7 @@ class TestDocsAdminVisibility:
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
             await api_docs_page(MagicMock())
 
-        context = mock_tmpl.TemplateResponse.call_args[0][1]
+        context = _template_context(mock_tmpl)
         groups = context["route_groups"]
         assert "admin" not in groups
 
@@ -145,7 +150,7 @@ class TestDocsAdminVisibility:
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
             await api_docs_page(MagicMock())
 
-        context = mock_tmpl.TemplateResponse.call_args[0][1]
+        context = _template_context(mock_tmpl)
         groups = context["route_groups"]
         assert "v1" in groups
         assert "admin" in groups

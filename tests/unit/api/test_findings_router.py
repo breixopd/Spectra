@@ -211,6 +211,7 @@ class TestCreateFinding:
                     "title": "SQL Injection",
                     "severity": "high",
                     "tool_source": "sqlmap",
+                    "evidence": {"artifact_id": "artifact-1", "sha256": "abc123"},
                 },
             )
 

@@ -97,7 +97,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 var adminNavLink = document.getElementById('admin-nav-link');
                 if (sidebarUser) sidebarUser.textContent = (user && (user.username || user.email)) || 'User';
                 if (adminNavLink) {
-                    if (user && user.is_superuser) {
+                    var isAdmin = user && (user.is_superuser || String(user.role || '').toLowerCase() === 'admin');
+                    if (isAdmin) {
                         adminNavLink.classList.remove('hidden');
                     } else {
                         adminNavLink.classList.add('hidden');

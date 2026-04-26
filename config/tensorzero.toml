@@ -9,15 +9,15 @@
 # Set OPENAI_API_KEY to your OpenRouter key.
 # Set OPENAI_BASE_URL to https://openrouter.ai/api/v1 (done in docker-compose).
 #
-# Fast tier:    inclusionai/ling-2.6-flash:free (primary)
-#               inclusionai/ling-2.6-1t:free (fallback)
-# Balanced tier: inclusionai/ling-2.6-1t:free (primary)
-#               google/gemma-4-31b-it:free (fallback)
-# Capable tier: google/gemma-4-31b-it:free (primary)
-#               inclusionai/ling-2.6-1t:free (fallback)
+# Fast tier:      nvidia/nemotron-3-nano-30b-a3b:free (primary)
+#                 google/gemma-3-12b-it:free (fallback)
+# Balanced tier:  nvidia/nemotron-3-super-120b-a12b:free (primary)
+#                 z-ai/glm-4.5-air:free (fallback)
+# Capable tier:   minimax/minimax-m2.5:free (primary)
+#                 google/gemma-4-31b-it:free (fallback)
 #
-# Gemma 4 chosen for self-hosting/fine-tuning path — can be replaced with
-# a custom fine-tuned variant when training pipeline is ready
+# Free OpenRouter endpoints are useful for development and smoke tests, but
+# providers may log prompts. Use paid/private routes for customer production data.
 #
 # To use paid models: change model_name values to e.g. "openai/gpt-4.1",
 # "anthropic/claude-sonnet-4", etc. Models are hot-swappable.
@@ -36,13 +36,13 @@ routing = ["primary", "fallback"]
 
 [models.fast.providers.primary]
 type = "openai"
-model_name = "inclusionai/ling-2.6-flash:free"
+model_name = "nvidia/nemotron-3-nano-30b-a3b:free"
 api_base = "https://openrouter.ai/api/v1"
 api_key_location = "env::OPENAI_API_KEY"
 
 [models.fast.providers.fallback]
 type = "openai"
-model_name = "inclusionai/ling-2.6-1t:free"
+model_name = "google/gemma-3-12b-it:free"
 api_base = "https://openrouter.ai/api/v1"
 api_key_location = "env::OPENAI_API_KEY"
 
@@ -52,13 +52,13 @@ routing = ["primary", "fallback"]
 
 [models.balanced.providers.primary]
 type = "openai"
-model_name = "inclusionai/ling-2.6-1t:free"
+model_name = "nvidia/nemotron-3-super-120b-a12b:free"
 api_base = "https://openrouter.ai/api/v1"
 api_key_location = "env::OPENAI_API_KEY"
 
 [models.balanced.providers.fallback]
 type = "openai"
-model_name = "google/gemma-4-31b-it:free"
+model_name = "z-ai/glm-4.5-air:free"
 api_base = "https://openrouter.ai/api/v1"
 api_key_location = "env::OPENAI_API_KEY"
 
@@ -68,13 +68,13 @@ routing = ["primary", "fallback"]
 
 [models.capable.providers.primary]
 type = "openai"
-model_name = "google/gemma-4-31b-it:free"
+model_name = "minimax/minimax-m2.5:free"
 api_base = "https://openrouter.ai/api/v1"
 api_key_location = "env::OPENAI_API_KEY"
 
 [models.capable.providers.fallback]
 type = "openai"
-model_name = "inclusionai/ling-2.6-1t:free"
+model_name = "google/gemma-4-31b-it:free"
 api_base = "https://openrouter.ai/api/v1"
 api_key_location = "env::OPENAI_API_KEY"
 

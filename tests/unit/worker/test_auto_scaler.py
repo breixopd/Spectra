@@ -10,7 +10,6 @@ from app.services.scaling.backends import OrchestratorBackend, ScaleResult
 from app.services.scaling.config import AutoScalerConfig, ServicePolicy
 from app.services.scaling.notifiers import ScalingNotifier
 
-
 # --- Test doubles ---
 
 

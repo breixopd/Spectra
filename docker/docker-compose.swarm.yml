@@ -134,12 +134,16 @@ services:
           memory: 3G
     environment:
       <<: *common-env
+      SERVICE_MODE: api
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
       JWT_SECRET_KEY_FILE: /run/secrets/jwt_secret
       SECRET_KEY_FILE: /run/secrets/secret_key
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       AI_SERVICE_URL: http://ai-svc:5010
       SCHEDULER_SERVICE_URL: http://scheduler:5011
+      WORKER_SERVICE_URL: http://worker:5012
+      CONNECT_BACK_HOST: ${CALLBACK_RELAY_HOST:?set CALLBACK_RELAY_HOST to worker or callback-relay egress address}
+      SHELL_ROUTING_MODE: proxy
       TMPDIR: /tmp
       TMP: /tmp
       TEMP: /tmp
@@ -214,6 +218,7 @@ services:
           memory: 3G
     environment:
       <<: *common-env
+      SERVICE_MODE: ai
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
       SECRET_KEY_FILE: /run/secrets/secret_key
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
@@ -284,6 +289,7 @@ services:
           memory: 256M
     environment:
       <<: *common-env
+      SERVICE_MODE: scheduler
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
       SECRET_KEY_FILE: /run/secrets/secret_key
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
@@ -358,11 +364,15 @@ services:
           memory: 4G
     environment:
       <<: *common-env
+      SERVICE_MODE: worker
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
       SKIP_MIGRATIONS: "true"
+      CONNECT_BACK_HOST: ${CALLBACK_RELAY_HOST:?set CALLBACK_RELAY_HOST to worker or callback-relay egress address}
+      SHELL_ROUTING_MODE: direct
+      SHELL_LISTEN_HOST: 0.0.0.0
     networks:
-      - frontend
       - backend
+      - engagement
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5012/health"]
       interval: 30s
@@ -587,6 +597,11 @@ networks:
   backend:
     driver: overlay
     internal: true
+    attachable: true
+    driver_opts:
+      encrypted: "true"
+  engagement:
+    driver: overlay
     attachable: true
     driver_opts:
       encrypted: "true"

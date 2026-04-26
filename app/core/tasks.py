@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from inspect import isawaitable
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +15,12 @@ def create_safe_task(
 ) -> asyncio.Task:
     """Create an asyncio task that logs exceptions instead of swallowing them."""
     task = asyncio.create_task(coro, name=name)
+    if not hasattr(task, "add_done_callback"):
+        if isawaitable(task):
+            task.close()
+        if isawaitable(coro):
+            coro.close()
+        return task
 
     def _done_callback(t: asyncio.Task) -> None:
         if t.cancelled():
@@ -23,5 +30,9 @@ def create_safe_task(
             log = logger_ or logger
             log.error("Background task %s failed: %s", t.get_name(), exc, exc_info=exc)
 
-    task.add_done_callback(_done_callback)
+    callback_result = task.add_done_callback(_done_callback)
+    if isawaitable(callback_result):
+        callback_result.close()
+    if not isinstance(task, asyncio.Task) and isawaitable(coro):
+        coro.close()
     return task

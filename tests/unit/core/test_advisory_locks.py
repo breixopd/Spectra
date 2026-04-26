@@ -1,9 +1,9 @@
 """Tests for deterministic advisory lock IDs and lifecycle helpers."""
 
 import asyncio
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from app.core.advisory_locks import advisory_lock_owner, stable_lock_id
 
@@ -16,7 +16,10 @@ def _connection_factory(connection):
         async def __aexit__(self, exc_type, exc, tb):
             return False
 
-    return lambda: _ConnectionContext()
+    def factory():
+        return _ConnectionContext()
+
+    return factory
 
 
 def test_stable_lock_id_is_deterministic_and_bigint_safe():
@@ -31,8 +34,8 @@ def test_stable_lock_id_is_deterministic_and_bigint_safe():
 def test_scheduler_lock_constants_use_stable_helper():
     from app import scheduler_service
 
-    assert scheduler_service._BACKUP_LOCK_ID == stable_lock_id("spectra_backup")
-    assert scheduler_service._SCHEDULER_LEADER_LOCK_ID == stable_lock_id("spectra_scheduler_leader")
+    assert stable_lock_id("spectra_backup") == scheduler_service._BACKUP_LOCK_ID
+    assert stable_lock_id("spectra_scheduler_leader") == scheduler_service._SCHEDULER_LEADER_LOCK_ID
 
 
 @pytest.mark.asyncio

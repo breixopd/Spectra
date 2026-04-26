@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import check_resource_owner, get_current_active_user
+from app.api.dependencies import check_feature_allowed, check_resource_owner, get_current_active_user
 from app.core.database import get_async_session
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.rate_limit import RateLimits, limiter
@@ -34,7 +34,15 @@ from app.services.system.report_templates import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["Manual Helpers"])
+async def require_manual_mode(
+    current_user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+) -> User:
+    await check_feature_allowed(current_user, session, "manual_mode")
+    return current_user
+
+
+router = APIRouter(tags=["Manual Helpers"], dependencies=[Depends(require_manual_mode)])
 
 
 # --- Checklists ---
