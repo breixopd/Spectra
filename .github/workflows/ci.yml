@@ -32,6 +32,8 @@ jobs:
       ENCRYPTION_KEY: test-encryption-key
     steps:
       - uses: actions/checkout@v4
+      - name: Ensure .env.test for Docker Compose
+        run: test -f .env.test || cp .env.test.example .env.test
       - name: Build Docker unit runner
         run: docker compose -f docker/docker-compose.test.yml build unit-test-runner
       - name: Validate TensorZero config
@@ -78,6 +80,8 @@ jobs:
       ENCRYPTION_KEY: test-encryption-key
     steps:
       - uses: actions/checkout@v4
+      - name: Ensure .env.test for Docker Compose
+        run: test -f .env.test || cp .env.test.example .env.test
       - name: Build Docker integration runner
         run: docker compose -f docker/docker-compose.test.yml build test-runner
       - name: Run integration tests in Docker
