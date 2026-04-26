@@ -84,15 +84,15 @@ deploy-check: ## Run pre-deploy checks without deploying
 
 # --- CSS (Tailwind) ---
 css-build: ## Build Tailwind CSS (production, minified)
-	@npx tailwindcss -i app/static/css/input.css -o app/static/css/output.css --minify 2>/dev/null || \
-	 tailwindcss -i app/static/css/input.css -o app/static/css/output.css --minify
+	@npx tailwindcss -i static/css/input.css -o static/css/output.css --minify 2>/dev/null || \
+	 tailwindcss -i static/css/input.css -o static/css/output.css --minify
 
 .PHONY: import-boundaries
 import-boundaries: ## Check import boundary enforcement
 	@python3 scripts/check_import_boundaries.py
 
 css-watch: ## Watch and rebuild Tailwind CSS on changes
-	@npx tailwindcss -i app/static/css/input.css -o app/static/css/output.css --watch 2>/dev/null || \
-	 tailwindcss -i app/static/css/input.css -o app/static/css/output.css --watch
+	@npx tailwindcss -i static/css/input.css -o static/css/output.css --watch 2>/dev/null || \
+	 tailwindcss -i static/css/input.css -o static/css/output.css --watch
 
 

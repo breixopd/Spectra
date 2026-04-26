@@ -1,6 +1,6 @@
 """Spectra Security Assessment Platform - Main FastAPI Application.
 
-Core API service. Use ai_service.py or scheduler_service.py for dedicated services.
+Core API service. Use app.services.ai or app.services.scheduler for dedicated services.
 """
 
 import asyncio
@@ -18,6 +18,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from starlette.responses import Response as StarletteResponse
 
+from app._meta.version import __version__
 from app.api.routers import (
     admin,
     auth,
@@ -54,7 +55,6 @@ from app.core.rate_limit import (
 )
 from app.core.telemetry_middleware import TelemetryMiddleware
 from app.core.websocket import manager
-from app.version import __version__
 
 # --- Logging Setup ---
 configure_logging(log_format=settings.LOG_FORMAT, log_level=settings.LOG_LEVEL)
@@ -62,8 +62,8 @@ logger = logging.getLogger(__name__)
 
 # --- Path Configuration ---
 APP_DIR = Path(__file__).resolve().parent
-TEMPLATES_DIR = APP_DIR / "templates"
-STATIC_DIR = APP_DIR / "static"
+TEMPLATES_DIR = APP_DIR.parent / "templates"
+STATIC_DIR = APP_DIR.parent / "static"
 
 # --- Swagger UI Customization ---
 swagger_ui_params = {

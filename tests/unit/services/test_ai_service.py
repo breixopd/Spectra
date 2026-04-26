@@ -14,7 +14,7 @@ from tests.helpers import make_module
 
 @pytest.mark.asyncio
 async def test_lifespan_initializes_embeddings_on_startup():
-    from app import ai_service
+    from app.services.ai import __main__ as ai_service
 
     embedding_service = SimpleNamespace(_load_model=AsyncMock())
 
@@ -33,7 +33,7 @@ async def test_lifespan_initializes_embeddings_on_startup():
 
 @pytest.mark.asyncio
 async def test_lifespan_tolerates_embedding_init_failure():
-    from app import ai_service
+    from app.services.ai import __main__ as ai_service
 
     embedding_service = SimpleNamespace(_load_model=AsyncMock(side_effect=OSError("model missing")))
 
@@ -54,7 +54,7 @@ async def test_lifespan_tolerates_embedding_init_failure():
 async def test_health_returns_ai_service_status():
     from unittest.mock import AsyncMock, patch
 
-    from app import ai_service
+    from app.services.ai import __main__ as ai_service
 
     mock_response = SimpleNamespace(status_code=200)
     mock_client = AsyncMock()
@@ -71,7 +71,7 @@ async def test_health_returns_ai_service_status():
 
 @pytest.mark.asyncio
 async def test_ai_chat_returns_router_response():
-    from app import ai_service
+    from app.services.ai import __main__ as ai_service
 
     router = SimpleNamespace(
         generate=AsyncMock(return_value=SimpleNamespace(content="planned", model="gpt-test", usage={"tokens": 42}))
@@ -108,7 +108,7 @@ async def test_ai_chat_returns_router_response():
 
 @pytest.mark.asyncio
 async def test_ai_chat_wraps_router_failures():
-    from app import ai_service
+    from app.services.ai import __main__ as ai_service
 
     router = SimpleNamespace(generate=AsyncMock(side_effect=TimeoutError("timeout")))
 
@@ -127,7 +127,7 @@ async def test_ai_chat_wraps_router_failures():
 
 @pytest.mark.asyncio
 async def test_generate_embeddings_returns_vectors_and_dimensions():
-    from app import ai_service
+    from app.services.ai import __main__ as ai_service
 
     embedding_service = SimpleNamespace(
         model_name="mini-embed",
@@ -154,7 +154,7 @@ async def test_generate_embeddings_returns_vectors_and_dimensions():
 
 @pytest.mark.asyncio
 async def test_generate_embeddings_wraps_service_failures():
-    from app import ai_service
+    from app.services.ai import __main__ as ai_service
 
     embedding_service = SimpleNamespace(_load_model=AsyncMock(side_effect=RuntimeError("boom")))
 
@@ -172,7 +172,7 @@ async def test_generate_embeddings_wraps_service_failures():
 
 @pytest.mark.asyncio
 async def test_rag_query_returns_serialized_results():
-    from app import ai_service
+    from app.services.ai import __main__ as ai_service
 
     results = [
         SimpleNamespace(
@@ -199,7 +199,7 @@ async def test_rag_query_returns_serialized_results():
 
 @pytest.mark.asyncio
 async def test_rag_query_wraps_service_failures():
-    from app import ai_service
+    from app.services.ai import __main__ as ai_service
 
     rag_service = SimpleNamespace(search=AsyncMock(side_effect=ValueError("bad query")))
 

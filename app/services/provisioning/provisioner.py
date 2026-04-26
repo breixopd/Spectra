@@ -130,7 +130,7 @@ class ServerProvisioner:
                 env_vars = self._build_env_vars(config)
 
                 registry = getattr(settings, "DOCKER_REGISTRY", None) or "ghcr.io/spectra"
-                from app.version import __version__ as app_version
+                from app._meta.version import __version__ as app_version
 
                 version = app_version or "latest"
 

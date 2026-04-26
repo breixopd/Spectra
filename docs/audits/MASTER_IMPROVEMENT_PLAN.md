@@ -30,14 +30,14 @@
 
 ## Loop 2: Architecture & File Organisation
 
-- [ ] **ARCH-1**: Move `app/static/` to `static/` at project root
-- [ ] **ARCH-2**: Move `app/templates/` to `templates/` at project root
-- [ ] **ARCH-3**: Move `app/version.py` to `app/_meta/version.py`
-- [ ] **ARCH-4**: Move `app/ai_service.py` to `app/services/ai/__main__.py`
-- [ ] **ARCH-5**: Move `app/scheduler_service.py` to `app/services/scheduler/__main__.py`
-- [ ] **ARCH-6**: Move `app/worker_service.py` to `app/worker/__main__.py`
-- [ ] **ARCH-7**: Update all Dockerfiles, compose files, and imports to reflect new paths
-- [ ] **ARCH-8**: Update `check_import_boundaries.py` if needed
+- [x] **ARCH-1**: Move `app/static/` to `static/` at project root
+- [x] **ARCH-2**: Move `app/templates/` to `templates/` at project root
+- [x] **ARCH-3**: Move `app/version.py` to `app/_meta/version.py`
+- [x] **ARCH-4**: Move `app/ai_service.py` to `app/services/ai/__main__.py`
+- [x] **ARCH-5**: Move `app/scheduler_service.py` to `app/services/scheduler/__main__.py`
+- [x] **ARCH-6**: Move `app/worker_service.py` to `app/worker/__main__.py`
+- [x] **ARCH-7**: Update all Dockerfiles, compose files, and imports to reflect new paths
+- [x] **ARCH-8**: Update `check_import_boundaries.py` if needed
 - [ ] **ARCH-9**: Verify `make check` passes after reorganization
 
 ---

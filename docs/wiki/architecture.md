@@ -258,9 +258,9 @@ Spectra runs as four independently deployable microservices, each controlled by 
 |-------|------|------|
 | **Shared** | `app/core/`, `app/models/`, `app/repositories/` | Used by all services. Must NOT import service-specific code. |
 | **Service: API** | `app/api/`, `app/main.py` | Routers, schemas, UI templates |
-| **Service: AI** | `app/ai_service.py`, `app/services/ai/` | LLM clients, agents, RAG |
-| **Service: Worker** | `app/worker_service.py`, `app/worker/` | Job queue consumer, tool execution |
-| **Service: Scheduler** | `app/scheduler_service.py` | Background task loops |
+| **Service: AI** | `app/services/ai/__main__.py`, `app/services/ai/` | LLM clients, agents, RAG |
+| **Service: Worker** | `app/worker/__main__.py`, `app/worker/` | Job queue consumer, tool execution |
+| **Service: Scheduler** | `app/services/scheduler/__main__.py` | Background task loops |
 
 Import boundaries are enforced by `scripts/check_import_boundaries.py` — shared packages cannot have top-level imports of service-specific modules.
 

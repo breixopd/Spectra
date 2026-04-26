@@ -43,7 +43,7 @@ app/
 ├── templates/            # Jinja2 HTML templates
 ├── worker/               # Worker jobs (tool_jobs, command_jobs, vpn_jobs)
 ├── main.py               # FastAPI app factory (494 lines)
-└── ai_service.py, scheduler_service.py, worker_service.py
+└── services/ai/__main__.py, services/scheduler/__main__.py, worker/__main__.py
 ```
 
 **GOOD:**
@@ -57,7 +57,7 @@ app/
 - `main.py` is 494 lines and includes significant routing logic inline rather than in submodules
 - `app/__init__.py` is minimal (935 bytes), no clear package exports
 - Some services are very large (e.g., `scheduler_service.py` at 40KB)
-- Service entry points (`ai_service.py`, `scheduler_service.py`, `worker_service.py`) are root-level files in `app/` rather than within their respective service modules
+- ~~Service entry points (`ai_service.py`, `scheduler_service.py`, `worker_service.py`) are root-level files in `app/` rather than within their respective service modules~~ ✅ **RESOLVED**
 
 ---
 

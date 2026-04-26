@@ -277,7 +277,7 @@ class TestWorkerQueueEnv:
         """Verify the worker service reads QUEUE_NAME from environment."""
         from pathlib import Path
 
-        worker_path = Path("app/worker_service.py")
+        worker_path = Path("app/worker/__main__.py")
         source = worker_path.read_text()
 
         assert 'os.environ.get("QUEUE_NAME"' in source or "os.environ.get('QUEUE_NAME'" in source, (

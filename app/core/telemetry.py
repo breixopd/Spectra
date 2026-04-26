@@ -405,7 +405,7 @@ class TelemetryCollector:
 
     def export_otlp_format(self) -> dict[str, Any]:
         """Export metrics and traces in OTLP JSON-compatible format."""
-        from app.version import __version__
+        from app._meta.version import __version__
 
         resource_attrs = [
             {"key": "service.name", "value": {"stringValue": "spectra"}},
