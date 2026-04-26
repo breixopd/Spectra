@@ -9,7 +9,7 @@ Complete guide for deploying Spectra in production — from single-server Docker
 **Deployment modes:**
 
 - **Docker Compose** — single-server or small teams. Auto-scaling works via `docker compose up --scale`.
-- **Docker Swarm** (recommended for production) — multi-host, fully automatic auto-scaling. Admins add hosts to the server pool via the Admin UI; after initial setup, scaling is hands-off.
+- **Docker Swarm** (recommended for production) — multi-host rolling updates, encrypted overlay networking, and Swarm secrets. Operators add hosts with the Swarm bootstrap script and use the Admin UI for visibility/control.
 - **Kubernetes** is not supported.
 
 S3-compatible object storage is part of the runtime contract. Missions, pentest sessions, knowledge assets, and backups are stored in S3; there is no local filesystem fallback.
@@ -368,11 +368,14 @@ done
 
 Swarm secrets are encrypted at rest and only available to services that reference them:
 
+Create `.env` with `VERSION`, registry settings, and secret source values, then let the deployment helper create the exact external secrets required by `docker/docker-compose.swarm.yml`:
+
 ```bash
-echo "$(openssl rand -hex 16)" | docker secret create postgres_password -
-echo "$(openssl rand -hex 32)" | docker secret create service_auth -
-echo "$(openssl rand -hex 32)" | docker secret create jwt_secret -
+./scripts/ops/swarm_deploy.sh --secrets
+./scripts/ops/swarm_deploy.sh --preflight
 ```
+
+Required Swarm secrets are: `db_password`, `db_url`, `service_auth`, `jwt_secret`, `secret_key`, `encryption_key`, `redis_password`, `garage_access_key`, `garage_secret_key`, `garage_rpc_secret`, `garage_admin_token`, `clickhouse_password`, `openai_api_key`, and `anthropic_api_key`.
 
 ### 4. Create Configs
 
@@ -383,7 +386,7 @@ docker config create caddyfile docker/Caddyfile.prod
 ### 5. Deploy the Stack
 
 ```bash
-docker stack deploy -c docker/docker-compose.swarm.yml spectra
+./scripts/ops/swarm_deploy.sh --deploy
 ```
 
 ### 6. Verify
@@ -408,14 +411,14 @@ The `docker-compose.swarm.yml` defines these services with placement constraints
 
 | Service | Placement | Replicas | Secrets |
 |---------|-----------|----------|---------|
-| `db` | `node.labels.spectra.db == true` | 1 | `postgres_password` |
-| `app` | `node.labels.spectra.app == true` | 2 | `postgres_password`, `service_auth`, `jwt_secret` |
-| `ai-svc` | `node.labels.spectra.ai == true` | 1 | `service_auth` |
-| `scheduler` | `node.labels.spectra.app == true` | 1 | `service_auth` |
-| `worker` | `node.labels.spectra.worker == true` | 2 | `service_auth` |
+| `db` | `node.labels.spectra.db == true` | 1 | `db_password` |
+| `app` | `node.labels.spectra.app == true` | 2 | `db_url`, `db_password`, `service_auth`, `jwt_secret`, `secret_key`, `encryption_key`, `redis_password`, Garage secrets |
+| `ai-svc` | `node.labels.spectra.ai == true` | 1 | `db_url`, `service_auth`, `secret_key`, `encryption_key`, `redis_password`, Garage secrets |
+| `scheduler` | `node.role == manager` | 1 | `db_url`, `service_auth`, `secret_key`, `encryption_key`, `redis_password`, Garage secrets |
+| `worker` | `node.labels.spectra.worker == true` | 2 | `db_url`, `service_auth`, `redis_password`, Garage secrets |
 | `caddy` | `node.labels.spectra.app == true` | 1 | — (uses config) |
 
-The overlay network (`spectra-net`) spans all Swarm nodes automatically.
+The `frontend` and `backend` overlay networks span Swarm nodes automatically and are configured with encrypted overlay driver options. `backend` remains internal.
 
 ### Rolling Updates
 

@@ -295,6 +295,8 @@ cmd_init() {
   node_id=$(docker info --format '{{.Swarm.NodeID}}')
   echo "  docker node update --label-add spectra.app=true ${node_id}"
   echo "  docker node update --label-add spectra.db=true  ${node_id}"
+  echo "  docker node update --label-add spectra.ai=true  ${node_id}"
+  echo "  docker node update --label-add spectra.worker=true ${node_id}"
 }
 
 cmd_label() {
@@ -342,8 +344,56 @@ cmd_secrets() {
   create_secret "garage_rpc_secret"   "${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET not set}"
   create_secret "clickhouse_password" "${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD not set}"
   create_secret "openai_api_key"      "${OPENAI_API_KEY:-}"
+  create_secret "anthropic_api_key"   "${ANTHROPIC_API_KEY:-}"
 
   log "Secrets ready (${secrets_created} created)"
+}
+
+cmd_preflight() {
+  local role=""
+  local count=""
+  local secret=""
+  local required_roles=(app db ai worker)
+  local required_secrets=(
+    db_password
+    db_url
+    service_auth
+    jwt_secret
+    secret_key
+    encryption_key
+    redis_password
+    garage_access_key
+    garage_secret_key
+    garage_rpc_secret
+    garage_admin_token
+    clickhouse_password
+    openai_api_key
+    anthropic_api_key
+  )
+
+  check_swarm
+  check_manager
+
+  [[ -f "${COMPOSE_FILE}" ]] || die "Swarm compose file not found: ${COMPOSE_FILE}"
+  [[ -f "${PROJECT_ROOT}/.env" ]] || die ".env file not found"
+  set -a; source "${PROJECT_ROOT}/.env"; set +a
+  VERSION="${VERSION:?VERSION must be set in ${PROJECT_ROOT}/.env for swarm deploys}" docker compose -f "${COMPOSE_FILE}" config >/dev/null
+
+  log "Checking required node labels..."
+  for role in "${required_roles[@]}"; do
+    count=$(docker node ls -f "node.label.spectra.${role}=true" --format '{{.ID}}' | wc -l)
+    [[ "${count}" -gt 0 ]] || die "No Ready node has required label spectra.${role}=true"
+    log "Label spectra.${role}=true: ${count} node(s)"
+  done
+
+  log "Checking required Docker secrets..."
+  for secret in "${required_secrets[@]}"; do
+    docker secret inspect "${secret}" >/dev/null 2>&1 || die "Missing Docker secret: ${secret}. Run ${0} --secrets."
+  done
+
+  docker network ls --filter name="${STACK_NAME}_frontend" --format '{{.Name}}' >/dev/null 2>&1 || true
+  [[ -S /var/run/docker.sock ]] || die "Docker socket is not available on manager; scheduler placement requires it"
+  log "Swarm preflight passed"
 }
 
 cmd_deploy() {
@@ -371,11 +421,12 @@ cmd_deploy() {
 
   log "Deploying ${STACK_NAME} stack..."
   cmd_secrets
+  cmd_preflight
 
   nodes_with_roles=$(docker node ls --format '{{.Hostname}} {{.Status}}' | grep -c "Ready" || true)
   log "Active nodes: ${nodes_with_roles}"
 
-  for role in app db; do
+  for role in app db ai worker; do
     count=$(docker node ls -f "node.label.spectra.${role}=true" --format '{{.ID}}' | wc -l)
     if [[ "${count}" -eq 0 ]]; then
       warn "No nodes labeled with spectra.${role}=true. Services may not schedule."
@@ -482,6 +533,7 @@ main() {
     --join)    docker swarm join --token "$@";;
     --label)   cmd_label "$@";;
     --secrets) cmd_secrets;;
+    --preflight) cmd_preflight;;
     --deploy)  cmd_deploy;;
     --status)  cmd_status;;
     --rollback) cmd_rollback "$@";;
@@ -548,6 +600,7 @@ REMOTE_DOCKER_INSTALL
       echo "  --join TOKEN IP    Join as worker node"
       echo "  --label NODE ROLE  Set node role (app|db|ai|worker) → spectra.<role>=true"
       echo "  --secrets          Create/verify Docker secrets"
+      echo "  --preflight        Validate labels, secrets, compose config, and manager Docker socket"
       echo "  --deploy           Deploy or update the stack"
       echo "  --status           Show stack status"
       echo "  --rollback [VER]   Redeploy the recorded previous version or an explicit version"
