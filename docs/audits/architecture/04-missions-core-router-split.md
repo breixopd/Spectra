@@ -18,4 +18,4 @@ Wire new routers in `app/api/routers/missions/__init__.py` by `router.routes.ext
 - Route order: more-specific paths must register before `/{mission_id}`.
 - Shared imports (`mission_manager`, `MissionRepository`, audit) — extract small internal helpers in `app/api/routers/missions/_deps.py` only if duplication appears.
 
-**Status:** documented for a follow-up PR; not applied in the same change set as behavioral fixes.
+**Status:** `mission_catalog.py` extracted (presets, summary, playbooks, chains, attack-summary) and merged **before** `core` in `missions/__init__.py`. Remaining `core.py` split (lifecycle vs list/detail) is optional follow-up.

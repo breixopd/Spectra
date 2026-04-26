@@ -1,10 +1,8 @@
-"""Mission core endpoints — CRUD, list, status, presets, playbooks, chains."""
+"""Mission core endpoints — start/list, per-mission CRUD and lifecycle (catalog lives in mission_catalog)."""
 
 import logging
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import (
@@ -34,157 +32,16 @@ from app.repositories.mission import MissionRepository
 from app.services.compliance.mission_abuse import evaluate_mission_abuse
 from app.services.mission.manager import mission_manager
 from app.services.mission.output_model import (
-    get_mission_finding_counts,
-    get_mission_summary_dict,
+    get_mission_findings as get_mission_output_findings,
 )
 from app.services.mission.output_model import (
-    get_mission_findings as get_mission_output_findings,
+    get_mission_summary_dict,
 )
 from app.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-class CreateChainRequest(BaseModel):
-    """Schema for creating a custom exploit chain."""
-
-    name: str = Field(..., max_length=200)
-    description: str = Field("", max_length=1000)
-    stages: list[dict[str, Any]] = Field(default_factory=list)
-
-
-@router.get("/presets", response_model=None)
-async def get_scan_presets(
-    _current_user: User = Depends(get_current_active_user),
-) -> dict[str, dict[str, Any]]:
-    """Get available scan presets."""
-    from app.services.mission.presets import SCAN_PRESETS
-
-    return SCAN_PRESETS
-
-
-@router.get("/summary", tags=["Missions"])
-async def get_missions_summary(
-    db: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_active_user),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
-) -> dict[str, Any]:
-    """Get aggregated mission summary with finding counts — paginated."""
-    from sqlalchemy import func, select
-
-    from app.models.mission import Mission
-
-    base = select(Mission)
-    if not _current_user.is_superuser:
-        base = base.where(Mission.user_id == str(_current_user.id))
-
-    # Total count
-    count_result = await db.execute(select(func.count()).select_from(base.subquery()))
-    total = count_result.scalar() or 0
-
-    # Paginated results
-    stmt = base.order_by(Mission.created_at.desc()).offset(skip).limit(limit)
-    result = await db.execute(stmt)
-    db_missions = result.scalars().all()
-
-    missions = []
-    totals = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "total": 0}
-
-    for m in db_missions:
-        counts = get_mission_finding_counts(m)
-
-        missions.append(
-            {
-                "id": str(m.id),
-                "target": m.target,
-                "directive": m.directive,
-                "status": m.status,
-                "created_at": m.created_at.isoformat() if m.created_at else None,
-                "updated_at": m.updated_at.isoformat() if m.updated_at else None,
-                "findings": counts,
-            }
-        )
-        for sev in ("critical", "high", "medium", "low", "info"):
-            totals[sev] += counts[sev]
-        totals["total"] += counts["total"]
-
-    return {"missions": missions, "totals": totals, "count": len(missions), "total": total, "skip": skip, "limit": limit}
-
-
-@router.get("/adversary-playbooks")
-async def get_adversary_playbooks(
-    _current_user: User = Depends(get_current_active_user),
-) -> list[dict[str, Any]]:
-    """List available adversary simulation playbooks."""
-    from app.services.ai.adversary_playbooks import list_adversary_playbooks
-
-    return list_adversary_playbooks()
-
-
-@router.get("/adversary-playbooks/{playbook_id}")
-async def get_adversary_playbook_detail(
-    playbook_id: str,
-    _current_user: User = Depends(get_current_active_user),
-) -> dict[str, Any]:
-    """Get full details of an adversary playbook."""
-    from app.services.ai.adversary_playbooks import get_adversary_playbook
-
-    pb = get_adversary_playbook(playbook_id)
-    if not pb:
-        raise HTTPException(status_code=404, detail="Playbook not found")
-    return pb.model_dump()
-
-
-@router.get("/exploit-chains")
-async def get_exploit_chains(
-    _current_user: User = Depends(get_current_active_user),
-) -> list[dict[str, Any]]:
-    """List available exploit chains (builtin + custom)."""
-    from app.services.mission.chain_builder import get_builtin_chains, load_custom_chains
-
-    builtin = [c.model_dump() for c in get_builtin_chains()]
-    custom = [c.model_dump() for c in load_custom_chains()]
-    return builtin + custom
-
-
-@router.post("/exploit-chains")
-async def create_exploit_chain(
-    chain_in: CreateChainRequest,
-    _current_user: User = Depends(get_current_active_user),
-) -> dict[str, Any]:
-    """Create a custom exploit chain."""
-    from app.services.mission.chain_builder import ChainBuilder, save_custom_chain
-
-    chain = ChainBuilder.create_chain(chain_in.name, chain_in.stages)
-    chain.description = chain_in.description
-
-    warnings = ChainBuilder.validate_chain(chain)
-    save_custom_chain(chain)
-
-    return {"chain": chain.model_dump(), "warnings": warnings}
-
-
-@router.get("/attack-summary")
-async def get_attack_coverage(
-    _current_user: User = Depends(get_current_active_user),
-) -> dict[str, Any]:
-    """Get MITRE ATT&CK technique coverage from all recent missions."""
-    from app.services.ai.mitre_attack import get_attack_summary
-
-    # Get recent mission findings from memory
-    try:
-        from app.services.ai.memory import get_memory
-
-        memory = get_memory(str(_current_user.id))
-        findings = []
-        for lesson in memory.tool_lessons[-50:]:
-            findings.append({"tool_name": lesson.tool_id, "source": "tool_execution"})
-        return get_attack_summary(findings)
-    except (OSError, RuntimeError, ValueError):
-        return {"tactics": {}, "total_techniques": 0}
 
 
 @router.post(
