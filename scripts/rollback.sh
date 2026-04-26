@@ -14,7 +14,7 @@ LOG_DIR="$PROJECT_DIR/logs"
 LOG_FILE="$LOG_DIR/deploy.log"
 BACKUP_DIR="$PROJECT_DIR/data/backups"
 COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_DIR/docker/docker-compose.yml}"
-HEALTH_URL="${HEALTH_URL:-http://localhost:80/api/health}"
+HEALTH_URL="${HEALTH_URL:-http://localhost:80/api/v1/health?scope=public}"
 DEPLOY_WEBHOOK_URL="${DEPLOY_WEBHOOK_URL:-}"
 TARGET_VERSION="${1:-}"
 
@@ -29,7 +29,7 @@ Arguments:
 Environment variables:
   COMPOSE_FILE        Docker compose file (default: docker/docker-compose.yml)
   DEPLOY_WEBHOOK_URL  Webhook URL for rollback notifications (optional)
-  HEALTH_URL          Health check URL (default: http://localhost:80/api/health)
+  HEALTH_URL          Health check URL (default: http://localhost:80/api/v1/health?scope=public)
 
 Examples:
   $(basename "$0") 2026.03.11         # Rollback to specific version

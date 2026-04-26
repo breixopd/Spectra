@@ -138,8 +138,15 @@ First visit redirects to `/setup` → create the admin account.
 # Check all containers are healthy
 docker compose -f docker/docker-compose.yml ps
 
-# Health check
-curl -f http://localhost:5000/api/health
+# Lightweight liveness/readiness-safe health
+curl -f 'http://localhost:5000/api/health'
+
+# Public platform status shape (API, DB, storage, AI, worker, scheduler)
+curl -f 'http://localhost:5000/api/v1/health?scope=public' | python3 -m json.tool
+
+# Full detail, including service latency and scaled nodes (admin JWT or service auth)
+curl -f -H "X-Service-Auth: ${SERVICE_AUTH_SECRET}" \
+  'http://localhost:5000/api/v1/health?detail=full&include=services,nodes' | python3 -m json.tool
 
 # Tail logs
 docker compose -f docker/docker-compose.yml logs -f app
@@ -153,7 +160,8 @@ Deployment bootstrap and first verification stay on this page. For ongoing runbo
 
 After the stack is up:
 
-- Run `./scripts/health_check.sh http://<host>/api/health` for the first operator smoke check.
+- Run `./scripts/health_check.sh 'http://<host>/api/v1/health?scope=public'` for the first operator smoke check.
+- For compose/staging validation, run `START_STACK=1 ./scripts/test.sh live-smoke`. It starts the test stack, bootstraps Garage buckets without printing secrets, runs setup/login if needed, checks public and full health latency, tests TensorZero, and smoke-tests UI routes. Set `APP_BASE_URL` to point the same smoke at a deployed VPS or Swarm manager.
 - Confirm backup visibility via **Admin UI → Backups** or `GET /api/admin/backups` once storage is configured.
 - Use [Deployment](deployment.md#rollback) for version rollback mechanics if the rollout needs to be reversed.
 

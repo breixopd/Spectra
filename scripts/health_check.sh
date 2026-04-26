@@ -6,8 +6,8 @@
 # Returns: 0 on success, 1 on failure
 #
 # Examples:
-#   ./scripts/health_check.sh http://localhost:5000/api/health/ready
-#   ./scripts/health_check.sh http://localhost:5000/api/health/ready 5 2
+#   ./scripts/health_check.sh 'http://localhost:5000/api/v1/health?scope=public'
+#   ./scripts/health_check.sh 'http://localhost:5000/api/health/ready' 5 2
 
 set -euo pipefail
 
@@ -60,13 +60,13 @@ done
 # ── Supplementary checks (best-effort) ──────────────────────────
 
 # Derive base URL from the primary URL (strip path)
-BASE_URL=$(echo "$URL" | sed 's|/api/health.*||')
+BASE_URL=$(echo "$URL" | sed -E 's|/api(/v1)?/health.*||')
 
-# Public status endpoint — verifies public API routes work
-if curl -sf --max-time 10 "${BASE_URL}/api/v1/system/public-status" > /dev/null 2>&1; then
-    echo "Supplementary check passed: public-status"
+# Canonical public health endpoint — verifies public API routes work
+if curl -sf --max-time 10 "${BASE_URL}/api/v1/health?scope=public" > /dev/null 2>&1; then
+    echo "Supplementary check passed: canonical public health"
 else
-    echo "WARN: /api/v1/system/public-status did not respond (non-critical)"
+    echo "WARN: /api/v1/health?scope=public did not respond (non-critical)"
 fi
 
 REDIS_URL="${REDIS_URL:-redis://localhost:6379}"
@@ -93,6 +93,16 @@ fi
 
 if [ "${HEALTH_CHECK_FULL:-0}" = "1" ]; then
     echo "Running full deep health checks..."
+    AUTH_HEADER=()
+    if [ -n "${SERVICE_AUTH_SECRET:-}" ]; then
+        AUTH_HEADER=(-H "X-Service-Auth: ${SERVICE_AUTH_SECRET}")
+    fi
+
+    if curl -sf --max-time 20 "${AUTH_HEADER[@]}" "${BASE_URL}/api/v1/health?detail=full&include=services,nodes" > /dev/null 2>&1; then
+        echo "Deep check passed: canonical full platform health"
+    else
+        echo "WARN: canonical full platform health did not respond or was degraded"
+    fi
 
     # AI service direct check (if AI_SERVICE_URL is set)
     if [ -n "${AI_SERVICE_URL:-}" ]; then
@@ -103,19 +113,7 @@ if [ "${HEALTH_CHECK_FULL:-0}" = "1" ]; then
         fi
     fi
 
-    # Worker status via app proxy
-    if curl -sf --max-time 10 "${BASE_URL}/api/v1/worker/status" > /dev/null 2>&1; then
-        echo "Deep check passed: worker status proxy"
-    else
-        echo "WARN: Worker status endpoint did not respond"
-    fi
-
-    # Storage health via app proxy
-    if curl -sf --max-time 10 "${BASE_URL}/api/v1/system/storage-health" > /dev/null 2>&1; then
-        echo "Deep check passed: storage health"
-    else
-        echo "WARN: Storage health endpoint did not respond"
-    fi
+    echo "Deep check note: service, storage, and node details are covered by canonical full health"
 fi
 
 exit $FAILED

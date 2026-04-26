@@ -86,7 +86,7 @@ from app.core.config import settings as _rl_settings
 from app.core.constants import API_RATE_LIMIT
 
 # Paths exempt from rate limiting (static assets, health probes, lightweight status)
-_RATE_LIMIT_EXEMPT_PREFIXES = ("/static/", "/api/health", "/api/v1/system/status/quick")
+_RATE_LIMIT_EXEMPT_PREFIXES = ("/static/", "/api/health", "/api/v1/health", "/api/v1/system/status/quick")
 
 
 def _rate_limit_key_func(request: Request) -> str:

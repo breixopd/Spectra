@@ -190,7 +190,7 @@ start_all() {
     log "Waiting for application to be healthy..."
     local retries=30
     while [[ $retries -gt 0 ]]; do
-        if curl -sf http://localhost:${APP_PORT:-443}/api/health >/dev/null 2>&1; then
+        if curl -sf "http://localhost:${APP_PORT:-443}/api/v1/health?scope=public" >/dev/null 2>&1; then
             log "Application is healthy"
             return 0
         fi
@@ -220,7 +220,7 @@ print_summary() {
     echo -e "  ${BLUE}Useful commands:${NC}"
     echo -e "    Logs:    docker compose -f docker/docker-compose.yml logs -f app"
     echo -e "    Stop:    docker compose -f docker/docker-compose.yml down"
-    echo -e "    Health:  curl -sf ${url}/api/health | python3 -m json.tool"
+    echo -e "    Health:  curl -sf '${url}/api/v1/health?scope=public' | python3 -m json.tool"
     echo ""
 }
 

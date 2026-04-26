@@ -120,7 +120,7 @@ verify_migration() {
 
     # Check health
     local health
-    health=$(curl -sf http://localhost/api/health 2>/dev/null) || { err "Health check failed"; exit 1; }
+    health=$(curl -sf 'http://localhost/api/v1/health?scope=public' 2>/dev/null) || { err "Health check failed"; exit 1; }
     echo "$health" | python3 -m json.tool
 
     # Check DB

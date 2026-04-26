@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import secrets
+import time
 from datetime import UTC, datetime
 
 from sqlalchemy import and_, select, update
@@ -195,14 +196,19 @@ class ServerPoolManager:
         import httpx
 
         url = node["url"]
+        metadata = node.get("metadata") if isinstance(node.get("metadata"), dict) else {}
+        health_path = metadata.get("health_path") or "/health"
+        start = time.monotonic()
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get(f"{url}/health")
+                resp = await client.get(f"{url.rstrip('/')}{health_path}")
+                latency_ms = round((time.monotonic() - start) * 1000, 1)
                 if resp.status_code == 200:
-                    return {"health_status": "healthy", "last_error": None}
-                return {"health_status": "unhealthy", "last_error": f"HTTP {resp.status_code}"}
+                    return {"health_status": "healthy", "last_error": None, "latency_ms": latency_ms}
+                return {"health_status": "unhealthy", "last_error": f"HTTP {resp.status_code}", "latency_ms": latency_ms}
         except (OSError, RuntimeError, ConnectionError, TimeoutError) as e:
-            return {"health_status": "unhealthy", "last_error": str(e)}
+            latency_ms = round((time.monotonic() - start) * 1000, 1)
+            return {"health_status": "unhealthy", "last_error": str(e), "latency_ms": latency_ms}
 
     async def _collect_node_metrics(self, node: dict) -> dict | None:
         """Fetch /internal/metrics from a node. Returns metrics dict or None on failure."""
@@ -247,6 +253,10 @@ class ServerPoolManager:
                         existing = node.metadata_ or {}
                         existing["node_metrics"] = metrics
                         node.metadata_ = existing
+                if check.get("latency_ms") is not None:
+                    existing = node.metadata_ or {}
+                    existing["last_health_latency_ms"] = check["latency_ms"]
+                    node.metadata_ = existing
 
                 stype = node.service_type
                 if stype not in results:
@@ -256,6 +266,7 @@ class ServerPoolManager:
                         **node.to_dict(),
                         "health_status": check["health_status"],
                         "last_error": check.get("last_error"),
+                        "latency_ms": check.get("latency_ms"),
                     }
                 )
 

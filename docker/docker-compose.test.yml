@@ -38,7 +38,7 @@ services:
   garage:
     image: dxflrs/garage:v2.2.0
     environment:
-      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:-test-rpc-secret-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
     volumes:
       - garage_meta:/var/lib/garage/meta
       - garage_data:/var/lib/garage/data
@@ -67,7 +67,7 @@ services:
       - backend
 
   tensorzero:
-    image: tensorzero/gateway:2025.01.07
+    image: ${TENSORZERO_IMAGE:-tensorzero/gateway:latest}
     command: ["--config-file", "/app/config/tensorzero.toml"]
     volumes:
       - ../config/tensorzero.toml:/app/config/tensorzero.toml:ro
@@ -94,7 +94,9 @@ services:
       dockerfile: docker/Dockerfile.ai
     environment:
       <<: *test-env
-      DATABASE_URL: postgresql+asyncpg://spectra_user:spectra_test_pass@db:5432/spectra_test
+      DATABASE_URL: postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+      DATABASE_POOL_SIZE: "8"
+      DATABASE_MAX_OVERFLOW: "8"
       SKIP_MIGRATIONS: "true"
       EMBEDDING_API_KEY: ${OPENAI_API_KEY}
       EMBEDDING_BASE_URL: ${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
@@ -118,7 +120,7 @@ services:
       dockerfile: docker/Dockerfile.scheduler
     environment:
       <<: *test-env
-      DATABASE_URL: postgresql+asyncpg://spectra_user:spectra_test_pass@db:5432/spectra_test
+      DATABASE_URL: postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       SKIP_MIGRATIONS: "true"
     depends_on:
       db:
@@ -138,7 +140,7 @@ services:
       dockerfile: docker/Dockerfile.worker
     environment:
       <<: *test-env
-      DATABASE_URL: postgresql+asyncpg://spectra_user:spectra_test_pass@db:5432/spectra_test
+      DATABASE_URL: postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       SKIP_MIGRATIONS: "true"
     depends_on:
       db:
@@ -519,7 +521,7 @@ services:
     env_file:
       - ../.env.test
     environment:
-      - APP_BASE_URL=http://host.docker.internal:15000
+      - APP_BASE_URL=http://host.docker.internal:15080
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
     volumes:
       - ../tests:/app/tests:ro
