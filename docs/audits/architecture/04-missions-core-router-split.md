@@ -1,6 +1,6 @@
 # Missions `core.py` split — candidate structure
 
-`app/api/routers/missions/core.py` is the largest mission router module. The package already splits **artifacts**, **export**, and **feedback**; `core` still bundles list/summary, presets, chain CRUD, and lifecycle (stop/pause/resume/delete).
+`app/api/routers/missions/core.py` is the main mission router module. The package splits **artifacts**, **export**, **feedback**, and **mission_catalog**; lifecycle lives in **`mission_lifecycle.py`**, merged after **core** in `missions/__init__.py`.
 
 ## Target layout (no backward-compat shims)
 
@@ -18,4 +18,4 @@ Wire new routers in `app/api/routers/missions/__init__.py` by `router.routes.ext
 - Route order: more-specific paths must register before `/{mission_id}`.
 - Shared imports (`mission_manager`, `MissionRepository`, audit) — extract small internal helpers in `app/api/routers/missions/_deps.py` only if duplication appears.
 
-**Status:** `mission_catalog.py` extracted (presets, summary, playbooks, chains, attack-summary) and merged **before** `core` in `missions/__init__.py`. Remaining `core.py` split (lifecycle vs list/detail) is optional follow-up.
+**Status:** `mission_catalog.py` and **`mission_lifecycle.py`** (delete, stop, pause, resume) are merged in order: catalog → core → lifecycle → export → feedback → artifacts. Further thinning of `core` (dedicated list/detail module) is optional.

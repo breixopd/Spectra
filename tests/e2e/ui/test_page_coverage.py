@@ -5,6 +5,8 @@ import os
 import pytest
 from playwright.sync_api import Page, expect
 
+from tests.e2e.ui.harness.navigation import goto_authenticated_app_path
+
 pytestmark = [pytest.mark.e2e, pytest.mark.ui]
 
 APP_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
@@ -18,7 +20,7 @@ APP_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
 def test_targets_page(logged_in_page: Page, app_url: str):
     """Navigate to /targets, verify heading, add-target button, and list container."""
     page = logged_in_page
-    page.goto(f"{app_url}/targets", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/targets")
 
     heading = page.locator("h1")
     expect(heading).to_be_visible(timeout=10_000)
@@ -41,7 +43,7 @@ def test_targets_page(logged_in_page: Page, app_url: str):
 def test_history_page(logged_in_page: Page, app_url: str):
     """Navigate to /history, verify heading and mission list container."""
     page = logged_in_page
-    page.goto(f"{app_url}/history", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/history")
 
     heading = page.locator("h1")
     expect(heading).to_be_visible(timeout=10_000)
@@ -60,7 +62,7 @@ def test_history_page(logged_in_page: Page, app_url: str):
 def test_reports_page(fresh_authenticated_page: Page, app_url: str):
     """Navigate to /reports, verify heading and reports container."""
     page = fresh_authenticated_page
-    page.goto(f"{app_url}/reports", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/reports")
 
     expect(page).to_have_url(f"{app_url}/reports", timeout=15_000)
     heading = page.get_by_role("heading", name="Assessment Reports", exact=True)
@@ -78,7 +80,7 @@ def test_reports_page(fresh_authenticated_page: Page, app_url: str):
 def test_toolbox_page(logged_in_page: Page, app_url: str):
     """Navigate to /toolbox, verify heading and tools list/grid."""
     page = logged_in_page
-    page.goto(f"{app_url}/toolbox", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/toolbox")
 
     heading = page.locator("h2")
     expect(heading.first).to_be_visible(timeout=15_000)
@@ -98,7 +100,7 @@ def test_toolbox_page(logged_in_page: Page, app_url: str):
 def test_toolbox_create_page(logged_in_page: Page, app_url: str):
     """Navigate to /toolbox/create, verify plugin creation form."""
     page = logged_in_page
-    page.goto(f"{app_url}/toolbox/create", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/toolbox/create")
 
     heading = page.locator("h1")
     expect(heading).to_be_visible(timeout=10_000)
@@ -118,7 +120,8 @@ def test_manual_tools_page(logged_in_page: Page, app_url: str, ensure_manual_mod
     """Navigate to /manual, verify Manual Mode heading."""
     page = logged_in_page
 
-    response = page.goto(f"{app_url}/manual", wait_until="networkidle")
+    response = page.goto(f"{app_url}/manual", wait_until="domcontentloaded")
+    expect(page.locator("#sidebar")).to_be_visible(timeout=20_000)
 
     assert "/dashboard" not in page.url, "Redirected to /dashboard — manual_mode subscription setup failed"
 
@@ -139,7 +142,7 @@ def test_manual_tools_page(logged_in_page: Page, app_url: str, ensure_manual_mod
 def test_help_page(logged_in_page: Page, app_url: str):
     """Navigate to /help, verify heading and at least one help section."""
     page = logged_in_page
-    page.goto(f"{app_url}/help", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/help")
 
     heading = page.locator("h1")
     expect(heading).to_be_visible(timeout=10_000)
@@ -200,7 +203,7 @@ def test_security_page(page: Page, app_url: str):
 def test_targets_add_target(logged_in_page: Page, app_url: str):
     """Verify the Add Target modal opens and contains the expected form fields."""
     page = logged_in_page
-    page.goto(f"{app_url}/targets", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/targets")
 
     # Click "Add Target" button to open the modal (icon-only trigger)
     add_btn = page.locator("button[aria-label='Add Target']")
@@ -233,7 +236,7 @@ def test_targets_add_target(logged_in_page: Page, app_url: str):
 def test_dashboard_mission_launch_form(logged_in_page: Page, app_url: str):
     """Verify the mission launch form on the dashboard is interactive."""
     page = logged_in_page
-    page.goto(f"{app_url}/dashboard", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/dashboard")
 
     # Mission target input
     target_input = page.locator("#mission-target")
@@ -258,7 +261,7 @@ def test_dashboard_mission_launch_form(logged_in_page: Page, app_url: str):
 def test_admin_user_management(logged_in_page: Page, app_url: str):
     """Navigate to /admin, verify the Users section shows user data."""
     page = logged_in_page
-    page.goto(f"{app_url}/admin", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/admin")
 
     # Click Users tab
     users_tab = page.locator(".admin-sidebar [data-section='users']")

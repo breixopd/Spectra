@@ -1,6 +1,5 @@
 """Playwright UI test fixtures."""
 
-import contextlib
 import os
 import urllib.parse
 from typing import Any, cast
@@ -293,8 +292,7 @@ def authenticated_page(
 
     try:
         _page.goto(f"{app_url}/dashboard", wait_until="domcontentloaded")
-        with contextlib.suppress(Exception):
-            _page.wait_for_load_state("networkidle", timeout=10_000)
+        expect(_page.locator("#sidebar")).to_be_visible(timeout=15_000)
         if "/login" in _page.url or "/dashboard" not in _page.url:
             needs_reauth = True
     except Exception:
@@ -359,6 +357,7 @@ def fresh_authenticated_page(
         context.clear_cookies()
         context.add_cookies(cast(Any, cookies_to_use))
         _page.goto(f"{app_url}/dashboard", wait_until="domcontentloaded")
+    expect(_page.locator("#sidebar")).to_be_visible(timeout=15_000)
 
     yield _page
     if not _page.is_closed():

@@ -5,6 +5,8 @@ import contextlib
 import pytest
 from playwright.sync_api import Page, expect
 
+from tests.e2e.ui.harness.navigation import goto_authenticated_app_path
+
 MOBILE_VIEWPORT = {"width": 375, "height": 812}
 
 
@@ -12,7 +14,7 @@ def _body_scroll_width_after_navigation(page: Page) -> int:
     """Read body width after any auth/status navigation races settle."""
     for attempt in range(3):
         with contextlib.suppress(Exception):
-            page.wait_for_load_state("networkidle", timeout=3_000)
+            page.wait_for_load_state("domcontentloaded", timeout=3_000)
         try:
             return int(page.evaluate("() => document.body.scrollWidth"))
         except Exception:
@@ -26,7 +28,7 @@ def _body_scroll_width_after_navigation(page: Page) -> int:
 def mobile_page(page: Page, app_url: str):
     """Page with mobile viewport."""
     page.set_viewport_size(MOBILE_VIEWPORT)  # iPhone 13
-    page.goto(f"{app_url}/login", wait_until="networkidle")
+    page.goto(f"{app_url}/login", wait_until="domcontentloaded")
     return page
 
 
@@ -46,7 +48,7 @@ def test_dashboard_mobile_scrollable(authenticated_page: Page, app_url: str):
     authenticated_page.set_viewport_size(MOBILE_VIEWPORT)
 
     # Reuse the shared authenticated flow before asserting the mobile layout.
-    authenticated_page.goto(f"{app_url}/dashboard", wait_until="networkidle")
+    goto_authenticated_app_path(authenticated_page, app_url, "/dashboard")
 
     # Check that body allows scrolling (no overflow-hidden on mobile)
     overflow = authenticated_page.evaluate("() => getComputedStyle(document.body).overflowY")

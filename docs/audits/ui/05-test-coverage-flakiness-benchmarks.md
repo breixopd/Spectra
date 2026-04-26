@@ -24,6 +24,7 @@ Scope: Playwright, Docker test runners, live smoke, skipped tests, warnings, per
 - Playwright best practice is to prefer user-facing locators (`getByRole`, labels, text) and use test IDs only when no stable accessible contract exists.
 - Each role should have isolated authenticated state. Multi-role flows should use separate browser contexts rather than reusing mutable cookies.
 - Flaky tests should be fixed by waiting for business conditions and stable UI states, not by broad sleeps or large global timeouts.
+- E2E navigation uses `tests/e2e/ui/harness/navigation.py` (`domcontentloaded` + visible `#sidebar`) instead of `networkidle` where the dashboard shell is expected.
 
 ## Recommended Work
 

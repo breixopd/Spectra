@@ -108,9 +108,9 @@ class TestMissionStopAuditEmission:
         mission_id = "00000000-0000-4000-a000-000000000123"
 
         with (
-            patch("app.api.routers.missions.core.mission_manager") as mock_mm,
-            patch("app.api.routers.missions.core.audit_log_event", new_callable=AsyncMock) as mock_audit,
-            patch("app.api.routers.missions.core.check_resource_owner"),
+            patch("app.api.routers.missions.mission_lifecycle.mission_manager") as mock_mm,
+            patch("app.api.routers.missions.mission_lifecycle.audit_log_event", new_callable=AsyncMock) as mock_audit,
+            patch("app.api.routers.missions.mission_lifecycle.check_resource_owner"),
         ):
             mock_mm.get_mission = AsyncMock(return_value=None)
             mock_mm.stop_mission = AsyncMock(return_value=True)
@@ -147,9 +147,9 @@ class TestMissionPauseAuditEmission:
         mission_id = "00000000-0000-4000-a000-000000000456"
 
         with (
-            patch("app.api.routers.missions.core.mission_manager") as mock_mm,
-            patch("app.api.routers.missions.core.audit_log_event", new_callable=AsyncMock) as mock_audit,
-            patch("app.api.routers.missions.core.check_resource_owner"),
+            patch("app.api.routers.missions.mission_lifecycle.mission_manager") as mock_mm,
+            patch("app.api.routers.missions.mission_lifecycle.audit_log_event", new_callable=AsyncMock) as mock_audit,
+            patch("app.api.routers.missions.mission_lifecycle.check_resource_owner"),
         ):
             mock_mm.get_mission = AsyncMock(return_value=None)
             mock_mm.pause_mission = AsyncMock(return_value=True)

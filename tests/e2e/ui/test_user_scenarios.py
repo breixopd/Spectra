@@ -5,13 +5,13 @@ Tests are ordered so that all authenticated_page (session-scoped cookie) tests
 run before unauthenticated page tests to avoid rate-limit / cookie interference.
 """
 
-import contextlib
 import time
 
 import pytest
 from playwright.sync_api import Page, expect
 
 from tests.e2e.ui.conftest import ADMIN_PASSWORD, ADMIN_USERNAME, _reset_user_activity
+from tests.e2e.ui.harness.navigation import goto_authenticated_app_path
 
 pytestmark = [pytest.mark.e2e, pytest.mark.ui]
 
@@ -44,8 +44,7 @@ def test_plan_displayed_on_profile(authenticated_page: Page, app_url: str):
         fresh = _refresh_auth_cookies(app_url)
         page.context.add_cookies(fresh)
         page.goto(f"{app_url}/profile", wait_until="domcontentloaded")
-    with contextlib.suppress(Exception):
-        page.wait_for_load_state("networkidle", timeout=10_000)
+    expect(page.locator("#sidebar")).to_be_visible(timeout=15_000)
 
     # Use JS to switch to the Plan tab (more reliable than clicking)
     page.evaluate("""() => {
@@ -141,7 +140,7 @@ def test_admin_plan_management(fresh_authenticated_page: Page, app_url: str):
 def test_mission_launch_form(authenticated_page: Page, app_url: str):
     """Verify mission launch form accepts target and directive input."""
     page = authenticated_page
-    page.goto(f"{app_url}/dashboard", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/dashboard")
 
     # Mission target input
     target_input = page.locator("#mission-target")
@@ -180,7 +179,7 @@ _SETTINGS_TABS = [
 def test_settings_all_sections(authenticated_page: Page, app_url: str):
     """Verify all settings tab sections are accessible."""
     page = authenticated_page
-    page.goto(f"{app_url}/settings", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/settings")
 
     for tab_id, _section_name in _SETTINGS_TABS:
         tab_btn = page.locator(f"#{tab_id}")
@@ -202,7 +201,7 @@ def test_settings_all_sections(authenticated_page: Page, app_url: str):
 def test_admin_link_visible_for_admin(authenticated_page: Page, app_url: str):
     """Admin user should have the admin nav link shown (un-hidden by JS)."""
     page = authenticated_page
-    page.goto(f"{app_url}/dashboard", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/dashboard")
 
     # The admin nav link starts as hidden and is shown by JS for admin users
     admin_link = page.locator("#admin-nav-link")
@@ -238,7 +237,7 @@ def test_sidebar_navigation_all_links(authenticated_page: Page, app_url: str):
     page = authenticated_page
 
     for path in _SIDEBAR_NAV_PATHS:
-        page.goto(f"{app_url}{path}", wait_until="networkidle")
+        goto_authenticated_app_path(page, app_url, path)
         assert page.url == f"{app_url}{path}" or page.url.startswith(f"{app_url}{path}#")
 
         # No 5xx error page should appear
@@ -270,7 +269,7 @@ _PROFILE_SECTIONS = [
 def test_profile_all_tabs(authenticated_page: Page, app_url: str):
     """Verify all profile tabs can be clicked and their sections appear."""
     page = authenticated_page
-    page.goto(f"{app_url}/profile", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/profile")
 
     for section_key, section_id in _PROFILE_SECTIONS:
         tab = page.locator(f"a[data-section='{section_key}']")
@@ -300,7 +299,7 @@ def test_profile_all_tabs(authenticated_page: Page, app_url: str):
 def test_dashboard_getting_started(authenticated_page: Page, app_url: str):
     """Verify the getting started section is present on the dashboard."""
     page = authenticated_page
-    page.goto(f"{app_url}/dashboard", wait_until="networkidle")
+    goto_authenticated_app_path(page, app_url, "/dashboard")
 
     getting_started = page.locator("#getting-started")
     # Getting started may or may not be visible (hidden after first use),
@@ -441,7 +440,7 @@ def test_login_rate_limit_allows_normal_usage(page: Page, app_url: str):
 
     # Navigate to a few pages
     for path in ["/history", "/targets", "/settings"]:
-        page.goto(f"{app_url}{path}", wait_until="networkidle")
+        goto_authenticated_app_path(page, app_url, path)
         # Should not see a 429 error page
         error_code = page.locator(".error-code")
         if error_code.count() > 0 and error_code.is_visible():

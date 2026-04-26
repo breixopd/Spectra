@@ -1,12 +1,13 @@
 """Multi-role access control tests — admin, user, staff."""
 
-import contextlib
 import os
 import uuid
 
 import httpx
 import pytest
 from playwright.sync_api import Page, expect
+
+from tests.e2e.ui.harness.navigation import goto_authenticated_app_path
 
 pytestmark = [pytest.mark.e2e, pytest.mark.ui]
 
@@ -195,10 +196,8 @@ def test_operator_cannot_access_admin_page(page: Page, app_url: str, authenticat
 
     _login_as(page, app_url, username)
 
-    # Navigate to admin — should be denied or redirected
+    # Navigate to admin — may 403 without full app shell; only wait for DOM.
     page.goto(f"{app_url}/admin", wait_until="domcontentloaded")
-    with contextlib.suppress(Exception):
-        page.wait_for_load_state("networkidle", timeout=5_000)
 
     # User should NOT be on /admin (either redirected or shown error)
     url = page.url
@@ -254,9 +253,7 @@ def test_viewer_cannot_launch_mission(page: Page, app_url: str, authenticated_co
 
     _login_as(page, app_url, username)
 
-    page.goto(f"{app_url}/dashboard", wait_until="domcontentloaded")
-    with contextlib.suppress(Exception):
-        page.wait_for_load_state("networkidle", timeout=5_000)
+    goto_authenticated_app_path(page, app_url, "/dashboard")
 
     # Launch button may be visible for all roles (enforcement is server-side).
     # Verify the staff user does not have admin privileges instead.
@@ -279,9 +276,7 @@ def test_viewer_cannot_launch_mission(page: Page, app_url: str, authenticated_co
 def test_admin_can_see_admin_link(authenticated_page: Page, app_url: str):
     """Admin user should see the admin navigation link."""
     page = authenticated_page
-    page.goto(f"{app_url}/dashboard", wait_until="domcontentloaded")
-    with contextlib.suppress(Exception):
-        page.wait_for_load_state("networkidle", timeout=5_000)
+    goto_authenticated_app_path(page, app_url, "/dashboard")
 
     admin_link = page.locator("#admin-nav-link")
     expect(admin_link).to_be_attached(timeout=15_000)
@@ -297,9 +292,7 @@ def test_admin_can_see_admin_link(authenticated_page: Page, app_url: str):
 def test_admin_can_access_admin_page(authenticated_page: Page, app_url: str):
     """Admin user can access the admin panel page."""
     page = authenticated_page
-    page.goto(f"{app_url}/admin", wait_until="domcontentloaded")
-    with contextlib.suppress(Exception):
-        page.wait_for_load_state("networkidle", timeout=5_000)
+    goto_authenticated_app_path(page, app_url, "/admin")
 
     expect(page).to_have_url(f"{app_url}/admin", timeout=10_000)
     # Admin page should show admin content, not an error
