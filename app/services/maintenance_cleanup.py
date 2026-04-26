@@ -1,4 +1,4 @@
-"""Periodic cleanup tasks for system maintenance."""
+"""Periodic cleanup task implementations shared by scheduler and workers."""
 
 from __future__ import annotations
 
@@ -19,12 +19,7 @@ logger = logging.getLogger(__name__)
 async def cleanup_expired_cache(session) -> int:
     """Remove expired system cache entries."""
     now = datetime.now(UTC)
-    result = await session.execute(
-        delete(SystemCache).where(
-            SystemCache.expires_at.isnot(None),
-            SystemCache.expires_at < now,
-        )
-    )
+    result = await session.execute(delete(SystemCache).where(SystemCache.expires_at.isnot(None), SystemCache.expires_at < now))
     await session.commit()
     count = result.rowcount  # type: ignore[union-attr]
     if count:
@@ -46,12 +41,7 @@ async def cleanup_orphaned_sandboxes(sandbox_pool) -> int:
 async def cleanup_old_cache_entries(session, max_age_days: int = 7) -> int:
     """Purge cache entries older than max_age_days."""
     cutoff = datetime.now(UTC) - timedelta(days=max_age_days)
-    result = await session.execute(
-        delete(CacheEntry).where(
-            CacheEntry.expires_at.isnot(None),
-            CacheEntry.expires_at < cutoff,
-        )
-    )
+    result = await session.execute(delete(CacheEntry).where(CacheEntry.expires_at.isnot(None), CacheEntry.expires_at < cutoff))
     await session.commit()
     count = result.rowcount  # type: ignore[union-attr]
     if count:
@@ -97,9 +87,14 @@ async def cleanup_audit_logs(session, max_age_days: int | None = None) -> int:
 
 async def cleanup_transient_mission_artifacts(max_age_hours: int = 6) -> int:
     """Delete stale transient scan workspaces when storage of record is S3."""
-    from app.services.storage import get_storage_service
+    try:
+        from app.services.storage import get_storage_service
 
-    storage = get_storage_service()
+        storage = get_storage_service()
+    except (ImportError, ModuleNotFoundError, RuntimeError) as exc:
+        logger.warning("Skipping transient mission cleanup; storage client is unavailable: %s", exc)
+        return 0
+
     if not storage.is_s3:
         return 0
 
@@ -128,11 +123,7 @@ async def cleanup_transient_mission_artifacts(max_age_hours: int = 6) -> int:
 
 
 async def cleanup_old_missions(session=None) -> int:
-    """Delete completed/failed missions older than MISSION_RETENTION_DAYS.
-
-    Returns the number of deleted missions. Cascades handle
-    related targets, findings, and exploits.
-    """
+    """Delete completed/failed missions older than MISSION_RETENTION_DAYS."""
     settings = _get_settings()
     retention_days = settings.MISSION_RETENTION_DAYS
     if retention_days <= 0:
@@ -149,8 +140,6 @@ async def cleanup_old_missions(session=None) -> int:
         from app.models.mission import Mission
 
         cutoff = datetime.now(UTC) - timedelta(days=retention_days)
-
-        # Find missions to delete
         result = await session.execute(
             select(Mission.id).where(
                 Mission.status.in_(["completed", "failed", "cancelled"]),
@@ -162,7 +151,6 @@ async def cleanup_old_missions(session=None) -> int:
         if not mission_ids:
             return 0
 
-        # Delete S3 artifacts for each mission
         try:
             from app.services.storage import get_storage_service
 
@@ -174,7 +162,6 @@ async def cleanup_old_missions(session=None) -> int:
         except Exception:
             logger.warning("Failed to cleanup S3 artifacts for expired missions", exc_info=True)
 
-        # Delete from database (cascade handles related tables)
         await session.execute(delete(Mission).where(Mission.id.in_(mission_ids)))
         await session.commit()
 
@@ -188,7 +175,3 @@ async def cleanup_old_missions(session=None) -> int:
     finally:
         if close_session:
             await session.close()
-
-
-# Re-export from canonical location for backwards compatibility
-from app.services.maintenance import run_all_cleanup  # noqa: F401

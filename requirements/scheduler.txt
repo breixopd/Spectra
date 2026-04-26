@@ -26,6 +26,7 @@ cryptography==47.0.0
 python-dotenv==1.2.2
 orjson==3.11.7
 psutil==7.2.2
+defusedxml==0.7.1
 
 # Docker SDK (sandbox watchdog, container cleanup)
 docker>=7.0.0,<8.0.0

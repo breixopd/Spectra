@@ -402,6 +402,7 @@ async def admin_page(
         logger.debug("Failed to load maintenance mode setting", exc_info=True)
 
     return templates.TemplateResponse(
+        request,
         "admin.html",
         {"request": request, "title": f"{settings.APP_NAME} | Admin", "maintenance_active": maintenance_active},
     )

@@ -16,7 +16,7 @@ def _mock_execute_result(rowcount: int):
 
 @pytest.mark.asyncio
 async def test_cleanup_expired_cache_purges_entries():
-    from app.worker.cleanup_jobs import cleanup_expired_cache
+    from app.services.maintenance_cleanup import cleanup_expired_cache
 
     session = AsyncMock()
     session.execute = AsyncMock(return_value=_mock_execute_result(5))
@@ -30,7 +30,7 @@ async def test_cleanup_expired_cache_purges_entries():
 
 @pytest.mark.asyncio
 async def test_cleanup_expired_cache_zero_when_none():
-    from app.worker.cleanup_jobs import cleanup_expired_cache
+    from app.services.maintenance_cleanup import cleanup_expired_cache
 
     session = AsyncMock()
     session.execute = AsyncMock(return_value=_mock_execute_result(0))
@@ -45,7 +45,7 @@ async def test_cleanup_expired_cache_zero_when_none():
 
 @pytest.mark.asyncio
 async def test_cleanup_orphaned_sandboxes_finds_orphans():
-    from app.worker.cleanup_jobs import cleanup_orphaned_sandboxes
+    from app.services.maintenance_cleanup import cleanup_orphaned_sandboxes
 
     pool = MagicMock()
     pool.available = True
@@ -58,7 +58,7 @@ async def test_cleanup_orphaned_sandboxes_finds_orphans():
 
 @pytest.mark.asyncio
 async def test_cleanup_orphaned_sandboxes_skips_when_unavailable():
-    from app.worker.cleanup_jobs import cleanup_orphaned_sandboxes
+    from app.services.maintenance_cleanup import cleanup_orphaned_sandboxes
 
     pool = MagicMock()
     pool.available = False
@@ -69,7 +69,7 @@ async def test_cleanup_orphaned_sandboxes_skips_when_unavailable():
 
 @pytest.mark.asyncio
 async def test_cleanup_orphaned_sandboxes_skips_when_no_pool():
-    from app.worker.cleanup_jobs import cleanup_orphaned_sandboxes
+    from app.services.maintenance_cleanup import cleanup_orphaned_sandboxes
 
     count = await cleanup_orphaned_sandboxes(None)
     assert count == 0
@@ -80,7 +80,7 @@ async def test_cleanup_orphaned_sandboxes_skips_when_no_pool():
 
 @pytest.mark.asyncio
 async def test_cleanup_completed_jobs_removes_old():
-    from app.worker.cleanup_jobs import cleanup_completed_jobs
+    from app.services.maintenance_cleanup import cleanup_completed_jobs
 
     session = AsyncMock()
     session.execute = AsyncMock(return_value=_mock_execute_result(10))
@@ -97,7 +97,7 @@ async def test_cleanup_completed_jobs_removes_old():
 
 @pytest.mark.asyncio
 async def test_run_all_cleanup_calls_all_functions():
-    from app.worker.cleanup_jobs import run_all_cleanup
+    from app.services.maintenance import run_all_cleanup
 
     mock_session = AsyncMock()
     mock_session.execute = AsyncMock(return_value=_mock_execute_result(1))

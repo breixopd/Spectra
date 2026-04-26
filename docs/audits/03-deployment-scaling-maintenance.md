@@ -29,3 +29,5 @@
 - Full test stack live smoke passed on VPS through Caddy.
 - Internal direct AI smoke passed on VPS (`app` -> `ai-svc` -> TensorZero -> OpenRouter).
 - Caddy failover check passed: after stopping primary `app`, `/api/health` through Caddy stayed healthy via `app-replica`; primary app restarted cleanly.
+- Scheduler periodic cleanup crashed because scheduler image excluded `app.worker` while maintenance imported cleanup functions from `app.worker.cleanup_jobs`. Cleanup functions now live under `app.services`, and scheduler cleanup was verified from inside the scheduler container.
+- Scheduler image intentionally does not include S3 dependencies such as `aioboto3`; transient mission artifact cleanup now skips with a warning if the storage client is unavailable instead of crashing the periodic cleanup loop.

@@ -110,7 +110,9 @@ class ToolExecutionService:
             return SandboxInfo.make_queue_name(mission_id)
 
         # Shared tools worker in containerized deployment
-        return "default"
+        from app.core.config import settings
+
+        return settings.TOOL_QUEUE_NAME
 
     def __init__(self, llm_client: LLMClient):
         """Initialize with LLM client for safety/consensus agents."""

@@ -36,7 +36,7 @@ async def _ensure_available_tool(registry: Any, tool_id: str, target: str) -> tu
     if not tool:
         return None, _error_result(tool_id, target, f"Tool not found: {tool_id}")
 
-    if tool.is_available:
+    if tool.is_available and _is_tool_installed(tool):
         return tool, None
 
     logger.info("Tool %s not installed, attempting install...", tool_id)
@@ -49,8 +49,8 @@ async def _ensure_available_tool(registry: Any, tool_id: str, target: str) -> tu
         )
 
     tool = registry.get_tool(tool_id)
-    if not tool or not tool.is_available:
-        return None, _error_result(tool_id, target, "Tool still not available after install")
+    if not tool or not tool.is_available or not _is_tool_installed(tool):
+        return None, _error_result(tool_id, target, "Tool still not installed after install")
 
     return tool, None
 

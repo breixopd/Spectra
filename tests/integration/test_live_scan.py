@@ -185,6 +185,7 @@ class TestMissionEngine:
             json={
                 "target": VULN_NETWORK_HOST,
                 "directive": "Perform a reconnaissance scan and identify exposed network services.",
+                "authorization_confirmed": True,
             },
         )
         assert resp.status_code in (200, 201, 202), f"Mission creation failed: {resp.text}"

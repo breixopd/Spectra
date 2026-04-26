@@ -344,7 +344,7 @@ Spectra ships with 25+ tool plugins:
 
 ### Adding a New Tool
 
-1. Create `plugins/my-tool.json` following the schema above
-2. Sign it: `python3 scripts/sign_plugin.py sign --plugin plugins/my-tool.json`
-3. Restart: `docker compose restart tools app`
-4. The tool appears in the registry and is auto-installed in sandbox containers
+1. Create `plugins/my-tool.json` following the schema above.
+2. Sign it when `PLUGIN_SAFE_MODE=true`: `python3 scripts/sign_plugin.py sign --plugin plugins/my-tool.json`.
+3. Restart or reload the registry: `docker compose restart tools app`.
+4. The tool appears in the registry. Installation is on-demand from the admin UI/API or first execution in the tools container.

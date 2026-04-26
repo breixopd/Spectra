@@ -235,8 +235,23 @@ function startMission(target, directive, playbookId) {
     const reqEl = document.getElementById('mission-requirements');
     const requirements = reqEl && reqEl.value.trim() ? reqEl.value.trim() : null;
     if (requirements) addTerminalLine(`[SCOPE] Requirements attached (${requirements.length} chars)`, 'info');
+    const authorizationConfirmed = Boolean(document.getElementById('mission-authorization-confirmed')?.checked);
+    if (!authorizationConfirmed) {
+        addTerminalLine('[ERROR] Confirm target ownership or written authorization before starting a mission.', 'error');
+        if (launchBtn) {
+            launchBtn.disabled = false;
+            launchBtn.innerHTML = '<i data-lucide="rocket" class="w-4 h-4 inline-block"></i> Launch';
+            if (window.lucide) window.lucide.createIcons();
+        }
+        return;
+    }
 
-    const payload = { target: target, directive: directive, requirements: requirements };
+    const payload = {
+        target: target,
+        directive: directive,
+        requirements: requirements,
+        authorization_confirmed: authorizationConfirmed
+    };
     if (playbookId) payload.playbook_id = playbookId;
     const vpnConfig = document.getElementById('vpn-config')?.value || null;
     if (vpnConfig) payload.vpn_config = vpnConfig;

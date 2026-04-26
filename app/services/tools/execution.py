@@ -104,9 +104,10 @@ async def execute_via_worker(
 
 async def ensure_tool_installed(tool_id: str, install_timeout: int) -> bool:
     """Ensure a tool is installed via the worker."""
+    from app.core.config import settings
     from app.core.queue import Job, PostgresJobQueue
 
-    queue = PostgresJobQueue()
+    queue = PostgresJobQueue(settings.TOOL_QUEUE_NAME)
 
     try:
         job_id = await queue.enqueue_job("install_tool_job", tool_id=tool_id)

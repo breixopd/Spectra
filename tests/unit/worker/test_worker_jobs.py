@@ -85,6 +85,7 @@ async def test_auto_install_pending_handles_ready_success_failed_and_exception_p
     installer = SimpleNamespace(install=AsyncMock(side_effect=install))
 
     with pytest.MonkeyPatch.context() as mp:
+        mp.setenv("WORKER_SKIP_STARTUP_AUTO_INSTALL", "false")
         mp.setitem(
             sys.modules,
             "app.services.tools.registry",

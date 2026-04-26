@@ -49,9 +49,9 @@
     "method": "apt",
     "commands": [
       "apt-get update",
-      "apt-get install -y ffuf"
+      "apt-get install -y ffuf seclists"
     ],
-    "verification_command": "ffuf -V",
+    "verification_command": "test -f /usr/share/seclists/Discovery/Web-Content/common.txt && ffuf -V",
     "verification_regex": "ffuf",
     "uninstall_commands": [
       "apt-get remove -y ffuf",

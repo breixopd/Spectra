@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 def _should_skip_startup_auto_install() -> bool:
-    value = os.environ.get("WORKER_SKIP_STARTUP_AUTO_INSTALL", "")
-    return value.strip().lower() in {"1", "true", "yes", "on"}
+    value = os.environ.get("WORKER_SKIP_STARTUP_AUTO_INSTALL", "true")
+    return value.strip().lower() not in {"0", "false", "no", "off"}
 
 
 def _log_startup_banner() -> None:

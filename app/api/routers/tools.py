@@ -189,7 +189,7 @@ def _queue_background_job(
         try:
             from app.core.queue import PostgresJobQueue
 
-            queue = PostgresJobQueue()
+            queue = PostgresJobQueue(settings.TOOL_QUEUE_NAME)
             await queue.enqueue_job(job_name, **job_kwargs)
             logger.info(success_log)
         except (OSError, RuntimeError, ConnectionError) as e:
@@ -658,9 +658,6 @@ async def install_tool(
     """
     tool = _get_tool_or_404(registry, tool_id)
 
-    if tool.status == ToolStatus.READY:
-        return _build_install_response(tool_id, tool.status, "Tool is already installed")
-
     if tool.status == ToolStatus.INSTALLING:
         return _build_install_response(tool_id, tool.status, "Tool installation already in progress")
 
@@ -780,7 +777,7 @@ async def test_tool(
     try:
         from app.core.queue import Job, PostgresJobQueue
 
-        queue = PostgresJobQueue()
+        queue = PostgresJobQueue(settings.TOOL_QUEUE_NAME)
 
         # Execute via job queue worker
         job_id = await queue.enqueue_job(
@@ -822,9 +819,9 @@ async def test_tool(
             ),
         )
 
-    except (OSError, RuntimeError, TimeoutError, ValueError) as e:
+    except (OSError, RuntimeError, TimeoutError, ValueError, Exception) as e:
         logger.error("Tool test failed for %s: %s", tool_id, e)
-        raise HTTPException(status_code=500, detail="Test execution failed due to an internal error.")
+        raise HTTPException(status_code=500, detail=f"Test execution failed: {e}") from e
 
 
 @router.get("/{tool_id}/stats")

@@ -473,6 +473,7 @@ class TestMissionExecution:
                 "target": TARGET_EASY,
                 "directive": "Perform reconnaissance on the target. Discover open ports and services.",
                 "stealth_level": "none",
+                "authorization_confirmed": True,
             },
         )
         # Mission creation should succeed even if tools aren't available
@@ -512,6 +513,7 @@ class TestMissionExecution:
             json={
                 "target": TARGET_EASY,
                 "directive": "Quick recon scan",
+                "authorization_confirmed": True,
             },
         )
         if resp.status_code in (200, 201):

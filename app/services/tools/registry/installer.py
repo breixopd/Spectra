@@ -244,6 +244,15 @@ class PluginInstaller:
             return True
 
         returncode, stdout, stderr = await run_command_safe(cmd)
+        missing_binary = "not found" in stderr.lower() or returncode == 127
+        if missing_binary:
+            logger.error(
+                "Verification command for %s could not find the expected executable. Stdout: %s, Stderr: %s",
+                config.id,
+                stdout,
+                stderr,
+            )
+            return False
 
         # Check regex if provided
         if config.installation.verification_regex:
