@@ -72,6 +72,10 @@ class StartMissionRequest(BaseModel):
         default=False,
         description="Require human approval for high-risk actions (default: fully autonomous)",
     )
+    authorization_confirmed: bool = Field(
+        default=False,
+        description="User confirms they own the target or have explicit written authorization to test it",
+    )
     vpn_config: str | None = Field(
         default=None,
         max_length=64,

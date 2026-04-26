@@ -14,6 +14,9 @@
 - Separate `docker/targets/` compose flow has additional target levels and needs clearer single workflow.
 - Safety policy may block some intentionally aggressive lab commands; mission tests need explicit scope/policy settings.
 - Direct mission smoke against `metasploitable` created a mission and advanced through scope setup. Follow-up run still timed out under live provider latency/health pressure; logs show TensorZero health requests taking 5-27s and scheduler DB pool exhaustion in the test stack. Scheduler test pool override was added, but mission E2E still needs a deterministic nightly harness with longer timeouts and provider health gating.
+- OpenRouter free quota can be exhausted during live testing (`free-models-per-day`, HTTP 429 surfaced through TensorZero as 502). `scripts/live_smoke.py` now treats direct LLM 5xx as a warning by default and supports `STRICT_LLM_SMOKE=1` for release gates that must fail on provider errors.
+- A live DVWA mission on the VPS successfully generated an LLM plan and ran `nmap`, `whatweb`, `ffuf`, `nuclei`, `nikto`, and `searchsploit`, producing 13 findings before the long exploitation phase exceeded the observation window.
+- Restarting/recreating app services during a running mission removed the in-memory active mission and the mission was not found afterward. This is a high-priority persistence/recovery gap: mission creation/progress must be durably written early and resumable or explicitly marked interrupted after app restart.
 
 ## Training Path
 

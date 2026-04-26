@@ -73,6 +73,7 @@ async def profile_page(request: Request):
     if not await get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
+        request,
         "profile.html",
         {"request": request, "title": f"{settings.APP_NAME} | Account"},
     )
@@ -87,6 +88,7 @@ async def setup_page(request: Request):
             return RedirectResponse(url="/login")
 
     return templates.TemplateResponse(
+        request,
         "setup.html",
         {"request": request, "title": f"{settings.APP_NAME} | Setup"},
     )
@@ -104,6 +106,7 @@ async def login_page(request: Request):
         return RedirectResponse(url="/dashboard", status_code=302)
 
     return templates.TemplateResponse(
+        request,
         "login.html",
         {"request": request, "title": f"{settings.APP_NAME} | Login"},
     )
@@ -121,6 +124,7 @@ async def dashboard(request: Request):
         return RedirectResponse(url="/login")
 
     return templates.TemplateResponse(
+        request,
         "dashboard.html",
         {"request": request, "title": f"{settings.APP_NAME} | Dashboard"},
     )
@@ -132,6 +136,7 @@ async def targets_page(request: Request):
     if not await get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
+        request,
         "targets.html",
         {"request": request, "title": f"{settings.APP_NAME} | Targets"},
     )
@@ -143,6 +148,7 @@ async def history_page(request: Request):
     if not await get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
+        request,
         "history.html",
         {"request": request, "title": f"{settings.APP_NAME} | History"},
     )
@@ -154,6 +160,7 @@ async def reports_page(request: Request):
     if not await get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
+        request,
         "reports.html",
         {"request": request, "title": f"{settings.APP_NAME} | Reports"},
     )
@@ -165,6 +172,7 @@ async def overseer_page(request: Request):
     if not await get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
+        request,
         "overseer.html",
         {"request": request, "title": f"{settings.APP_NAME} | Agents"},
     )
@@ -185,6 +193,7 @@ async def toolbox_page(request: Request):
             if db_user:
                 is_admin = _is_admin_user(db_user)
     return templates.TemplateResponse(
+        request,
         "toolbox.html",
         {"request": request, "title": f"{settings.APP_NAME} | Toolbox", "is_admin": is_admin},
     )
@@ -199,6 +208,7 @@ async def manual_tools_page(request: Request):
     if not await _check_user_feature(user_payload.get("sub"), "manual_mode"):
         return RedirectResponse(url="/dashboard", status_code=302)
     return templates.TemplateResponse(
+        request,
         "manual_tools.html",
         {"request": request, "title": f"{settings.APP_NAME} | Manual Tools"},
     )
@@ -220,6 +230,7 @@ async def plugin_creator_page(request: Request):
     else:
         return RedirectResponse(url="/toolbox", status_code=303)
     return templates.TemplateResponse(
+        request,
         "plugin_creator.html",
         {"request": request, "title": f"{settings.APP_NAME} | Plugin Creator"},
     )
@@ -231,6 +242,7 @@ async def settings_page(request: Request):
     if not await get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
+        request,
         "settings.html",
         {"request": request, "title": f"{settings.APP_NAME} | Settings"},
     )
@@ -251,6 +263,7 @@ async def api_docs_page(request: Request):
         has_api_access = await _check_user_feature(user.get("sub"), "api_access")
         if not has_api_access:
             return templates.TemplateResponse(
+                request,
                 "errors/403.html",
                 {"request": request, "message": "API documentation requires a Professional or Enterprise plan."},
                 status_code=403,
@@ -324,6 +337,7 @@ async def api_docs_page(request: Request):
                 del groups[grp]
 
     return templates.TemplateResponse(
+        request,
         "docs.html",
         {
             "request": request,
@@ -339,6 +353,7 @@ async def help_page(request: Request):
     if not await get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
+        request,
         "help.html",
         {"request": request, "title": f"{settings.APP_NAME} | Help Center"},
     )
@@ -350,6 +365,7 @@ async def observability_page(request: Request):
     if not await get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
+        request,
         "observability.html",
         {"request": request, "title": f"{settings.APP_NAME} | Observability"},
     )
@@ -365,6 +381,7 @@ async def shell_page(request: Request, session_id: str):
         return HTMLResponse("Session not found or inactive", status_code=404)
 
     return templates.TemplateResponse(
+        request,
         "shell.html",
         {
             "request": request,

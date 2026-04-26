@@ -239,6 +239,7 @@ class Settings(BaseSettings):
     SANDBOX_AUTO_BUILD_IMAGE: bool = True  # Auto-rebuild golden image when plugins change
     SANDBOX_IMAGE_SCAN_ENABLED: bool = True  # Scan golden image after each build for CVEs
     SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL: bool = False  # Block deployment if critical CVEs found
+    TOOL_QUEUE_NAME: str = "default"  # Queue used for shared plugin/tool execution workers
 
     # --- Inter-Service Auth ---
     SERVICE_AUTH_SECRET: SecretStr = Field(

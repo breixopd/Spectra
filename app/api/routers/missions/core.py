@@ -205,6 +205,12 @@ async def start_mission(
 
     Rate limited to 5 missions per minute per user.
     """
+    if not mission_request.authorization_confirmed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You must confirm that you own the target or have explicit written authorization to test it.",
+        )
+
     await check_mission_limit(_current_user, db)
     await check_storage_limit(_current_user, db)
     await check_feature_allowed(_current_user, db, "autonomous_mode")
@@ -227,7 +233,11 @@ async def start_mission(
         db,
         AuditEventType.MISSION_LAUNCHED,
         user_id=str(_current_user.id),
-        details={"mission_id": mission_id, "target": mission_request.target},
+        details={
+            "mission_id": mission_id,
+            "target": mission_request.target,
+            "authorization_confirmed": mission_request.authorization_confirmed,
+        },
         request=request,
     )
 

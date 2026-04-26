@@ -85,7 +85,7 @@ async def test_execute_tool_job_returns_error_when_tool_stays_unavailable_after_
         result = await tool_jobs.execute_tool_job("nmap", "example.com")
 
     assert result["success"] is False
-    assert result["stderr"] == "Tool still not available after install"
+    assert result["stderr"] == "Tool still not installed after install"
 
 
 @pytest.mark.asyncio

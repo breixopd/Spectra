@@ -10,6 +10,9 @@ from app.services.tools.models import ToolConfig, ToolExecutionRequest
 
 logger = logging.getLogger(__name__)
 
+_FLAG_ARG_KEYS = {"flags", "extra_flags", "extra_args"}
+_UNSAFE_FLAG_CHARS = set(";&|`$><\n\r")
+
 
 class CommandBuilder:
     """Handles command construction and argument templating."""
@@ -75,9 +78,11 @@ class CommandBuilder:
             if not str_value.strip():
                 continue
 
+            if key in _FLAG_ARG_KEYS:
+                safe_value = self._quote_flag_fragment(str_value)
             # Handle values that have flag prefixes (from arg_modifiers)
             # e.g., "-t cves/,vulnerabilities/" should become: -t 'cves/,vulnerabilities/'
-            if str_value.startswith("-") and " " in str_value:
+            elif str_value.startswith("-") and " " in str_value:
                 # Split into flag and value parts
                 flag_end = str_value.index(" ")
                 flag = str_value[:flag_end]
@@ -99,6 +104,14 @@ class CommandBuilder:
         command = f"{base_cmd} {args}".strip()
 
         return command
+
+    def _quote_flag_fragment(self, value: str) -> str:
+        """Split a free-form flags field into safe shell tokens."""
+        tokens = shlex.split(value)
+        for token in tokens:
+            if any(char in token for char in _UNSAFE_FLAG_CHARS):
+                raise ValueError(f"Unsafe flag token rejected: {token[:40]}")
+        return " ".join(shlex.quote(token) for token in tokens)
 
     def apply_stealth_args(self, command: str, stealth_config: Any) -> str:
         """Apply stealth mode extra_args to the built command.

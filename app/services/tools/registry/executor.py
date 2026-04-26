@@ -11,7 +11,6 @@ import asyncio
 import contextlib
 import logging
 import os
-import shlex
 import signal
 from typing import TYPE_CHECKING
 
@@ -40,8 +39,10 @@ def _prepare_command(command: str) -> str:
         return stripped
     if stripped.startswith("sudo "):
         return stripped
+    if os.geteuid() == 0:
+        return stripped
     if _needs_privilege_elevation(stripped):
-        return f"sudo -n bash -lc {shlex.quote(stripped)}"
+        return f"sudo -n {stripped}"
     return stripped
 
 

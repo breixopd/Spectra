@@ -10,8 +10,7 @@ logger = logging.getLogger(__name__)
 async def run_all_cleanup() -> dict[str, int]:
     """Run all cleanup tasks. Intended for periodic scheduling."""
     from app.core.database import async_session_maker
-    from app.services.tools.sandbox import get_sandbox_pool
-    from app.worker.cleanup_jobs import (
+    from app.services.maintenance_cleanup import (
         cleanup_audit_logs,
         cleanup_completed_jobs,
         cleanup_expired_cache,
@@ -20,6 +19,7 @@ async def run_all_cleanup() -> dict[str, int]:
         cleanup_orphaned_sandboxes,
         cleanup_transient_mission_artifacts,
     )
+    from app.services.tools.sandbox import get_sandbox_pool
 
     results: dict[str, int] = {}
 

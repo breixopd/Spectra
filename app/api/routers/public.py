@@ -130,6 +130,7 @@ async def landing_page(request: Request):
             reviews = []
 
     return templates.TemplateResponse(
+        request,
         "landing.html",
         {
             "request": request,
@@ -167,6 +168,7 @@ async def sitemap(request: Request):
 @router.get("/status", response_class=HTMLResponse, include_in_schema=False)
 async def status_page(request: Request):
     return templates.TemplateResponse(
+        request,
         "status.html",
         {
             "request": request,
@@ -179,6 +181,7 @@ async def status_page(request: Request):
 @router.get("/security", response_class=HTMLResponse, include_in_schema=False)
 async def security_page(request: Request):
     return templates.TemplateResponse(
+        request,
         "security.html",
         {
             "request": request,
@@ -210,6 +213,7 @@ async def legal_terms(request: Request):
     except (OSError, RuntimeError, ValueError):
         logger.debug("Failed to load legal terms", exc_info=True)
     return templates.TemplateResponse(
+        request,
         "legal/terms.html",
         {
             "request": request,
@@ -236,6 +240,7 @@ async def legal_privacy(request: Request):
     except (OSError, RuntimeError, ValueError):
         logger.debug("Failed to load legal privacy", exc_info=True)
     return templates.TemplateResponse(
+        request,
         "legal/privacy.html",
         {
             "request": request,
@@ -262,6 +267,7 @@ async def legal_cookies(request: Request):
     except (OSError, RuntimeError, ValueError):
         logger.debug("Failed to load legal cookies", exc_info=True)
     return templates.TemplateResponse(
+        request,
         "legal/cookie.html",
         {
             "request": request,
@@ -281,21 +287,21 @@ async def register_page(request: Request):
         superuser_exists = await session.execute(select(User.id).where(User.is_superuser.is_(True)).limit(1))
         if not superuser_exists.scalar_one_or_none():
             return RedirectResponse(url="/setup", status_code=302)
-    return templates.TemplateResponse("register.html", {"request": request})
+    return templates.TemplateResponse(request, "register.html", {"request": request})
 
 
 @router.get("/forgot-password", response_class=HTMLResponse, include_in_schema=False)
 async def forgot_password_page(request: Request):
     if await _get_user_from_cookie(request):
         return RedirectResponse(url="/dashboard", status_code=302)
-    return templates.TemplateResponse("forgot_password.html", {"request": request})
+    return templates.TemplateResponse(request, "forgot_password.html", {"request": request})
 
 
 @router.get("/reset-password", response_class=HTMLResponse, include_in_schema=False)
 async def reset_password_page(request: Request):
     if await _get_user_from_cookie(request):
         return RedirectResponse(url="/dashboard", status_code=302)
-    return templates.TemplateResponse("reset_password.html", {"request": request})
+    return templates.TemplateResponse(request, "reset_password.html", {"request": request})
 
 
 @router.get("/changelog", response_class=HTMLResponse, include_in_schema=False)
@@ -318,6 +324,7 @@ async def changelog_page(request: Request):
     except (OSError, RuntimeError, ValueError):
         logger.debug("Failed to load changelog", exc_info=True)
     return templates.TemplateResponse(
+        request,
         "changelog.html",
         {
             "request": request,
@@ -472,6 +479,7 @@ async def _create_registered_user(session: AsyncSession, body: RegisterRequest, 
 
 def _verify_email_template_response(request: Request, *, success: bool, message: str):
     return templates.TemplateResponse(
+        request,
         "verify_email.html",
         {
             "request": request,

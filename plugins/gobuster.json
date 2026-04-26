@@ -48,9 +48,9 @@
     "method": "apt",
     "commands": [
       "apt-get update",
-      "apt-get install -y gobuster"
+      "apt-get install -y gobuster seclists"
     ],
-    "verification_command": "gobuster --help",
+    "verification_command": "test -f /usr/share/seclists/Discovery/Web-Content/common.txt && gobuster --help",
     "verification_regex": "Usage:",
     "uninstall_commands": [
       "apt-get remove -y gobuster",
