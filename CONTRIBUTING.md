@@ -226,13 +226,15 @@ make test-coverage
 ### Test guidelines
 
 - **pytest-asyncio**: Mode is `strict` — all async tests need `@pytest.mark.asyncio`
-- **Environment**: Tests load `.env.test` via `pytest-dotenv`. It sets the shared test `DATABASE_URL`, `TENSORZERO_GATEWAY_URL`, and `FULLY_AUTOMATED=true`.
+- **Environment**: Create `.env.test` with `cp .env.test.example .env.test` (add optional API keys locally). The file is **gitignored**; CI copies the example when needed. Tests load the same file for `DATABASE_URL`, `TENSORZERO_GATEWAY_URL`, and `FULLY_AUTOMATED=true` where applicable.
 - Write tests for behavior, not implementation details
 - Don't test what the type system already guarantees
 - Unit tests should not require Docker, databases, or network access
 - Use fixtures from `conftest.py` for common setup
 
 ### Test environment variables
+
+Do not commit `.env.test`. Track **`.env.test.example`** only; add secrets on your machine or in CI from the environment.
 
 Key variables in `.env.test`:
 
@@ -242,6 +244,8 @@ Key variables in `.env.test`:
 | `TENSORZERO_GATEWAY_URL` | `http://tensorzero:3000`                                                | TensorZero gateway for AI routing |
 | `FULLY_AUTOMATED`        | `true`                                                                  | Skips human approval prompts      |
 | `JWT_SECRET_KEY`         | `test-secret-key`                                                       | Deterministic JWT signing         |
+| `OPENAI_API_KEY`         | *(empty or your key)*                                                   | Live LLM tests (e.g. OpenRouter)  |
+| `EMBEDDING_API_KEY`      | *(empty for local fastembed)*                                           | RAG/embedding tests               |
 
 ## Pull Request Process
 

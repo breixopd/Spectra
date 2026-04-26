@@ -48,6 +48,9 @@ jobs:
           ref: refs/heads/main
           fetch-depth: 0
 
+      - name: Ensure .env.test for Docker Compose
+        run: test -f .env.test || cp .env.test.example .env.test
+
       - name: Capture trusted release commit
         id: release_ref
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"

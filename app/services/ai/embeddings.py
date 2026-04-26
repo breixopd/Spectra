@@ -30,7 +30,7 @@ class EmbeddingService:
 
     @property
     def is_functional(self) -> bool:
-        """Return True if API key is available for embeddings."""
+        """True when embeddings can be produced (local path configured or API client ready)."""
         return self._api_ready
 
     @property

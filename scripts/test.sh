@@ -31,6 +31,20 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+# Fresh clones need a .env.test file (compose and docker run mount it; keys stay local and gitignored).
+ensure_env_test() {
+    if [[ -f "$PROJECT_ROOT/.env.test" ]]; then
+        return 0
+    fi
+    if [[ -f "$PROJECT_ROOT/.env.test.example" ]]; then
+        cp "$PROJECT_ROOT/.env.test.example" "$PROJECT_ROOT/.env.test"
+        echo -e "${YELLOW}Created .env.test from .env.test.example — add secrets locally; file is gitignored.${NC}"
+        return 0
+    fi
+    echo -e "${RED}Missing $PROJECT_ROOT/.env.test and no .env.test.example to copy.${NC}" >&2
+    exit 1
+}
+
 usage() {
     echo -e "${CYAN}Spectra Test Runner${NC}"
     echo ""
@@ -135,6 +149,7 @@ run_live_smoke() {
     trap - ERR
 }
 
+ensure_env_test
 CMD="${1:-unit}"
 
 case "$CMD" in

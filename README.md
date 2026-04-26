@@ -185,6 +185,14 @@ uvicorn app.main:app --reload --port 5000
 
 ### Running tests
 
+Create a local test env file once (not committed; contains optional API keys for live LLM tests):
+
+```bash
+cp .env.test.example .env.test
+# Edit .env.test: set OPENAI_API_KEY (e.g. OpenRouter) for live model tests; leave empty for non-LLM runs.
+# Embeddings default to local fastembed when EMBEDDING_API_KEY is empty.
+```
+
 ```bash
 # General unit tests
 ./scripts/test.sh unit
