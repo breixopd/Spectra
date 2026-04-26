@@ -1,6 +1,6 @@
 # UI Audit: Test Coverage, Flakiness, Benchmarks
 
-Status: loop 3 in progress
+Status: loop 4 in progress
 Scope: Playwright, Docker test runners, live smoke, skipped tests, warnings, performance/UX benchmarks.
 
 ## Current Verified Baseline
@@ -94,3 +94,8 @@ To see all skip reasons in one run: `pytest -ra tests/`.
 - **`test_release_candidate_flows.py`**: refactored to use the harness (less duplication).
 - **Docs:** `09-entitlement-ui-patterns.md`, `10-product-ux-hardening-checklist.md`, `11-pytest-skip-inventory.md`, `architecture/04-missions-core-router-split.md`.
 - **Skips:** “Run every test in one CI job” is still discouraged; `11-pytest-skip-inventory.md` lists reasons and the intended layered jobs.
+
+## Loop 4 — Subagent pass + missions catalog module
+
+- Three **explore** subagents in parallel: e2e coverage gaps / flakiness patterns, missions router split plan, pytest skip inventory by CI job.
+- **Refactor:** `app/api/routers/missions/mission_catalog.py` holds literal-path routes (`/presets`, `/summary`, …) merged **before** `core` in `__init__.py`; `CreateChainRequest` re-export moved to `mission_catalog`.
