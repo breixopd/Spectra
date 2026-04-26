@@ -18,3 +18,10 @@
 - Browser smoke for `/setup`.
 - Browser smoke for profile billing buttons/checkout/portal error states.
 - Admin tab coverage generated from `data-section` entries, so new tabs cannot silently miss tests.
+
+## Live Browser Smoke
+
+- `test_login_and_dashboard` passed against Caddy on VPS.
+- `test_admin_panel_tabs` passed against Caddy on VPS after expanding tab coverage and using forced tab clicks for Playwright actionability.
+- Fixed bad escaped attributes on the admin maintenance button.
+- Fixed UI fixture warnings by registering the `timeout` marker and avoiding un-awaited activity reset coroutines when a loop is already running.

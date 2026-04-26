@@ -145,11 +145,16 @@ def test_navigation_sidebar(logged_in_page: Page, app_url: str):
 _ADMIN_TABS = [
     ("users", "Users"),
     ("plans", "Plans"),
+    ("usage", "Usage"),
     ("services", "Services"),
+    ("scaling", "Scaling"),
     ("audit", "Audit"),
     ("content", "Content"),
+    ("llm", "AI Config"),
+    ("tensorzero", "AI Gateway"),
     ("backups", "Backups"),
     ("email", "Email"),
+    ("rollback", "Rollback"),
 ]
 
 
@@ -162,7 +167,8 @@ def test_admin_panel_tabs(logged_in_page: Page, app_url: str):
         tab_link = page.locator(f".admin-sidebar [data-section='{section_id}']")
         if tab_link.count() == 0:
             continue
-        tab_link.click()
+        tab_link.scroll_into_view_if_needed()
+        tab_link.click(force=True)
         # The corresponding section should become visible
         section = page.locator(f"#section-{section_id}")
         expect(section).to_be_visible(timeout=15_000)

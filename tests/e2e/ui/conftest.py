@@ -10,6 +10,10 @@ import pytest
 from playwright.sync_api import Browser, BrowserContext, Page, expect
 
 
+def pytest_configure(config):
+    config.addinivalue_line("markers", "timeout(seconds, method): per-test timeout override")
+
+
 def pytest_collection_modifyitems(items):
     """Use thread-based timeout for all UI tests.
 
@@ -181,6 +185,12 @@ def _reset_user_activity(username: str) -> None:
                 )
             finally:
                 await conn.close()
+
+        try:
+            asyncio.get_running_loop()
+            return
+        except RuntimeError:
+            pass
 
         asyncio.run(_update())
     except Exception:

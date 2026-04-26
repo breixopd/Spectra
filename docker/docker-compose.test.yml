@@ -122,6 +122,8 @@ services:
     environment:
       <<: *test-env
       DATABASE_URL: postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+      DATABASE_POOL_SIZE: "8"
+      DATABASE_MAX_OVERFLOW: "8"
       SKIP_MIGRATIONS: "true"
     depends_on:
       db:
