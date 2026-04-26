@@ -17,6 +17,7 @@
 - OpenRouter free quota can be exhausted during live testing (`free-models-per-day`, HTTP 429 surfaced through TensorZero as 502). `scripts/live_smoke.py` now treats direct LLM 5xx as a warning by default and supports `STRICT_LLM_SMOKE=1` for release gates that must fail on provider errors.
 - A live DVWA mission on the VPS successfully generated an LLM plan and ran `nmap`, `whatweb`, `ffuf`, `nuclei`, `nikto`, and `searchsploit`, producing 13 findings before the long exploitation phase exceeded the observation window.
 - Restarting/recreating app services during a running mission removed the in-memory active mission and the mission was not found afterward. This is a high-priority persistence/recovery gap: mission creation/progress must be durably written early and resumable or explicitly marked interrupted after app restart.
+- Mission startup now fails closed if the initial DB mission row cannot be persisted. This prevents a mission from running only in process memory and disappearing after a service recreation.
 
 ## Training Path
 
