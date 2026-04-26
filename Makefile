@@ -2,7 +2,7 @@
 # All test targets run inside Docker containers.
 
 .PHONY: test test-unit test-integration test-all test-coverage test-compose \
-	test-load test-performance test-soak \
+	test-load test-performance test-soak test-live-smoke \
        lint format check clean docker-build docker-up docker-down \
        deploy rollback deploy-check help css-build css-watch
 
@@ -37,6 +37,9 @@ test-performance: ## Run the performance smoke harness in Docker
 
 test-soak: ## Run the soak/stability harness in Docker
 	@./scripts/test.sh soak
+
+test-live-smoke: ## Run live API/UI/LLM smoke tests (START_STACK=1 optional)
+	@./scripts/test.sh live-smoke
 
 lint: import-boundaries ## Run import boundary check + ruff linter on app/
 	@ruff check app/

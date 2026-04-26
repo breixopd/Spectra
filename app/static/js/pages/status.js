@@ -3,7 +3,7 @@
  */
 
 async function loadStatus() {
-    const { data, error } = await spectraApi.get('/api/v1/system/public-status');
+    const { data, error } = await spectraApi.get('/api/v1/health?scope=public');
     if (error) {
         document.getElementById('services-list').innerHTML = '<p class="text-sm text-rose-400">Failed to load status</p>';
         return;
@@ -12,6 +12,7 @@ async function loadStatus() {
     const services = [
         { name: 'API Server', key: 'api', icon: 'server' },
         { name: 'Database', key: 'database', icon: 'database' },
+        { name: 'Storage', key: 'storage', icon: 'hard-drive' },
         { name: 'AI Service', key: 'ai', icon: 'brain' },
         { name: 'Worker', key: 'worker', icon: 'cog' },
         { name: 'Scheduler', key: 'scheduler', icon: 'clock' },
@@ -20,18 +21,29 @@ async function loadStatus() {
     const list = document.getElementById('services-list');
     let allHealthy = true;
 
+    const statusOf = (svc) => {
+        if (svc.key === 'database') return data.components?.database;
+        if (svc.key === 'storage') return data.components?.s3 || data.components?.storage;
+        if (svc.key === 'ai') return data.services?.ai_service || data.services?.ai;
+        return data.services?.[svc.key] || data[svc.key];
+    };
+
     list.innerHTML = services.map(svc => {
-        const status = data[svc.key] || data.services?.[svc.key] || 'unknown';
+        const rawStatus = statusOf(svc);
+        const status = typeof rawStatus === 'object' ? rawStatus.status : rawStatus || 'unknown';
         const isUp = status === 'healthy' || status === 'running' || status === true || status === 'ok';
         if (!isUp) allHealthy = false;
         const color = isUp ? 'text-emerald-400' : 'text-rose-400';
         const bg = isUp ? 'bg-emerald-500/15' : 'bg-rose-500/15';
         const label = isUp ? 'Operational' : 'Degraded';
+        const latency = rawStatus && typeof rawStatus === 'object' && rawStatus.latency_ms != null
+            ? `<span class="text-xs text-slate-500 ml-2">${escapeHtml(String(rawStatus.latency_ms))} ms</span>`
+            : '';
         return `
         <div class="flex items-center justify-between p-3 rounded-lg bg-black/20 border border-white/5">
             <div class="flex items-center gap-3">
                 <i data-lucide="${svc.icon}" class="w-5 h-5 ${color}"></i>
-                <span class="text-sm text-white font-medium">${svc.name}</span>
+                <span class="text-sm text-white font-medium">${svc.name}</span>${latency}
             </div>
             <span class="px-2 py-0.5 rounded text-xs font-semibold ${color} ${bg}">${label}</span>
         </div>`;

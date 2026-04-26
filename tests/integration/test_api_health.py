@@ -32,6 +32,8 @@ async def test_health_returns_healthy(client):
     assert data["service"] == "spectra"
     assert "version" in data
     assert "components" in data
+    assert "services" in data
+    assert "summary" in data
 
 
 @pytest.mark.asyncio
@@ -49,9 +51,29 @@ async def test_health_verbose_includes_extra_components(client):
 
 
 @pytest.mark.asyncio
+async def test_health_full_requires_auth(client):
+    """Full canonical health is not public."""
+    resp = await client.get("/api/v1/health", params={"detail": "full"})
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_health_public_scope_returns_services(client):
+    """Public scope returns the service status page shape."""
+    resp = await client.get("/api/v1/health", params={"scope": "public"})
+    assert resp.status_code in (200, 503)
+    data = resp.json()
+    assert data["scope"] == "public"
+    assert "database" in data["components"]
+    assert "api" in data["services"]
+
+
+@pytest.mark.asyncio
 async def test_health_ready_returns_expected_format(client):
     """GET /api/health/ready should return readiness status with component checks."""
     resp = await client.get("/api/health/ready")
     assert resp.status_code in (200, 503)
     data = resp.json()
-    assert "ready" in data or "checks" in data or "status" in data
+    assert "ready" in data
+    assert "checks" in data
+    assert "status" in data

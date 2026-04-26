@@ -296,7 +296,7 @@ services:
 
   # TensorZero gateway
   tensorzero:
-    image: tensorzero/gateway:2025.01.07
+    image: ${TENSORZERO_IMAGE:-tensorzero/gateway:latest}
     container_name: spectra-tensorzero
     labels:
       spectra.managed: "true"

@@ -72,7 +72,11 @@ if [ -n "${GARAGE_ACCESS_KEY:-}" ] && [ -n "${GARAGE_SECRET_KEY:-}" ]; then
             echo "ERROR: Garage access key ${ACCESS_KEY} already exists with a different secret" >&2
             exit 1
         fi
-        echo "  Access key ${ACCESS_KEY} already exists"
+        if [ "${GARAGE_PRINT_CREDENTIALS:-1}" = "1" ]; then
+            echo "  Access key ${ACCESS_KEY} already exists"
+        else
+            echo "  Access key already exists"
+        fi
     else
         KEY_OUTPUT="$(key_info "${KEY_NAME}")"
         if [ -n "${KEY_OUTPUT}" ]; then
@@ -83,7 +87,11 @@ if [ -n "${GARAGE_ACCESS_KEY:-}" ] && [ -n "${GARAGE_SECRET_KEY:-}" ]; then
             echo "  Key ${KEY_NAME} already matches configured credentials"
         else
             garage_exec key import --yes -n "${KEY_NAME}" "${ACCESS_KEY}" "${SECRET_KEY}" >/dev/null
-            echo "  Imported configured access key ${ACCESS_KEY}"
+            if [ "${GARAGE_PRINT_CREDENTIALS:-1}" = "1" ]; then
+                echo "  Imported configured access key ${ACCESS_KEY}"
+            else
+                echo "  Imported configured access key"
+            fi
         fi
     fi
 else
@@ -111,14 +119,22 @@ done
 echo "Granting permissions..."
 for bucket in "${BUCKETS[@]}"; do
     garage_exec bucket allow --read --write --owner "${bucket}" --key "${ACCESS_KEY}" >/dev/null 2>&1 || true
-    echo "  ✓ ${bucket} → ${ACCESS_KEY}"
+    if [ "${GARAGE_PRINT_CREDENTIALS:-1}" = "1" ]; then
+        echo "  ✓ ${bucket} → ${ACCESS_KEY}"
+    else
+        echo "  ✓ ${bucket}"
+    fi
 done
 
 # ── Step 7: Output credentials for .env ──
 echo ""
 echo "=== Garage Bootstrap Complete ==="
 echo ""
-echo "Add these to your .env file:"
-echo "  GARAGE_ACCESS_KEY=${ACCESS_KEY}"
-echo "  GARAGE_SECRET_KEY=${SECRET_KEY}"
-echo ""
+if [ "${GARAGE_PRINT_CREDENTIALS:-1}" = "1" ]; then
+    echo "Add these to your .env file:"
+    echo "  GARAGE_ACCESS_KEY=${ACCESS_KEY}"
+    echo "  GARAGE_SECRET_KEY=${SECRET_KEY}"
+    echo ""
+else
+    echo "Credentials suppressed (GARAGE_PRINT_CREDENTIALS=0)."
+fi

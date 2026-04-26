@@ -86,8 +86,8 @@ class Settings(BaseSettings):
         if self.DATABASE_POOL_SIZE == 20:  # Only if not explicitly overridden
             mode = self.SERVICE_MODE
             if mode == "scheduler":
-                self.DATABASE_POOL_SIZE = 3
-                self.DATABASE_MAX_OVERFLOW = 2
+                self.DATABASE_POOL_SIZE = 8
+                self.DATABASE_MAX_OVERFLOW = 8
             elif mode == "worker":
                 self.DATABASE_POOL_SIZE = 5
                 self.DATABASE_MAX_OVERFLOW = 5

@@ -7,17 +7,20 @@ Provides endpoints for telemetry, metrics, and system health monitoring.
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing_extensions import TypedDict
 
 from app.core.cache import get_cache
 from app.core.circuit_breaker import circuit_breakers
 from app.core.constants import API_MAX_PAGE_SIZE, OBSERVABILITY_MAX_RESULTS
+from app.core.database import get_async_session
 from app.core.events import events
 from app.core.rate_limit import RateLimits, limiter
 from app.core.rbac import Permission, require_permission
 from app.core.telemetry import telemetry
 from app.models.user import User
+from app.services.system.health import collect_platform_health
 
 logger = logging.getLogger(__name__)
 
@@ -131,10 +134,18 @@ async def get_metrics_summary(
 @limiter.limit(RateLimits.OBSERVABILITY)
 async def get_service_health(
     request: Request,
+    db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
-) -> dict[str, dict[str, Any]]:
-    """Get all service health statuses."""
-    return telemetry.get_service_health()
+) -> dict[str, Any]:
+    """Get canonical service health plus telemetry's latest service status."""
+    health = await collect_platform_health(db, detail="full", scope="services", include="nodes")
+    return {
+        "status": health["status"],
+        "services": health["services"],
+        "nodes": health["nodes"],
+        "summary": health["summary"],
+        "telemetry": telemetry.get_service_health(),
+    }
 
 
 @router.get("/circuit-breakers")

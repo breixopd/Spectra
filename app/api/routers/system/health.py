@@ -14,6 +14,7 @@ from app.api.dependencies import get_current_active_user, get_current_superuser
 from app.core.database import get_async_session
 from app.core.rate_limit import limiter
 from app.models.user import User
+from app.services.system.health import collect_platform_health
 from app.services.tools.models import ToolStatus
 from app.services.tools.registry import ToolRegistry
 
@@ -93,15 +94,23 @@ async def get_public_system_status(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Anonymous-safe system status for the public status page."""
-    db_healthy = True
-    try:
-        await session.execute(text("SELECT 1"))
-    except Exception:
-        db_healthy = False
-
+    health = await collect_platform_health(session, detail="basic", scope="public")
+    services = {
+        name: value.get("status", "unknown")
+        for name, value in health.get("services", {}).items()
+    }
     return {
-        "status": "operational" if db_healthy else "degraded",
-        "database": {"status": "healthy" if db_healthy else "unhealthy"},
+        "status": "operational" if health["status"] == "healthy" else "degraded",
+        "version": health["version"],
+        "timestamp": health["timestamp"],
+        "database": health["components"].get("database", {"status": "unknown"}),
+        "storage": health["components"].get("s3", {"status": "unknown"}),
+        "api": services.get("api", "healthy"),
+        "ai": services.get("ai_service", "unknown"),
+        "worker": services.get("worker", "unknown"),
+        "scheduler": services.get("scheduler", "unknown"),
+        "services": services,
+        "summary": health.get("summary", {}),
     }
 
 
@@ -253,13 +262,11 @@ async def get_system_status(
 
 @router.get("/services/health")
 async def service_health(
+    db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_superuser),
 ) -> dict:
-    """Health check all registered services."""
-    from app.services.gateway.service_registry import get_service_registry
-
-    registry = get_service_registry()
-    return await registry.health_check_all()
+    """Health check all registered services through the canonical collector."""
+    return await collect_platform_health(db, detail="full", scope="services", include="nodes")
 
 
 @router.get("/services/topology")

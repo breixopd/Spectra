@@ -523,7 +523,7 @@ services:
 
   # TensorZero gateway
   tensorzero:
-    image: tensorzero/gateway:2025.01.07
+    image: ${TENSORZERO_IMAGE:-tensorzero/gateway:latest}
     entrypoint: ["/bin/sh", "/app/init.sh"]
     deploy:
       replicas: 1

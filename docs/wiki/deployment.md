@@ -131,6 +131,10 @@ cd docker && docker compose up -d
 - **Dev UI:** `http://localhost:5000`
 - Create your admin account at `/setup`
 - Configure your AI provider through the web UI
+- Health probes:
+  - Lightweight: `curl -f 'http://localhost:5000/api/health'`
+  - Public platform: `curl -f 'http://localhost:5000/api/v1/health?scope=public'`
+  - Full admin/internal: `curl -f -H "X-Service-Auth: $SERVICE_AUTH_SECRET" 'http://localhost:5000/api/v1/health?detail=full&include=services,nodes'`
 
 ---
 
@@ -143,11 +147,23 @@ Use the automated first-run script for a complete single-command setup:
 ```
 
 This handles:
+
 1. Starting core services (database, Redis, Garage S3)
 2. Bootstrapping S3 storage and creating required buckets
 3. Running database migrations
 4. Starting all application services
 5. Printing the setup URL for admin account creation
+
+For a repeatable live smoke test, use:
+
+```bash
+# Starts the compose test stack, bootstraps Garage, runs setup/login,
+# checks API/UI health, TensorZero, and full health latency.
+START_STACK=1 ./scripts/test.sh live-smoke
+
+# Against an existing VPS/Swarm deployment:
+APP_BASE_URL=https://spectra.example.com ./scripts/test.sh live-smoke
+```
 
 **Manual first-run** (if you prefer step-by-step):
 

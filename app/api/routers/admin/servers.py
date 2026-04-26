@@ -436,44 +436,37 @@ async def restore_backup(
 
 @router.get("/api/admin/services")
 async def list_services(
+    session: AsyncSession = Depends(get_async_session),
     _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """List all registered services and their health status."""
-    import httpx
+    from app.services.system.health import collect_platform_health
 
-    services = [
-        {"name": "api", "type": "core", "port": 5000, "aliases": ["app", "spectra_app"]},
-        {"name": "ai-svc", "type": "ai", "port": 5010, "aliases": ["spectra_ai-svc"]},
-        {"name": "scheduler", "type": "background", "port": 5011, "aliases": ["spectra_scheduler"]},
-        {"name": "worker", "type": "tools", "port": None, "aliases": []},
-    ]
-
-    results = []
-    for svc in services:
-        health_status = "unknown"
-        if svc["port"]:
-            aliases = [svc["name"], *svc.get("aliases", [])]
-            urls = [f"http://{alias}:{svc['port']}/api/health" for alias in aliases]
-            urls.append(f"http://localhost:{svc['port']}/api/health")
-            for url in urls:
-                try:
-                    async with httpx.AsyncClient(timeout=3.0) as client:
-                        resp = await client.get(url)
-                        health_status = "healthy" if resp.status_code == 200 else "unhealthy"
-                        break
-                except Exception:
-                    health_status = "unreachable"
-
-        results.append(
+    health = await collect_platform_health(session, detail="full", scope="services", include="nodes")
+    service_types = {
+        "api": "core",
+        "ai_service": "ai",
+        "tensorzero": "ai_gateway",
+        "scheduler": "background",
+        "worker": "tools",
+    }
+    return {
+        "status": health["status"],
+        "services": [
             {
-                "name": svc["name"],
-                "type": svc["type"],
-                "port": svc["port"],
-                "status": health_status,
+                "name": name,
+                "type": service_types.get(name, "service"),
+                "status": svc.get("status", "unknown"),
+                "latency_ms": svc.get("latency_ms"),
+                "url": svc.get("url"),
+                "path": svc.get("path"),
+                "error": svc.get("error"),
             }
-        )
-
-    return {"services": results}
+            for name, svc in health.get("services", {}).items()
+        ],
+        "nodes": health.get("nodes", {}),
+        "summary": health.get("summary", {}),
+    }
 
 
 @router.get("/api/admin/services/nodes")
