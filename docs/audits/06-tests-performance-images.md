@@ -7,6 +7,9 @@
 - API runtime image installs Grype. Runtime app image should not carry scanner binaries unless explicitly enabled by build target.
 - Worker is Kali-based by design and large; `requirements/worker.txt` still pulls web framework deps due shared imports.
 - Pytest/pytest-asyncio/Playwright version workarounds exist in CI and Dockerfiles. Needs one documented compatible pair.
+- CI now builds and loads API/worker images, then runs Trivy with a critical-CVE failure policy. Extend this to AI, scheduler, Caddy, and release-published GHCR images before production release.
+- `deploy.resources` limits in compose are Swarm-oriented. Plain `docker compose up` deployments may not enforce the documented CPU/memory limits unless equivalent `cpus`/`mem_limit` or orchestrator limits are added.
+- `kali-rolling:latest` and third-party `latest` images drift over time. Pin digest or release tags for production images that must be reproducible.
 
 ## Benchmark Gaps
 
@@ -23,6 +26,7 @@
 ## First Fixes
 
 - Keep `Dockerfile.test` as default test runner path.
-- Move Grype to CI or a scan build target.
+- Move Grype to CI or a scan build target. The first CI slice now scans API/worker images with Trivy for critical CVEs.
 - Add image-size/resource reporting to live-smoke or load reports.
 - Split shared imports so worker can drop FastAPI/uvicorn where possible.
+- Add Dependabot/Renovate for `requirements/*.txt` and GitHub Actions so dependency and action updates are routine.

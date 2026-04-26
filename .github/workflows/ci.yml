@@ -171,7 +171,8 @@ jobs:
           context: .
           file: docker/Dockerfile.api
           push: false
-          load: false
+          load: true
+          tags: spectra-api:ci
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -189,7 +190,8 @@ jobs:
           context: .
           file: docker/Dockerfile.worker
           push: false
-          load: false
+          load: true
+          tags: spectra-worker:ci
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -200,6 +202,20 @@ jobs:
         run: docker compose --env-file .env.example -f docker/docker-compose.yml config --quiet
       - name: Validate Swarm compose
         run: docker compose --env-file .env.example -f docker/docker-compose.swarm.yml config --quiet
+      - name: Scan API image for critical CVEs
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: spectra-api:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Scan worker image for critical CVEs
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: spectra-worker:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
 
   deps:
     name: Dependency Audit
