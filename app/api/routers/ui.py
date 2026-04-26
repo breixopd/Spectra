@@ -48,6 +48,11 @@ async def _check_user_feature(username: str | None, feature: str) -> bool:
         from app.models.user import User
 
         async with async_session_maker() as session:
+            user_result = await session.execute(select(User).where(User.username == username))
+            db_user = user_result.scalar_one_or_none()
+            if db_user and _is_admin_user(db_user):
+                return True
+
             result = await session.execute(
                 select(Plan.features)
                 .join(Subscription, Subscription.plan_id == Plan.id)

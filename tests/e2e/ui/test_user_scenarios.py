@@ -225,6 +225,8 @@ _SIDEBAR_NAV_PATHS = [
     "/history",
     "/targets",
     "/reports",
+    "/docs/api",
+    "/manual",
     "/settings",
     "/help",
 ]
@@ -237,7 +239,7 @@ def test_sidebar_navigation_all_links(authenticated_page: Page, app_url: str):
 
     for path in _SIDEBAR_NAV_PATHS:
         page.goto(f"{app_url}{path}", wait_until="networkidle")
-        expect(page).to_have_url(f"{app_url}{path}", timeout=15_000)
+        assert page.url == f"{app_url}{path}" or page.url.startswith(f"{app_url}{path}#")
 
         # No 5xx error page should appear
         error_code = page.locator(".error-code")

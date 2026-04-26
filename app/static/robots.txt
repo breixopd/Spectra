@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 Allow: /changelog
 Allow: /help
-Allow: /docs
+Allow: /docs/api
 Disallow: /api/
 Disallow: /admin
 Disallow: /dashboard
@@ -12,7 +12,7 @@ Disallow: /targets
 Disallow: /history
 Disallow: /reports
 Disallow: /overseer
-Disallow: /manual-tools
+Disallow: /manual
 Disallow: /observability
 Disallow: /setup
 Disallow: /static/

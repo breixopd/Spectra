@@ -104,21 +104,24 @@ document.addEventListener('DOMContentLoaded', function() {
                         adminNavLink.classList.add('hidden');
                     }
                 }
-                if (!user || !user.plan) return;
-                var features = user.plan.features || {};
-                document.querySelectorAll('[data-feature]').forEach(function(el) {
-                    var feat = el.dataset.feature;
-                    var allowed = features[feat] === true || features[feat] === undefined;
+                var features = (user && user.plan && user.plan.features) || {};
+                document.querySelectorAll('[data-entitlement-gate]').forEach(function(el) {
+                    var feat = el.dataset.entitlementGate;
+                    var allowed = isAdmin || features[feat] === true;
                     if (!allowed) {
                         el.classList.add('pointer-events-none', 'opacity-40');
                         el.removeAttribute('href');
-                        el.setAttribute('title', 'Requires a plan with ' + feat.replace(/_/g, ' ') + ' \u2014 available on Professional and Enterprise plans');
+                        el.setAttribute('aria-disabled', 'true');
+                        el.setAttribute('title', 'Requires a plan with ' + feat.replace(/_/g, ' ') + '. Upgrade or contact your administrator.');
                         el.style.cursor = 'not-allowed';
                         // Add upgrade link after the gated element
-                        var upgrade = document.createElement('span');
-                        upgrade.className = 'text-xs text-violet-400 ml-1';
-                        upgrade.innerHTML = '<a href="/profile#billing" class="hover:text-violet-300 transition-colors pointer-events-auto">Upgrade</a>';
-                        if (el.parentNode) el.parentNode.appendChild(upgrade);
+                        if (el.parentNode && !el.parentNode.querySelector('[data-upgrade-link-for="' + feat + '"]')) {
+                            var upgrade = document.createElement('span');
+                            upgrade.className = 'text-xs text-violet-400 ml-1';
+                            upgrade.dataset.upgradeLinkFor = feat;
+                            upgrade.innerHTML = '<a href="/profile#plan" class="hover:text-violet-300 transition-colors pointer-events-auto">Upgrade</a>';
+                            el.parentNode.appendChild(upgrade);
+                        }
                     }
                 });
             })

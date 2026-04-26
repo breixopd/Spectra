@@ -76,11 +76,11 @@
                         <i data-lucide="file-text" class="w-4 h-4"></i>
                         <span class="ml-3 text-sm font-medium">Reports</span>
                     </a>
-                    <a href="/docs" data-feature="api_docs" data-tooltip="API docs and integrations" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/docs' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                    <a href="/docs/api" data-entitlement-gate="api_access" data-tooltip="API docs and integrations" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/docs/api' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i data-lucide="book-open" class="w-4 h-4"></i>
                         <span class="ml-3 text-sm font-medium">Documentation</span>
                     </a>
-                    <a href="/manual-tools" data-tooltip="Manual tool execution workspace" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/manual-tools' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                    <a href="/manual" data-entitlement-gate="manual_mode" data-tooltip="Manual tool execution workspace" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/manual' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i data-lucide="terminal-square" class="w-4 h-4"></i>
                         <span class="ml-3 text-sm font-medium">Manual Tools</span>
                     </a>
@@ -88,7 +88,7 @@
                         <i data-lucide="settings-2" class="w-4 h-4"></i>
                         <span class="ml-3 text-sm font-medium">Settings</span>
                     </a>
-                    <a href="/help" data-feature="priority_support" data-tooltip="Help resources and support" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/help' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                    <a href="/help" data-tooltip="Help resources and support" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/help' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i data-lucide="help-circle" class="w-4 h-4"></i>
                         <span class="ml-3 text-sm font-medium">Help Center</span>
                     </a>
