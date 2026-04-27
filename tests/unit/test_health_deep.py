@@ -209,6 +209,70 @@ async def test_service_health_returns_nodes_for_internal_call():
     assert result["nodes"]["worker"][0]["latency_ms"] == 5.5
 
 
+def test_probe_http_health_wrapper():
+    with patch("app.api.routers.health.probe_http_health", new=AsyncMock(return_value={"status": "healthy"})) as mock_probe:
+        from app.api.routers.health import _probe_http_health
+
+        result = asyncio.run(_probe_http_health("http://test", path="/health"))
+    assert result is True
+    mock_probe.assert_awaited_once_with("http://test", path="/health")
+
+
+def test_probe_http_health_wrapper_unhealthy():
+    with patch("app.api.routers.health.probe_http_health", new=AsyncMock(return_value={"status": "degraded"})) as mock_probe:
+        from app.api.routers.health import _probe_http_health
+
+        result = asyncio.run(_probe_http_health("http://test", path="/health"))
+    assert result is False
+
+
+import asyncio
+
+
+def test_data_dir():
+    from app.api.routers.health import _data_dir
+
+    assert _data_dir() == "/app/data"
+
+
+@pytest.mark.asyncio
+async def test_get_version():
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+
+    from app.api.routers.health import router as health_router
+
+    app = FastAPI()
+    app.include_router(health_router)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.get("/version")
+    assert resp.status_code == 200
+    assert "version" in resp.json()
+
+
+@pytest.mark.asyncio
+async def test_service_health_degraded_logs_debug():
+    db = AsyncMock()
+    response = {
+        "status": "degraded",
+        "services": {},
+        "nodes": {},
+        "instance": "test",
+        "timestamp": "now",
+        "summary": {"nodes": {"total": 0, "healthy": 0}},
+    }
+
+    with (
+        patch("app.api.routers.health._get_settings", return_value=_settings()),
+        patch("app.api.routers.health.collect_platform_health", new=AsyncMock(return_value=response)),
+        patch("app.api.routers.health.logger") as mock_logger,
+    ):
+        result = await service_health(request=_mock_request(service_auth="svc-secret"), db=db)
+
+    assert result["status"] == "degraded"
+    mock_logger.debug.assert_called_once()
+
+
 @pytest.mark.asyncio
 async def test_probe_http_health_reports_latency_and_status():
     mock_response = MagicMock(status_code=200)

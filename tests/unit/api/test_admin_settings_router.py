@@ -37,6 +37,18 @@ def _build_app() -> FastAPI:
 
 class TestAdminSettingsRouter:
     @pytest.mark.asyncio
+    async def test_get_admin_settings(self):
+        app = _build_app()
+
+        with patch("app.api.routers.admin.settings.get_current_settings", return_value={"MAINTENANCE_MODE": False}) as get_mock:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+                resp = await ac.get("/api/admin/settings")
+
+        assert resp.status_code == 200
+        assert resp.json()["MAINTENANCE_MODE"] is False
+        get_mock.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_update_admin_settings_accepts_uppercase_payload(self):
         app = _build_app()
         mock_session = AsyncMock()

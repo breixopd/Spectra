@@ -205,6 +205,27 @@ class TestUpdateContent:
         assert resp.status_code == 200
         assert resp.json()["status"] == "updated"
 
+    async def test_update_content_and_is_active_and_sort_order(self):
+        app = _make_app()
+        item = _fake_content_item()
+        mock_session = _session_returning_scalar_one(item)
+        _override_deps(app, _fake_user(), mock_session)
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            resp = await ac.put(
+                "/api/admin/content/c-1",
+                json={
+                    "content": {"body": "updated", "count": 42, "nested": {"a": 1}},
+                    "is_active": False,
+                    "sort_order": 5,
+                },
+            )
+        assert resp.status_code == 200
+        assert item.is_active is False
+        assert item.sort_order == 5
+        assert item.content["count"] == 42
+
     async def test_update_not_found(self):
         app = _make_app()
         mock_session = _session_returning_scalar_one(None)
