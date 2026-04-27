@@ -217,7 +217,7 @@ class ServerDeployer:
                 raise RuntimeError(
                     f"ssh-keyscan failed for {hostname}:{port}: {detail}"
                 )
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             raise RuntimeError(
                 f"ssh-keyscan timed out for {hostname}:{port}"
             ) from exc

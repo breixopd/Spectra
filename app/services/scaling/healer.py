@@ -142,10 +142,13 @@ class ServiceHealer:
         try:
             from app.core.database import engine
 
-            async with engine.connect() as conn:
-                from sqlalchemy import text
-                await conn.execute(text("SELECT 1"))
-            checks.append({"name": "postgresql", "result": "healthy", "detail": "Connection OK"})
+            if engine is None:
+                checks.append({"name": "postgresql", "result": "unhealthy", "detail": "Database URL not configured"})
+            else:
+                async with engine.connect() as conn:
+                    from sqlalchemy import text
+                    await conn.execute(text("SELECT 1"))
+                checks.append({"name": "postgresql", "result": "healthy", "detail": "Connection OK"})
         except Exception as exc:
             checks.append({"name": "postgresql", "result": "unhealthy", "detail": str(exc)})
 

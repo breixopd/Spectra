@@ -76,7 +76,7 @@ class Settings(BaseSettings):
     # --- Database (PostgreSQL) ---
     # Primary persistent store, PostgreSQL-backed app cache, job queue, and
     # LISTEN/NOTIFY backbone.
-    DATABASE_URL: SecretStr = SecretStr("postgresql+asyncpg://spectra:spectra@db:5432/spectra")
+    DATABASE_URL: SecretStr = SecretStr("")
     DATABASE_ECHO: bool = False
     DATABASE_POOL_SIZE: int = 20
     DATABASE_MAX_OVERFLOW: int = 10
@@ -172,7 +172,7 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: SecretStr = SecretStr("")  # Must be set via env var or generated
     JWT_ALGORITHM: str = "HS256"
     # Security
-    SECRET_KEY: SecretStr = SecretStr("change-me-in-production")  # Overridden by get_settings()
+    SECRET_KEY: SecretStr = SecretStr("")  # Must be set via env var; get_settings() validates
     ENCRYPTION_KEY: str = (
         ""  # Separate key for data encryption (MFA secrets, BYOK credentials). Falls back to JWT_SECRET_KEY.
     )
