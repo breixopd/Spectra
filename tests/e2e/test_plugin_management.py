@@ -5,6 +5,7 @@ import asyncio
 import pytest
 import pytest_asyncio
 
+from app.core.database import engine
 from app.infrastructure.queue import Job
 from app.services.tools.models import ToolStatus
 from app.services.tools.registry import get_registry
@@ -71,6 +72,10 @@ async def cleanup_registry(registry):
 
 async def wait_for_job(job_id: str, timeout: int = 30):
     """Wait for a postgres job to complete."""
+    from sqlalchemy import select as sa_select
+    from app.infrastructure.queue import JobQueue
+    from app.core.database import async_session_maker
+
     start_time = asyncio.get_running_loop().time()
 
     while asyncio.get_running_loop().time() - start_time < timeout:
@@ -81,6 +86,12 @@ async def wait_for_job(job_id: str, timeout: int = 30):
             return await job.result()
         elif status == "failed":
             raise Exception(f"Job {job_id} failed: {await job.result()}")
+        elif status == "dead_letter":
+            async with async_session_maker() as session:
+                result = await session.execute(sa_select(JobQueue).where(JobQueue.id == job_id))
+                row = result.scalar_one_or_none()
+                error = row.error if row else "unknown"
+            raise Exception(f"Job {job_id} moved to dead letter: {error}")
 
         await asyncio.sleep(1)
 
@@ -118,6 +129,7 @@ class TestPluginLifecycle:
 
         print(f"Installation result: {result}")
         worker_task.cancel()
+        await engine.dispose()
 
     async def test_broken_plugin_verification_failure(self, registry):
         """Test that a plugin with failing verification is marked as failed."""
@@ -137,10 +149,10 @@ class TestPluginLifecycle:
         # Run worker to process the job
         worker_task = asyncio.create_task(worker_loop(_WORKER_FUNCTIONS))
 
-        result = await wait_for_job(job_id)
-        assert result["success"] is False
-        assert "Verification command failed" in result["error"]
+        with pytest.raises(Exception, match="Verification command failed"):
+            await wait_for_job(job_id)
         worker_task.cancel()
+        await engine.dispose()
 
     async def test_plugin_uninstall(self, registry):
         """Test uninstalling a plugin removes it from registry and disk."""
