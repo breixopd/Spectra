@@ -8,7 +8,6 @@ import logging
 import re
 import shlex
 import shutil
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -110,7 +109,7 @@ class ServerProvisioner:
             return result
 
         try:
-            conn_kwargs = self._build_conn_kwargs(config)
+            conn_kwargs = await self._build_conn_kwargs(config)
         except (OSError, RuntimeError, ValueError) as e:
             result.error = str(e)
             result.logs.append(f"ERROR: {result.error}")
@@ -221,7 +220,7 @@ class ServerProvisioner:
     async def verify_connection(self, config: ServerConfig) -> dict[str, Any]:
         """Test SSH connectivity without provisioning."""
         try:
-            conn_kwargs = self._build_conn_kwargs(config)
+            conn_kwargs = await self._build_conn_kwargs(config)
         except (OSError, RuntimeError, ValueError) as e:
             return {"connected": False, "error": str(e)}
         if conn_kwargs is None:
@@ -253,7 +252,7 @@ class ServerProvisioner:
         )
 
         try:
-            conn_kwargs = self._build_conn_kwargs(config)
+            conn_kwargs = await self._build_conn_kwargs(config)
         except (OSError, RuntimeError, ValueError) as e:
             result.error = str(e)
             result.logs.append(f"ERROR: {result.error}")
@@ -283,12 +282,12 @@ class ServerProvisioner:
 
         return result
 
-    def _build_conn_kwargs(self, config: ServerConfig) -> dict[str, Any] | None:
+    async def _build_conn_kwargs(self, config: ServerConfig) -> dict[str, Any] | None:
         """Build asyncssh connection kwargs. Returns None if no auth available."""
         if not config.private_key and not config.password:
             return None
 
-        known_hosts_path = self._ensure_known_host(config)
+        known_hosts_path = await self._ensure_known_host(config)
         conn_kwargs: dict[str, Any] = {
             "host": config.host,
             "port": config.port,
@@ -354,14 +353,15 @@ class ServerProvisioner:
             raise RuntimeError("ssh-keyscan executable not found in PATH")
         return executable
 
-    def _ensure_known_host(self, config: ServerConfig) -> Path:
+    async def _ensure_known_host(self, config: ServerConfig) -> Path:
         """Ensure the remote host has a persisted known_hosts entry before connecting."""
         known_hosts_path = self._known_hosts_path()
-        known_hosts_path.parent.mkdir(parents=True, exist_ok=True)
-        known_hosts_path.touch(exist_ok=True)
-        known_hosts_path.chmod(0o600)
+        await asyncio.to_thread(known_hosts_path.parent.mkdir, parents=True, exist_ok=True)
+        await asyncio.to_thread(known_hosts_path.touch, exist_ok=True)
+        await asyncio.to_thread(known_hosts_path.chmod, 0o600)
 
-        existing_lines = known_hosts_path.read_text(encoding="utf-8").splitlines()
+        existing_text = await asyncio.to_thread(known_hosts_path.read_text, encoding="utf-8")
+        existing_lines = existing_text.splitlines()
         expected_host = self._known_hosts_target(config.host, config.port)
 
         if config.ssh_known_host is not None:
@@ -373,7 +373,11 @@ class ServerProvisioner:
                 line for line in existing_lines if not self._line_matches_known_host(line, expected_host)
             ]
             merged_lines = list(dict.fromkeys([*retained_lines, *pinned_lines]))
-            known_hosts_path.write_text("\n".join(merged_lines) + "\n", encoding="utf-8")
+            await asyncio.to_thread(
+                known_hosts_path.write_text,
+                "\n".join(merged_lines) + "\n",
+                encoding="utf-8",
+            )
             logger.info("Persisted pinned SSH host key for %s:%s", config.host, config.port)
             return known_hosts_path
 
@@ -386,26 +390,42 @@ class ServerProvisioner:
 
         try:
             # The host and port are validated, and the executable path is fully resolved.
-            scan_result = subprocess.run(  # noqa: S603
-                [ssh_keyscan, "-p", str(config.port), scan_host],
-                capture_output=True,
-                text=True,
-                check=True,
-                timeout=10,
+            proc = await asyncio.create_subprocess_exec(
+                ssh_keyscan,
+                "-p",
+                str(config.port),
+                scan_host,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-            detail = (getattr(exc, "stderr", "") or str(exc)).strip()
+            stdout_data, stderr_data = await asyncio.wait_for(proc.communicate(), timeout=10)
+            if proc.returncode != 0:
+                detail = (stderr_data.decode("utf-8", errors="replace").strip() or "no error output")
+                raise RuntimeError(
+                    f"ssh-keyscan failed for {config.host}:{config.port}: {detail}"
+                )
+        except asyncio.TimeoutError as exc:
             raise RuntimeError(
-                f"ssh-keyscan failed for {config.host}:{config.port}: {detail or 'no error output'}"
+                f"ssh-keyscan timed out for {config.host}:{config.port}"
+            ) from exc
+        except Exception as exc:
+            if isinstance(exc, RuntimeError):
+                raise
+            detail = str(exc).strip() or "no error output"
+            raise RuntimeError(
+                f"ssh-keyscan failed for {config.host}:{config.port}: {detail}"
             ) from exc
 
-        scanned_lines = self._normalize_known_host_lines(scan_result.stdout)
+        scanned_lines = self._normalize_known_host_lines(stdout_data.decode("utf-8", errors="replace"))
         if not scanned_lines:
             raise RuntimeError(f"ssh-keyscan returned no host keys for {config.host}:{config.port}")
 
-        with known_hosts_path.open("a", encoding="utf-8") as handle:
-            handle.write("\n".join(scanned_lines))
-            handle.write("\n")
+        def _append_lines() -> None:
+            with known_hosts_path.open("a", encoding="utf-8") as handle:
+                handle.write("\n".join(scanned_lines))
+                handle.write("\n")
+
+        await asyncio.to_thread(_append_lines)
 
         logger.info(
             "Trusted new SSH host key on first use for %s:%s using %s",

@@ -16,7 +16,6 @@ import logging
 import re
 import shlex
 import shutil
-import subprocess
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
@@ -74,7 +73,7 @@ class ServerDeployer:
         try:
             # Phase 1: Connect and verify
             logs.append(f"Connecting to {hostname}:{ssh_port} as {ssh_user}...")
-            known_hosts_path = self._ensure_known_host(hostname, ssh_port, pinned_known_host)
+            known_hosts_path = await self._ensure_known_host(hostname, ssh_port, pinned_known_host)
             ssh_cmd_base = self._build_ssh_base(hostname, ssh_user, ssh_port, ssh_key, known_hosts_path)
 
             rc = await self._run_ssh(ssh_cmd_base, "echo 'Spectra deployment connected'", logs)
@@ -167,14 +166,15 @@ class ServerDeployer:
             raise RuntimeError("ssh-keyscan executable not found in PATH")
         return executable
 
-    def _ensure_known_host(self, hostname: str, port: int, pinned_known_host: str | None = None) -> Path:
+    async def _ensure_known_host(self, hostname: str, port: int, pinned_known_host: str | None = None) -> Path:
         """Ensure deploy-time SSH trust is pinned locally before connecting."""
         known_hosts_path = self._known_hosts_path()
-        known_hosts_path.parent.mkdir(parents=True, exist_ok=True)
-        known_hosts_path.touch(exist_ok=True)
-        known_hosts_path.chmod(0o600)
+        await asyncio.to_thread(known_hosts_path.parent.mkdir, parents=True, exist_ok=True)
+        await asyncio.to_thread(known_hosts_path.touch, exist_ok=True)
+        await asyncio.to_thread(known_hosts_path.chmod, 0o600)
 
-        existing_lines = known_hosts_path.read_text(encoding="utf-8").splitlines()
+        existing_text = await asyncio.to_thread(known_hosts_path.read_text, encoding="utf-8")
+        existing_lines = existing_text.splitlines()
         expected_host = self._known_hosts_target(hostname, port)
 
         if pinned_known_host is not None:
@@ -186,7 +186,11 @@ class ServerDeployer:
                 line for line in existing_lines if not self._line_matches_known_host(line, expected_host)
             ]
             merged_lines = list(dict.fromkeys([*retained_lines, *pinned_lines]))
-            known_hosts_path.write_text("\n".join(merged_lines) + "\n", encoding="utf-8")
+            await asyncio.to_thread(
+                known_hosts_path.write_text,
+                "\n".join(merged_lines) + "\n",
+                encoding="utf-8",
+            )
             logger.info("Persisted pinned SSH host key for %s:%s", hostname, port)
             return known_hosts_path
 
@@ -199,26 +203,42 @@ class ServerDeployer:
 
         try:
             # The host and port are validated, and the executable path is fully resolved.
-            scan_result = subprocess.run(  # noqa: S603
-                [ssh_keyscan, "-p", str(port), scan_host],
-                capture_output=True,
-                text=True,
-                check=True,
-                timeout=10,
+            proc = await asyncio.create_subprocess_exec(
+                ssh_keyscan,
+                "-p",
+                str(port),
+                scan_host,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-            detail = (getattr(exc, "stderr", "") or str(exc)).strip()
+            stdout_data, stderr_data = await asyncio.wait_for(proc.communicate(), timeout=10)
+            if proc.returncode != 0:
+                detail = (stderr_data.decode("utf-8", errors="replace").strip() or "no error output")
+                raise RuntimeError(
+                    f"ssh-keyscan failed for {hostname}:{port}: {detail}"
+                )
+        except asyncio.TimeoutError as exc:
             raise RuntimeError(
-                f"ssh-keyscan failed for {hostname}:{port}: {detail or 'no error output'}"
+                f"ssh-keyscan timed out for {hostname}:{port}"
+            ) from exc
+        except Exception as exc:
+            if isinstance(exc, RuntimeError):
+                raise
+            detail = str(exc).strip() or "no error output"
+            raise RuntimeError(
+                f"ssh-keyscan failed for {hostname}:{port}: {detail}"
             ) from exc
 
-        scanned_lines = self._normalize_known_host_lines(scan_result.stdout)
+        scanned_lines = self._normalize_known_host_lines(stdout_data.decode("utf-8", errors="replace"))
         if not scanned_lines:
             raise RuntimeError(f"ssh-keyscan returned no host keys for {hostname}:{port}")
 
-        with known_hosts_path.open("a", encoding="utf-8") as handle:
-            handle.write("\n".join(scanned_lines))
-            handle.write("\n")
+        def _append_lines() -> None:
+            with known_hosts_path.open("a", encoding="utf-8") as handle:
+                handle.write("\n".join(scanned_lines))
+                handle.write("\n")
+
+        await asyncio.to_thread(_append_lines)
 
         logger.info(
             "Trusted new deploy SSH host key on first use for %s:%s using %s",
