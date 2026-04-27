@@ -177,6 +177,10 @@ async def test_quota_reset_runs_single_iteration():
         def now(cls, tz=None):
             return datetime(2026, 3, 29, 23, 15, tzinfo=UTC)
 
+    @asynccontextmanager
+    async def fake_lock_owner(lock_id, *, connection_factory):
+        yield object()
+
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
@@ -184,6 +188,7 @@ async def test_quota_reset_runs_single_iteration():
             make_module("app.services.billing.usage_tracker", UsageTracker=lambda: tracker),
         )
         mp.setattr(scheduler_service, "datetime", _FakeDateTime)
+        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
         await service._quota_reset()
 
@@ -208,6 +213,10 @@ async def test_quota_reset_handles_reset_errors():
         def now(cls, tz=None):
             return datetime(2026, 3, 29, 23, 15, tzinfo=UTC)
 
+    @asynccontextmanager
+    async def fake_lock_owner(lock_id, *, connection_factory):
+        yield object()
+
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
@@ -215,6 +224,7 @@ async def test_quota_reset_handles_reset_errors():
             make_module("app.services.billing.usage_tracker", UsageTracker=lambda: tracker),
         )
         mp.setattr(scheduler_service, "datetime", _FakeDateTime)
+        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
         await service._quota_reset()
 
@@ -229,12 +239,17 @@ async def test_metrics_collector_runs_single_iteration():
     service.running = True
     store = SimpleNamespace(collect=AsyncMock(side_effect=lambda: setattr(service, "running", False)))
 
+    @asynccontextmanager
+    async def fake_lock_owner(lock_id, *, connection_factory):
+        yield object()
+
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
             "app.core.metrics_store",
             make_module("app.core.metrics_store", get_metrics_store=lambda: store),
         )
+        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
         await service._metrics_collector()
 
@@ -254,12 +269,17 @@ async def test_metrics_collector_handles_collection_errors():
 
     store = SimpleNamespace(collect=AsyncMock(side_effect=collect))
 
+    @asynccontextmanager
+    async def fake_lock_owner(lock_id, *, connection_factory):
+        yield object()
+
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
             "app.core.metrics_store",
             make_module("app.core.metrics_store", get_metrics_store=lambda: store),
         )
+        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
         await service._metrics_collector()
 
@@ -330,6 +350,10 @@ async def test_backup_scheduler_runs_single_iteration():
         create_backup=AsyncMock(side_effect=lambda: setattr(service, "running", False) or {"status": "ok"})
     )
 
+    @asynccontextmanager
+    async def fake_lock_owner(lock_id, *, connection_factory):
+        yield object()
+
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
@@ -341,6 +365,7 @@ async def test_backup_scheduler_runs_single_iteration():
             "app.services.infrastructure.backup",
             make_module("app.services.infrastructure.backup", BackupService=lambda: backup_service),
         )
+        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
         await service._backup_scheduler()
 
@@ -386,6 +411,10 @@ async def test_backup_scheduler_handles_backup_errors():
 
     backup_service = SimpleNamespace(create_backup=AsyncMock(side_effect=create_backup))
 
+    @asynccontextmanager
+    async def fake_lock_owner(lock_id, *, connection_factory):
+        yield object()
+
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
@@ -397,6 +426,7 @@ async def test_backup_scheduler_handles_backup_errors():
             "app.services.infrastructure.backup",
             make_module("app.services.infrastructure.backup", BackupService=lambda: backup_service),
         )
+        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
         await service._backup_scheduler()
 
@@ -415,6 +445,10 @@ async def test_image_update_check_skips_registry_when_auto_update_disabled():
     async def stop_after_sleep(seconds):
         service.running = False
 
+    @asynccontextmanager
+    async def fake_lock_owner(lock_id, *, connection_factory):
+        yield object()
+
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
@@ -426,6 +460,7 @@ async def test_image_update_check_skips_registry_when_auto_update_disabled():
             "app.services.scaling.image_updater",
             make_module("app.services.scaling.image_updater", check_and_update_services=image_updater.check_and_update_services),
         )
+        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock(side_effect=stop_after_sleep))
         await service._image_update_check()
 

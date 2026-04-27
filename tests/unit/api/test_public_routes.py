@@ -40,7 +40,7 @@ class TestPublicStatusApi:
                 "version": "1.0.0",
                 "timestamp": "2024-01-01T00:00:00Z",
                 "components": {"database": {"status": "healthy"}},
-                "services": {"api": "healthy"},
+                "services": {"api": {"status": "healthy"}},
             }
             mock_session = AsyncMock()
             result = await get_public_system_status(session=mock_session)

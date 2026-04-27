@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-LOGIN_TEMPLATE = Path(__file__).resolve().parents[3] / "app" / "templates" / "login.html"
+LOGIN_TEMPLATE = Path(__file__).resolve().parents[3] / "templates" / "login.html"
 
 
 class TestMfaLoginStep:

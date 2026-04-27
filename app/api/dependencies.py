@@ -259,7 +259,9 @@ async def get_exploit_repository(
 
 def _is_admin_user(user: User) -> bool:
     """Return True if the user is an admin or superuser."""
-    return user.is_superuser or user.role == "admin"
+    if user is None:
+        return False
+    return getattr(user, "is_superuser", False) or getattr(user, "role", None) == "admin"
 
 
 async def _get_user_plan(user: User, session: AsyncSession):

@@ -62,7 +62,10 @@ class TestApiDocsRoute:
 
         mock_request = MagicMock()
 
-        with patch("app.api.routers.ui.get_ui_user", return_value=None):
+        with (
+            patch("app.api.routers.ui.get_ui_user", return_value=None),
+            patch("app.api.routers.ui._is_admin_user", return_value=False),
+        ):
             result = await api_docs_page(mock_request)
             assert result.status_code == 303
             assert "/login" in str(result.headers.get("location", ""))
