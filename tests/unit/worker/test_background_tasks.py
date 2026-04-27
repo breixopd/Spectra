@@ -15,14 +15,14 @@ from tests.helpers import make_module, reload_module
 
 @pytest.mark.asyncio
 async def test_cache_cleanup_loop_purges_expired_entries_once():
-    from app.core import background_tasks as background_tasks_module
+    from app.infrastructure import background_tasks as background_tasks_module
 
     background_tasks = reload_module(background_tasks_module)
 
     cache = SimpleNamespace(purge_expired=AsyncMock(return_value=3))
 
     with pytest.MonkeyPatch.context() as mp:
-        mp.setitem(sys.modules, "app.core.cache", make_module("app.core.cache", get_cache=lambda: cache))
+        mp.setitem(sys.modules, "app.infrastructure.cache", make_module("app.infrastructure.cache", get_cache=lambda: cache))
         mp.setattr(
             background_tasks.asyncio,
             "sleep",
@@ -35,7 +35,7 @@ async def test_cache_cleanup_loop_purges_expired_entries_once():
 
 @pytest.mark.asyncio
 async def test_periodic_cleanup_loop_runs_single_cleanup_cycle():
-    from app.core import background_tasks as background_tasks_module
+    from app.infrastructure import background_tasks as background_tasks_module
 
     background_tasks = reload_module(background_tasks_module)
 
@@ -59,13 +59,13 @@ async def test_periodic_cleanup_loop_runs_single_cleanup_cycle():
 
 @pytest.mark.asyncio
 async def test_cache_cleanup_loop_handles_runtime_errors():
-    from app.core import background_tasks as background_tasks_module
+    from app.infrastructure import background_tasks as background_tasks_module
 
     background_tasks = reload_module(background_tasks_module)
     cache = SimpleNamespace(purge_expired=AsyncMock(side_effect=OSError("cache down")))
 
     with pytest.MonkeyPatch.context() as mp:
-        mp.setitem(sys.modules, "app.core.cache", make_module("app.core.cache", get_cache=lambda: cache))
+        mp.setitem(sys.modules, "app.infrastructure.cache", make_module("app.infrastructure.cache", get_cache=lambda: cache))
         mp.setattr(
             background_tasks.asyncio,
             "sleep",
@@ -78,7 +78,7 @@ async def test_cache_cleanup_loop_handles_runtime_errors():
 
 @pytest.mark.asyncio
 async def test_periodic_cleanup_loop_handles_runtime_errors():
-    from app.core import background_tasks as background_tasks_module
+    from app.infrastructure import background_tasks as background_tasks_module
 
     background_tasks = reload_module(background_tasks_module)
     cleanup = AsyncMock(side_effect=RuntimeError("cleanup failed"))
@@ -101,7 +101,7 @@ async def test_periodic_cleanup_loop_handles_runtime_errors():
 
 @pytest.mark.asyncio
 async def test_sandbox_watchdog_skips_when_pool_unavailable():
-    from app.core import background_tasks
+    from app.infrastructure import background_tasks
 
     sandbox_model = type("Sandbox", (), {"status": "running"})
 
@@ -126,7 +126,7 @@ async def test_sandbox_watchdog_skips_when_pool_unavailable():
 
 @pytest.mark.asyncio
 async def test_sandbox_watchdog_reaps_stale_sandbox():
-    from app.core import background_tasks
+    from app.infrastructure import background_tasks
 
     now = datetime.now(UTC)
     sandbox = SimpleNamespace(
@@ -179,7 +179,7 @@ async def test_sandbox_watchdog_reaps_stale_sandbox():
 
 @pytest.mark.asyncio
 async def test_sandbox_watchdog_uses_age_when_heartbeat_missing():
-    from app.core import background_tasks
+    from app.infrastructure import background_tasks
 
     now = datetime.now(UTC)
     sandbox = SimpleNamespace(
@@ -232,7 +232,7 @@ async def test_sandbox_watchdog_uses_age_when_heartbeat_missing():
 
 @pytest.mark.asyncio
 async def test_sandbox_watchdog_handles_database_errors():
-    from app.core import background_tasks
+    from app.infrastructure import background_tasks
 
     pool = SimpleNamespace(available=True)
     session = AsyncMock()

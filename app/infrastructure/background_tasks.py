@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 async def cache_cleanup_loop() -> None:
     """Periodically purge expired cache entries."""
-    from app.core.cache import get_cache
+    from app.infrastructure.cache import get_cache
 
     logger.info("Cache cleanup task started (interval=%ds)", CACHE_CLEANUP_INTERVAL)
     while True:

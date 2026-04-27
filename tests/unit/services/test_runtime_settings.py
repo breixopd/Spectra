@@ -122,37 +122,37 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
     import contextlib
 
     with contextlib.ExitStack() as stack:
-        stack.enter_context(patch("app.core.lifespan.CacheService", return_value=MagicMock()))
-        stack.enter_context(patch("app.core.lifespan.set_cache"))
-        stack.enter_context(patch("app.core.lifespan.set_system_status", new_callable=AsyncMock))
-        stack.enter_context(patch("app.core.lifespan.add_system_operation", new_callable=AsyncMock))
-        stack.enter_context(patch("app.core.lifespan.remove_system_operation", new_callable=AsyncMock))
-        stack.enter_context(patch("app.core.lifespan.telemetry.update_service_status"))
+        stack.enter_context(patch("app.bootstrap.lifespan.CacheService", return_value=MagicMock()))
+        stack.enter_context(patch("app.bootstrap.lifespan.set_cache"))
+        stack.enter_context(patch("app.bootstrap.lifespan.set_system_status", new_callable=AsyncMock))
+        stack.enter_context(patch("app.bootstrap.lifespan.add_system_operation", new_callable=AsyncMock))
+        stack.enter_context(patch("app.bootstrap.lifespan.remove_system_operation", new_callable=AsyncMock))
+        stack.enter_context(patch("app.bootstrap.lifespan.telemetry.update_service_status"))
         mock_init_registry = stack.enter_context(
             patch("app.services.tools.registry.initialize_registry", new_callable=AsyncMock)
         )
-        stack.enter_context(patch("app.core.lifespan.events.emit", new_callable=AsyncMock))
-        stack.enter_context(patch("app.core.lifespan.run_startup_tasks"))
+        stack.enter_context(patch("app.bootstrap.lifespan.events.emit", new_callable=AsyncMock))
+        stack.enter_context(patch("app.bootstrap.lifespan.run_startup_tasks"))
         stack.enter_context(patch("app.services.ai.llm.close_global_llm_client", new_callable=AsyncMock))
-        stack.enter_context(patch("app.core.lifespan.engine", new=MagicMock(dispose=AsyncMock())))
-        stack.enter_context(patch("app.core.lifespan.asyncio.all_tasks", return_value=[task]))
-        stack.enter_context(patch("app.core.lifespan.asyncio.gather", new_callable=AsyncMock))
-        stack.enter_context(patch("app.core.lifespan.asyncio.wait_for", new_callable=AsyncMock))
-        stack.enter_context(patch("app.core.lifespan.asyncio.create_task", return_value=task))
+        stack.enter_context(patch("app.bootstrap.lifespan.engine", new=MagicMock(dispose=AsyncMock())))
+        stack.enter_context(patch("app.bootstrap.lifespan.asyncio.all_tasks", return_value=[task]))
+        stack.enter_context(patch("app.bootstrap.lifespan.asyncio.gather", new_callable=AsyncMock))
+        stack.enter_context(patch("app.bootstrap.lifespan.asyncio.wait_for", new_callable=AsyncMock))
+        stack.enter_context(patch("app.bootstrap.lifespan.asyncio.create_task", return_value=task))
         mock_hydrate = stack.enter_context(
-            patch("app.core.lifespan.hydrate_runtime_settings_from_db", new_callable=AsyncMock)
+            patch("app.bootstrap.lifespan.hydrate_runtime_settings_from_db", new_callable=AsyncMock)
         )
         stack.enter_context(patch("app.services.storage.close_storage_service", new_callable=AsyncMock))
         stack.enter_context(patch("app.services.ai.embeddings.EmbeddingService", FakeEmbeddingService))
-        stack.enter_context(patch("app.core.bridge.EventWebSocketBridge", return_value=FakeBridge()))
-        stack.enter_context(patch("app.core.lifespan.run_startup_checks", new_callable=AsyncMock))
-        stack.enter_context(patch("app.core.lifespan._validate_rate_limit_storage"))
-        stack.enter_context(patch("app.core.lifespan.seed_default_plans", new_callable=AsyncMock))
+        stack.enter_context(patch("app.mission.core.bridge.EventWebSocketBridge", return_value=FakeBridge()))
+        stack.enter_context(patch("app.bootstrap.lifespan.run_startup_checks", new_callable=AsyncMock))
+        stack.enter_context(patch("app.bootstrap.lifespan._validate_rate_limit_storage"))
+        stack.enter_context(patch("app.bootstrap.lifespan.seed_default_plans", new_callable=AsyncMock))
         stack.enter_context(
             patch("app.services.system.secret_bootstrap.ensure_persistent_secrets", new_callable=AsyncMock)
         )
         stack.enter_context(
-            patch("app.core.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock()))
+            patch("app.infrastructure.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock()))
         )
         stack.enter_context(
             patch(
@@ -178,7 +178,7 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         )
         stack.enter_context(patch("app.services.tools.sandbox.SandboxPool", return_value=MagicMock(available=False)))
 
-        mock_settings = stack.enter_context(patch("app.core.lifespan.settings"))
+        mock_settings = stack.enter_context(patch("app.bootstrap.lifespan.settings"))
         mock_settings.AI_SERVICE_URL = ""
         mock_settings.DEBUG = True
         mock_settings.SERVICE_MODE = "api"
@@ -186,7 +186,7 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         mock_settings.STRIPE_SECRET_KEY = SecretStr("")
         mock_settings.STRIPE_WEBHOOK_SECRET = SecretStr("")
 
-        from app.core.lifespan import lifespan
+        from app.bootstrap.lifespan import lifespan
 
         mock_init_registry.return_value = MagicMock(list_tools=MagicMock(return_value=[]))
         mock_hydrate.side_effect = lambda *args, **kwargs: order.append("hydrate")
@@ -198,9 +198,9 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
 
 
 def test_validate_stripe_webhook_secret_raises_when_required(caplog):
-    from app.core.lifespan import _validate_stripe_webhook_secret
+    from app.bootstrap.lifespan import _validate_stripe_webhook_secret
 
-    with patch("app.core.lifespan.settings") as mock_settings:
+    with patch("app.bootstrap.lifespan.settings") as mock_settings:
         mock_settings.PAYMENT_PROVIDER = "stripe"
         mock_settings.STRIPE_SECRET_KEY = SecretStr("sk_test_123")
         mock_settings.STRIPE_WEBHOOK_SECRET = SecretStr("")
@@ -213,9 +213,9 @@ def test_validate_stripe_webhook_secret_raises_when_required(caplog):
 
 
 def test_validate_stripe_webhook_secret_skips_when_not_actively_using_stripe():
-    from app.core.lifespan import _validate_stripe_webhook_secret
+    from app.bootstrap.lifespan import _validate_stripe_webhook_secret
 
-    with patch("app.core.lifespan.settings") as mock_settings:
+    with patch("app.bootstrap.lifespan.settings") as mock_settings:
         mock_settings.PAYMENT_PROVIDER = "manual"
         mock_settings.STRIPE_SECRET_KEY = SecretStr("sk_test_123")
         mock_settings.STRIPE_WEBHOOK_SECRET = SecretStr("")

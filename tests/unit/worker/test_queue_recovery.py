@@ -9,8 +9,8 @@ import pytest
 @pytest.fixture()
 def queue():
     """Create a PostgresJobQueue without touching the real DB."""
-    with patch("app.core.queue.re"):
-        from app.core.queue import PostgresJobQueue
+    with patch("app.infrastructure.queue.re"):
+        from app.infrastructure.queue import PostgresJobQueue
 
     # Bypass the regex validation by constructing directly
     q = object.__new__(PostgresJobQueue)
@@ -46,7 +46,7 @@ async def test_recovers_stale_in_progress_jobs(queue):
     ctx.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("app.core.queue.async_session_maker", return_value=ctx),
+        patch("app.infrastructure.queue.async_session_maker", return_value=ctx),
         patch.object(queue, "handle_job_failure", new_callable=AsyncMock) as mock_handle,
     ):
         count = await queue.recover_stale_jobs(max_age_minutes=30)
@@ -73,7 +73,7 @@ async def test_does_not_recover_fresh_in_progress_jobs(queue):
     ctx.__aenter__ = AsyncMock(return_value=mock_session)
     ctx.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("app.core.queue.async_session_maker", return_value=ctx):
+    with patch("app.infrastructure.queue.async_session_maker", return_value=ctx):
         count = await queue.recover_stale_jobs(max_age_minutes=30)
 
     assert count == 0
@@ -95,7 +95,7 @@ async def test_completed_and_failed_jobs_untouched(queue):
     ctx.__aenter__ = AsyncMock(return_value=mock_session)
     ctx.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("app.core.queue.async_session_maker", return_value=ctx):
+    with patch("app.infrastructure.queue.async_session_maker", return_value=ctx):
         count = await queue.recover_stale_jobs(max_age_minutes=1)
 
     # The SQL WHERE clause filters on status == 'in_progress',

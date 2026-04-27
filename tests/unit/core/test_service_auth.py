@@ -1,10 +1,10 @@
-"""Tests for app.core.service_auth module."""
+"""Tests for app.di.service_auth module."""
 
 import pytest
 from fastapi import FastAPI, HTTPException
 from httpx import ASGITransport, AsyncClient
 
-from app.core.service_auth import ServiceAuthMiddleware
+from app.di.service_auth import ServiceAuthMiddleware
 
 
 def _make_app(secret: str = "test-secret") -> FastAPI:

@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 async def set_system_status(status: str, message: str) -> None:
     """Update system status in cache for UI polling."""
     try:
-        from app.core.cache import get_cache
+        from app.infrastructure.cache import get_cache
 
         cache = get_cache()
         if cache:
@@ -34,7 +34,7 @@ async def set_system_status(status: str, message: str) -> None:
 async def add_system_operation(op_id: str, op_type: str, desc: str) -> None:
     """Add an ongoing operation to the system status."""
     try:
-        from app.core.cache import get_cache
+        from app.infrastructure.cache import get_cache
 
         cache = get_cache()
         if cache:
@@ -52,7 +52,7 @@ async def add_system_operation(op_id: str, op_type: str, desc: str) -> None:
 async def remove_system_operation(op_id: str) -> None:
     """Remove a completed operation."""
     try:
-        from app.core.cache import get_cache
+        from app.infrastructure.cache import get_cache
 
         cache = get_cache()
         if cache:

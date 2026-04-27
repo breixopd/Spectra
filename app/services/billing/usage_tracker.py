@@ -11,9 +11,9 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_session_maker
-from app.core.telemetry import telemetry
 from app.models.plan import UsageRecord
 from app.services.billing.entitlements import get_user_entitlement
+from app.telemetry.telemetry import telemetry
 
 logger = logging.getLogger(__name__)
 

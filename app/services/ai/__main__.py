@@ -81,7 +81,7 @@ app.add_middleware(
 )
 
 # Service auth middleware
-from app.core.service_auth import ServiceAuthMiddleware
+from app.di.service_auth import ServiceAuthMiddleware
 
 _settings = _cors_settings
 _secret = _settings.SERVICE_AUTH_SECRET.get_secret_value()

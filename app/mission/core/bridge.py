@@ -13,8 +13,8 @@ Event routing policy:
 
 import logging
 
-from app.core.events import Event, EventType, events
-from app.core.websocket import manager as ws_manager
+from app.infrastructure.events import Event, EventType, events
+from app.mission.core.websocket import manager as ws_manager
 
 logger = logging.getLogger(__name__)
 

@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from app.api.routers.findings import router
-from app.core.enums import Severity
+from app.mission.core.enums import Severity
 from app.models.finding import FindingStatus
 
 
@@ -46,7 +46,7 @@ def _fake_finding(**overrides):
 
 
 def _make_app() -> FastAPI:
-    from app.core.rate_limit import limiter
+    from app.auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter
@@ -372,7 +372,7 @@ class TestFindingExportsAndStatusPaths:
         with pytest.MonkeyPatch.context() as mp:
             encrypt = MagicMock(return_value=b"encrypted-payload")
             mp.setattr(FindingRepository, "find_many_by", AsyncMock(return_value=[]))
-            mp.setattr("app.core.encryption.encrypt_data_with_password", encrypt)
+            mp.setattr("app.auth.encryption.encrypt_data_with_password", encrypt)
             resp = await ac.get(
                 "/api/v1/findings/export/json?encrypted=true",
                 headers={"X-Export-Password": "secret-pass"},

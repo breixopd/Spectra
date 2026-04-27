@@ -192,7 +192,7 @@ async def test_fire_does_not_duplicate_delivery_to_same_hook():
     svc = WebhookService(session)
 
     with patch("app.services.webhooks.service._deliver", new_callable=AsyncMock):
-        with patch("app.core.tasks.create_safe_task") as mock_task:
+        with patch("app.infrastructure.tasks.create_safe_task") as mock_task:
 
             def _close_coro(coro, *, name=None):
                 if asyncio.iscoroutine(coro):
@@ -218,7 +218,7 @@ async def test_fire_skips_inactive_hooks():
 
     svc = WebhookService(session)
 
-    with patch("app.core.tasks.create_safe_task") as mock_task:
+    with patch("app.infrastructure.tasks.create_safe_task") as mock_task:
         await svc.fire("mission.completed", {"id": "m-1"})
 
     mock_task.assert_not_called()
@@ -238,7 +238,7 @@ async def test_fire_multiple_hooks_each_get_one_delivery():
     svc = WebhookService(session)
 
     with patch("app.services.webhooks.service._deliver", new_callable=AsyncMock):
-        with patch("app.core.tasks.create_safe_task") as mock_task:
+        with patch("app.infrastructure.tasks.create_safe_task") as mock_task:
 
             def _close_coro(coro, *, name=None):
                 if asyncio.iscoroutine(coro):

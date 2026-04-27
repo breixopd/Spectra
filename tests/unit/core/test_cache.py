@@ -1,4 +1,4 @@
-"""Unit tests for app.core.cache module (PostgreSQL-backed)."""
+"""Unit tests for app.infrastructure.cache module (PostgreSQL-backed)."""
 
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.core.cache import CacheService, _json_dumps, get_cache, set_cache
+from app.infrastructure.cache import CacheService, _json_dumps, get_cache, set_cache
 from app.models.infrastructure import CacheEntry, InfrastructureBase
 
 
@@ -280,14 +280,14 @@ class TestGetCacheSingleton:
 
     def test_get_cache_returns_none_by_default(self):
         """get_cache() returns None before set_cache() is called."""
-        with patch("app.core.cache._cache", None):
+        with patch("app.infrastructure.cache._cache", None):
             assert get_cache() is None
 
     def test_set_and_get_cache(self):
         """set_cache() stores instance retrievable by get_cache()."""
         mock_svc = MagicMock(spec=CacheService)
-        with patch("app.core.cache._cache", None):
+        with patch("app.infrastructure.cache._cache", None):
             set_cache(mock_svc)
-            from app.core.cache import _cache
+            from app.infrastructure.cache import _cache
 
             assert _cache is mock_svc

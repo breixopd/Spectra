@@ -1,5 +1,5 @@
 """
-Tests for startup checks in app.core.lifespan.run_startup_checks().
+Tests for startup checks in app.bootstrap.lifespan.run_startup_checks().
 
 Verifies DB connectivity, table existence, and disk space checks
 using mocked database sessions and filesystem calls.
@@ -53,8 +53,8 @@ async def test_db_connectivity_success(caplog):
         ctx.__aexit__ = AsyncMock(return_value=False)
         return ctx
 
-    with patch("app.core.lifespan.async_session_maker", side_effect=session_factory), caplog.at_level("INFO"):
-        from app.core.lifespan import run_startup_checks
+    with patch("app.bootstrap.lifespan.async_session_maker", side_effect=session_factory), caplog.at_level("INFO"):
+        from app.bootstrap.lifespan import run_startup_checks
 
         await run_startup_checks()
 
@@ -70,9 +70,9 @@ async def test_db_connectivity_failure(caplog):
     ctx.__aexit__ = AsyncMock(return_value=False)
     mock_maker.return_value = ctx
 
-    with patch("app.core.lifespan.async_session_maker", side_effect=ConnectionError("refused")):
+    with patch("app.bootstrap.lifespan.async_session_maker", side_effect=ConnectionError("refused")):
         with caplog.at_level("WARNING"):
-            from app.core.lifespan import run_startup_checks
+            from app.bootstrap.lifespan import run_startup_checks
 
             await run_startup_checks()
 
@@ -107,8 +107,8 @@ async def test_missing_tables_warning(caplog):
         ctx.__aexit__ = AsyncMock(return_value=False)
         return ctx
 
-    with patch("app.core.lifespan.async_session_maker", side_effect=session_factory), caplog.at_level("WARNING"):
-        from app.core.lifespan import run_startup_checks
+    with patch("app.bootstrap.lifespan.async_session_maker", side_effect=session_factory), caplog.at_level("WARNING"):
+        from app.bootstrap.lifespan import run_startup_checks
 
         await run_startup_checks()
 
@@ -150,11 +150,11 @@ async def test_disk_space_ok(caplog, tmp_path):
 
     fake_usage = _DiskUsage(total=10_000_000_000, used=5_000_000_000, free=5_000_000_000)
 
-    with patch("app.core.lifespan.async_session_maker", side_effect=session_factory):
-        with patch("app.core.lifespan.data_root", return_value=tmp_path):
-            with patch("app.core.lifespan.shutil.disk_usage", return_value=fake_usage):
+    with patch("app.bootstrap.lifespan.async_session_maker", side_effect=session_factory):
+        with patch("app.bootstrap.lifespan.data_root", return_value=tmp_path):
+            with patch("app.bootstrap.lifespan.shutil.disk_usage", return_value=fake_usage):
                 with caplog.at_level("INFO"):
-                    from app.core.lifespan import run_startup_checks
+                    from app.bootstrap.lifespan import run_startup_checks
 
                     await run_startup_checks()
 
@@ -195,11 +195,11 @@ async def test_low_disk_space_warning(caplog, tmp_path):
     # 50 MB free (below threshold)
     fake_usage = _DiskUsage(total=10_000_000_000, used=9_947_000_000, free=53_000_000)
 
-    with patch("app.core.lifespan.async_session_maker", side_effect=session_factory):
-        with patch("app.core.lifespan.data_root", return_value=tmp_path):
-            with patch("app.core.lifespan.shutil.disk_usage", return_value=fake_usage):
+    with patch("app.bootstrap.lifespan.async_session_maker", side_effect=session_factory):
+        with patch("app.bootstrap.lifespan.data_root", return_value=tmp_path):
+            with patch("app.bootstrap.lifespan.shutil.disk_usage", return_value=fake_usage):
                 with caplog.at_level("WARNING"):
-                    from app.core.lifespan import run_startup_checks
+                    from app.bootstrap.lifespan import run_startup_checks
 
                     await run_startup_checks()
 

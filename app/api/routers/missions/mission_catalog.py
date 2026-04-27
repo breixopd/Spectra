@@ -7,8 +7,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
+from app.auth.rbac import Permission, require_permission
 from app.core.database import get_async_session
-from app.core.rbac import Permission, require_permission
 from app.models.user import User
 from app.services.mission.output_model import get_mission_finding_counts
 

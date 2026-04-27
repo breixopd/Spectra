@@ -15,11 +15,11 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import FastAPI, Request, Response, status
 
-from app.core.advisory_locks import advisory_lock_owner, stable_lock_id
+from app.auth.advisory_locks import advisory_lock_owner, stable_lock_id
+from app.auth.rate_limit import RateLimits, limiter
 from app.core.constants import SECONDS_PER_HOUR
 from app.core.database import advisory_lock_connection, async_session_maker
-from app.core.rate_limit import RateLimits, limiter
-from app.core.tasks import create_safe_task
+from app.infrastructure.tasks import create_safe_task
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +123,7 @@ class SchedulerService:
                         await asyncio.sleep(60)
                         continue
 
-                    from app.core.background_tasks import sandbox_watchdog_loop
+                    from app.infrastructure.background_tasks import sandbox_watchdog_loop
 
                     await sandbox_watchdog_loop()
             except Exception:
@@ -167,7 +167,7 @@ class SchedulerService:
                         await asyncio.sleep(30)
                         continue
 
-                    from app.core.metrics_store import get_metrics_store
+                    from app.infrastructure.metrics_store import get_metrics_store
 
                     store = get_metrics_store()
                     if store:
@@ -188,7 +188,7 @@ class SchedulerService:
                         await asyncio.sleep(15)
                         continue
 
-                    from app.core.cache import get_cache
+                    from app.infrastructure.cache import get_cache
 
                     cache = get_cache()
                     if cache:
@@ -219,7 +219,7 @@ class SchedulerService:
                         continue
 
                     # Skip if a backup ran recently enough on another replica
-                    from app.core.cache import get_cache
+                    from app.infrastructure.cache import get_cache
 
                     cache = get_cache()
                     if cache:
@@ -241,7 +241,7 @@ class SchedulerService:
                     result = await svc.create_backup()
                     logger.info("Scheduled backup: %s", result.get("status"))
 
-                    from app.core.cache import get_cache as _get_cache
+                    from app.infrastructure.cache import get_cache as _get_cache
 
                     _cache = _get_cache()
                     if _cache:
@@ -267,7 +267,7 @@ class SchedulerService:
                         await asyncio.sleep(60)
                         continue
 
-                    from app.core.background_tasks import cache_cleanup_loop
+                    from app.infrastructure.background_tasks import cache_cleanup_loop
 
                     await cache_cleanup_loop()
             except asyncio.CancelledError:
@@ -288,7 +288,7 @@ class SchedulerService:
                         await asyncio.sleep(60)
                         continue
 
-                    from app.core.background_tasks import periodic_cleanup_loop
+                    from app.infrastructure.background_tasks import periodic_cleanup_loop
 
                     await periodic_cleanup_loop()
             except asyncio.CancelledError:
@@ -453,7 +453,7 @@ class SchedulerService:
                     if lock_owner is None:
                         continue
 
-                    from app.core.queue import PostgresJobQueue
+                    from app.infrastructure.queue import PostgresJobQueue
 
                     mgr = PostgresJobQueue()
                     recovered = await mgr.recover_stale_jobs(max_age_minutes=30)
@@ -699,7 +699,7 @@ async def _leader_election_loop(scheduler: SchedulerService) -> None:
 app = FastAPI(title="Spectra Scheduler", version="1.0.0", lifespan=lifespan)
 
 from app.core.config import settings as _settings
-from app.core.service_auth import ServiceAuthMiddleware
+from app.di.service_auth import ServiceAuthMiddleware
 
 _secret = _settings.SERVICE_AUTH_SECRET.get_secret_value()
 if _secret:

@@ -20,9 +20,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
+from app.auth.rate_limit import RateLimits, limiter
 from app.core.constants import MAX_EXPORT_ROWS
 from app.core.database import get_async_session
-from app.core.rate_limit import RateLimits, limiter
 from app.models.exploit import Exploit
 from app.models.finding import Finding, FindingStatus
 from app.models.mission import Mission, MissionStatus

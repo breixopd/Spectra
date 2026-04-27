@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from app.core.tasks import create_safe_task
+from app.infrastructure.tasks import create_safe_task
 from app.services.shell.session_manager import shell_manager
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ app = FastAPI(title="Spectra Worker", version="1.0.0", lifespan=lifespan)
 
 # Service auth middleware (applied after app creation)
 from app.core.config import get_settings
-from app.core.service_auth import ServiceAuthMiddleware
+from app.di.service_auth import ServiceAuthMiddleware
 
 _settings = get_settings()
 _secret = _settings.SERVICE_AUTH_SECRET.get_secret_value()
@@ -116,7 +116,7 @@ async def _run_heartbeat():
 
 async def work_loop():
     """Pull and execute tool jobs from the PG queue using the existing worker infrastructure."""
-    from app.core.queue import worker_loop
+    from app.infrastructure.queue import worker_loop
     from app.worker import _WORKER_FUNCTIONS
     from app.worker.lifecycle import shutdown, startup
 

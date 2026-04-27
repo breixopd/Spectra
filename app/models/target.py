@@ -13,7 +13,7 @@ from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.enums import EntityStatus as TargetStatus
+from app.mission.core.enums import EntityStatus as TargetStatus
 from app.models.base import Base
 
 if TYPE_CHECKING:

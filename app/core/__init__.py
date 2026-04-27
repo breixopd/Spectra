@@ -14,7 +14,7 @@ This module provides the foundational infrastructure for the Spectra platform:
 - Custom exceptions
 - Protocol interfaces
 
-Note: Import lifespan directly from app.core.lifespan to avoid circular imports.
+Note: Import lifespan directly from app.bootstrap.lifespan to avoid circular imports.
 """
 
 import importlib as _importlib
@@ -22,16 +22,16 @@ import importlib as _importlib
 # Lazy-load submodule symbols on first access to avoid import-time coupling.
 # Consumers should import from specific submodules directly:
 #   from app.core.config import settings
-#   from app.core.exceptions import SpectraError
+#   from app.auth.exceptions import SpectraError
 
 _SUBMODULE_MAP: dict[str, str] = {
     # cache
-    "CacheService": "app.core.cache",
-    "get_cache": "app.core.cache",
-    "set_cache": "app.core.cache",
+    "CacheService": "app.infrastructure.cache",
+    "get_cache": "app.infrastructure.cache",
+    "set_cache": "app.infrastructure.cache",
     # circuit_breaker
-    "CircuitBreaker": "app.core.circuit_breaker",
-    "circuit_breakers": "app.core.circuit_breaker",
+    "CircuitBreaker": "app.infrastructure.circuit_breaker",
+    "circuit_breakers": "app.infrastructure.circuit_breaker",
     # config
     "get_settings": "app.core.config",
     "settings": "app.core.config",
@@ -49,45 +49,45 @@ _SUBMODULE_MAP: dict[str, str] = {
     "engine": "app.core.database",
     "get_async_session": "app.core.database",
     # enums
-    "AssessmentPhase": "app.core.enums",
-    "EntityStatus": "app.core.enums",
-    "MissionStatus": "app.core.enums",
-    "RiskLevel": "app.core.enums",
-    "Severity": "app.core.enums",
+    "AssessmentPhase": "app.mission.core.enums",
+    "EntityStatus": "app.mission.core.enums",
+    "MissionStatus": "app.mission.core.enums",
+    "RiskLevel": "app.mission.core.enums",
+    "Severity": "app.mission.core.enums",
     # events
-    "Event": "app.core.events",
-    "EventType": "app.core.events",
-    "events": "app.core.events",
+    "Event": "app.infrastructure.events",
+    "EventType": "app.infrastructure.events",
+    "events": "app.infrastructure.events",
     # exceptions
-    "AuthError": "app.core.exceptions",
-    "LLMConnectionError": "app.core.exceptions",
-    "LLMError": "app.core.exceptions",
-    "MissionError": "app.core.exceptions",
-    "MissionNotFoundError": "app.core.exceptions",
-    "MissionStateError": "app.core.exceptions",
-    "RateLimitError": "app.core.exceptions",
-    "SpectraError": "app.core.exceptions",
-    "ToolError": "app.core.exceptions",
-    "ToolExecutionError": "app.core.exceptions",
-    "ToolNotFoundError": "app.core.exceptions",
-    "ValidationError": "app.core.exceptions",
+    "AuthError": "app.auth.exceptions",
+    "LLMConnectionError": "app.auth.exceptions",
+    "LLMError": "app.auth.exceptions",
+    "MissionError": "app.auth.exceptions",
+    "MissionNotFoundError": "app.auth.exceptions",
+    "MissionStateError": "app.auth.exceptions",
+    "RateLimitError": "app.auth.exceptions",
+    "SpectraError": "app.auth.exceptions",
+    "ToolError": "app.auth.exceptions",
+    "ToolExecutionError": "app.auth.exceptions",
+    "ToolNotFoundError": "app.auth.exceptions",
+    "ValidationError": "app.auth.exceptions",
     # protocols
-    "HealthCheckable": "app.core.protocols",
+    "HealthCheckable": "app.di.protocols",
     # rate_limit
-    "RateLimits": "app.core.rate_limit",
-    "limiter": "app.core.rate_limit",
+    "RateLimits": "app.auth.rate_limit",
+    "limiter": "app.auth.rate_limit",
     # security
-    "create_access_token": "app.core.security",
-    "get_password_hash": "app.core.security",
-    "verify_password": "app.core.security",
+    "create_access_token": "app.auth.security",
+    "get_password_hash": "app.auth.security",
+    "verify_password": "app.auth.security",
     # state_machine
-    "MissionState": "app.core.state_machine",
-    "MissionStateMachine": "app.core.state_machine",
+    "MissionState": "app.mission.core.state_machine",
+    "MissionStateMachine": "app.mission.core.state_machine",
     # telemetry
-    "telemetry": "app.core.telemetry",
-    "trace": "app.core.telemetry",
+    "telemetry": "app.telemetry.telemetry",
+    "trace": "app.telemetry.telemetry",
     # websocket
-    "websocket_manager": "app.core.websocket",
+    "websocket_manager": "app.mission.core.websocket",
 }
 
 

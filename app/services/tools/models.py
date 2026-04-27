@@ -11,7 +11,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.core.enums import RiskLevel
+from app.mission.core.enums import RiskLevel
 
 logger = logging.getLogger(__name__)
 

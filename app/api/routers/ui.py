@@ -17,10 +17,10 @@ from app.api.dependencies import (
     require_feature,
 )
 from app.api.schemas import SettingsUpdate
+from app.auth.rbac import Permission, has_permission, require_permission
+from app.bootstrap.templates import templates
 from app.core.config import settings
 from app.core.database import async_session_maker, get_async_session
-from app.core.rbac import Permission, has_permission, require_permission
-from app.core.templates import templates
 from app.models.user import User
 from app.services.billing.entitlements import ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES
 from app.services.shell.session_manager import shell_manager

@@ -24,20 +24,20 @@ except ImportError:
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.core.advisory_locks import stable_lock_id
-from app.core.cache import CacheService, set_cache
+from app.auth.advisory_locks import stable_lock_id
 from app.core.config import settings
 from app.core.database import async_session_maker, engine
-from app.core.events import EventType, events
-from app.core.paths import data_root
-from app.core.system_status import (
+from app.infrastructure.cache import CacheService, set_cache
+from app.infrastructure.events import EventType, events
+from app.infrastructure.paths import data_root
+from app.infrastructure.system_status import (
     add_system_operation,
     remove_system_operation,
     set_system_status,
 )
-from app.core.tasks import create_safe_task
-from app.core.telemetry import telemetry
+from app.infrastructure.tasks import create_safe_task
 from app.services.system.runtime_settings import hydrate_runtime_settings_from_db
+from app.telemetry.telemetry import telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -396,7 +396,7 @@ async def _initialize_services() -> None:
         logger.info("[SKIP] Maintenance loops deferred to scheduler service")
 
     # Start metrics snapshot store
-    from app.core.metrics_store import get_metrics_store
+    from app.infrastructure.metrics_store import get_metrics_store
 
     metrics_store = get_metrics_store()
     await metrics_store.start()
@@ -420,7 +420,7 @@ async def _initialize_services() -> None:
 async def _start_event_bridge() -> Any | None:
     """Start the event-to-websocket bridge. Returns the bridge instance or None."""
     try:
-        from app.core.bridge import EventWebSocketBridge
+        from app.mission.core.bridge import EventWebSocketBridge
 
         bridge = EventWebSocketBridge()
         bridge.start()
@@ -524,7 +524,7 @@ async def _blacklist_change_listener() -> None:
 async def _handle_blacklist_change() -> None:
     """Reload blacklist from DB when another replica invalidates a token."""
     try:
-        from app.core.security import sync_blacklist_from_db
+        from app.auth.security import sync_blacklist_from_db
 
         await sync_blacklist_from_db()
         logger.info("Blacklist synced from DB via LISTEN/NOTIFY")

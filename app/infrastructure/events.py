@@ -5,7 +5,7 @@ Implements a pub/sub pattern for internal event handling using blinker signals.
 This decouples components and enables extensibility.
 
 Usage:
-    from app.core.events import events, MissionEvent
+    from app.infrastructure.events import events, MissionEvent
 
     # Subscribe to events
     @events.mission_started.connect
@@ -203,7 +203,7 @@ class EventBus:
         """
         try:
             asyncio.get_running_loop()
-            from app.core.tasks import create_safe_task
+            from app.infrastructure.tasks import create_safe_task
             create_safe_task(self.emit(event_type, source, **data), name="event_emit")
         except RuntimeError:
             # No running loop - skip async handlers

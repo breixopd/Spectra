@@ -16,7 +16,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from starlette.responses import JSONResponse
 
-from app.core.events import EventType, events
+from app.infrastructure.events import EventType, events
 
 logger = logging.getLogger(__name__)
 

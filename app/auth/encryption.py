@@ -206,13 +206,13 @@ class EncryptedString(TypeDecorator):
             return None
         if isinstance(value, str) and value.startswith(_FERNET_TOKEN_PREFIX):
             return value  # already encrypted, leave it
-        from app.core.security import encrypt_byok_key
+        from app.auth.security import encrypt_byok_key
 
         return encrypt_byok_key(value)
 
     def process_result_value(self, value, dialect):
         if value is None:
             return None
-        from app.core.security import decrypt_byok_key
+        from app.auth.security import decrypt_byok_key
 
         return decrypt_byok_key(value)

@@ -12,15 +12,15 @@ from app.api.routers.auth import (
     _check_lockout,
     _record_failure,
 )
-from app.core.encryption import (
+from app.auth.encryption import (
     decrypt_field,
     decrypt_sensitive_fields,
     encrypt_field,
     encrypt_sensitive_fields,
     is_sensitive_key,
 )
-from app.core.rbac import ROLE_PERMISSIONS, Permission, has_permission
-from app.core.security import (
+from app.auth.rbac import ROLE_PERMISSIONS, Permission, has_permission
+from app.auth.security import (
     _blacklisted_tokens,
     _user_token_blacklist,
     create_access_token,
@@ -180,7 +180,7 @@ class TestEncryption:
 @pytest.fixture(autouse=True)
 def _clear_blacklist_state():
     """Clear in-memory token blacklist state between tests."""
-    from app.core.security import _blacklist_ready
+    from app.auth.security import _blacklist_ready
 
     _blacklisted_tokens.clear()
     _user_token_blacklist.clear()

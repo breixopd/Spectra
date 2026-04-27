@@ -11,13 +11,13 @@ from fastapi import HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
-from app.core.security import (
+from app.auth.security import (
     JWTError,
     create_access_token,
     create_refresh_token,
     decode_token,
 )
+from app.core.config import settings
 from app.models.user import User
 
 logger = logging.getLogger(__name__)

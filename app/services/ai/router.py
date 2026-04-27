@@ -22,8 +22,8 @@ import httpx
 from pydantic import BaseModel
 
 from app.core.config import settings
-from app.core.telemetry import record_llm_call
 from app.services.ai.llm import LLMClient, LLMResponse
+from app.telemetry.telemetry import record_llm_call
 
 logger = logging.getLogger(__name__)
 

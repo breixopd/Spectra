@@ -8,7 +8,7 @@ import pytest
 @pytest.fixture()
 def queue():
     """Create a PostgresJobQueue without touching the real DB."""
-    from app.core.queue import PostgresJobQueue
+    from app.infrastructure.queue import PostgresJobQueue
 
     q = object.__new__(PostgresJobQueue)
     q.queue_name = "default"
@@ -42,7 +42,7 @@ async def test_handle_job_failure_increments_retry_count(queue):
     session.get = AsyncMock(return_value=job)
     session.commit = AsyncMock()
 
-    with patch("app.core.queue.async_session_maker", return_value=_mock_session_ctx(session)):
+    with patch("app.infrastructure.queue.async_session_maker", return_value=_mock_session_ctx(session)):
         await queue.handle_job_failure("job-1", "some error")
 
     assert job.retry_count == 1
@@ -55,7 +55,7 @@ async def test_handle_job_failure_requeues_under_max_retries(queue):
     session.get = AsyncMock(return_value=job)
     session.commit = AsyncMock()
 
-    with patch("app.core.queue.async_session_maker", return_value=_mock_session_ctx(session)):
+    with patch("app.infrastructure.queue.async_session_maker", return_value=_mock_session_ctx(session)):
         await queue.handle_job_failure("job-2", "transient error")
 
     assert job.status == "pending"
@@ -70,7 +70,7 @@ async def test_handle_job_failure_moves_to_dead_letter_at_max(queue):
     session.get = AsyncMock(return_value=job)
     session.commit = AsyncMock()
 
-    with patch("app.core.queue.async_session_maker", return_value=_mock_session_ctx(session)):
+    with patch("app.infrastructure.queue.async_session_maker", return_value=_mock_session_ctx(session)):
         await queue.handle_job_failure("job-3", "persistent error")
 
     assert job.status == "dead_letter"
@@ -84,7 +84,7 @@ async def test_handle_job_failure_noop_for_missing_job(queue):
     session.get = AsyncMock(return_value=None)
     session.commit = AsyncMock()
 
-    with patch("app.core.queue.async_session_maker", return_value=_mock_session_ctx(session)):
+    with patch("app.infrastructure.queue.async_session_maker", return_value=_mock_session_ctx(session)):
         await queue.handle_job_failure("nonexistent", "err")
 
     session.commit.assert_not_awaited()
@@ -102,7 +102,7 @@ async def test_list_dead_letter_jobs_returns_dead_letter(queue):
     session = AsyncMock()
     session.execute = AsyncMock(return_value=mock_result)
 
-    with patch("app.core.queue.async_session_maker", return_value=_mock_session_ctx(session)):
+    with patch("app.infrastructure.queue.async_session_maker", return_value=_mock_session_ctx(session)):
         jobs = await queue.list_dead_letter_jobs()
 
     assert len(jobs) == 1
@@ -117,7 +117,7 @@ async def test_list_dead_letter_jobs_empty_when_none(queue):
     session = AsyncMock()
     session.execute = AsyncMock(return_value=mock_result)
 
-    with patch("app.core.queue.async_session_maker", return_value=_mock_session_ctx(session)):
+    with patch("app.infrastructure.queue.async_session_maker", return_value=_mock_session_ctx(session)):
         jobs = await queue.list_dead_letter_jobs()
 
     assert jobs == []

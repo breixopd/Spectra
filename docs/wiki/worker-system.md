@@ -63,7 +63,7 @@ When a job fails, it is retried up to `max_retries` times (default 3). After exh
 Dead-letter jobs can be listed programmatically via `PostgresJobQueue.list_dead_letter_jobs(limit=50)`. This returns all `dead_letter` jobs for the queue, ordered by `completed_at` descending.
 
 ```python
-from app.core.queue import PostgresJobQueue
+from app.infrastructure.queue import PostgresJobQueue
 
 queue = PostgresJobQueue("default")
 dead_jobs = await queue.list_dead_letter_jobs(limit=50)

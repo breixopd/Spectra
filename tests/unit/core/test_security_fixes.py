@@ -118,7 +118,7 @@ class TestPersistentTokenBlacklist:
 
     def setup_method(self):
         """Reset blacklist state before each test."""
-        import app.core.security as sec
+        import app.auth.security as sec
 
         sec._blacklisted_tokens.clear()
         sec._user_token_blacklist.clear()
@@ -126,7 +126,7 @@ class TestPersistentTokenBlacklist:
 
     @pytest.mark.asyncio
     async def test_invalidate_token_adds_with_expiry(self):
-        import app.core.security as sec
+        import app.auth.security as sec
 
         token = "test-token-123"
         with patch.object(sec, "_persist_blacklist"):
@@ -138,7 +138,7 @@ class TestPersistentTokenBlacklist:
 
     @pytest.mark.asyncio
     async def test_is_token_blacklisted_checks_expiry(self):
-        import app.core.security as sec
+        import app.auth.security as sec
 
         token = "expired-token"
         token_h = sec._token_hash(token)
@@ -148,7 +148,7 @@ class TestPersistentTokenBlacklist:
 
     @pytest.mark.asyncio
     async def test_is_token_blacklisted_valid_entry(self):
-        import app.core.security as sec
+        import app.auth.security as sec
 
         token = "valid-blacklisted-token"
         token_h = sec._token_hash(token)
@@ -156,7 +156,7 @@ class TestPersistentTokenBlacklist:
         assert await sec.is_token_blacklisted(token) is True
 
     def test_persist_blacklist_calls_db(self):
-        import app.core.security as sec
+        import app.auth.security as sec
 
         with patch.object(sec, "_persist_to_db") as mock_db:
             # Provide a running loop so create_task works
@@ -175,7 +175,7 @@ class TestPersistentTokenBlacklist:
 
     @pytest.mark.asyncio
     async def test_ensure_blacklist_loaded_awaits_load(self):
-        import app.core.security as sec
+        import app.auth.security as sec
 
         sec._blacklist_ready.clear()
         sec._blacklist_load_started = False
@@ -191,7 +191,7 @@ class TestPersistentTokenBlacklist:
 
     @pytest.mark.asyncio
     async def test_invalidate_all_user_tokens_persists(self):
-        import app.core.security as sec
+        import app.auth.security as sec
 
         with patch.object(sec, "_persist_blacklist") as mock_persist:
             await sec.invalidate_all_user_tokens("testuser")

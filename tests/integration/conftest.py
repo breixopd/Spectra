@@ -19,7 +19,7 @@ def _disable_rate_limiting():
     Without Redis, the SlowAPIMiddleware raises ConnectionError
     which crashes the default handler.
     """
-    from app.core.rate_limit import limiter
+    from app.auth.rate_limit import limiter
 
     original = limiter.enabled
     limiter.enabled = False

@@ -78,7 +78,7 @@ class ServerNode(Base):
             self.api_key = None
             return
         try:
-            from app.core.encryption import _get_default_secret, encrypt_field
+            from app.auth.encryption import _get_default_secret, encrypt_field
 
             self.api_key = encrypt_field(plaintext_key, _get_default_secret())
         except (OSError, RuntimeError, ImportError) as e:
@@ -92,7 +92,7 @@ class ServerNode(Base):
         if not self.api_key:
             return None
         try:
-            from app.core.encryption import _get_default_secret, decrypt_field
+            from app.auth.encryption import _get_default_secret, decrypt_field
 
             return decrypt_field(self.api_key, _get_default_secret())
         except (OSError, RuntimeError, ImportError):

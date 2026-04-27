@@ -1,6 +1,6 @@
-"""Tests for app.core.exceptions module."""
+"""Tests for app.auth.exceptions module."""
 
-from app.core.exceptions import (
+from app.auth.exceptions import (
     AuthenticationError,
     AuthorizationError,
     CircuitBreakerOpenError,

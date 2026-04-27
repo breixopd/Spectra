@@ -15,17 +15,17 @@ from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._meta.version import __version__
-from app.core.config import settings
-from app.core.database import async_session_maker
-from app.core.enums import MissionStatus
-from app.core.rate_limit import RateLimits, limiter
-from app.core.security import (
+from app.auth.rate_limit import RateLimits, limiter
+from app.auth.security import (
     JWTError,
     decode_token,
     get_password_hash,
     invalidate_token,
 )
-from app.core.templates import templates
+from app.bootstrap.templates import templates
+from app.core.config import settings
+from app.core.database import async_session_maker
+from app.mission.core.enums import MissionStatus
 from app.models.finding import Finding
 from app.models.mission import Mission
 from app.models.plan import Plan, Subscription
@@ -527,7 +527,7 @@ async def register_user(request: Request, body: RegisterRequest, response: Respo
 @router.get("/verify-email", response_class=HTMLResponse, include_in_schema=False)
 async def verify_email_page(request: Request, token: str = ""):
     """Handle email verification link click."""
-    from app.core.security import verify_email_verification_token
+    from app.auth.security import verify_email_verification_token
 
     if not token:
         return _verify_email_template_response(request, success=False, message="Missing verification token.")

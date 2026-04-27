@@ -1,6 +1,6 @@
-"""Tests for app.core.rbac module."""
+"""Tests for app.auth.rbac module."""
 
-from app.core.rbac import ROLE_PERMISSIONS, Permission, has_permission
+from app.auth.rbac import ROLE_PERMISSIONS, Permission, has_permission
 
 
 class TestPermissionEnum:

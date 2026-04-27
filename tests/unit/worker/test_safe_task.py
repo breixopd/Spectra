@@ -5,7 +5,7 @@ import logging
 
 import pytest
 
-from app.core.tasks import create_safe_task
+from app.infrastructure.tasks import create_safe_task
 
 
 @pytest.mark.asyncio

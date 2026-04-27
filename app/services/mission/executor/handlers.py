@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from app.services.ai.agents.tool_selector import ToolSelectorInput
 
 from app.core.constants import MAX_HOSTS_DEFAULT
-from app.core.events import events
+from app.infrastructure.events import events
 from app.services.ai.agents.base import AgentContext, ParallelToolAction, ToolAction
 from app.services.ai.agents.mission_controller import AssessmentPhase, Task
 from app.services.ai.output_intelligence import extract_intelligence

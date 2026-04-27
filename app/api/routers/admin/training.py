@@ -12,8 +12,8 @@ from sqlalchemy import func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.rbac import Permission, require_permission
 from app.core.database import get_async_session
-from app.core.rbac import Permission, require_permission
 from app.models.training import FineTuningJob, TrainingSample
 from app.models.user import User
 from app.services.training.dataset import export_dataset, get_dataset_stats

@@ -39,7 +39,7 @@ def _override_deps(app: FastAPI, user, mock_session):
 
 
 def _make_app_with_router(router, prefix: str = ""):
-    from app.core.rate_limit import limiter
+    from app.auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter

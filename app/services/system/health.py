@@ -223,7 +223,7 @@ async def _check_embeddings() -> HealthMap:
 async def _check_cache() -> HealthMap:
     start = time.monotonic()
     try:
-        from app.core.cache import get_cache
+        from app.infrastructure.cache import get_cache
 
         cache = get_cache()
         if not cache:

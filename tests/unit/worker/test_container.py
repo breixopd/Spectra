@@ -9,7 +9,7 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_get_db_session_yields_and_closes():
-    from app.core.container import get_db_session
+    from app.di.container import get_db_session
 
     mock_session = AsyncMock()
     mock_session.rollback = AsyncMock()
@@ -19,7 +19,7 @@ async def test_get_db_session_yields_and_closes():
     ctx.__aenter__ = AsyncMock(return_value=mock_session)
     ctx.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("app.core.container.async_session_maker", return_value=ctx):
+    with patch("app.di.container.async_session_maker", return_value=ctx):
         gen = get_db_session()
         session = await gen.__anext__()
         assert session is mock_session
@@ -35,11 +35,11 @@ async def test_get_db_session_yields_and_closes():
 
 
 def test_get_job_queue_returns_singleton():
-    import app.core.container as container_mod
+    import app.di.container as container_mod
 
     container_mod.get_job_queue.cache_clear()
 
-    with patch("app.core.queue.async_session_maker"):
+    with patch("app.infrastructure.queue.async_session_maker"):
         q1 = container_mod.get_job_queue()
         q2 = container_mod.get_job_queue()
 
@@ -51,7 +51,7 @@ def test_get_job_queue_returns_singleton():
 
 
 def test_get_tool_registry_returns_singleton():
-    import app.core.container as container_mod
+    import app.di.container as container_mod
 
     container_mod.get_tool_registry.cache_clear()
 
@@ -67,7 +67,7 @@ def test_get_tool_registry_returns_singleton():
 
 
 def test_get_gateway_client_returns_client():
-    from app.core.container import get_gateway_client
+    from app.di.container import get_gateway_client
 
     with patch("app.services.gateway.http_client.GatewayClient.__init__", return_value=None):
         client = get_gateway_client("https://example.com", api_key="test-key")
@@ -79,7 +79,7 @@ def test_get_gateway_client_returns_client():
 
 
 def test_get_sandbox_pool_returns_singleton():
-    import app.core.container as container_mod
+    import app.di.container as container_mod
 
     container_mod.get_sandbox_pool.cache_clear()
 
@@ -95,7 +95,7 @@ def test_get_sandbox_pool_returns_singleton():
 
 
 def test_get_storage_service_returns_new_instance():
-    from app.core.container import get_storage_service
+    from app.di.container import get_storage_service
 
     with patch("app.services.storage.service.StorageService.__init__", return_value=None):
         s1 = get_storage_service()

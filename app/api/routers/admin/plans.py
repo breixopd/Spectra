@@ -13,8 +13,8 @@ from app.api.schemas import (
     PlanResponse,
     PlanUpdate,
 )
+from app.auth.rbac import Permission, require_permission
 from app.core.database import get_async_session
-from app.core.rbac import Permission, require_permission
 from app.models.audit_log import AuditEventType
 from app.models.plan import Plan
 from app.models.user import User

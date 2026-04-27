@@ -15,9 +15,9 @@ from jwt.exceptions import InvalidTokenError as JWTError
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.advisory_locks import stable_lock_id
+from app.auth.advisory_locks import stable_lock_id
+from app.auth.security import decode_token
 from app.core.database import async_session_maker, get_async_session
-from app.core.security import decode_token
 from app.models.user import User
 from app.services.billing.entitlements import get_user_entitlement_plan
 

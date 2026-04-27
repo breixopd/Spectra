@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.core.encryption import (
+from app.auth.encryption import (
     decrypt_data_with_password,
     decrypt_file,
     encrypt_data_with_password,
@@ -51,7 +51,7 @@ class TestEncryptFile:
         p = tmp_path / "test.txt"
         p.write_text("data")
 
-        with patch("app.core.encryption._get_default_secret", return_value="app-secret"):
+        with patch("app.auth.encryption._get_default_secret", return_value="app-secret"):
             encrypt_file(p)
             result = decrypt_file(p)
 
@@ -95,7 +95,7 @@ class TestReportEncryptionAtRest:
         """save_report should encrypt content before passing to storage."""
         from unittest.mock import AsyncMock, MagicMock
 
-        from app.core.encryption import _derive_fernet_key
+        from app.auth.encryption import _derive_fernet_key
 
         # Capture what is uploaded to storage
         uploaded: list[bytes] = []
@@ -128,7 +128,7 @@ class TestReportEncryptionAtRest:
         """save_pdf_report should encrypt bytes before passing to storage."""
         from unittest.mock import AsyncMock, MagicMock
 
-        from app.core.encryption import _derive_fernet_key
+        from app.auth.encryption import _derive_fernet_key
 
         pdf_data = b"%PDF-1.4 fake pdf content"
         uploaded: list[bytes] = []

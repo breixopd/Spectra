@@ -14,9 +14,9 @@ from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import check_feature_allowed, check_resource_owner, get_current_active_user
+from app.auth.exceptions import NotFoundError, ValidationError
+from app.auth.rate_limit import RateLimits, limiter
 from app.core.database import get_async_session
-from app.core.exceptions import NotFoundError, ValidationError
-from app.core.rate_limit import RateLimits, limiter
 from app.models.user import User
 from app.repositories.mission import MissionRepository
 from app.services.mission.output_model import (

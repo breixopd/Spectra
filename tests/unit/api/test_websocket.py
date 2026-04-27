@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.websocket import ConnectionManager
+from app.mission.core.websocket import ConnectionManager
 
 # =============================================================================
 # send_personal tests
@@ -107,7 +107,7 @@ class TestDisconnectUserTracking:
         ws.query_params = {"token": "tok"}
         ws.state = MagicMock()
 
-        with patch("app.core.security.decode_token", return_value={"sub": "alice"}):
+        with patch("app.auth.security.decode_token", return_value={"sub": "alice"}):
             await manager.connect(ws)
 
         assert ws in manager._user_connections.get("alice", set())
@@ -124,7 +124,7 @@ class TestDisconnectUserTracking:
         ws.query_params = {"token": "tok"}
         ws.state = MagicMock()
 
-        with patch("app.core.security.decode_token", return_value={"sub": "bob"}):
+        with patch("app.auth.security.decode_token", return_value={"sub": "bob"}):
             await manager.connect(ws)
 
         await manager.disconnect(ws)
@@ -223,7 +223,7 @@ class TestGlobalLimitReject:
         ws.accept = AsyncMock()
         ws.close = AsyncMock()
         ws.query_params = {"token": "tok"}
-        with patch("app.core.security.decode_token", return_value={"sub": "u1"}):
+        with patch("app.auth.security.decode_token", return_value={"sub": "u1"}):
             ok = await manager.connect(ws)
         assert ok is False
         ws.close.assert_awaited_once()
@@ -242,7 +242,7 @@ class TestPerUserLimitReject:
         ws.accept = AsyncMock()
         ws.close = AsyncMock()
         ws.query_params = {"token": "tok"}
-        with patch("app.core.security.decode_token", return_value={"sub": user_id}):
+        with patch("app.auth.security.decode_token", return_value={"sub": user_id}):
             ok = await manager.connect(ws)
         assert ok is False
         ws.close.assert_awaited_once()

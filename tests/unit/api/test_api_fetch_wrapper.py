@@ -11,7 +11,7 @@ Covers:
 from fastapi import Request
 from fastapi.testclient import TestClient
 
-from app.core.exceptions import (
+from app.auth.exceptions import (
     AuthenticationError,
     AuthorizationError,
     ConfigurationError,

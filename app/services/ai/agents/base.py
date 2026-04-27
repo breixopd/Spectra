@@ -450,7 +450,7 @@ class Agent(ABC, Generic[InputT, OutputT]):
 
         This enables the 'Stream of Consciousness' display.
         """
-        from app.core.events import EventType, events
+        from app.infrastructure.events import EventType, events
 
         events.emit_sync(
             EventType.AGENT_THOUGHT,

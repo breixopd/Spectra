@@ -34,7 +34,7 @@ async def get_pg_queue():
         if _pg_queue is not None:
             return _pg_queue
 
-        from app.core.queue import PostgresJobQueue
+        from app.infrastructure.queue import PostgresJobQueue
 
         _pg_queue = PostgresJobQueue()
         return _pg_queue

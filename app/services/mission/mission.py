@@ -7,11 +7,11 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any, ClassVar
 
-from app.core.enums import MissionStatus
-from app.core.paths import data_path
-from app.core.state_machine import MissionStateMachine
-from app.core.tasks import create_safe_task
-from app.core.websocket import manager as ws_manager
+from app.infrastructure.paths import data_path
+from app.infrastructure.tasks import create_safe_task
+from app.mission.core.enums import MissionStatus
+from app.mission.core.state_machine import MissionStateMachine
+from app.mission.core.websocket import manager as ws_manager
 from app.models.attack_surface import (
     AttackSurface,
     DiscoveredService,

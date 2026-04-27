@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, stat
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import check_feature_allowed, get_current_active_user
+from app.auth.rate_limit import RateLimits, limiter
 from app.core.constants import (
     SECLISTS_COMMON_PASSWORDS_URL,
     SECLISTS_COMMON_WEB_URL,
@@ -28,7 +29,6 @@ from app.core.constants import (
     WORDLISTS_DIR as WORDLISTS_DIR_STR,
 )
 from app.core.database import get_async_session
-from app.core.rate_limit import RateLimits, limiter
 from app.models.user import User
 
 logger = logging.getLogger(__name__)

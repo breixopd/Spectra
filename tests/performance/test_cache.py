@@ -9,8 +9,8 @@ from typing import Any
 
 import pytest
 
-from app.core.cache import CacheService
-from app.core.redis_client import RedisCache, RedisConnectionPool
+from app.infrastructure.cache import CacheService
+from app.infrastructure.redis_client import RedisCache, RedisConnectionPool
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.live, pytest.mark.performance]
 

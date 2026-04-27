@@ -10,7 +10,7 @@ from sqlalchemy import JSON, Boolean, CheckConstraint, ForeignKey, Index, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.enums import MissionStatus
+from app.mission.core.enums import MissionStatus
 from app.models.base import Base
 
 

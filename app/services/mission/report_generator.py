@@ -14,8 +14,8 @@ from typing import Any
 from cryptography.fernet import Fernet
 from jinja2 import BaseLoader, Environment
 
+from app.auth.encryption import _derive_fernet_key, _get_default_secret
 from app.core.config import settings
-from app.core.encryption import _derive_fernet_key, _get_default_secret
 from app.services.storage import get_storage_service
 
 logger = logging.getLogger(__name__)

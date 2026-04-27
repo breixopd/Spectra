@@ -7,8 +7,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.rbac import Permission, require_permission
 from app.core.database import get_async_session
-from app.core.rbac import Permission, require_permission
 from app.models.user import User
 from app.services.system.rollback import describe_snapshot_restorability, get_all_snapshots, rollback_snapshot
 

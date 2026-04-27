@@ -14,8 +14,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from httpx import ASGITransport, AsyncClient
 
-from app.core.logging_config import CorrelationIdMiddleware
-from app.core.middleware import SecurityHeadersMiddleware
+from app.bootstrap.logging_config import CorrelationIdMiddleware
+from app.bootstrap.middleware import SecurityHeadersMiddleware
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -132,7 +132,7 @@ class TestSecurityHeadersMiddleware:
     @pytest.mark.asyncio
     async def test_hsts_present_in_production(self):
         """HSTS should be present when DEBUG=False."""
-        with patch("app.core.middleware.settings") as mock_settings:
+        with patch("app.bootstrap.middleware.settings") as mock_settings:
             mock_settings.DEBUG = False
             mock_settings.CORS_ORIGINS = ["http://localhost:5000"]
 
@@ -146,7 +146,7 @@ class TestSecurityHeadersMiddleware:
     @pytest.mark.asyncio
     async def test_cross_origin_blocked_in_production(self):
         """POST with a disallowed Origin is rejected (403) in non-DEBUG mode."""
-        with patch("app.core.middleware.settings") as mock_settings:
+        with patch("app.bootstrap.middleware.settings") as mock_settings:
             mock_settings.DEBUG = False
             mock_settings.CORS_ORIGINS = ["http://localhost:5000"]
 

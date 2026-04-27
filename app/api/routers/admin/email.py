@@ -10,14 +10,14 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
-from app.core.database import get_async_session
-from app.core.rate_limit import limiter
-from app.core.rbac import Permission, require_permission
-from app.core.security import (
+from app.auth.rate_limit import limiter
+from app.auth.rbac import Permission, require_permission
+from app.auth.security import (
     create_unsubscribe_token,
     verify_unsubscribe_token,
 )
+from app.core.config import settings
+from app.core.database import get_async_session
 from app.models.user import User
 from app.models.user_preferences import UserPreferences
 

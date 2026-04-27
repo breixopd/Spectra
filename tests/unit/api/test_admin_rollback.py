@@ -19,7 +19,7 @@ def _fake_user(role: str = "admin", user_id: str = "u-admin-1"):
 
 
 def _make_app() -> FastAPI:
-    from app.core.rate_limit import limiter
+    from app.auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter
