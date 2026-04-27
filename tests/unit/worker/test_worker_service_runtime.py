@@ -65,8 +65,11 @@ async def test_health_reports_worker_task_state():
     mock_session.__aexit__ = AsyncMock(return_value=False)
     mock_session.execute = AsyncMock()
 
+    from fastapi import Response
+
+    mock_response = Response()
     with patch("app.core.database.async_session_maker", return_value=mock_session):
-        result = await worker_service.health()
+        result = await worker_service.health(mock_response)
 
     assert result == {
         "status": "healthy",
@@ -135,8 +138,11 @@ async def test_health_reports_db_failure():
     task.done.return_value = False
     worker_service._worker_task = task
 
+    from fastapi import Response
+
+    mock_response = Response()
     with patch("app.core.database.async_session_maker", side_effect=RuntimeError("db down")):
-        result = await worker_service.health()
+        result = await worker_service.health(mock_response)
 
     assert result["status"] == "degraded"
     assert result["database"] == "disconnected"
