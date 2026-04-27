@@ -25,6 +25,13 @@ from app.core.config import get_settings
 HealthMap = dict[str, Any]
 
 _HEALTHY_STATES = {"healthy", "ok", "running", "ready", "not_configured", "not configured", "disabled"}
+
+# Simple in-memory TTL cache for health checks to avoid repeated probing
+_health_cache: dict[str, tuple[float, HealthMap]] = {}
+_HEALTH_CACHE_TTL_SECONDS = 10.0
+
+# Reusable Redis client for health checks (initialised lazily)
+_redis_client: Any = None
 _DEGRADED_STATES = {"degraded", "warning", "fallback", "standby"}
 _CONTROL_PLANE_HEALTH_HOSTS = {"app", "spectra-app", "scheduler", "worker", "ai-svc", "localhost", "127.0.0.1"}
 _CONTROL_PLANE_SERVICE_TYPES = {"app", "api", "scheduler", "worker", "ai", "ai-svc"}
@@ -150,6 +157,7 @@ async def _check_database(db: AsyncSession) -> HealthMap:
 
 
 async def _check_redis() -> HealthMap:
+    global _redis_client
     settings = get_settings()
     redis_url = settings.RATE_LIMIT_STORAGE
     if not redis_url or not redis_url.startswith(("redis://", "rediss://")):
@@ -159,11 +167,12 @@ async def _check_redis() -> HealthMap:
     try:
         import redis.asyncio as aioredis
 
-        r = aioredis.from_url(redis_url, socket_timeout=2)
-        await r.ping()
-        await r.aclose()
+        if _redis_client is None:
+            _redis_client = aioredis.from_url(redis_url, socket_timeout=2)
+        await _redis_client.ping()
         return _result("healthy", latency_ms=_latency_ms(start))
     except Exception as exc:
+        _redis_client = None
         return _result("unhealthy", latency_ms=_latency_ms(start), error=type(exc).__name__)
 
 
@@ -406,6 +415,14 @@ async def collect_platform_health(
     detail = (detail or "basic").lower()
     scope = (scope or "platform").lower()
     include_tokens = {part.strip() for part in (include or "").split(",") if part.strip()}
+    cache_key = f"{detail}:{scope}:{include or ''}:{service or ''}"
+    now = time.monotonic()
+    cached = _health_cache.get(cache_key)
+    if cached is not None:
+        cached_at, cached_result = cached
+        if now - cached_at < _HEALTH_CACHE_TTL_SECONDS:
+            return cached_result
+
     full = detail in {"full", "verbose", "detailed"}
     include_services = full or scope in {"platform", "services", "public", "ready"} or "services" in include_tokens
     include_nodes = (full and scope != "ready") or scope == "nodes" or "nodes" in include_tokens
@@ -445,7 +462,7 @@ async def collect_platform_health(
         groups.append(services)
     status = _overall_status(groups)
 
-    return {
+    result: HealthMap = {
         "status": status,
         "service": "spectra",
         "version": __version__,
@@ -458,6 +475,8 @@ async def collect_platform_health(
         "nodes": nodes,
         "summary": _summary(components, services, nodes),
     }
+    _health_cache[cache_key] = (now, result)
+    return result
 
 
 def readiness_from_health(health: HealthMap) -> dict[str, bool]:
