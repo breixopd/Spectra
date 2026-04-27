@@ -1,10 +1,5 @@
 """Multi-role matrix tests — verify navigation visibility and access control for admin, staff, and user roles.
 
-Role mapping (DB → alias):
-  admin  -> admin
-  staff  -> operator
-  user   -> viewer
-
 RBAC permissions are enforced server-side; these tests verify both UI visibility
 and HTTP-level access restrictions.
 """
@@ -191,7 +186,7 @@ def test_staff_api_plan_endpoints_return_403(page: Page, app_url: str) -> None:
 
 @pytest.mark.timeout(60)
 def test_user_cannot_see_admin_nav(page: Page, app_url: str) -> None:
-    """User (viewer) should not see the admin navigation link."""
+    """User should not see the admin navigation link."""
     username, _uid = create_verified_test_user("user")
     ui_login(page, app_url, username)
     goto_authenticated_app_path(page, app_url, "/dashboard")
@@ -201,7 +196,7 @@ def test_user_cannot_see_admin_nav(page: Page, app_url: str) -> None:
     if admin_link.count() > 0:
         is_hidden = "hidden" in (admin_link.get_attribute("class") or "")
         assert not admin_link.is_visible() or is_hidden, (
-            "User (viewer) should not see the admin navigation link"
+            "User should not see the admin navigation link"
         )
 
 

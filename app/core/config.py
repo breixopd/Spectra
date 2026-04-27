@@ -178,7 +178,6 @@ class Settings(BaseSettings):
     )
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 4  # 4 hours
     SESSION_IDLE_TIMEOUT_MINUTES: int = 60  # 0 = disabled
-    PLUGIN_SAFE_MODE: bool = True  # Enforce signature verification
     REQUIRE_APPROVAL: bool = False  # Require human approval for high-risk actions
 
     # Rate limiting storage backend.

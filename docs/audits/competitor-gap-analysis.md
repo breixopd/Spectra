@@ -12,7 +12,7 @@ This analysis identifies **24 missing features** organized into **4 priority tie
 
 | Category | What Spectra Has | What's Missing |
 |----------|------------------|----------------|
-| **Auth** | JWT + RBAC (admin/operator/viewer), MFA/TOTP, API keys, password reset | SSO/SAML, OIDC, LDAP, SCIM |
+| **Auth** | JWT + RBAC (admin/staff/user), MFA/TOTP, API keys, password reset | SSO/SAML, OIDC, LDAP, SCIM |
 | **Compliance** | GDPR data export/erasure, basic report templates (executive/technical/compliance), audit logs | Mapped frameworks (OWASP Top 10, PCI DSS, HIPAA, SOC2, ISO 27001), compliance scoring |
 | **Reporting** | HTML/PDF reports, severity charts, MITRE ATT&CK mapping, findings CSV/JSON export | White-labeling, trend analysis, custom templates, DOCX export, executive dashboards |
 | **Integrations** | Generic webhooks (4 events), ntfy.sh-style notifications | Jira, Slack, GitHub/GitLab CI, Jenkins, Azure DevOps, ServiceNow |

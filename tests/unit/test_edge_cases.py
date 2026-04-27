@@ -36,7 +36,7 @@ class TestRBACPermissions:
         for perm in Permission:
             assert has_permission("admin", perm), f"Admin missing {perm}"
 
-    def test_viewer_cannot_write(self):
+    def test_staff_cannot_write(self):
         write_perms = [
             Permission.CREATE_MISSIONS,
             Permission.MANAGE_MISSIONS,

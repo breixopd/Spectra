@@ -204,7 +204,6 @@ function buildSettingsPayload() {
         tensorzero_gateway_url: document.querySelector('[name="tensorzero_gateway_url"]')?.value.trim() || '',
         llm_timeout: parseFloat(document.querySelector('[name="llm_timeout"]')?.value) || 600,
         log_level: document.querySelector('[name="log_level"]').value,
-        plugin_safe_mode: document.querySelector('[name="plugin_safe_mode"]').checked,
         connect_back_host: document.querySelector('[name="connect_back_host"]').value.trim(),
         require_approval: document.querySelector('[name="require_approval"]').checked,
         notification_webhook: document.querySelector('[name="notification_webhook"]').value.trim(),
@@ -275,7 +274,6 @@ async function loadSettings() {
     setFieldValue('tensorzero_gateway_url', data.tensorzero_gateway_url);
     setFieldValue('llm_timeout', data.llm_timeout || 600);
     setFieldValue('log_level', data.log_level);
-    setCheckboxValue('plugin_safe_mode', data.plugin_safe_mode);
     setFieldValue('connect_back_host', data.connect_back_host);
     setCheckboxValue('require_approval', data.require_approval);
     setFieldValue('notification_webhook', data.notification_webhook);

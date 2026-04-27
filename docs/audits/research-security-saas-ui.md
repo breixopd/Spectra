@@ -81,7 +81,6 @@ Notion/Linear pattern - show upgrade option precisely when user tries to use a p
 | Admin | All menu items | Full CRUD on all resources |
 | Manager | Dashboard, Scans, Reports | View all, Edit own team's scans |
 | User | Dashboard, My Scans | View/Run own scans |
-| Viewer | Dashboard (read-only) | View only |
 
 ---
 
@@ -148,6 +147,6 @@ Advantages:
    - RBAC: FastAPI dependencies with permission enums
 
 4. **RBAC Implementation**:
-   - Roles: admin, manager, user, viewer
+   - Roles: admin, manager, user
    - Navigation visibility per role
    - Permission checks on every endpoint

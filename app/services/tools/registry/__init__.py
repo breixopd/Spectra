@@ -2,7 +2,7 @@
 
 Manages the lifecycle of security tools:
 - Loading plugins from the plugins/ directory
-- Validating plugin schemas and signatures
+- Validating plugin schemas
 - Installing tools in the spectra-tools container
 - Providing available tools to AI agents
 """
@@ -27,7 +27,6 @@ from app.services.tools.models import (
 # Re-export exceptions for cleaner imports
 from app.services.tools.registry.exceptions import (
     PluginInstallationError,
-    PluginSignatureError,
     PluginValidationError,
 )
 from app.services.tools.registry.installer import PluginInstaller
@@ -36,7 +35,6 @@ from app.services.tools.registry.validator import PluginValidator
 
 __all__ = [
     "PluginInstallationError",
-    "PluginSignatureError",
     "PluginValidationError",
     "RegisteredTool",
     "ToolConfig",
@@ -57,7 +55,7 @@ class ToolRegistry:
 
     Responsibilities:
         - Load plugins from disk
-        - Validate plugin schemas and signatures
+        - Validate plugin schemas
         - Install tools via shell commands
         - Track tool status (pending, installing, ready, failed)
         - Provide available tools to AI agents
@@ -66,73 +64,18 @@ class ToolRegistry:
     def __init__(
         self,
         plugins_dir: str | Path = "plugins",
-        public_key_path: str | Path | None = None,
-        safe_mode: bool = True,
     ) -> None:
         """Initialize the registry."""
         self.plugins_dir = Path(plugins_dir)
-        self.public_key_path = Path(public_key_path) if public_key_path else None
-        self.safe_mode = safe_mode
 
         # Registry state
         self._tools: dict[str, RegisteredTool] = {}
         self._lock = asyncio.Lock()
 
         # Initialize components
-        # We load the key here (conceptually, Validator handles it, but we can pass it)
-        # Actually Validator needs the key object, let's load it if possible or pass path
-        # The Validator takes `public_key`.
-        self._public_key = self._load_public_key()
-
-        self.validator = PluginValidator(public_key=self._public_key, safe_mode=safe_mode)
+        self.validator = PluginValidator()
         self.loader = PluginLoader(plugins_dir=self.plugins_dir, validator=self.validator)
         self.installer = PluginInstaller()
-
-    def _load_public_key(self) -> Any | None:
-        """Load the Ed25519 public key for signature verification."""
-        # potential paths to check
-        paths_to_check = []
-        if self.public_key_path:
-            paths_to_check.append(Path(self.public_key_path))
-
-        # Add default locations (Docker inside /app, and local relative)
-        paths_to_check.append(Path("/app/keys/plugin_signing.pub"))
-        paths_to_check.append(Path("keys/plugin_signing.pub"))
-
-        found_path: Path | None = None
-        for path in paths_to_check:
-            if path.exists():
-                found_path = path
-                logger.debug("Found signing key at %s", path)
-                break
-
-        if not found_path:
-            logger.warning(
-                "No plugin signing key found. Searched: %s",
-                [str(p) for p in paths_to_check],
-            )
-            if self.safe_mode:
-                logger.warning("Safe mode is enabled but no key found. Plugin loading will likely fail.")
-            return None
-
-        # Determine if crypto is available
-        try:
-            from cryptography.hazmat.primitives import (
-                serialization as crypto_serialization,
-            )
-
-            with found_path.open("rb") as f:
-                key = crypto_serialization.load_pem_public_key(f.read())
-            logger.info("Successfully loaded plugin signing key from %s", found_path)
-            return key
-        except ImportError:
-            logger.warning(
-                "cryptography package not installed. Signature verification will fail if safe_mode is enabled."
-            )
-            return None
-        except (OSError, ValueError, KeyError) as e:
-            logger.error("Failed to load public key from %s: %s", found_path, e)
-            return None
 
     # --- Delegated Methods ---
 
@@ -393,16 +336,12 @@ def get_registry() -> ToolRegistry:
 
 async def initialize_registry(
     plugins_dir: str | Path = "plugins",
-    public_key_path: str | Path | None = None,
-    safe_mode: bool = True,
 ) -> ToolRegistry:
     """Initialize the global ToolRegistry instance."""
     global _registry_instance
     if _registry_instance is None:
         _registry_instance = ToolRegistry(
             plugins_dir=plugins_dir,
-            public_key_path=public_key_path,
-            safe_mode=safe_mode,
         )
         await _registry_instance.load_plugins()
     return _registry_instance

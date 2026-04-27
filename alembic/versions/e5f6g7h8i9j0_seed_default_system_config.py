@@ -35,7 +35,6 @@ _DEFAULTS = [
     ("JWT_ALGORITHM", "HS256", False, "JWT signing algorithm"),
     ("ACCESS_TOKEN_EXPIRE_MINUTES", "240", False, "Access token expiry in minutes"),
     ("SESSION_IDLE_TIMEOUT_MINUTES", "60", False, "Session idle timeout in minutes"),
-    ("PLUGIN_SAFE_MODE", "true", False, "Enforce plugin signature verification"),
     ("REQUIRE_APPROVAL", "false", False, "Require human approval for high-risk actions"),
     ("CONNECT_BACK_HOST", "spectra-app", False, "Connect-back host for shells"),
     ("DOCKER_REGISTRY", "ghcr.io/spectra", False, "Docker image registry"),

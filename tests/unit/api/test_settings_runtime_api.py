@@ -20,7 +20,6 @@ def _make_settings_stub() -> SimpleNamespace:
         MAINTENANCE_MODE=False,
         MAINTENANCE_MESSAGE="",
         LOG_LEVEL="INFO",
-        PLUGIN_SAFE_MODE=True,
         CONNECT_BACK_HOST="spectra-app",
         REQUIRE_APPROVAL=False,
         NOTIFICATION_WEBHOOK="",

@@ -70,7 +70,7 @@ Built on the PTES (Penetration Testing Execution Standard) methodology, Spectra 
 ### Security and Access Control
 
 - JWT authentication with role-based access control (RBAC)
-- Three roles: admin, operator, viewer
+- Three roles: admin, staff, user
 - Password reset flow (forgot-password → token → reset) with anti-enumeration
 - Per-plan resource limits and rate limiting
 - Audit trail for all administrative actions
@@ -143,7 +143,6 @@ Spectra is configured via environment variables in `.env`. Key settings:
 | `LLM_TIMEOUT`            | LLM request timeout (seconds)       | `600`                                                      |
 | `FULLY_AUTOMATED`        | Skip human approval for all actions | `false`                                                    |
 | `JWT_SECRET_KEY`         | Secret key for JWT tokens           | (auto-generated)                                           |
-| `PLUGIN_SAFE_MODE`       | Require signed plugins              | `true`                                                     |
 | `EMBEDDING_MODEL`        | Embedding model for RAG             | `local/BAAI/bge-small-en-v1.5`                             |
 
 See [Configuration Guide](docs/wiki/configuration.md) for the full reference.

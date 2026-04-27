@@ -134,7 +134,7 @@ plugins/
 
 The `ToolRegistry` class manages the full plugin lifecycle:
 1. **`load_plugins()`** — scans `plugins_dir` for `*.json`, validates via `PluginValidator`, returns `dict[str, RegisteredTool]`
-2. **`validate_plugin()`** — schema validation (Pydantic models) + Ed25519 signature verification when `safe_mode=True`
+2. **`validate_plugin()`** — schema validation (Pydantic models) + command blocklist check
 3. **`install_tool()`** — delegates to `PluginInstaller` to execute install commands
 4. **`add_plugin()`** — accepts uploaded plugin data, validates, saves to disk atomically
 5. **`get_tool_for_ai()`** — returns AI-formatted tool info (command, args_template, capabilities, risk_level)
@@ -154,7 +154,7 @@ async def initialize_registry(...):
     return _registry_instance
 ```
 
-The registry is initialized at startup in `app/core/lifespan.py:_initialize_services()` via `initialize_registry(plugins_dir="plugins", public_key_path="keys/plugin_signing.pub", safe_mode=settings.PLUGIN_SAFE_MODE)`.
+The registry is initialized at startup in `app/core/lifespan.py:_initialize_services()` via `initialize_registry(plugins_dir="plugins")`.
 
 ### Mission/Plan Factory Patterns
 
@@ -402,7 +402,7 @@ scripts/
 ├── rollback.sh                  # Version rollback script
 ├── health_check.sh              # Pre-deploy health verification
 ├── first_run.sh                 # First-time setup script
-├── sign_plugin.py               # Cryptographic plugin signing
+├── sign_plugin.py               # ~~Removed: Cryptographic plugin signing~~
 ├── live_smoke.py                # Live API smoke tests
 ├── test.sh                      # Docker-based test runner
 ├── version.py                   # Version stamp utility
@@ -426,7 +426,7 @@ scripts/
 | `deploy.sh` | Production deployment | Needs review |
 | `rollback.sh` | Version rollback | Needs review |
 | `health_check.sh` | Pre-deploy verification | Needs review |
-| `sign_plugin.py` | Ed25519 plugin signature generation | ✅ Functional |
+| `sign_plugin.py` | ~~Removed: Ed25519 plugin signature generation~~ | N/A |
 | `live_smoke.py` | Live API smoke tests | ✅ Functional |
 | `test.sh` | Unified test runner | ✅ Comprehensive (unit, integration, coverage) |
 

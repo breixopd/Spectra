@@ -97,11 +97,6 @@ class TestCollectGeneralDbSettings:
         assert "LOG_LEVEL" in result
         assert result["LOG_LEVEL"] == ("DEBUG", False)
 
-    def test_maps_bool_field(self):
-        data = self._make_data(plugin_safe_mode=True)
-        result = self._fn()(data, {"plugin_safe_mode"})
-        assert result["PLUGIN_SAFE_MODE"] == ("true", False)
-
     def test_maps_int_field(self):
         data = self._make_data(sandbox_max_containers=10)
         result = self._fn()(data, {"sandbox_max_containers"})
@@ -164,7 +159,6 @@ class TestGetCurrentSettings:
             MAINTENANCE_MODE=False,
             MAINTENANCE_MESSAGE="",
             LOG_LEVEL="INFO",
-            PLUGIN_SAFE_MODE=True,
             CONNECT_BACK_HOST="teamserver.local",
             REQUIRE_APPROVAL=False,
             NOTIFICATION_WEBHOOK=None,

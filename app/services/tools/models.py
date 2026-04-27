@@ -320,7 +320,6 @@ class ToolConfig(BaseModel):
     )
 
     # Security
-    signature: str | None = Field(None, description="Ed25519 signature of the plugin (hex-encoded)")
     is_system: bool = Field(
         default=False,
         description="Whether this is a built-in system tool that cannot be removed",

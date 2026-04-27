@@ -9,9 +9,7 @@ from app.services.tools.registry import ToolRegistry, ToolStatus
 
 @pytest.fixture
 def mock_registry():
-    # We initialize with safe_mode=False to avoid needing crypto keys setup
-    # unless we are strictly testing that part.
-    registry = ToolRegistry(plugins_dir="tests/plugins", safe_mode=False)
+    registry = ToolRegistry(plugins_dir="tests/plugins")
 
     # Mock the internal components
     registry.loader = AsyncMock()

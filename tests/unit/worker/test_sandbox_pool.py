@@ -224,7 +224,6 @@ class TestSandboxPoolVolumes:
         source = Path("app/services/tools/sandbox/pool.py").read_text()
         assert '"QUEUE_NAME"' in source
         assert '"IS_TOOLS_CONTAINER"' in source
-        assert '"PLUGIN_SAFE_MODE"' in source
         # Sandbox workers need DB access for mission queues, but must not receive auth secrets.
         assert '"DATABASE_URL"' in source
         assert '"JWT_SECRET_KEY"' not in source

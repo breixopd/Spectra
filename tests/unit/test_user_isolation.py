@@ -156,7 +156,7 @@ class TestIsAdminUser:
         user = _make_user(is_superuser=False, role="user")
         assert _is_admin_user(user) is False
 
-    def test_viewer_is_not_admin(self):
+    def test_staff_is_not_admin(self):
         from app.api.dependencies import _is_admin_user
 
         user = _make_user(is_superuser=False, role="staff")

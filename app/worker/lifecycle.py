@@ -6,7 +6,6 @@ import asyncio
 import logging
 import os
 
-from app.core.config import settings
 from app.services.tools.models import ToolStatus
 
 from .helpers import _is_tool_installed, _sync_tool_status
@@ -72,8 +71,6 @@ async def startup() -> None:
 
         registry = await initialize_registry(
             plugins_dir="plugins",
-            public_key_path="keys/plugin_signing.pub",
-            safe_mode=settings.PLUGIN_SAFE_MODE,
         )
         logger.info("Loaded %d tool plugins", len(registry.list_tools()))
     except (OSError, RuntimeError, ImportError) as e:

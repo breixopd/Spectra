@@ -137,7 +137,7 @@ app/
 **GOOD:**
 - Permission enum with 16 granular permissions
 - Role-to-permission mapping
-- Aliases: `operator` → `staff`, `viewer` → `user`
+    - Aliases: `operator` → `staff`
 - `require_permission()` FastAPI dependency
 
 ### Authorization Gaps
@@ -206,12 +206,9 @@ This loop could trigger N queries if `get_mission_finding_counts()` accesses rel
 - 26 pre-defined plugins (nmap, nuclei, sqlmap, metasploit, etc.)
 - `ToolRegistry` class manages loading, validation, installation
 
-### Signature Verification (`app/api/routers/tools.py`)
+### Plugin Upload (`app/api/routers/tools.py`)
 **GOOD:**
-- `PLUGIN_SAFE_MODE` setting enforced (line 391)
-- `/tools/sign` endpoint for Ed25519 signing
-- Server key only usable in DEBUG mode (line 335)
-- `/tools/upload` validates signature before accepting
+- `/tools/upload` validates plugin schema before accepting
 
 ### Command Execution Sandboxing
 **HIGH RISK — `app/services/tools/registry/executor.py`:**
@@ -427,7 +424,7 @@ items = [
 
 7. **Blacklist load timeout** (`security.py` line 76-78): 10-second wait could block requests if DB slow.
 
-8. **`PLUGIN_SAFE_MODE` can be disabled**: `/tools/save-unsigned` endpoint exists (line 376-423) that allows unsigned plugins when safe mode is off.
+8. ~~`PLUGIN_SAFE_MODE` can be disabled~~: Plugin signing feature removed.
 
 9. **No rate limiting on internal `/internal/metrics` endpoint** (line 321-331): Requires `X-Service-Auth` header only; no brute-force protection.
 

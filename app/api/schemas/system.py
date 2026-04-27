@@ -64,7 +64,6 @@ class SettingsUpdate(BaseModel):
     tensorzero_gateway_url: str | None = None
     tensorzero_api_key: str | None = None
     log_level: str | None = Field(None, pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
-    plugin_safe_mode: bool | None = None
     connect_back_host: str | None = None
     require_approval: bool | None = None
     notification_webhook: str | None = None

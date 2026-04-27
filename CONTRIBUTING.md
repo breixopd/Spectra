@@ -402,8 +402,7 @@ We will acknowledge receipt within 48 hours and provide a timeline for resolutio
 
 1. Create a JSON file in `plugins/` following the existing schema
 2. The tool will auto-load on next restart
-3. Optionally sign it with `python scripts/sign_plugin.py`
-4. See [Plugin docs](docs/wiki/plugins.md) for the full schema
+3. See [Plugin docs](docs/wiki/plugins.md) for the full schema
 
 ### Database migrations
 

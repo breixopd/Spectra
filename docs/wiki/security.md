@@ -59,9 +59,9 @@ Role-based access control with three tiers:
 
 | Role | Capabilities |
 | ------ | ------------- |
-| **admin** | Full access — user management, server provisioning, system settings, all missions |
-| **operator** | Run missions, manage tools, view findings, create targets |
-| **viewer** | Read-only access to missions, findings, reports |
+| **admin** | Full access — user management, server provisioning, system settings, all missions
+| **staff** | View missions, findings, targets, reports; manage users and view audit logs
+| **user** | Run missions, manage tools, view findings, create targets |
 
 ### Endpoint Protection
 
@@ -86,7 +86,7 @@ Role-based access control with three tiers:
 
 - SSH keys for server provisioning stored encrypted in DB (via `app/core/encryption.py`)
 - LLM API keys stored as `SecretStr` (Pydantic) — never serialized to logs or JSON
-- Plugin signing keys stored in `keys/` directory (Ed25519)
+- Plugin files validated via schema and command blocklist
 
 ### Transport Security
 
@@ -126,19 +126,6 @@ See [Sandboxes](sandboxes.md) for full isolation details.
 - Sandboxes connect to DB network only — no direct inter-sandbox communication
 
 ---
-
-## Plugin Signing
-
-Ed25519 cryptographic signing ensures plugin integrity in production (`PLUGIN_SAFE_MODE=true`).
-
-**Process:**
-
-1. Generate keys: `python scripts/sign_plugin.py keygen --key-dir keys`
-2. Sign plugin: `python scripts/sign_plugin.py sign --plugin plugins/my-tool.json`
-3. Verification: Platform loads `keys/plugin_signing.pub`, canonicalizes JSON, verifies signature
-4. Unsigned plugins rejected in safe mode
-
-See [Plugins](plugins.md) for details.
 
 ---
 
@@ -208,7 +195,6 @@ Key configuration for security hardening:
 | `JWT_SECRET_KEY` | Auto-generated | Set a strong random value in production |
 | `ENCRYPTION_KEY` | `''` (falls back to JWT key) | Set explicitly to separate signing and encryption key domains |
 | `ENCRYPTION_KEY` | `''` (falls back to JWT key) | Set explicitly to separate signing and encryption key domains |
-| `PLUGIN_SAFE_MODE` | `true` | Keep enabled in production |
 | `FULLY_AUTOMATED` | `true` | Set `false` for human-in-the-loop |
 | `REQUIRE_APPROVAL` | `false` | Enable for high-security environments |
 | `SANDBOX_NETWORK_ISOLATION` | `true` | Keep enabled |

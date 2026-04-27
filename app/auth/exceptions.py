@@ -203,12 +203,6 @@ class PluginValidationError(PluginError):
     code = "PLUGIN_VALIDATION_ERROR"
 
 
-class PluginSignatureError(PluginError):
-    """Plugin signature verification failed."""
-
-    code = "PLUGIN_SIGNATURE_ERROR"
-
-
 class PluginInstallationError(PluginError):
     """Plugin installation failed."""
 

@@ -372,8 +372,6 @@ async def _initialize_services() -> None:
 
         registry = await initialize_registry(
             plugins_dir="plugins",
-            public_key_path="keys/plugin_signing.pub",
-            safe_mode=settings.PLUGIN_SAFE_MODE,
         )
         tool_count = len(registry.list_tools())
         logger.info("[OK] Tool registry initialized: %d tools loaded", tool_count)
