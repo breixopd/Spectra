@@ -361,7 +361,7 @@ class TestTaskFailureHandling:
             mission_manager.execution.consensus,
             "validate_at_gate",
             side_effect=mock_consensus,
-        ), patch("app.services.mission.manager.lifecycle.async_session_maker"):
+        ):
             with patch("app.infrastructure.events.events.emit_sync"):
                 # Create a mission manually without going through start_mission
                 mission = Mission(target=test_target_ip, directive="Test failure handling")
@@ -404,8 +404,7 @@ class TestTaskFailureHandling:
 
     async def test_failure_logged(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that failures are properly logged."""
-        with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.infrastructure.events.events.emit_sync"):
+        with patch("app.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Logging test",
@@ -449,8 +448,7 @@ class TestTaskFailureHandling:
 
     async def test_multiple_failures_handled(self, mission_manager: MissionManager, test_target_ip: str):
         """Test handling multiple consecutive failures."""
-        with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.infrastructure.events.events.emit_sync"):
+        with patch("app.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Multiple failures test",
