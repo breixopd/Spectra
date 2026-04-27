@@ -58,7 +58,7 @@ jobs:
         run: |
           set +e
           docker compose -f docker/docker-compose.test.yml run --name spectra-unit-coverage unit-test-runner \
-            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=app --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=67.4"
+            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=app --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=70"
           status=$?
           docker cp spectra-unit-coverage:/tmp/coverage.xml coverage.xml 2>/dev/null || true
           docker rm -f spectra-unit-coverage >/dev/null 2>&1 || true

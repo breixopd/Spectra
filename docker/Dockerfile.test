@@ -20,10 +20,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # runtime, so install deps first then force the asyncio pin. Add API runtime
 # extras imported by unit tests without pulling PDF/native build-only deps.
 COPY requirements/ requirements/
-RUN grep -v 'pytest-asyncio' requirements/base.txt > /tmp/base-filtered.txt \
-    && pip install --no-cache-dir -r /tmp/base-filtered.txt numpy \
+RUN grep -v -E 'pytest-asyncio|pytest==' requirements/base.txt > /tmp/base-filtered.txt \
+    && pip install --no-cache-dir -r /tmp/base-filtered.txt numpy pytest==8.3.5 \
     && pip install --no-cache-dir aiofiles==25.1.0 aiohttp==3.13.5 aioboto3==15.5.0 docker==7.0.0 asyncssh==2.22.0 aiosmtplib==3.0.0 psutil==7.2.2 aiosqlite==0.21.0 \
-    && pip install --no-cache-dir --no-deps pytest-asyncio==0.24.0 \
+    && pip install --no-cache-dir pytest-asyncio==0.25.3 \
     && pip install --no-cache-dir pytest-cov pytest-timeout httpx redis websockets ruff "bandit[toml]"
 
 # Copy source
