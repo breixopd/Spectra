@@ -176,6 +176,42 @@ class TestAdminStats:
         assert data["smtp_configured"] is False
         assert "smtp_host" not in data
 
+    async def test_admin_stats_mission_count_raises_oserror(self):
+        app = _make_app()
+        user = _fake_user(role="admin")
+
+        scalar_count = MagicMock()
+        scalar_count.scalar.return_value = 5
+
+        role_result = MagicMock()
+        role_result.all.return_value = [("admin", 1), ("staff", 3), ("user", 1)]
+
+        call_index = 0
+
+        async def _execute(stmt):
+            nonlocal call_index
+            call_index += 1
+            # total_users(1), active_users(2), total_plans(3), total_missions(4), total_audit_events(5), role_result(6)
+            if call_index == 4:
+                raise OSError("db closed")
+            if call_index <= 5:
+                return scalar_count
+            return role_result
+
+        mock_session = AsyncMock()
+        mock_session.execute = _execute
+        _override_deps(app, user, mock_session)
+
+        transport = ASGITransport(app=app)
+        with patch("app.services.gateway.service_registry.get_service_registry") as mock_reg:
+            mock_reg.return_value.get_service_topology.return_value = {}
+            async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                resp = await ac.get("/api/admin/stats")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_missions"] == 0
+
     async def test_admin_stats_non_admin_forbidden(self):
         app = _make_app()
         user = _fake_user(role="user")

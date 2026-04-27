@@ -267,6 +267,24 @@ class TestSandboxSingleton:
         assert get_sandbox_pool() is None
 
 
+class TestSandboxPoolTierLimits:
+    def test_get_tier_limits_known(self):
+        from app.services.tools.sandbox.pool import SandboxPool
+        with patch("app.services.tools.sandbox.pool.get_settings") as mock_settings:
+            mock_settings.return_value.SANDBOX_RESOURCE_TIERS = '{"light": {"memory": "256m", "cpu_shares": 128}, "medium": {"memory": "512m", "cpu_shares": 256}}'
+            memory, cpu = SandboxPool.get_tier_limits("light")
+            assert memory == "256m"
+            assert cpu == 128
+
+    def test_get_tier_limits_unknown_fallback(self):
+        from app.services.tools.sandbox.pool import SandboxPool
+        with patch("app.services.tools.sandbox.pool.get_settings") as mock_settings:
+            mock_settings.return_value.SANDBOX_RESOURCE_TIERS = '{"medium": {"memory": "512m", "cpu_shares": 256}}'
+            memory, cpu = SandboxPool.get_tier_limits("nonexistent")
+            assert memory == "512m"
+            assert cpu == 256
+
+
 # --- Worker QUEUE_NAME env var test ---
 
 

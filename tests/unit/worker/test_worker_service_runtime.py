@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -93,7 +93,7 @@ async def test_work_loop_calls_startup_worker_loop_and_shutdown_in_finally():
         if call_count == 1:
             raise RuntimeError("stop")
         # Second call: simulate normal exit
-        raise asyncio.CancelledError
+        return
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
@@ -114,8 +114,7 @@ async def test_work_loop_calls_startup_worker_loop_and_shutdown_in_finally():
         mp.setenv("QUEUE_NAME", "priority")
         # Patch asyncio.sleep to avoid real delay
         mp.setattr(asyncio, "sleep", AsyncMock())
-        with pytest.raises(asyncio.CancelledError):
-            await worker_service.work_loop()
+        await worker_service.work_loop()
 
     assert order[0] == "startup"
     assert order[1] == "worker:priority:['alpha']"
@@ -124,3 +123,87 @@ async def test_work_loop_calls_startup_worker_loop_and_shutdown_in_finally():
     assert order[-1] == "shutdown"
     startup.assert_awaited_once()
     shutdown.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_health_reports_db_failure():
+    from unittest.mock import patch
+
+    from app.worker import __main__ as worker_service
+
+    task = MagicMock()
+    task.done.return_value = False
+    worker_service._worker_task = task
+
+    with patch("app.core.database.async_session_maker", side_effect=RuntimeError("db down")):
+        result = await worker_service.health()
+
+    assert result["status"] == "degraded"
+    assert result["database"] == "disconnected"
+
+
+@pytest.mark.asyncio
+async def test_internal_shell_listener_start():
+    from app.worker import __main__ as worker_service
+
+    with patch("app.worker.__main__.shell_manager") as mock_shell:
+        mock_shell.start_listener.return_value = 4444
+        result = await worker_service.internal_start_shell_listener(
+            MagicMock(session_id="s1", target="1.2.3.4", mission_id="m1", port=0, ttl_seconds=900)
+        )
+        assert result["port"] == 4444
+
+
+@pytest.mark.asyncio
+async def test_internal_shell_listener_start_failure():
+    from fastapi import HTTPException
+    from app.worker import __main__ as worker_service
+
+    with patch("app.worker.__main__.shell_manager") as mock_shell:
+        mock_shell.start_listener.side_effect = RuntimeError("no ports")
+        with pytest.raises(HTTPException):
+            await worker_service.internal_start_shell_listener(
+                MagicMock(session_id="s1", target="1.2.3.4", mission_id="m1", port=0, ttl_seconds=900)
+            )
+
+
+@pytest.mark.asyncio
+async def test_internal_shell_listener_list():
+    from app.worker import __main__ as worker_service
+
+    with patch("app.worker.__main__.shell_manager") as mock_shell:
+        mock_shell.list_listeners.return_value = [{"session_id": "s1"}]
+        result = await worker_service.internal_list_shell_listeners()
+        assert len(result) == 1
+
+
+@pytest.mark.asyncio
+async def test_internal_shell_listener_stop():
+    from app.worker import __main__ as worker_service
+
+    with patch("app.worker.__main__.shell_manager") as mock_shell:
+        mock_shell.stop_listener.return_value = True
+        await worker_service.internal_stop_shell_listener("s1")
+        mock_shell.stop_listener.assert_called_once_with(session_id="s1")
+
+
+@pytest.mark.asyncio
+async def test_internal_shell_listener_stop_not_found():
+    from fastapi import HTTPException
+    from app.worker import __main__ as worker_service
+
+    with patch("app.worker.__main__.shell_manager") as mock_shell:
+        mock_shell.stop_listener.return_value = False
+        with pytest.raises(HTTPException):
+            await worker_service.internal_stop_shell_listener("s1")
+
+
+@pytest.mark.asyncio
+async def test_run_heartbeat():
+    from app.worker import __main__ as worker_service
+
+    with patch("app.worker.lifecycle.heartbeat_loop", new_callable=AsyncMock) as mock_heartbeat:
+        with patch.dict("os.environ", {"QUEUE_NAME": "test_queue"}):
+            await worker_service._run_heartbeat()
+
+    mock_heartbeat.assert_awaited_once_with("test_queue")

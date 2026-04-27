@@ -99,3 +99,21 @@ class TestWarmPoolSingleton:
         set_warm_pool_manager(mock)  # type: ignore[arg-type]
         assert get_warm_pool_manager() is mock
         set_warm_pool_manager(None)
+
+    @pytest.mark.asyncio
+    async def test_count_warm(self):
+        from app.services.tools.sandbox.warm_pool import WarmPoolManager
+
+        mock_pool = MagicMock()
+        wm = WarmPoolManager(mock_pool)
+
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_session.execute = AsyncMock(
+            return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[1, 2, 3]))))
+        )
+
+        with patch("app.services.tools.sandbox.warm_pool.async_session_maker", return_value=mock_session):
+            count = await wm._count_warm()
+            assert count == 3

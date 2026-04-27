@@ -1,6 +1,7 @@
 """Tests for deterministic scope validation."""
 
 import ipaddress
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -114,3 +115,39 @@ class TestValidateCommandTarget:
     async def test_empty_scope(self):
         ok, _reason = await validate_command_target("nmap 10.0.0.1", [])
         assert ok is False
+
+    @pytest.mark.asyncio
+    async def test_dns_resolution_in_scope(self):
+        with patch("app.services.tools.scope_validator._resolve_hostname", new_callable=AsyncMock, return_value=("192.168.1.1",)):
+            networks, _domains = parse_scope(["192.168.1.0/24"])
+            result = await is_target_in_scope("host.local", networks, [])
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_dns_resolution_out_of_scope(self):
+        with patch("app.services.tools.scope_validator._resolve_hostname", new_callable=AsyncMock, return_value=("10.0.0.1",)):
+            networks, _domains = parse_scope(["192.168.1.0/24"])
+            result = await is_target_in_scope("host.local", networks, [])
+            assert result is False
+
+
+class TestParseScopeEdgeCases:
+    def test_empty_string(self):
+        networks, domains = parse_scope([""])
+        assert networks == []
+        assert domains == []
+
+    def test_invalid_cidr(self):
+        networks, domains = parse_scope(["999.999.999.999/24"])
+        assert networks == []
+        assert domains == ["999.999.999.999/24"]
+
+    def test_invalid_ip(self):
+        networks, domains = parse_scope(["999.999.999.999"])
+        assert networks == []
+        assert domains == ["999.999.999.999"]
+
+    def test_unknown_format(self):
+        networks, domains = parse_scope(["something-weird"])
+        assert networks == []
+        assert domains == ["something-weird"]
