@@ -86,7 +86,15 @@ services:
     networks:
       - backend
     logging: *default-logging
-    <<: *security-stateful
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    security_opt:
+      - "no-new-privileges:true"
 
   # Redis
   redis:
