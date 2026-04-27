@@ -33,7 +33,7 @@ def test_api_docs_link_gated_without_api_access(page: Page, app_url: str) -> Non
     page.goto(f"{app_url}/dashboard", wait_until="domcontentloaded")
     _wait_for_sidebar_hydration(page)
 
-    api_link = page.locator('a[href="/docs/api"]')
+    api_link = page.locator('a[data-entitlement-gate="api_access"]')
     expect(api_link).to_have_attribute("aria-disabled", "true", timeout=5_000)
     expect(page.locator('[data-upgrade-link-for="api_access"] a[href="/profile#plan"]')).to_be_visible(timeout=5_000)
 
@@ -46,7 +46,7 @@ def test_api_docs_link_ungated_with_api_access(page: Page, app_url: str) -> None
     page.goto(f"{app_url}/dashboard", wait_until="domcontentloaded")
     _wait_for_sidebar_hydration(page)
 
-    api_link = page.locator('a[href="/docs/api"]')
+    api_link = page.locator('a[data-entitlement-gate="api_access"]')
     expect(api_link).not_to_have_attribute("aria-disabled", "true")
     expect(page.locator('[data-upgrade-link-for="api_access"]')).to_have_count(0)
 
@@ -58,7 +58,7 @@ def test_manual_link_gated_without_manual_mode(page: Page, app_url: str) -> None
     page.goto(f"{app_url}/dashboard", wait_until="domcontentloaded")
     _wait_for_sidebar_hydration(page)
 
-    manual_link = page.locator('a[href="/manual"]')
+    manual_link = page.locator('a[data-entitlement-gate="manual_mode"]')
     expect(manual_link).to_have_attribute("aria-disabled", "true", timeout=5_000)
     expect(page.locator('[data-upgrade-link-for="manual_mode"] a[href="/profile#plan"]')).to_be_visible(timeout=5_000)
 
@@ -71,7 +71,7 @@ def test_manual_link_ungated_with_manual_mode(page: Page, app_url: str) -> None:
     page.goto(f"{app_url}/dashboard", wait_until="domcontentloaded")
     _wait_for_sidebar_hydration(page)
 
-    manual_link = page.locator('a[href="/manual"]')
+    manual_link = page.locator('a[data-entitlement-gate="manual_mode"]')
     expect(manual_link).not_to_have_attribute("aria-disabled", "true")
     expect(page.locator('[data-upgrade-link-for="manual_mode"]')).to_have_count(0)
 
@@ -83,5 +83,5 @@ def test_admin_sidebar_links_not_gated_by_plan(page: Page, app_url: str) -> None
     page.goto(f"{app_url}/dashboard", wait_until="domcontentloaded")
     _wait_for_sidebar_hydration(page)
 
-    expect(page.locator('a[href="/docs/api"]')).not_to_have_attribute("aria-disabled", "true")
-    expect(page.locator('a[href="/manual"]')).not_to_have_attribute("aria-disabled", "true")
+    expect(page.locator('a[data-entitlement-gate="api_access"]')).not_to_have_attribute("aria-disabled", "true")
+    expect(page.locator('a[data-entitlement-gate="manual_mode"]')).not_to_have_attribute("aria-disabled", "true")

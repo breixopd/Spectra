@@ -80,10 +80,10 @@ def test_admin_can_access_user_management(page: Page, app_url: str) -> None:
     ui_login(page, app_url, username)
     goto_authenticated_app_path(page, app_url, "/admin")
 
-    users_tab = page.locator('[data-admin-section="users"], #admin-users-tab, button:has-text("Users")').first
+    users_tab = page.locator('#tab-users, button:has-text("Users")').first
     if users_tab.count() > 0:
         users_tab.click()
-        expect(page.locator("#users-table, .users-list, [data-admin-section='users']").first).to_be_visible(timeout=10_000)
+        expect(page.locator("#section-users, #users-tbody").first).to_be_visible(timeout=10_000)
 
 
 @pytest.mark.timeout(60)
@@ -93,10 +93,10 @@ def test_admin_can_access_plan_management(page: Page, app_url: str) -> None:
     ui_login(page, app_url, username)
     goto_authenticated_app_path(page, app_url, "/admin")
 
-    plans_tab = page.locator('[data-admin-section="plans"], #admin-plans-tab, button:has-text("Plans")').first
+    plans_tab = page.locator('#tab-plans, button:has-text("Plans")').first
     if plans_tab.count() > 0:
         plans_tab.click()
-        expect(page.locator("#plans-table, .plans-list, [data-admin-section='plans']").first).to_be_visible(timeout=10_000)
+        expect(page.locator("#section-plans, #plans-grid").first).to_be_visible(timeout=10_000)
 
 
 @pytest.mark.timeout(60)
@@ -174,11 +174,11 @@ def test_staff_cannot_access_admin_page(page: Page, app_url: str) -> None:
 
 
 @pytest.mark.timeout(60)
-def test_staff_api_admin_endpoints_return_403(page: Page, app_url: str) -> None:
-    """Staff API calls to admin endpoints should return 403."""
+def test_staff_api_admin_endpoints_return_200(page: Page, app_url: str) -> None:
+    """Staff API calls to user management endpoints should return 200 (staff has MANAGE_USERS)."""
     username, _uid = create_verified_test_user("staff")
     resp = _api_get(app_url, "/api/admin/users", username, "TestPassword123!")
-    assert resp.status_code == 403, f"Expected 403, got {resp.status_code}"
+    assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
 
 
 @pytest.mark.timeout(60)
@@ -273,7 +273,7 @@ def test_nav_visibility_matrix(page: Page, app_url: str) -> None:
         _wait_for_sidebar_hydration(page)
 
         for href, _label in common_links:
-            link = page.locator(f'a[href="{href}"]')
+            link = page.locator(f'aside a[href="{href}"], nav a[href="{href}"]').first
             expect(link).to_be_visible(timeout=5_000)
 
         admin_link = page.get_by_test_id("admin-nav-link")

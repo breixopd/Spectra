@@ -32,30 +32,31 @@ def test_websocket_connects_and_pongs(page: Page, app_url: str) -> None:
     goto_authenticated_app_path(page, app_url, "/dashboard")
     _wait_for_sidebar_hydration(page)
 
-    result = page.evaluate("""
-        async () => {
-            const wsUrl = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`;
-            const token = document.cookie.match(/access_token=([^;]+)/)?.[1];
-            const ws = new WebSocket(`${wsUrl}?token=${token}`);
-            return new Promise((resolve) => {
+    cookies = page.context.cookies()
+    token = next((c["value"] for c in cookies if c["name"] == "access_token"), "")
+    result = page.evaluate(f"""
+        async () => {{
+            const wsUrl = `${{location.protocol === 'https:' ? 'wss:' : 'ws:'}}//${{location.host}}/ws`;
+            const ws = new WebSocket(`${{wsUrl}}?token={token}`);
+            return new Promise((resolve) => {{
                 let resolved = false;
-                const done = (val) => { if (!resolved) { resolved = true; resolve(val); } };
-                ws.onopen = () => { ws.send(JSON.stringify({type: 'ping'})); };
-                ws.onmessage = (e) => {
-                    try {
+                const done = (val) => {{ if (!resolved) {{ resolved = true; resolve(val); }} }};
+                ws.onopen = () => {{ ws.send(JSON.stringify({{type: 'ping'}})); }};
+                ws.onmessage = (e) => {{
+                    try {{
                         const msg = JSON.parse(e.data);
-                        if (msg.type === 'pong') {
-                            done({ok: true, message: e.data});
-                        }
-                    } catch (_) {
-                        done({ok: true, message: e.data});
-                    }
-                };
-                ws.onerror = () => done({ok: false, error: 'websocket error'});
-                ws.onclose = () => done({ok: false, error: 'websocket closed'});
-                setTimeout(() => done({ok: false, error: 'timeout'}), 10000);
-            });
-        }
+                        if (msg.type === 'pong') {{
+                            done({{ok: true, message: e.data}});
+                        }}
+                    }} catch (_) {{
+                        done({{ok: true, message: e.data}});
+                    }}
+                }};
+                ws.onerror = () => done({{ok: false, error: 'websocket error'}});
+                ws.onclose = () => done({{ok: false, error: 'websocket closed'}});
+                setTimeout(() => done({{ok: false, error: 'timeout'}}), 10000);
+            }});
+        }}
     """)
     assert result.get("ok"), f"WebSocket connection failed: {result.get('error')}"
 

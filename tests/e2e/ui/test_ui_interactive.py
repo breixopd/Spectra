@@ -166,14 +166,15 @@ def test_admin_panel_tabs(logged_in_page: Page, app_url: str):
     """Go to /admin, click each tab, verify the section loads."""
     page = logged_in_page
     goto_authenticated_app_path(page, app_url, "/admin")
+    expect(page.locator(".admin-sidebar")).to_be_visible(timeout=15_000)
 
     for section_id, _label in _ADMIN_TABS:
         tab_link = page.locator(f".admin-sidebar [data-section='{section_id}']")
         if tab_link.count() == 0:
             continue
         tab_link.scroll_into_view_if_needed()
-        tab_link.click(force=True)
-        # The corresponding section should become visible
+        tab_link.click()
+        page.wait_for_timeout(200)
         section = page.locator(f"#section-{section_id}")
         expect(section).to_be_visible(timeout=15_000)
 
