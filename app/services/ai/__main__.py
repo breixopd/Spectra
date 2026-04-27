@@ -4,9 +4,11 @@ Runs as a separate microservice, exposing internal API for the core API service.
 """
 
 import logging
+import time
 from contextlib import asynccontextmanager
+from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -90,20 +92,101 @@ if _secret:
 
 
 # --- Health ---
-@app.get("/health")
-async def health():
+@app.get("/healthz")
+async def healthz():
+    return {"status": "alive", "service": "ai"}
+
+
+@app.get("/health", response_model=None)
+async def health(response = None):
     import httpx
 
-    status = {"status": "healthy", "service": "ai"}
+    result = {"status": "healthy", "service": "ai"}
     try:
         tz_url = getattr(_settings, "TENSORZERO_GATEWAY_URL", "") or "http://tensorzero:3000"
         async with httpx.AsyncClient(timeout=5) as client:
             resp = await client.get(f"{tz_url.rstrip('/')}/health")
-            status["tensorzero"] = "reachable" if resp.status_code == 200 else "degraded"
+            if resp.status_code == 200:
+                result["tensorzero"] = "reachable"
+            else:
+                result["tensorzero"] = "degraded"
+                result["status"] = "degraded"
+                if response is not None:
+                    response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     except Exception:
-        status["tensorzero"] = "unreachable"
-        status["status"] = "degraded"
-    return status
+        result["tensorzero"] = "unreachable"
+        result["status"] = "degraded"
+        if response is not None:
+            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    return result
+
+
+@app.get("/health/ready")
+async def health_ready(response: Response):
+    import httpx
+
+    checks: dict[str, Any] = {}
+    overall = True
+
+    tz_url = getattr(_settings, "TENSORZERO_GATEWAY_URL", "") or "http://tensorzero:3000"
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get(f"{tz_url.rstrip('/')}/health")
+        checks["tensorzero"] = resp.status_code == 200
+    except Exception:
+        checks["tensorzero"] = False
+    overall = overall and checks["tensorzero"]
+
+    try:
+        from app.services.ai.embeddings import EmbeddingService
+
+        svc = EmbeddingService()
+        await svc._load_model()
+        checks["embeddings"] = svc.is_functional
+    except Exception:
+        checks["embeddings"] = False
+    overall = overall and checks["embeddings"]
+
+    try:
+        from app.services.ai.rag import RAGService
+
+        rag = RAGService()
+        checks["rag"] = rag.is_functional
+    except Exception:
+        checks["rag"] = False
+    overall = overall and checks["rag"]
+
+    if not overall:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+    return {"ready": overall, "checks": checks, "status": "healthy" if overall else "degraded"}
+
+
+@app.get("/health/deep")
+async def health_deep(response: Response):
+    start = time.time()
+    try:
+        from app.services.ai.router import get_smart_router
+
+        router = get_smart_router()
+        result = await router.generate(
+            prompt="ok",
+            max_tokens=1,
+            task_type="parsing",
+            temperature=0.0,
+        )
+        if result.content:
+            latency_ms = round((time.time() - start) * 1000, 1)
+            return {
+                "status": "healthy",
+                "service": "ai",
+                "llm": {"status": "healthy", "latency_ms": latency_ms, "response": result.content[:50]},
+            }
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {"status": "degraded", "service": "ai", "llm": {"status": "degraded", "error": "empty response"}}
+    except Exception as exc:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {"status": "degraded", "service": "ai", "llm": {"status": "unhealthy", "error": type(exc).__name__}}
 
 
 # --- LLM Chat ---

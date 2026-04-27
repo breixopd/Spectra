@@ -3,15 +3,23 @@
 import asyncio
 import logging
 import os
+import time
 from contextlib import asynccontextmanager, suppress
+from datetime import UTC, datetime
+from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response, status
 from pydantic import BaseModel, Field
+from sqlalchemy import text
 
 from app.infrastructure.tasks import create_safe_task
 from app.services.shell.session_manager import shell_manager
 
 logger = logging.getLogger(__name__)
+
+
+def _latency_ms(start: float) -> float:
+    return round((time.monotonic() - start) * 1000, 1)
 
 _worker_task: asyncio.Task | None = None
 _heartbeat_task: asyncio.Task | None = None
@@ -48,25 +56,124 @@ if _secret:
     app.add_middleware(ServiceAuthMiddleware, secret=_secret)
 
 
+@app.get("/healthz")
+async def healthz():
+    return {"status": "alive", "service": "worker"}
+
+
 @app.get("/health")
-async def health():
-    status = {
+async def health(response: Response):
+    result = {
         "status": "healthy",
         "service": "worker",
         "task_alive": _worker_task is not None and not _worker_task.done(),
     }
     try:
-        from sqlalchemy import text
-
         from app.core.database import async_session_maker
 
         async with async_session_maker() as session:
             await session.execute(text("SELECT 1"))
-        status["database"] = "connected"
+        result["database"] = "connected"
     except Exception:
-        status["database"] = "disconnected"
-        status["status"] = "degraded"
-    return status
+        result["database"] = "disconnected"
+        result["status"] = "degraded"
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    return result
+
+
+@app.get("/health/deep")
+async def health_deep(response: Response):
+    checks: dict[str, Any] = {}
+    overall = "healthy"
+
+    start = time.monotonic()
+    try:
+        from app.core.database import async_session_maker
+
+        async with async_session_maker() as session:
+            row = await session.execute(text("SELECT COUNT(*) FROM missions LIMIT 1"))
+            count = row.scalar_one()
+            checks["database"] = {"status": "healthy", "latency_ms": _latency_ms(start), "missions_count": count}
+    except Exception as exc:
+        checks["database"] = {"status": "unhealthy", "latency_ms": _latency_ms(start), "error": type(exc).__name__}
+        overall = "degraded"
+
+    start = time.monotonic()
+    try:
+        import asyncpg
+
+        from app.core.config import settings as _cfg
+
+        dsn = _cfg.DATABASE_URL.get_secret_value().replace("postgresql+asyncpg://", "postgresql://")
+        conn = await asyncpg.connect(dsn)
+        await conn.execute("NOTIFY spectra_jobs, 'health_probe'")
+        await conn.close()
+        checks["queue_listen_notify"] = {"status": "healthy", "latency_ms": _latency_ms(start)}
+    except Exception as exc:
+        checks["queue_listen_notify"] = {"status": "unhealthy", "latency_ms": _latency_ms(start), "error": type(exc).__name__}
+        overall = "degraded"
+
+    start = time.monotonic()
+    try:
+        from app.services.tools.registry import get_registry
+
+        registry = get_registry()
+        tools = registry.list_tools() if registry else []
+        ready_count = sum(1 for t in tools if getattr(getattr(t, "status", None), "value", None) == "ready")
+        checks["tool_registry"] = {
+            "status": "healthy" if ready_count > 0 else "degraded",
+            "latency_ms": _latency_ms(start),
+            "total_tools": len(tools),
+            "ready_tools": ready_count,
+        }
+        if ready_count == 0:
+            overall = "degraded"
+    except Exception as exc:
+        checks["tool_registry"] = {"status": "unhealthy", "latency_ms": _latency_ms(start), "error": type(exc).__name__}
+        overall = "degraded"
+
+    start = time.monotonic()
+    try:
+        listeners = shell_manager.list_listeners()
+        checks["shell_listener"] = {
+            "status": "healthy",
+            "latency_ms": _latency_ms(start),
+            "active_listeners": len(listeners),
+        }
+    except Exception as exc:
+        checks["shell_listener"] = {"status": "unhealthy", "latency_ms": _latency_ms(start), "error": type(exc).__name__}
+        overall = "degraded"
+
+    start = time.monotonic()
+    try:
+        from app.infrastructure.queue import queue_metrics
+
+        queue_name = os.environ.get("QUEUE_NAME", "default")
+        metrics = await queue_metrics(queue_name)
+        checks["queue"] = {
+            "status": "healthy",
+            "latency_ms": _latency_ms(start),
+            "depth": metrics.get("depth", 0),
+            "in_progress": metrics.get("in_progress", 0),
+            "avg_wait_seconds": metrics.get("avg_wait_seconds", 0),
+            "oldest_job_age_seconds": metrics.get("oldest_job_age_seconds", 0),
+        }
+        if metrics.get("depth", 0) > 100:
+            checks["queue"]["status"] = "degraded"
+            overall = "degraded"
+    except Exception as exc:
+        checks["queue"] = {"status": "unhealthy", "latency_ms": _latency_ms(start), "error": type(exc).__name__}
+        overall = "degraded"
+
+    if overall != "healthy":
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+    return {
+        "status": overall,
+        "service": "worker",
+        "timestamp": datetime.now(UTC).isoformat(),
+        "checks": checks,
+    }
 
 
 class ListenerCreateRequest(BaseModel):

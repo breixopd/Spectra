@@ -10,10 +10,14 @@ Runs as a FastAPI microservice with a /health endpoint. Handles:
 import asyncio
 import logging
 import signal
+import time
+import uuid
 from contextlib import asynccontextmanager, suppress
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import FastAPI, Request, Response, status
+from sqlalchemy import text
 
 from app.auth.advisory_locks import advisory_lock_owner, stable_lock_id
 from app.auth.rate_limit import RateLimits, limiter
@@ -22,6 +26,11 @@ from app.core.database import advisory_lock_connection, async_session_maker
 from app.infrastructure.tasks import create_safe_task
 
 logger = logging.getLogger(__name__)
+
+
+def _latency_ms(start: float) -> float:
+    return round((time.monotonic() - start) * 1000, 1)
+
 
 # Stable advisory lock IDs for inter-replica coordination (PostgreSQL pg_advisory_lock)
 _BACKUP_LOCK_ID: int = stable_lock_id("spectra_backup")
@@ -706,6 +715,11 @@ if _secret:
     app.add_middleware(ServiceAuthMiddleware, secret=_secret)
 
 
+@app.get("/healthz")
+async def healthz():
+    return {"status": "alive", "service": "scheduler"}
+
+
 @app.get("/health")
 async def health(response: Response):
     if _scheduler_instance is None:
@@ -715,6 +729,108 @@ async def health(response: Response):
     if result.get("status") == "degraded":
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return result
+
+
+@app.get("/health/deep")
+async def health_deep(response: Response):
+    checks: dict[str, Any] = {}
+    overall = "healthy"
+
+    start = time.monotonic()
+    try:
+        from app.core.database import async_session_maker
+
+        async with async_session_maker() as session:
+            row = await session.execute(text("SELECT COUNT(*) FROM missions LIMIT 1"))
+            count = row.scalar_one()
+            checks["database"] = {"status": "healthy", "latency_ms": _latency_ms(start), "missions_count": count}
+    except Exception as exc:
+        checks["database"] = {"status": "unhealthy", "latency_ms": _latency_ms(start), "error": type(exc).__name__}
+        overall = "degraded"
+
+    start = time.monotonic()
+    try:
+        from app.auth.advisory_locks import advisory_lock_owner, stable_lock_id
+        from app.core.database import advisory_lock_connection
+
+        test_lock_id = stable_lock_id("spectra_health_deep_test")
+        async with advisory_lock_owner(test_lock_id, connection_factory=advisory_lock_connection) as lock_conn:
+            if lock_conn is not None:
+                checks["advisory_lock"] = {"status": "healthy", "latency_ms": _latency_ms(start)}
+            else:
+                checks["advisory_lock"] = {"status": "degraded", "latency_ms": _latency_ms(start), "error": "lock not acquired"}
+                overall = "degraded"
+    except Exception as exc:
+        checks["advisory_lock"] = {"status": "unhealthy", "latency_ms": _latency_ms(start), "error": type(exc).__name__}
+        overall = "degraded"
+
+    start = time.monotonic()
+    try:
+        from app.infrastructure.cache import get_cache
+
+        cache = get_cache()
+        if cache:
+            probe_key = f"health:deep:{uuid.uuid4().hex}"
+            await cache.set(probe_key, "ok", ttl=10)
+            val = await cache.get(probe_key)
+            await cache.delete(probe_key)
+            if val == "ok":
+                checks["cache"] = {"status": "healthy", "latency_ms": _latency_ms(start)}
+            else:
+                checks["cache"] = {"status": "degraded", "latency_ms": _latency_ms(start), "error": "read mismatch"}
+                overall = "degraded"
+        else:
+            checks["cache"] = {"status": "not_configured", "latency_ms": _latency_ms(start)}
+    except Exception as exc:
+        checks["cache"] = {"status": "unhealthy", "latency_ms": _latency_ms(start), "error": type(exc).__name__}
+        overall = "degraded"
+
+    task_statuses: dict[str, Any] = {}
+    if _scheduler_instance is not None:
+        for task_name, _method_name in _SCHEDULER_TASK_SPECS:
+            task = _scheduler_instance._named_tasks.get(task_name)
+            if task is None:
+                task_statuses[task_name] = {"state": "missing"}
+                overall = "degraded"
+            elif task.done():
+                task_statuses[task_name] = {"state": "dead"}
+                overall = "degraded"
+            else:
+                task_statuses[task_name] = {"state": "alive"}
+
+        start = time.monotonic()
+        try:
+            from app.infrastructure.cache import get_cache
+
+            cache = get_cache()
+            if cache:
+                heartbeat = await cache.get("spectra:service:scheduler:heartbeat")
+                if heartbeat and isinstance(heartbeat, dict):
+                    last_ts = heartbeat.get("timestamp")
+                    if last_ts:
+                        last_dt = datetime.fromisoformat(str(last_ts))
+                        age_seconds = (datetime.now(UTC) - last_dt).total_seconds()
+                        task_statuses["health_reporter"]["heartbeat_age_seconds"] = round(age_seconds, 1)
+                        if age_seconds > 120:
+                            task_statuses["health_reporter"]["state"] = "stale"
+                            overall = "degraded"
+            checks["tasks"] = {"status": "healthy" if overall == "healthy" else "degraded", "details": task_statuses}
+        except Exception as exc:
+            checks["tasks"] = {"status": "unhealthy", "error": type(exc).__name__, "details": task_statuses}
+            overall = "degraded"
+    else:
+        checks["tasks"] = {"status": "not_configured", "error": "scheduler not started"}
+        overall = "degraded"
+
+    if overall != "healthy":
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+    return {
+        "status": overall,
+        "service": "scheduler",
+        "timestamp": datetime.now(UTC).isoformat(),
+        "checks": checks,
+    }
 
 
 @app.get("/internal/metrics")
