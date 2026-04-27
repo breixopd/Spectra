@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -27,8 +27,11 @@ def mock_registry():
         mock_tool.config.metadata.capabilities = ["port_scan"]
         mock_tool.config.metadata.prerequisites = []
         mock_tool.config.metadata.risk_level = "low"
+        mock_tool.config.execution.min_timeout = 10
         mock_tool.config.get_ai_summary.return_value = "Nmap port scanner"
 
+        registry.sync_status_from_cache = AsyncMock()
+        registry.list_tools.return_value = [mock_tool]
         registry.get_available_tools.return_value = [mock_tool]
         registry.get_tool.return_value = mock_tool
         mock_get.return_value = registry
@@ -57,9 +60,7 @@ async def test_tool_selector_flow(mock_llm, mock_registry):
 
     # Input
     inp = ToolSelectorInput(target="1.1.1.1", current_phase="discovery")
-    context = MagicMock(spec=AgentContext)
-    context.stealth_mode = False
-    context.session_id = "test-session"
+    context = AgentContext(mission_id="test-mission", session_id="test-session")
 
     # Execute
     result = await agent.execute(context, inp)
@@ -96,8 +97,7 @@ async def test_scope_agent_flow(mock_llm):
 
     agent = ScopeAgent(mock_llm)
     inp = ScopeInput(raw_input="Include 1.1.1.1 but check for others")
-    context = MagicMock(spec=AgentContext)
-    context.session_id = "test-session"
+    context = AgentContext(mission_id="test-mission", session_id="test-session")
 
     result = await agent.execute(context, inp)
 
@@ -116,7 +116,7 @@ async def test_exploit_crafter_flow(mock_llm):
     )
 
     mock_llm.structured_responses = {
-        "ExploitAction": {
+        "ExploitCrafterOutput": {
             "action_type": "execute_exploit",
             "exploit_name": "test_exploit",
             "payload_type": "reverse_tcp",
@@ -130,9 +130,7 @@ async def test_exploit_crafter_flow(mock_llm):
 
     agent = ExploitCrafter(mock_llm)
     inp = ExploitInput(target="1.1.1.1", vulnerability_id="CVE-2024-0001", service_info={"port": 80})
-    context = MagicMock(spec=AgentContext)
-    context.session_id = "test-session"
-    context.previous_actions = []
+    context = AgentContext(mission_id="test-mission", session_id="test-session", target="1.1.1.1")
 
     # Mock specialized methods via patching if needed or rely on MockLLM for simple flow
     # _find_exploit_candidates calls RAG which might fail if not mocked
@@ -180,9 +178,9 @@ async def test_mission_controller_planning(mock_llm):
     with (
         patch(
             "app.services.ai.knowledge.get_available_tools_context",
-            new_callable=MagicMock,
+            new_callable=AsyncMock,
         ) as mock_tools,
-        patch("app.services.ai.knowledge.get_mission_context", new_callable=MagicMock) as mock_ctx,
+        patch("app.services.ai.knowledge.get_mission_context", new_callable=AsyncMock) as mock_ctx,
         patch("app.services.ai.knowledge.get_full_methodology", new_callable=MagicMock) as mock_meth,
     ):
         mock_tools.return_value = "Tools available"
@@ -191,9 +189,7 @@ async def test_mission_controller_planning(mock_llm):
 
         agent = MissionController(mock_llm)
         inp = MissionInput(directive="Hack everything")
-        context = MagicMock(spec=AgentContext)
-        context.session_id = "test-session"
-        context.target = "1.1.1.1"
+        context = AgentContext(mission_id="test-mission", session_id="test-session", target="1.1.1.1")
 
         result = await agent.execute(context, inp)
 
