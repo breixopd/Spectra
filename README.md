@@ -243,6 +243,8 @@ Full documentation is in the [Wiki](docs/wiki/home.md):
 | Deployment Guide | [docs/wiki/deployment-guide.md](docs/wiki/deployment-guide.md) |
 | Development      | [docs/wiki/development.md](docs/wiki/development.md)           |
 | Testing Strategy | [docs/wiki/testing-strategy.md](docs/wiki/testing-strategy.md) |
+| Frontend Patterns | [docs/wiki/frontend-patterns.md](docs/wiki/frontend-patterns.md) |
+| Design Tokens    | [docs/wiki/design-tokens.md](docs/wiki/design-tokens.md)       |
 | Ops Script Index | [scripts/ops/README.md](scripts/ops/README.md)                 |
 | Roadmap          | [docs/wiki/roadmap.md](docs/wiki/roadmap.md)                   |
 

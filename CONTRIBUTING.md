@@ -40,13 +40,51 @@ The project includes a Makefile with common developer targets. Run `make help` t
 ```bash
 make help            # Show all available targets
 make test            # Run unit tests (default target)
-make lint            # Run ruff linter on app/
+make test-unit       # Run unit tests in Docker
+make test-integration # Run integration tests
+make test-performance # Run performance smoke harness
+make test-load       # Run load/rate-limit harness
+make test-soak       # Run soak/stability harness
+make test-live-smoke # Run live API/UI/LLM smoke tests
+make test-coverage   # Run unit tests with coverage report
+make lint            # Run import boundary check + ruff linter
 make format          # Format code with ruff
-make check           # Run lint + unit tests in sequence
+make check           # Run lint + import boundaries + unit tests
 make clean           # Remove caches and build artifacts
+make css-build       # Build Tailwind CSS (minified)
+make css-build-prod  # Build CSS with PostCSS pipeline (autoprefixer + cssnano)
+make css-watch       # Watch and rebuild CSS on changes
 make docker-build    # Build Docker images
 make docker-up       # Start all services via Docker Compose
 make docker-down     # Stop all services
+make import-boundaries # Check import boundary enforcement
+```
+
+### Pre-commit Hooks
+
+After cloning, install pre-commit hooks to catch issues before pushing:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+The hooks (configured in `.pre-commit-config.yaml`) run on every commit:
+
+| Hook | What it does |
+|------|-------------|
+| `trailing-whitespace` | Removes trailing whitespace |
+| `end-of-file-fixer` | Ensures files end with a newline |
+| `check-yaml` | Validates YAML syntax |
+| `check-added-large-files` | Prevents large files from being committed |
+| `ruff` | Lints and auto-fixes Python code |
+| `ruff-format` | Formats Python code |
+| `check-import-boundaries` | Enforces shared/service import boundaries |
+
+To run all hooks manually:
+
+```bash
+pre-commit run --all-files
 ```
 
 ### Running with Docker (recommended)
@@ -74,25 +112,41 @@ uvicorn app.main:app --reload --port 5000
 
 ## Architecture Overview
 
-Spectra follows a layered architecture:
+Spectra follows a layered architecture with four microservices controlled by `SERVICE_MODE`:
 
 ```text
 app/
-├── api/            # HTTP layer — FastAPI routers, Pydantic schemas
-│   ├── routers/    # One module per domain (auth, missions, tools, admin/, ...)
-│   ├── schemas.py  # Request/response models
+├── _meta/            # App metadata (version, build info)
+├── api/              # HTTP layer — FastAPI routers, Pydantic schemas
+│   ├── routers/      # One module per domain (auth, missions, tools, admin/, ...)
+│   ├── schemas/      # Request/response models
 │   └── dependencies.py  # FastAPI dependency injection
-├── core/           # Infrastructure — config, DB, security, cache, events
-├── models/         # Data layer — SQLAlchemy ORM models
-├── repositories/   # Data access — Repository pattern CRUD operations
-├── services/       # Business logic
-│   ├── ai/         # LLM clients, agents (scope, tool_selector, safety, ...)
-│   ├── mission/    # Mission lifecycle, execution, steering
-│   ├── tools/      # Tool registry, adapters, sandboxes
-│   └── ...         # billing, email, gateway, storage, scaling
-├── templates/      # Jinja2 HTML templates
-├── static/         # CSS, JS, images
-└── worker/         # Tools container job queue worker
+├── core/             # Infrastructure — config, DB, security, cache, events, redis
+├── models/           # Data layer — SQLAlchemy ORM models
+├── repositories/     # Data access — Repository pattern CRUD operations
+├── services/
+│   ├── ai/           # AI service entry point + LLM clients, agents, RAG
+│   ├── scheduler/    # Scheduler entry point + background task loops
+│   ├── mission/      # Mission lifecycle, execution, steering
+│   ├── tools/        # Tool registry, adapters, sandboxes
+│   └── ...           # billing, email, gateway, scaling, storage, etc.
+├── utils/            # Shared utilities
+└── worker/           # Worker entry point + job queue consumer
+
+static/               # CSS, JS, vendor libs (project root)
+├── css/              # Tailwind input.css + built output.css
+└── js/               # Page modules + shared JS
+
+templates/            # Jinja2 HTML templates (project root)
+├── macros/           # Reusable Jinja2 macros (feature_gate, etc.)
+├── partials/         # Reusable partials (modal, etc.)
+└── ...               # Page templates
+
+plugins/              # Tool plugin JSON configs
+config/               # Build configs (tailwind, postcss)
+docker/               # Docker Compose files, Dockerfiles, Caddyfile
+scripts/              # Ops scripts, test runners
+tests/                # Unit, integration, e2e, load tests
 ```
 
 ### Key patterns
@@ -108,7 +162,7 @@ app/
 Spectra runs as four microservices controlled by `SERVICE_MODE`. Import boundaries between shared and service-specific code are enforced.
 
 **Shared packages** (used by all services — must NOT import service-specific code):
-- `app/core/` — config, database, security, cache, events
+- `app/core/` — config, database, security, cache, events, redis
 - `app/models/` — SQLAlchemy ORM models
 - `app/repositories/` — data access layer
 
@@ -126,6 +180,8 @@ python3 scripts/check_import_boundaries.py
 ```
 
 This checks that `app/core/` and `app/models/` have no top-level imports of service-specific modules (`app.api`, `app.worker`, `app.services.ai.__main__`, etc.). Lazy imports inside functions are allowed.
+
+The pre-commit hook also runs this check automatically on every commit (see [Pre-commit Hooks](#pre-commit-hooks)).
 
 ### Per-Service Requirements
 
@@ -151,7 +207,7 @@ When adding a dependency, add it to the correct requirements file:
 - **Type hints**: Use them for function signatures. `from __future__ import annotations` at the top of new files.
 - **Imports**: Use absolute imports (`from app.services.ai import ...`), not relative, except within a package's own submodules.
 
-#### Running the linter
+### Running the linter
 
 ```bash
 # Check for lint errors
@@ -164,9 +220,26 @@ ruff check app/ --fix
 ruff format app/ tests/
 
 # Or use the Makefile shortcuts
-make lint     # ruff check app/
+make lint     # ruff check + import boundary check
 make format   # ruff format app/ tests/
 ```
+
+### CSS and Frontend
+
+When modifying CSS or templates, rebuild the Tailwind output:
+
+```bash
+# Development: watch for changes
+make css-watch
+
+# Production: full PostCSS pipeline (autoprefixer + cssnano)
+make css-build-prod
+
+# Quick build (Tailwind only, minified)
+make css-build
+```
+
+The source file is `static/css/input.css`. Custom properties (design tokens) are defined in `:root`. Component classes use `@layer components`. See [Design Tokens](docs/wiki/design-tokens.md) for the full token reference.
 
 ### Naming conventions
 
@@ -194,10 +267,22 @@ Refactor admin router into submodules
 tests/
 ├── unit/           # Fast, isolated tests (no DB, no network)
 ├── integration/    # Tests requiring live services (PostgreSQL, etc.)
-├── e2e/            # End-to-end tests (full stack)
+├── e2e/            # End-to-end tests (full stack, Playwright)
 ├── mocks/          # Shared mock objects
 └── conftest.py     # Shared fixtures
 ```
+
+### Test categories
+
+| Category | Command | What it covers |
+|----------|---------|---------------|
+| **Unit** | `make test-unit` or `./scripts/test.sh unit` | Fast, isolated tests with no external dependencies |
+| **Integration** | `make test-integration` or `./scripts/test.sh integration` | Tests requiring live PostgreSQL, Redis, etc. |
+| **E2E** | `./tests/run_ui_tests.sh` | Playwright browser tests against running app |
+| **Performance** | `make test-performance` or `./tests/run_load_tests.sh performance` | Performance smoke harness |
+| **Load** | `make test-load` or `./tests/run_load_tests.sh load` | Burst/load and rate-limit harness |
+| **Soak** | `make test-soak` or `./tests/run_load_tests.sh soak` | Mixed-traffic soak/stability harness |
+| **Live smoke** | `make test-live-smoke` or `START_STACK=1 ./scripts/test.sh live-smoke` | API/UI/LLM smoke tests against running stack |
 
 ### Running tests
 
@@ -267,6 +352,7 @@ Use this checklist when reviewing pull requests:
 - [ ] **Code quality**: Follows project style, clear naming, no dead code
 - [ ] **Tests**: New functionality has tests; all existing tests pass
 - [ ] **Lint clean**: `ruff check app/` reports no errors
+- [ ] **Import boundaries**: `python3 scripts/check_import_boundaries.py` passes
 - [ ] **Security**: No hardcoded secrets, no SQL injection, no XSS vectors
 - [ ] **Constants**: No magic numbers — constants go in `app/core/constants.py`
 - [ ] **Type hints**: Function signatures include type hints
@@ -274,6 +360,8 @@ Use this checklist when reviewing pull requests:
 - [ ] **Migrations**: Schema changes have an Alembic migration
 - [ ] **Backwards compatibility**: API changes are backwards-compatible or versioned
 - [ ] **Error handling**: Appropriate error responses for user-facing endpoints
+- [ ] **CSS rebuilt**: If templates or `input.css` changed, run `make css-build-prod`
+- [ ] **Pre-commit**: `pre-commit run --all-files` passes
 
 ## Security
 

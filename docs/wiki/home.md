@@ -10,7 +10,7 @@ Welcome to the Spectra documentation wiki. Spectra is a Multi-Agent System (MAS)
 
 | Page | Description |
 |------|-------------|
-| [Architecture](architecture.md) | System design — 12 AI agents, MAKER framework, execution pipeline, learning system, microservices |
+| [Architecture](architecture.md) | System design — 12 AI agents, MAKER framework, execution pipeline, learning system, microservices, caching |
 | [Configuration](configuration.md) | All environment variables and settings organized by section |
 | [Deployment Guide](deployment-guide.md) | **Start here** — Docker Compose, Cloudflare, Docker Swarm, CI/CD, rollback, private registry |
 | [Operations](operations.md) | Canonical day-2 runbook index — health triage, backups, queue repair, incidents, logging |
@@ -23,6 +23,8 @@ Welcome to the Spectra documentation wiki. Spectra is a Multi-Agent System (MAS)
 | [Worker System](worker-system.md) | Background jobs, dead-letter queue, cleanup, notifications, reports |
 | [Development](development.md) | Local setup, testing, code structure, contributing |
 | [Testing Strategy](testing-strategy.md) | Platform-wide verification layers, change matrix, release gate, and known testing gaps |
+| [Frontend Patterns](frontend-patterns.md) | CSP-safe event delegation, modal macro, feature gates, test attributes |
+| [Design Tokens](design-tokens.md) | CSS custom properties, color palette, typography, spacing, animations |
 | [Roadmap](roadmap.md) | Future improvements and completed milestones |
 
 ## Quick Links
@@ -33,3 +35,4 @@ Welcome to the Spectra documentation wiki. Spectra is a Multi-Agent System (MAS)
 - **Configuring settings?** See [Configuration](configuration.md) for all environment variables.
 - **Adding a tool?** See [Plugins](plugins.md) for the JSON plugin schema.
 - **Scaling out?** See [Scaling](scaling.md) for multi-server setup.
+- **Working on the frontend?** See [Frontend Patterns](frontend-patterns.md) for event delegation and [Design Tokens](design-tokens.md) for the visual system.
