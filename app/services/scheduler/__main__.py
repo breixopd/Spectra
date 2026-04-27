@@ -13,7 +13,7 @@ import signal
 from contextlib import asynccontextmanager, suppress
 from datetime import UTC, datetime, timedelta
 
-from fastapi import FastAPI, Response, status
+from fastapi import FastAPI, Request, Response, status
 
 from app.core.advisory_locks import advisory_lock_owner, stable_lock_id
 from app.core.constants import SECONDS_PER_HOUR
@@ -719,7 +719,7 @@ async def health(response: Response):
 
 @app.get("/internal/metrics")
 @limiter.limit(RateLimits.INTERNAL_METRICS)
-async def internal_node_metrics():
+async def internal_node_metrics(request: Request):
     """Return local system metrics. Service auth enforced by middleware."""
     from app.services.scaling.node_metrics import collect_node_metrics
 

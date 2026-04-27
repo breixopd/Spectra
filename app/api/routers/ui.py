@@ -265,6 +265,8 @@ async def api_docs_page(
     request: Request,
     current_user: User = Depends(require_feature("api_access")),
 ):
+    if not await get_ui_user(request):
+        return RedirectResponse(url="/login", status_code=303)
     is_admin = _is_admin_user(current_user)
 
     from app.main import app as fastapi_app

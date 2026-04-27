@@ -160,7 +160,10 @@ class TestDocsAdminVisibility:
         """Unauthenticated request to /docs/api redirects to /login."""
         from app.api.routers.ui import api_docs_page
 
-        with patch("app.api.routers.ui.get_ui_user", return_value=None):
+        with (
+            patch("app.api.routers.ui.get_ui_user", return_value=None),
+            patch("app.api.routers.ui._is_admin_user", return_value=False),
+        ):
             result = await api_docs_page(MagicMock())
 
         assert result.status_code == 303
