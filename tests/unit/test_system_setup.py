@@ -39,11 +39,9 @@ def setup_request():
 @pytest.mark.asyncio
 @patch("app.services.system.setup.get_password_hash")
 @patch("app.services.system.setup.hydrate_runtime_settings_from_db", new_callable=AsyncMock)
-@patch("app.services.system.setup.SystemSetupService._generate_signing_keys")
 @patch("app.services.system.setup.SystemSetupService._save_infra_config")
 async def test_perform_setup_success(
     mock_save_infra,
-    mock_gen_keys,
     mock_hydrate,
     mock_hash,
     service,
@@ -65,7 +63,6 @@ async def test_perform_setup_success(
     mock_session.refresh.assert_called_once_with(user)
 
     mock_hydrate.assert_awaited_once()
-    mock_gen_keys.assert_called_once()
     mock_save_infra.assert_not_called()  # No infra changes
 
 
@@ -143,29 +140,4 @@ async def test_check_directories(service):
         assert result is True
 
 
-@pytest.mark.asyncio
-async def test_generate_signing_keys_exists(service):
-    with patch("app.services.system.setup.Path.exists") as mock_exists:
-        mock_exists.return_value = True
-        with patch("app.services.system.setup.logger") as mock_logger:
-            await service._generate_signing_keys()
-            mock_logger.info.assert_any_call("Signing keys already exist")
 
-
-@pytest.mark.asyncio
-async def test_generate_signing_keys_new(service):
-    with (
-        patch("app.services.system.setup.Path.exists") as mock_exists,
-        patch("app.services.system.setup.Path.mkdir"),
-        patch("builtins.open", new_callable=mock_open),
-        patch("cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey.generate") as mock_gen,
-        patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread,
-    ):
-        mock_exists.return_value = False
-        mock_key = MagicMock()
-        mock_gen.return_value = mock_key
-
-        await service._generate_signing_keys()
-
-        mock_gen.assert_called_once()
-        assert mock_to_thread.call_count == 2  # Two write_bytes calls
