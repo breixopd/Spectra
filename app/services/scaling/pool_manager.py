@@ -6,7 +6,7 @@ import asyncio
 import logging
 import secrets
 import time
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -244,7 +244,7 @@ class ServerPoolManager:
                 check = await self.health_check_node(node.to_dict())
                 node.health_status = check["health_status"]
                 node.last_error = check.get("last_error")
-                node.last_health_check = datetime.now(UTC)
+                node.last_health_check = datetime.utcnow()
 
                 # Collect node metrics and store in metadata
                 if check["health_status"] == "healthy":
