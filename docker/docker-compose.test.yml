@@ -206,6 +206,12 @@ services:
         condition: service_healthy
       ai-svc:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5000/api/version"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
     networks:
       frontend:
         aliases:
@@ -534,18 +540,18 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.playwright
     entrypoint: ["python3", "-m", "pytest"]
-    command: ["tests/e2e/ui/", "-v", "--tb=short", "-x", "--confcutdir=tests/e2e/ui", "-p", "no:cov"]
+    command: ["tests/e2e/ui/", "-v", "--tb=short", "-x", "--confcutdir=tests/e2e/ui", "-p", "no:cov", "-o", "addopts="]
     env_file:
       - ../.env.test
     environment:
-      - APP_BASE_URL=http://host.docker.internal:15080
+      - APP_BASE_URL=http://app:5000
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
     volumes:
       - ../tests:/app/tests:ro
       - ../app:/app/app:ro
     depends_on:
       app:
-        condition: service_started
+        condition: service_healthy
       db:
         condition: service_healthy
     extra_hosts:
