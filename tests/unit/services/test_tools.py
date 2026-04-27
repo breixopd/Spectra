@@ -371,7 +371,7 @@ class TestCommandToolAdapter:
 
         mock_output = '{"findings": []}'
 
-        with patch("asyncio.create_subprocess_shell") as mock_subprocess:
+        with patch("asyncio.create_subprocess_exec") as mock_subprocess:
             process_mock = AsyncMock()
             process_mock.communicate.return_value = (mock_output.encode(), b"")
             process_mock.returncode = 0
@@ -395,7 +395,7 @@ class TestCommandToolAdapter:
         )
 
         with (
-            patch("asyncio.create_subprocess_shell") as mock_subprocess,
+            patch("asyncio.create_subprocess_exec") as mock_subprocess,
             patch("asyncio.wait_for", side_effect=TimeoutError),
             patch("os.killpg"),
             patch("os.getpgid"),
