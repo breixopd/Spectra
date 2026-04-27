@@ -27,13 +27,13 @@ def _wait_for_sidebar_hydration(page: Page) -> None:
 
 
 def _assert_link_gated(page: Page, href: str, feature: str) -> None:
-    link = page.locator(f'a[href="{href}"]')
+    link = page.locator(f'a[data-entitlement-gate="{feature}"]')
     expect(link).to_have_attribute("aria-disabled", "true", timeout=5_000)
     expect(page.locator(f'[data-upgrade-link-for="{feature}"] a[href="/profile#plan"]')).to_be_visible(timeout=5_000)
 
 
 def _assert_link_ungated(page: Page, href: str, feature: str) -> None:
-    link = page.locator(f'a[href="{href}"]')
+    link = page.locator(f'a[data-entitlement-gate="{feature}"]')
     expect(link).not_to_have_attribute("aria-disabled", "true")
     expect(page.locator(f'[data-upgrade-link-for="{feature}"]')).to_have_count(0)
 

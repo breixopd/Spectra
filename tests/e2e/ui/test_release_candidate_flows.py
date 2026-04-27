@@ -29,7 +29,7 @@ def test_api_docs_denied_without_api_access(page: Page, app_url: str) -> None:
     assert response is not None
     assert response.status == 403
     expect(page.locator(".error-code")).to_contain_text("403", timeout=10_000)
-    expect(page.locator("body")).to_contain_text("API documentation requires", timeout=10_000)
+    expect(page.locator("body")).to_contain_text("No active subscription", timeout=10_000)
 
 
 @pytest.mark.timeout(60)
@@ -52,10 +52,12 @@ def test_manual_mode_redirects_without_entitlement(page: Page, app_url: str) -> 
     username, _user_id = create_verified_test_user("user")
     ui_login(page, app_url, username)
 
-    page.goto(f"{app_url}/manual", wait_until="domcontentloaded")
+    response = page.goto(f"{app_url}/manual", wait_until="domcontentloaded")
 
-    page.wait_for_url("**/dashboard", timeout=15_000)
-    expect(page.get_by_test_id("sidebar")).to_be_visible(timeout=10_000)
+    assert response is not None
+    assert response.status == 403
+    expect(page.locator(".error-code")).to_contain_text("403", timeout=10_000)
+    expect(page.locator("body")).to_contain_text("No active subscription", timeout=10_000)
 
 
 @pytest.mark.timeout(60)
