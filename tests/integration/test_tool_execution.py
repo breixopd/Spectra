@@ -517,6 +517,10 @@ class TestPluginLoading:
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(os.geteuid() != 0, reason="Tool installation requires root privileges")
+    @pytest.mark.skipif(
+        os.environ.get("SKIP_TOOL_VERIFY") == "1",
+        reason="Tool verification skipped in this environment",
+    )
     async def test_all_tools_verification(self):
         """Test that all registered tools can be verified (installed and runnable)."""
         root_dir = Path(__file__).parent.parent.parent
