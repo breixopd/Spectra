@@ -28,8 +28,7 @@ async def rag_service():
 
     service = RAGService()
     result = await service.initialize()
-    if not result:
-        pytest.skip("RAG initialization failed (PostgreSQL/pgvector not available)")
+    assert result, "RAG initialization failed (PostgreSQL/pgvector not available)"
     yield service
 
 

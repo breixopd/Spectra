@@ -33,26 +33,19 @@ def _queue_database_url() -> str:
 async def queue_engine():
     database_url = _queue_database_url()
     if not database_url.startswith("postgresql"):
-        pytest.skip(
+        pytest.fail(
             "Queue integration tests require a PostgreSQL test DB; "
-            "use ./tests/run_load_tests.sh performance or set DATABASE_URL to the test Postgres instance."
+            "set DATABASE_URL to the test Postgres instance."
         )
 
     engine = create_async_engine(database_url)
-    try:
-        async with engine.begin() as conn:
-            await conn.execute(text("SELECT 1"))
-            await conn.run_sync(
-                lambda sync_conn: InfrastructureBase.metadata.create_all(
-                    sync_conn,
-                    tables=[JobQueue.__table__],
-                )
+    async with engine.begin() as conn:
+        await conn.execute(text("SELECT 1"))
+        await conn.run_sync(
+            lambda sync_conn: InfrastructureBase.metadata.create_all(
+                sync_conn,
+                tables=[JobQueue.__table__],
             )
-    except (InterfaceError, OperationalError, OSError, TimeoutError):
-        await engine.dispose()
-        pytest.skip(
-            "Queue integration tests require a reachable PostgreSQL test DB; "
-            "use ./tests/run_load_tests.sh performance or start the stack first."
         )
     yield engine
     await engine.dispose()

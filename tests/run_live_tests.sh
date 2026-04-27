@@ -13,7 +13,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-COMPOSE_BASE="docker/docker-compose.test.yml"
+COMPOSE_BASE="docker/compose.yaml"
 OPS_TEST_FILE="tests/integration/test_ops_scripts_live.py"
 
 cd "$PROJECT_DIR"
@@ -25,10 +25,10 @@ fi
 
 # ── Compose commands ──────────────────────────────────────────
 # Targets are in the test compose behind --profile targets
-COMPOSE_TARGETS="docker compose -f $COMPOSE_BASE --profile targets"
+COMPOSE_TARGETS="docker compose -f $COMPOSE_BASE --profile app --profile targets"
 
 if [ "$TARGETS_ONLY" = true ]; then
-    COMPOSE="docker compose -f $COMPOSE_BASE --profile targets"
+    COMPOSE="docker compose -f $COMPOSE_BASE --profile app --profile targets"
 else
     # Full mode — check .env.test for LLM credentials
     # shellcheck disable=SC1091
@@ -39,7 +39,7 @@ else
         echo "  Or run with --targets for target-only tests."
         exit 0
     fi
-    COMPOSE="docker compose -f $COMPOSE_BASE --profile targets --env-file .env.test"
+    COMPOSE="docker compose -f $COMPOSE_BASE --profile app --profile targets --env-file .env.test"
 fi
 
 echo "=== Spectra Live Integration Tests ==="
