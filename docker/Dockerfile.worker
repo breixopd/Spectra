@@ -61,7 +61,6 @@ COPY app/telemetry/ ./app/telemetry/
 COPY app/utils/ ./app/utils/
 COPY app/worker/ ./app/worker/
 COPY plugins/ ./plugins/
-COPY keys/ ./keys/
 
 # Run as non-root for security
 RUN useradd --create-home --shell /bin/bash spectra && \
