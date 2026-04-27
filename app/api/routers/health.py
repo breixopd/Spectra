@@ -12,6 +12,7 @@ from app.api.dependencies import (
     _decode_access_payload,
     _extract_request_token,
     _load_active_user_from_payload_with_session,
+    get_current_active_user,
 )
 from app.core.config import get_settings as _get_settings
 from app.core.database import get_async_session
@@ -28,7 +29,9 @@ async def _probe_http_health(url: str, *, path: str) -> bool:
 
 
 @router.get("/version", summary="Application version")
-async def get_version():
+async def get_version(
+    _current_user: Any = Depends(get_current_active_user),
+):
     return {"version": __version__}
 
 

@@ -250,10 +250,14 @@ async def test_get_version():
     from fastapi import FastAPI
     from httpx import ASGITransport, AsyncClient
 
+    from app.api.dependencies import get_current_active_user
     from app.api.routers.health import router as health_router
 
     app = FastAPI()
     app.include_router(health_router)
+    def _mock_user():
+        return MagicMock()
+    app.dependency_overrides[get_current_active_user] = _mock_user
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.get("/version")
     assert resp.status_code == 200
