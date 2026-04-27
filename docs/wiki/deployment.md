@@ -1,12 +1,12 @@
 # Deployment
 
-[← Wiki Home](home.md) | [Operations](operations.md) | [Deployment Guide](deployment-guide.md) | [Configuration](configuration.md) | [Scaling](scaling.md)
+[← Wiki Home](home.md) | [Deployment Guide](deployment-guide.md) | [Operations](operations.md) | [Configuration](configuration.md) | [Scaling](scaling.md)
 
 ---
 
-> **See [Deployment Guide](deployment-guide.md) for the complete production deployment guide** — Docker Compose, Cloudflare, Docker Swarm, Portainer, scaling, backups, and monitoring. Use [Operations](operations.md) for day-2 runbooks and post-deploy incident handling.
+> **Start here for production deployments:** [Deployment Guide](deployment-guide.md) covers Docker Compose, Cloudflare, Docker Swarm, Portainer, scaling, backups, and monitoring. Use [Operations](operations.md) for day-2 runbooks and post-deploy incident handling.
 
-This page covers CI/CD pipeline configuration, versioning, and per-service build and deployment.
+This page covers CI/CD pipeline configuration, per-service builds, and versioning. For first-time setup, see the [Deployment Guide](deployment-guide.md).
 
 Current runtime contract: Docker Compose and Docker Swarm use the same internal service names and ports for the microservices split (`ai-svc:5010`, `scheduler:5011`, `worker:5012`). S3-compatible storage is required for missions, sessions, knowledge, and backups; use bundled Garage or point to an external S3 endpoint.
 

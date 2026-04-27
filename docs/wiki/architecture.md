@@ -229,6 +229,43 @@ Spectra runs as four independently deployable microservices, each controlled by 
 | **Scheduler** | `scheduler` | 5011 | Background tasks — sandbox watchdog, backups, metrics |
 | **Worker** | `worker` | 5012 | Tool execution from PostgreSQL job queue in sandboxes |
 
+For development or single-node deployments, `SERVICE_MODE=all` runs everything in one process.
+
+### Directory Layout
+
+```text
+spectra/
+├── app/
+│   ├── _meta/              # App metadata (version, build info)
+│   ├── api/                # HTTP layer — FastAPI routers, schemas
+│   │   ├── routers/        # One module per domain
+│   │   └── schemas/        # Request/response Pydantic models
+│   ├── core/               # Infrastructure — config, DB, security, cache, events, redis
+│   ├── models/             # Data layer — SQLAlchemy ORM models
+│   ├── repositories/        # Data access — Repository pattern CRUD
+│   ├── services/
+│   │   ├── ai/             # AI service entry point + LLM clients, agents, RAG
+│   │   ├── scheduler/      # Scheduler entry point + background task loops
+│   │   ├── mission/        # Mission lifecycle, execution, credentials
+│   │   ├── tools/          # Tool registry, adapters, sandbox pool
+│   │   └── ...             # billing, email, gateway, scaling, etc.
+│   ├── utils/              # Shared utilities
+│   └── worker/             # Worker entry point + job queue consumer
+├── static/                 # CSS, JS, vendor libs (project root)
+│   ├── css/                # Tailwind input.css + built output.css
+│   └── js/                 # Page modules + shared JS
+├── templates/              # Jinja2 HTML templates (project root)
+│   ├── macros/             # Reusable Jinja2 macros (feature_gate, etc.)
+│   ├── partials/           # Reusable partials (modal, etc.)
+│   └── ...                 # Page templates
+├── plugins/                # Tool plugin JSON configs
+├── config/                 # Build configs (tailwind, postcss)
+├── docker/                 # Docker Compose files, Dockerfiles, Caddyfile
+├── scripts/                # Ops scripts, test runners
+├── tests/                  # Unit, integration, e2e, load tests
+└── docs/wiki/              # This documentation
+```
+
 ### Communication Patterns
 
 ```text
@@ -251,6 +288,7 @@ Spectra runs as four independently deployable microservices, each controlled by 
 | **HTTP + Service Auth** | `X-Service-Auth` header, `ServiceAuthMiddleware` | API → AI Service requests |
 | **PG Job Queue** | `SELECT ... FOR UPDATE SKIP LOCKED` on `job_queue` table | API → Worker task dispatch |
 | **PG LISTEN/NOTIFY** | `pg_notify()` on channels like `spectra_jobs_mission_{id}` | Real-time event delivery across all services |
+| **Redis** | Shared distributed rate-limiting backend | Rate-limit counters shared across app replicas |
 
 ### Shared vs Service-Specific Code
 
@@ -265,6 +303,42 @@ Spectra runs as four independently deployable microservices, each controlled by 
 Import boundaries are enforced by `scripts/check_import_boundaries.py` — shared packages cannot have top-level imports of service-specific modules.
 
 See [Microservices Architecture](microservices-split.md) for the full service split documentation.
+
+---
+
+## Caching Architecture
+
+Spectra uses a dual-layer caching system: PostgreSQL for persistent application cache and Redis for distributed rate limiting.
+
+### PostgreSQL CacheService
+
+`CacheService` (`app/core/cache.py`) provides the primary application cache backed by the `cache_entries` table:
+
+- **Persistent** — survives restarts, shared across all service instances
+- **TTL support** — entries expire via `expires_at` column
+- **Namespaced keys** — prefixes like `cache:tool:`, `cache:finding:`, `cache:rag:`, `cache:stats:`
+- **Decorator API** — `@cache.cached(ttl=300, prefix="tool")` for easy memoization
+- **Stats tracking** — hit/miss/set/delete counters for observability
+
+### Redis Cache
+
+`RedisCache` (`app/core/redis_client.py`) provides fast, ephemeral caching and distributed rate limiting:
+
+- **Connection pooling** — singleton `RedisConnectionPool` with graceful degradation when Redis is unavailable
+- **JSON serialization** — values stored as JSON strings
+- **TTL support** — `setex` for time-bounded entries
+- **Pattern deletion** — `delete_pattern()` for bulk cache invalidation
+- **Rate limiting** — shared counters across app replicas via `RATE_LIMIT_STORAGE=redis://`
+
+When Redis is unavailable, the system degrades gracefully: `RedisCache` methods return `None`/`False`/`0` instead of raising errors. For local development or testing, `RATE_LIMIT_STORAGE=memory://` works without Redis.
+
+### Cache Decision Guide
+
+| Use Case | Backend | Why |
+|----------|---------|-----|
+| Tool output, findings, RAG results | PostgreSQL `CacheService` | Persistent, survives restarts, shared across instances |
+| Rate-limit counters | Redis `RedisCache` | Fast, atomic, shared across replicas |
+| Session/temporary data | Redis `RedisCache` | Ephemeral, fast TTL expiry |
 
 ---
 

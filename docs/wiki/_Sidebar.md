@@ -9,6 +9,8 @@
 - [Architecture](architecture.md)
 - [Microservices](microservices-split.md)
 - [System Topology](topology.md)
+- [Frontend Patterns](frontend-patterns.md)
+- [Design Tokens](design-tokens.md)
 - [Scaling](scaling.md)
 - [Sandboxes](sandboxes.md)
 - [Worker System](worker-system.md)
