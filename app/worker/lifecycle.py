@@ -123,8 +123,9 @@ async def shutdown() -> None:
     try:
         from app.core.database import engine
 
-        await engine.dispose()
-        logger.info("Database connections closed")
+        if engine is not None:
+            await engine.dispose()
+            logger.info("Database connections closed")
     except (OSError, RuntimeError) as e:
         logger.warning("Error closing database connections: %s", e)
 

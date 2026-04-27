@@ -622,6 +622,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager — delegates to focused sub-functions."""
     logger.info("[STARTUP] Starting Spectra...")
 
+    if not settings.DATABASE_URL.get_secret_value():
+        raise RuntimeError("DATABASE_URL must be explicitly set before starting Spectra")
+
     _validate_noop_payment()
     _validate_stripe_webhook_secret()
 

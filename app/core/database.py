@@ -11,6 +11,7 @@ from sqlalchemy import event
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import (
     AsyncConnection,
+    AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
@@ -54,26 +55,28 @@ def _configure_database_url(url: str) -> tuple[str, dict]:
 db_url, connect_args = _configure_database_url(settings.DATABASE_URL.get_secret_value())
 
 
-engine = create_async_engine(
-    db_url,
-    echo=settings.DATABASE_ECHO,
-    future=True,
-    poolclass=AsyncAdaptedQueuePool,
-    pool_size=settings.DATABASE_POOL_SIZE,
-    max_overflow=settings.DATABASE_MAX_OVERFLOW,
-    pool_timeout=30,
-    pool_recycle=300,
-    pool_pre_ping=True,
-    connect_args=connect_args,
-)
+engine: AsyncEngine | None = None
+if db_url:
+    _engine = create_async_engine(
+        db_url,
+        echo=settings.DATABASE_ECHO,
+        future=True,
+        poolclass=AsyncAdaptedQueuePool,
+        pool_size=settings.DATABASE_POOL_SIZE,
+        max_overflow=settings.DATABASE_MAX_OVERFLOW,
+        pool_timeout=30,
+        pool_recycle=300,
+        pool_pre_ping=True,
+        connect_args=connect_args,
+    )
+    engine = _engine
 
-
-# --- Connection retry on checkout ---
-@event.listens_for(engine.sync_engine, "handle_error")
-def _handle_db_error(context):
-    """Invalidate connections on disconnect errors so the pool replaces them."""
-    if context.is_disconnect:
-        context.invalidate_pool_on_disconnect = True
+    # --- Connection retry on checkout ---
+    @event.listens_for(_engine.sync_engine, "handle_error")
+    def _handle_db_error(context):
+        """Invalidate connections on disconnect errors so the pool replaces them."""
+        if context.is_disconnect:
+            context.invalidate_pool_on_disconnect = True
 
 # --- Session Maker ---
 async_session_maker = async_sessionmaker(
@@ -94,6 +97,8 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
         async def get_items(db: AsyncSession = Depends(get_async_session)):
             ...
     """
+    if engine is None:
+        raise RuntimeError("Database URL is not configured")
     async with async_session_maker() as session:
         try:
             yield session
@@ -107,6 +112,8 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
 @asynccontextmanager
 async def advisory_lock_connection() -> AsyncGenerator[AsyncConnection, None]:
     """Yield a dedicated autocommit connection for session-scoped advisory locks."""
+    if engine is None:
+        raise RuntimeError("Database URL is not configured")
     async with engine.connect() as connection:
         lock_connection = await connection.execution_options(isolation_level="AUTOCOMMIT")
         try:

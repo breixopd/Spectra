@@ -404,7 +404,7 @@ class ServerProvisioner:
                 raise RuntimeError(
                     f"ssh-keyscan failed for {config.host}:{config.port}: {detail}"
                 )
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             raise RuntimeError(
                 f"ssh-keyscan timed out for {config.host}:{config.port}"
             ) from exc
