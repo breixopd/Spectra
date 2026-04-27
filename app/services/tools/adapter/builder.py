@@ -13,6 +13,42 @@ logger = logging.getLogger(__name__)
 _FLAG_ARG_KEYS = {"flags", "extra_flags", "extra_args"}
 _UNSAFE_FLAG_CHARS = set(";&|`$><\n\r")
 
+# Allowed prefixes for absolute tool commands. Bare names (e.g. "nmap") are
+# also permitted because they are resolved via PATH at execution time.
+_ALLOWED_CMD_PREFIXES = ("/usr/bin/", "/app/tools/", "/opt/spectra_tools/")
+_SAFE_BARE_CMD_PATTERN = re.compile(r"^[a-zA-Z0-9_+\-]+$")
+
+
+def _validate_base_cmd(base_cmd: str) -> None:
+    """Ensure base_cmd points to an allowed binary.
+
+    Rejects path traversal, shell metacharacters, and unexpected absolute
+    paths.  Bare command names are allowed because they rely on PATH lookup.
+    """
+    if not base_cmd:
+        raise ValueError("base_cmd cannot be empty")
+
+    stripped = base_cmd.strip()
+
+    # Reject obvious shell metacharacters / control characters
+    if any(c in stripped for c in _UNSAFE_FLAG_CHARS):
+        raise ValueError(f"Unsafe character in base_cmd: {stripped!r}")
+
+    # If it contains a directory separator, enforce an allowlist.
+    if "/" in stripped:
+        # Reject path traversal attempts
+        if ".." in stripped:
+            raise ValueError(f"Path traversal not allowed in base_cmd: {stripped!r}")
+        if not any(stripped.startswith(prefix) for prefix in _ALLOWED_CMD_PREFIXES):
+            raise ValueError(
+                f"base_cmd must be a bare name or an absolute path under "
+                f"one of {_ALLOWED_CMD_PREFIXES}: {stripped!r}"
+            )
+    else:
+        # Bare command name — must look like a normal binary name
+        if not _SAFE_BARE_CMD_PATTERN.match(stripped):
+            raise ValueError(f"Invalid bare command name: {stripped!r}")
+
 
 class CommandBuilder:
     """Handles command construction and argument templating."""
@@ -41,6 +77,7 @@ class CommandBuilder:
             The fully constructed command string.
         """
         base_cmd = self.config.execution.command
+        _validate_base_cmd(base_cmd)
         args_template = self.config.execution.args_template
 
         # Apply arg_modifiers to request args
