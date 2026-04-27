@@ -1,4 +1,4 @@
-import subprocess
+import asyncio
 import sys
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
@@ -69,7 +69,7 @@ async def test_server_deployer_fails_when_service_deploy_step_fails():
     deployer = ServerDeployer()
 
     with (
-        patch.object(deployer, "_ensure_known_host", return_value=Path("/tmp/deployer_known_hosts")),
+        patch.object(deployer, "_ensure_known_host", new_callable=AsyncMock, return_value=Path("/tmp/deployer_known_hosts")),
         patch.object(deployer, "_run_ssh", new_callable=AsyncMock, return_value=0),
         patch.object(deployer, "_install_docker", new_callable=AsyncMock, return_value=0),
         patch.object(deployer, "_deploy_services", new_callable=AsyncMock, return_value=1) as mock_deploy,
@@ -97,7 +97,7 @@ async def test_server_deployer_passes_requested_services_to_verification():
     requested_services = ["app", "scheduler"]
 
     with (
-        patch.object(deployer, "_ensure_known_host", return_value=Path("/tmp/deployer_known_hosts")),
+        patch.object(deployer, "_ensure_known_host", new_callable=AsyncMock, return_value=Path("/tmp/deployer_known_hosts")),
         patch.object(deployer, "_run_ssh", new_callable=AsyncMock, return_value=0),
         patch.object(deployer, "_install_docker", new_callable=AsyncMock, return_value=0),
         patch.object(deployer, "_deploy_services", new_callable=AsyncMock, return_value=0),
@@ -167,7 +167,8 @@ def test_server_deployer_builds_strict_known_hosts_ssh_base():
     ]
 
 
-def test_server_deployer_uses_pinned_known_host_entry_without_duplicates(tmp_path):
+@pytest.mark.asyncio
+async def test_server_deployer_uses_pinned_known_host_entry_without_duplicates(tmp_path):
     from app.services.infrastructure.deploy import ServerDeployer
 
     deployer = ServerDeployer()
@@ -180,9 +181,9 @@ def test_server_deployer_uses_pinned_known_host_entry_without_duplicates(tmp_pat
 
     with (
         patch.object(deployer, "_known_hosts_path", return_value=known_hosts_path),
-        patch("app.services.infrastructure.deploy.subprocess.run") as mock_run,
+        patch("asyncio.create_subprocess_exec") as mock_exec,
     ):
-        result = deployer._ensure_known_host(
+        result = await deployer._ensure_known_host(
             hostname="example.com",
             port=2222,
             pinned_known_host="[example.com]:2222 ssh-ed25519 AAAANEW\n[example.com]:2222 ssh-ed25519 AAAANEW\n",
@@ -193,51 +194,54 @@ def test_server_deployer_uses_pinned_known_host_entry_without_duplicates(tmp_pat
         "other.example ssh-ed25519 AAAAOTHER\n"
         "[example.com]:2222 ssh-ed25519 AAAANEW\n"
     )
-    mock_run.assert_not_called()
+    mock_exec.assert_not_called()
 
 
-def test_server_deployer_keyscan_failure_raises_runtime_error(tmp_path):
+@pytest.mark.asyncio
+async def test_server_deployer_keyscan_failure_raises_runtime_error(tmp_path):
     from app.services.infrastructure.deploy import ServerDeployer
 
     deployer = ServerDeployer()
     known_hosts_path = tmp_path / "config" / "deployer_known_hosts"
-    error = subprocess.CalledProcessError(
-        1,
-        ["ssh-keyscan", "-p", "22", "bad.example"],
-        stderr="lookup bad.example: no address associated with name",
-    )
+    proc = AsyncMock()
+    proc.communicate = AsyncMock(return_value=(b"", b"lookup bad.example: no address associated with name"))
+    proc.returncode = 1
 
     with (
         patch.object(deployer, "_known_hosts_path", return_value=known_hosts_path),
         patch.object(deployer, "_ssh_keyscan_executable", return_value="/usr/bin/ssh-keyscan"),
-        patch("app.services.infrastructure.deploy.subprocess.run", side_effect=error),
+        patch("asyncio.create_subprocess_exec", new_callable=AsyncMock, return_value=proc),
     ):
         with pytest.raises(RuntimeError, match=r"ssh-keyscan failed for bad\.example:22"):
-            deployer._ensure_known_host(hostname="bad.example", port=22)
+            await deployer._ensure_known_host(hostname="bad.example", port=22)
 
 
-def test_server_deployer_keyscan_persists_scanned_host_keys(tmp_path):
+@pytest.mark.asyncio
+async def test_server_deployer_keyscan_persists_scanned_host_keys(tmp_path):
     from app.services.infrastructure.deploy import ServerDeployer
 
     deployer = ServerDeployer()
     known_hosts_path = tmp_path / "config" / "deployer_known_hosts"
-    scan_result = MagicMock(stdout="# comment\n[example.com]:2222 ssh-ed25519 AAAASCAN\n")
+    proc = AsyncMock()
+    proc.communicate = AsyncMock(return_value=(b"# comment\n[example.com]:2222 ssh-ed25519 AAAASCAN\n", b""))
+    proc.returncode = 0
 
     with (
         patch.object(deployer, "_known_hosts_path", return_value=known_hosts_path),
         patch.object(deployer, "_ssh_keyscan_executable", return_value="/usr/bin/ssh-keyscan"),
-        patch("app.services.infrastructure.deploy.subprocess.run", return_value=scan_result) as mock_run,
+        patch("asyncio.create_subprocess_exec", new_callable=AsyncMock, return_value=proc) as mock_exec,
     ):
-        result = deployer._ensure_known_host(hostname="example.com", port=2222)
+        result = await deployer._ensure_known_host(hostname="example.com", port=2222)
 
     assert result == known_hosts_path
     assert known_hosts_path.read_text(encoding="utf-8") == "[example.com]:2222 ssh-ed25519 AAAASCAN\n"
-    mock_run.assert_called_once_with(
-        ["/usr/bin/ssh-keyscan", "-p", "2222", "example.com"],
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout=10,
+    mock_exec.assert_called_once_with(
+        "/usr/bin/ssh-keyscan",
+        "-p",
+        "2222",
+        "example.com",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
     )
 
 

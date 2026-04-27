@@ -6,7 +6,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.api.routers.health import health_check, readiness_check, service_health
-from app.services.system.health import _is_control_plane_health_url, collect_platform_health, probe_http_health
+from app.services.system.health import _health_cache, _is_control_plane_health_url, collect_platform_health, probe_http_health
+
+
+@pytest.fixture(autouse=True)
+def _clear_health_cache():
+    _health_cache.clear()
 
 
 def _mock_response():
