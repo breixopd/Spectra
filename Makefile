@@ -4,7 +4,7 @@
 .PHONY: test test-unit test-integration test-all test-coverage test-compose \
 	test-load test-performance test-soak test-live-smoke \
        lint format check clean docker-build docker-up docker-down \
-       deploy rollback deploy-check help css-build css-watch
+       deploy rollback deploy-check help css-build css-build-prod css-watch
 
 SHELL := /bin/bash
 
@@ -86,6 +86,10 @@ deploy-check: ## Run pre-deploy checks without deploying
 css-build: ## Build Tailwind CSS (production, minified)
 	@npx tailwindcss -i static/css/input.css -o static/css/output.css --minify 2>/dev/null || \
 	 tailwindcss -i static/css/input.css -o static/css/output.css --minify
+
+css-build-prod: ## Build Tailwind CSS with PostCSS pipeline (autoprefixer + cssnano)
+	@NODE_ENV=production npx postcss static/css/input.css -o static/css/output.css --config config/postcss.config.js 2>/dev/null || \
+	 NODE_ENV=production postcss static/css/input.css -o static/css/output.css --config config/postcss.config.js
 
 .PHONY: import-boundaries
 import-boundaries: ## Check import boundary enforcement

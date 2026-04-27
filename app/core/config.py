@@ -191,6 +191,10 @@ class Settings(BaseSettings):
     # limiting to live entirely at the reverse proxy edge.
     RATE_LIMIT_STORAGE: str = "redis://redis:6379/0"
     REDIS_PASSWORD: SecretStr = SecretStr("")
+    REDIS_URL: str = Field(
+        default="",
+        description="Redis URL for general caching. Falls back to RATE_LIMIT_STORAGE if empty.",
+    )
 
     CONNECT_BACK_HOST: str = "spectra-app"
 
@@ -461,6 +465,9 @@ def get_settings() -> Settings:
         redis_password = settings_instance.REDIS_PASSWORD.get_secret_value()
         if redis_password:
             settings_instance.RATE_LIMIT_STORAGE = f"redis://:{redis_password}@redis:6379/0"
+
+    if not settings_instance.REDIS_URL:
+        settings_instance.REDIS_URL = settings_instance.RATE_LIMIT_STORAGE
 
     # Auto-generate ENCRYPTION_KEY if empty
     if not settings_instance.ENCRYPTION_KEY:
