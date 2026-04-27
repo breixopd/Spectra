@@ -13,9 +13,9 @@ from app.api.dependencies import get_current_active_user
 from app.api.routers.auth._helpers import _clear_auth_cookies
 from app.api.routers.auth.schemas import RestrictProcessingRequest, UpdateProfileRequest
 from app.api.schemas.system import DeleteAccountRequest
+from app.auth.rate_limit import RateLimits, limiter
+from app.auth.security import verify_password
 from app.core.database import get_async_session
-from app.core.rate_limit import RateLimits, limiter
-from app.core.security import verify_password
 from app.models.audit_log import AuditEventType
 from app.models.plan import Plan, Subscription
 from app.models.user import User

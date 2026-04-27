@@ -5,7 +5,7 @@ import asyncio
 import pytest
 import pytest_asyncio
 
-from app.core.queue import Job
+from app.infrastructure.queue import Job
 from app.services.tools.models import ToolStatus
 from app.services.tools.registry import get_registry
 
@@ -102,7 +102,7 @@ class TestPluginLifecycle:
         plugin_path = registry.plugins_dir / "test-plugin.json"
         assert plugin_path.exists()
 
-        from app.core.queue import PostgresJobQueue, worker_loop
+        from app.infrastructure.queue import PostgresJobQueue, worker_loop
         from app.worker import _WORKER_FUNCTIONS
 
         pool = PostgresJobQueue()
@@ -127,7 +127,7 @@ class TestPluginLifecycle:
         tool = await registry.add_plugin(BROKEN_PLUGIN)
         assert tool.status == ToolStatus.PENDING
 
-        from app.core.queue import PostgresJobQueue, worker_loop
+        from app.infrastructure.queue import PostgresJobQueue, worker_loop
         from app.worker import _WORKER_FUNCTIONS
 
         pool = PostgresJobQueue()

@@ -12,7 +12,7 @@ import asyncpg
 import pytest
 from playwright.sync_api import Page
 
-from app.core.security import get_password_hash
+from app.auth.security import get_password_hash
 
 DEFAULT_TEST_PASSWORD = "TestPassword123!"
 

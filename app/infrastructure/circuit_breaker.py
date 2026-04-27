@@ -16,8 +16,8 @@ from enum import StrEnum
 from functools import wraps
 from typing import Any, ParamSpec, TypeVar
 
-from app.core.events import EventType, events
-from app.core.exceptions import CircuitBreakerOpenError
+from app.auth.exceptions import CircuitBreakerOpenError
+from app.infrastructure.events import EventType, events
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,7 @@ class CircuitBreaker:
         self._state_loaded = False
 
     async def _get_persisted_state(self) -> CircuitBreakerState | None:
-        from app.core.cache import get_cache
+        from app.infrastructure.cache import get_cache
 
         cache = get_cache()
         if not cache:
@@ -120,7 +120,7 @@ class CircuitBreaker:
             return None
 
     async def _save_persisted_state(self):
-        from app.core.cache import get_cache
+        from app.infrastructure.cache import get_cache
 
         cache = get_cache()
         if not cache:

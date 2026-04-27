@@ -10,7 +10,7 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from app.core.security import create_access_token
+from app.auth.security import create_access_token
 
 API_AUTH_PREFIX = "/api/v1/auth"
 
@@ -23,7 +23,7 @@ async def client():
     transport = ASGITransport(app=app)
     with (
         patch("app.api.routers.auth.login.invalidate_token", AsyncMock(return_value=None)),
-        patch("app.core.security.is_token_blacklisted", AsyncMock(return_value=False)),
+        patch("app.auth.security.is_token_blacklisted", AsyncMock(return_value=False)),
     ):
         async with AsyncClient(transport=transport, base_url="http://test") as c:
             yield c

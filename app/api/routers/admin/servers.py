@@ -14,8 +14,8 @@ from app.api.routers.admin.server_schemas import (
     ServerConnectionRequest,
     UpdateServerNodeRequest,
 )
+from app.auth.rbac import Permission, require_permission
 from app.core.database import async_session_maker, get_async_session
-from app.core.rbac import Permission, require_permission
 from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.services.system.audit import log_event as audit_log_event
@@ -603,7 +603,7 @@ async def get_scaling_status(
 ):
     """Get auto-scaling status, current policies, queue metrics, and current config values."""
     from app.core.config import get_settings as _get_settings
-    from app.core.queue import queue_metrics
+    from app.infrastructure.queue import queue_metrics
     from app.services.scaling.auto_scaler import AutoScaler
     from app.services.scaling.backends import DockerSwarmBackend
     from app.services.scaling.config import AutoScalerConfig

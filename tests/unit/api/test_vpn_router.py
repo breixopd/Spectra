@@ -12,7 +12,7 @@ from httpx import ASGITransport, AsyncClient
 def _make_app(role: str):
     from app.api.dependencies import get_current_active_user
     from app.api.routers.vpn import router
-    from app.core.rate_limit import limiter
+    from app.auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter

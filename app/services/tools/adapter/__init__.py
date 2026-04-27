@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from app.core.constants import MAX_HOSTS_DEFAULT
-from app.core.telemetry import record_tool_execution
 from app.services.tools.adapter.base import ToolAdapter, ToolExecutionError
 from app.services.tools.adapter.builder import CommandBuilder
 from app.services.tools.adapter.parser import OutputParser
@@ -24,6 +23,7 @@ from app.services.tools.models import (
     ToolExecutionRequest,
     ToolExecutionResult,
 )
+from app.telemetry.telemetry import record_tool_execution
 
 if TYPE_CHECKING:
     pass

@@ -9,9 +9,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.rate_limit import limiter
+from app.auth.rbac import Permission, require_permission
 from app.core.database import get_async_session
-from app.core.rate_limit import limiter
-from app.core.rbac import Permission, require_permission
 from app.models.infrastructure import SystemContent
 from app.models.user import User
 from app.utils.html_sanitization import is_legal_content_type, sanitize_legal_html

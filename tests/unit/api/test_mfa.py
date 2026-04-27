@@ -7,7 +7,7 @@ import pytest
 from fastapi import Response
 from starlette.requests import Request
 
-from app.core.security import decrypt_mfa_secret, encrypt_mfa_secret, verify_totp
+from app.auth.security import decrypt_mfa_secret, encrypt_mfa_secret, verify_totp
 
 # --- Security helper tests ---
 
@@ -159,7 +159,7 @@ async def test_login_with_mfa_requires_code():
     """When MFA is enabled, login should return mfa_required=True."""
     from datetime import timedelta
 
-    from app.core.security import create_access_token
+    from app.auth.security import create_access_token
 
     secret = pyotp.random_base32()
     encrypted = encrypt_mfa_secret(secret)
@@ -174,7 +174,7 @@ async def test_login_with_mfa_requires_code():
     )
 
     # The token should be a valid JWT with mfa_pending claim
-    from app.core.security import decode_token
+    from app.auth.security import decode_token
 
     payload = await decode_token(mfa_token)
     assert payload["mfa_pending"] is True
@@ -188,7 +188,7 @@ async def test_login_with_mfa_returns_token_after_verify(mock_session):
 
     from app.api.routers.auth import mfa_verify_login
     from app.api.schemas.auth import MFAVerifyRequest
-    from app.core.security import create_access_token, decode_token
+    from app.auth.security import create_access_token, decode_token
 
     secret = pyotp.random_base32()
     encrypted = encrypt_mfa_secret(secret)
@@ -313,7 +313,7 @@ async def test_mfa_verify_login_rejects_replayed_code(mock_session):
 
     from app.api.routers.auth import _used_totp_codes, mfa_verify_login
     from app.api.schemas.auth import MFAVerifyRequest
-    from app.core.security import create_access_token
+    from app.auth.security import create_access_token
 
     _used_totp_codes.clear()
     secret = pyotp.random_base32()

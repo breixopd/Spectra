@@ -4,7 +4,7 @@ from sqlalchemy import Boolean, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.encryption import EncryptedString
+from app.auth.encryption import EncryptedString
 from app.models.base import Base
 from app.models.infrastructure import JSONBType
 

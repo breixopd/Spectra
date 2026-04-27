@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import check_resource_owner, get_current_active_user, validate_uuid_param
 from app.api.schemas import ActionApprovalResponse
+from app.auth.rate_limit import RateLimits, limiter
 from app.core.database import get_async_session
-from app.core.rate_limit import RateLimits, limiter
 from app.models.user import User
 from app.repositories.mission import MissionRepository
 from app.services.mission.manager import mission_manager
@@ -126,7 +126,7 @@ async def approve_action(
     if not getattr(mission, "requires_approval", False):
         raise HTTPException(status_code=400, detail="Mission does not require approval")
 
-    from app.core.websocket import manager
+    from app.mission.core.websocket import manager
 
     await manager.broadcast_to_room_json(
         f"mission:{mission_id}",

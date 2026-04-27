@@ -19,7 +19,7 @@ except ModuleNotFoundError:
     _asyncssh = None
 
 from app.core.config import settings
-from app.core.paths import data_path
+from app.infrastructure.paths import data_path
 from app.services.provisioning.recipes import CONTAINER_NAMES, PROVISIONING_RECIPES
 
 logger = logging.getLogger(__name__)

@@ -109,7 +109,7 @@ class TestToolServiceExecution:
         # Mock safety check to allow execution
         tool_service._perform_safety_check = AsyncMock(return_value=(True, "Safe"))
 
-        with patch("app.core.queue.PostgresJobQueue") as MockQueue, patch("app.core.queue.Job") as MockJob:
+        with patch("app.infrastructure.queue.PostgresJobQueue") as MockQueue, patch("app.infrastructure.queue.Job") as MockJob:
             mock_queue = MockQueue.return_value
             mock_queue.enqueue_job = AsyncMock(return_value="job-1")
 
@@ -143,7 +143,7 @@ class TestToolServiceExecution:
 
         tool_service._perform_safety_check = AsyncMock(return_value=(True, "Safe"))
 
-        with patch("app.core.queue.PostgresJobQueue") as MockQueue, patch("app.core.queue.Job") as MockJob:
+        with patch("app.infrastructure.queue.PostgresJobQueue") as MockQueue, patch("app.infrastructure.queue.Job") as MockJob:
             mock_queue = MockQueue.return_value
             mock_queue.enqueue_job = AsyncMock(return_value="job-1")
 
@@ -169,7 +169,7 @@ class TestToolServiceExecution:
 
         tool_service._perform_safety_check = AsyncMock(return_value=(True, "Safe"))
 
-        with patch("app.core.queue.PostgresJobQueue", side_effect=RuntimeError("queue fail")):
+        with patch("app.infrastructure.queue.PostgresJobQueue", side_effect=RuntimeError("queue fail")):
             result = await tool_service.execute_custom_script(
                 mission=mission,
                 script_content="code",

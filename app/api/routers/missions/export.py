@@ -147,7 +147,7 @@ async def export_mission_json(
     if encrypted:
         if not password:
             raise HTTPException(status_code=400, detail="X-Export-Password header required when encrypted=true")
-        from app.core.encryption import encrypt_data_with_password
+        from app.auth.encryption import encrypt_data_with_password
 
         payload = encrypt_data_with_password(payload, password)
         return FastAPIResponse(

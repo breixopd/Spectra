@@ -31,7 +31,7 @@ class TestSandboxInfo:
 
     def test_make_queue_name_valid_for_queue(self):
         """Generated queue name passes PostgresJobQueue regex."""
-        from app.core.queue import PostgresJobQueue
+        from app.infrastructure.queue import PostgresJobQueue
         from app.services.tools.sandbox.models import SandboxInfo
 
         mission_id = str(uuid.uuid4())
@@ -56,56 +56,56 @@ class TestQueueNameValidation:
     """Tests for PostgresJobQueue queue_name validation."""
 
     def test_default_queue_accepted(self):
-        from app.core.queue import PostgresJobQueue
+        from app.infrastructure.queue import PostgresJobQueue
 
         q = PostgresJobQueue("default")
         assert q.queue_name == "default"
 
     def test_mission_queue_accepted(self):
-        from app.core.queue import PostgresJobQueue
+        from app.infrastructure.queue import PostgresJobQueue
 
         q = PostgresJobQueue("mission_a1b2c3d4")
         assert q.queue_name == "mission_a1b2c3d4"
 
     def test_empty_name_rejected(self):
-        from app.core.queue import PostgresJobQueue
+        from app.infrastructure.queue import PostgresJobQueue
 
         with pytest.raises(ValueError):
             PostgresJobQueue("")
 
     def test_hyphen_rejected(self):
-        from app.core.queue import PostgresJobQueue
+        from app.infrastructure.queue import PostgresJobQueue
 
         with pytest.raises(ValueError):
             PostgresJobQueue("mission-a1b2c3d4")
 
     def test_uppercase_rejected(self):
-        from app.core.queue import PostgresJobQueue
+        from app.infrastructure.queue import PostgresJobQueue
 
         with pytest.raises(ValueError):
             PostgresJobQueue("Mission_a1b2")
 
     def test_space_rejected(self):
-        from app.core.queue import PostgresJobQueue
+        from app.infrastructure.queue import PostgresJobQueue
 
         with pytest.raises(ValueError):
             PostgresJobQueue("hello world")
 
     def test_long_name_rejected(self):
         """Names >63 chars should be rejected."""
-        from app.core.queue import PostgresJobQueue
+        from app.infrastructure.queue import PostgresJobQueue
 
         with pytest.raises(ValueError):
             PostgresJobQueue("a" * 64)
 
     def test_max_length_accepted(self):
-        from app.core.queue import PostgresJobQueue
+        from app.infrastructure.queue import PostgresJobQueue
 
         q = PostgresJobQueue("a" * 63)
         assert len(q.queue_name) == 63
 
     def test_starts_with_digit_rejected(self):
-        from app.core.queue import PostgresJobQueue
+        from app.infrastructure.queue import PostgresJobQueue
 
         with pytest.raises(ValueError):
             PostgresJobQueue("1mission")

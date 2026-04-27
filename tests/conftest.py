@@ -149,12 +149,12 @@ def mock_websocket_for_unit_tests(request):
     mock_lifespan_create_task = MagicMock(return_value=None)
 
     with (
-        patch("app.core.websocket.manager.broadcast", mock_broadcast),
-        patch("app.core.websocket.manager.broadcast_event", mock_broadcast_event),
-        patch("app.core.events.EventBus.emit_sync", mock_emit_sync),
-        patch("app.core.background_tasks.cache_cleanup_loop", mock_cache_loop),
-        patch("app.core.background_tasks.periodic_cleanup_loop", mock_periodic_loop),
-        patch("app.core.lifespan.asyncio.create_task", mock_lifespan_create_task),
+        patch("app.mission.core.websocket.manager.broadcast", mock_broadcast),
+        patch("app.mission.core.websocket.manager.broadcast_event", mock_broadcast_event),
+        patch("app.infrastructure.events.EventBus.emit_sync", mock_emit_sync),
+        patch("app.infrastructure.background_tasks.cache_cleanup_loop", mock_cache_loop),
+        patch("app.infrastructure.background_tasks.periodic_cleanup_loop", mock_periodic_loop),
+        patch("app.bootstrap.lifespan.asyncio.create_task", mock_lifespan_create_task),
         patch("app.api.routers.shell.asyncio.create_task", mock_lifespan_create_task),
         patch("asyncio.create_task", safe_create_task),
     ):
@@ -167,7 +167,7 @@ def disable_rate_limiting_for_unit_tests(request):
     if _is_live_test(request.node):
         yield
         return
-    from app.core.rate_limit import limiter
+    from app.auth.rate_limit import limiter
 
     original = limiter.enabled
     limiter.enabled = False

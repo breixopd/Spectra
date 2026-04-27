@@ -29,7 +29,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app.core.paths import data_path
+from app.infrastructure.paths import data_path
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +178,7 @@ class MissionMemory:
         """Read a file, decrypting it if it's in the encrypted set."""
         if filename in _ENCRYPTED_FILES:
             try:
-                from app.core.encryption import decrypt_file
+                from app.auth.encryption import decrypt_file
                 return decrypt_file(path).decode("utf-8")
             except Exception:
                 # Fall back to plaintext (pre-encryption data or missing key)
@@ -288,7 +288,7 @@ class MissionMemory:
             tmp.write_text(json.dumps(data, indent=2, default=str))
             if filename in _ENCRYPTED_FILES:
                 try:
-                    from app.core.encryption import encrypt_file
+                    from app.auth.encryption import encrypt_file
                     encrypt_file(tmp)
                 except Exception as e:
                     logger.warning("Failed to encrypt %s (saving plaintext): %s", filename, e)

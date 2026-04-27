@@ -5,9 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.core.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState
-from app.core.events import Event, EventBus, EventType
-from app.core.exceptions import (
+from app.auth.exceptions import (
     CircuitBreakerOpenError,
     LLMConnectionError,
     LLMError,
@@ -15,8 +13,10 @@ from app.core.exceptions import (
     SpectraError,
     ToolExecutionError,
 )
-from app.core.state_machine import VALID_TRANSITIONS, MissionState, MissionStateMachine
-from app.core.telemetry import TelemetryCollector
+from app.infrastructure.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState
+from app.infrastructure.events import Event, EventBus, EventType
+from app.mission.core.state_machine import VALID_TRANSITIONS, MissionState, MissionStateMachine
+from app.telemetry.telemetry import TelemetryCollector
 
 
 class TestExceptionHierarchy:

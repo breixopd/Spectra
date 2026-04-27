@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.enums import AssessmentPhase
+from app.mission.core.enums import AssessmentPhase
 from app.services.ai.agents.base import (
     ActionRisk,
     AgentContext,

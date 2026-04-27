@@ -8,8 +8,8 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas import AdminSettingsUpdate
+from app.auth.rbac import Permission, require_permission
 from app.core.database import get_async_session
-from app.core.rbac import Permission, require_permission
 from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.services.system.audit import log_event as audit_log_event

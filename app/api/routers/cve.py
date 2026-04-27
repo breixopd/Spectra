@@ -16,8 +16,8 @@ from app.api.schemas.cve import (
     CVELookupResponse,
     SearchExploitResponse,
 )
+from app.auth.rate_limit import RateLimits, limiter
 from app.core.constants import CVE_RESULTS_LIMIT
-from app.core.rate_limit import RateLimits, limiter
 from app.models.user import User
 
 _CVE_PATTERN = re.compile(r"^CVE-\d{4}-\d{4,}$")

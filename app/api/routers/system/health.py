@@ -11,8 +11,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user, get_current_superuser
+from app.auth.rate_limit import limiter
 from app.core.database import get_async_session
-from app.core.rate_limit import limiter
 from app.models.user import User
 from app.services.system.health import collect_platform_health
 from app.services.tools.models import ToolStatus
@@ -62,7 +62,7 @@ async def get_safety_stats(
 ) -> dict:
     """Get safety supervisor statistics from EventBus history."""
     try:
-        from app.core.events import events as event_bus
+        from app.infrastructure.events import events as event_bus
 
         allowed = 0
         blocked = 0

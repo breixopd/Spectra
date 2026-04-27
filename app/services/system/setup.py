@@ -9,10 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.services.ai.llm as llm_module
 from app.api.schemas import SystemSetupRequest
+from app.auth.exceptions import SpectraError
+from app.auth.security import get_password_hash
 from app.core.config import settings
-from app.core.exceptions import SpectraError
-from app.core.paths import data_path
-from app.core.security import get_password_hash
+from app.infrastructure.paths import data_path
 from app.models.user import User
 from app.services.ai.llm import close_global_llm_client
 from app.services.system.runtime_settings import (

@@ -18,9 +18,8 @@ from app.api.routers.auth._helpers import (
     _token_response_payload,
 )
 from app.api.schemas.auth import MFADisableRequest, MFASetupResponse, MFAVerifyRequest
-from app.core.database import get_async_session
-from app.core.rate_limit import RateLimits, limiter
-from app.core.security import (
+from app.auth.rate_limit import RateLimits, limiter
+from app.auth.security import (
     JWTError,
     decode_token,
     decrypt_mfa_secret,
@@ -29,6 +28,7 @@ from app.core.security import (
     verify_password,
     verify_totp,
 )
+from app.core.database import get_async_session
 from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.services.system.audit import log_event as audit_log_event

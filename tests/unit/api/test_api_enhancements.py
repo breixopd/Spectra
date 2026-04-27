@@ -83,7 +83,7 @@ class TestObservabilityGracefulDegradation:
 
     def test_cache_stats_returns_unavailable_when_no_cache(self):
         """Observability cache endpoint handles None cache gracefully."""
-        from app.core.cache import get_cache
+        from app.infrastructure.cache import get_cache
 
         # get_cache returns None when not initialized — that's fine
         cache = get_cache()

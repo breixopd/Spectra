@@ -4,7 +4,7 @@ from enum import StrEnum
 
 import pytest
 
-from app.core.websocket import ConnectionManager
+from app.mission.core.websocket import ConnectionManager
 
 
 class _TestEnum(StrEnum):

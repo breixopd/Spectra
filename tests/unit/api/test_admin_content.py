@@ -38,7 +38,7 @@ def _fake_content_item(**overrides):
 
 
 def _make_app() -> FastAPI:
-    from app.core.rate_limit import limiter
+    from app.auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter

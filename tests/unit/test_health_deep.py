@@ -134,7 +134,7 @@ async def test_full_health_allows_service_auth_and_includes_latency():
         patch("app.api.routers.health._get_settings", return_value=_settings()),
         patch("app.services.system.health.get_settings", return_value=_settings()),
         patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw),
-        patch("app.core.cache.get_cache", return_value=None),
+        patch("app.infrastructure.cache.get_cache", return_value=None),
         patch("app.services.tools.sandbox.get_sandbox_pool", return_value=None),
         patch("app.services.system.health.probe_http_health", new=AsyncMock(return_value={"status": "healthy", "critical": True, "latency_ms": 1.2})),
         patch("app.services.system.health._collect_nodes", new=AsyncMock(return_value={})),
@@ -165,7 +165,7 @@ async def test_readiness_uses_canonical_health_checks():
         _mock_core_checks(),
         patch("app.services.system.health.get_settings", return_value=_settings()),
         patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw),
-        patch("app.core.cache.get_cache", return_value=None),
+        patch("app.infrastructure.cache.get_cache", return_value=None),
         patch("app.services.tools.sandbox.get_sandbox_pool", return_value=None),
         patch("app.services.system.health.probe_http_health", new=AsyncMock(return_value={"status": "healthy", "critical": True, "latency_ms": 1.0})),
     ):

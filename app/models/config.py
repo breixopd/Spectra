@@ -40,7 +40,7 @@ class SystemConfig(Base):
             return None
         if self.is_secret:
             try:
-                from app.core.encryption import _get_default_secret, decrypt_field
+                from app.auth.encryption import _get_default_secret, decrypt_field
 
                 return decrypt_field(self._value, _get_default_secret())
             except Exception:
@@ -55,7 +55,7 @@ class SystemConfig(Base):
             return
         if getattr(self, "is_secret", False) and not val.startswith(_FERNET_TOKEN_PREFIX):
             try:
-                from app.core.encryption import _get_default_secret, encrypt_field
+                from app.auth.encryption import _get_default_secret, encrypt_field
 
                 self._value = encrypt_field(val, _get_default_secret())
                 return
@@ -78,7 +78,7 @@ def _auto_encrypt_secret_value(mapper, connection, target):
     """Safety net: ensure secret values are always encrypted before DB write."""
     if target.is_secret and target._value and not target._value.startswith(_FERNET_TOKEN_PREFIX):
         try:
-            from app.core.encryption import _get_default_secret, encrypt_field
+            from app.auth.encryption import _get_default_secret, encrypt_field
 
             target._value = encrypt_field(target._value, _get_default_secret())
         except Exception:

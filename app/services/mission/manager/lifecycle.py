@@ -8,9 +8,9 @@ from typing import Any
 from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.core.advisory_locks import stable_lock_id
+from app.auth.advisory_locks import stable_lock_id
 from app.core.database import async_session_maker
-from app.core.events import events
+from app.infrastructure.events import events
 from app.models.user import User
 from app.repositories.mission import MissionRepository
 from app.services.ai.agents.base import AgentContext
@@ -282,7 +282,7 @@ class MissionLifecycleManager:
                     job_id = result.get("job_id")
                     if job_id:
                         try:
-                            from app.core.queue import Job
+                            from app.infrastructure.queue import Job
 
                             job = Job(job_id)
                             await job.result(timeout=30)

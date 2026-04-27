@@ -11,16 +11,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing_extensions import TypedDict
 
-from app.core.cache import get_cache
-from app.core.circuit_breaker import circuit_breakers
+from app.auth.rate_limit import RateLimits, limiter
+from app.auth.rbac import Permission, require_permission
 from app.core.constants import API_MAX_PAGE_SIZE, OBSERVABILITY_MAX_RESULTS
 from app.core.database import get_async_session
-from app.core.events import events
-from app.core.rate_limit import RateLimits, limiter
-from app.core.rbac import Permission, require_permission
-from app.core.telemetry import telemetry
+from app.infrastructure.cache import get_cache
+from app.infrastructure.circuit_breaker import circuit_breakers
+from app.infrastructure.events import events
 from app.models.user import User
 from app.services.system.health import collect_platform_health
+from app.telemetry.telemetry import telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -245,7 +245,7 @@ async def get_metrics_history(
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> list[dict[str, Any]]:
     """Get historical metric snapshots for dashboards."""
-    from app.core.metrics_store import get_metrics_store
+    from app.infrastructure.metrics_store import get_metrics_store
 
     store = get_metrics_store()
     return store.get_history(minutes=minutes)

@@ -29,7 +29,7 @@ class TestUserSteering:
     async def test_steering_action_applied(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that steering actions are properly applied to mission."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 # Start mission
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
@@ -59,7 +59,7 @@ class TestUserSteering:
     async def test_steering_skips_phases(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that steering can skip phases."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Skip exploitation",
@@ -85,7 +85,7 @@ class TestUserSteering:
     async def test_steering_prioritizes_targets(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that steering can prioritize specific targets/vectors."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Focus on SSH",
@@ -154,7 +154,7 @@ class TestUserSteering:
             "validate_at_gate",
             side_effect=mock_validate,
         ), patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Test steering validation",
@@ -216,7 +216,7 @@ class TestEmergencyStop:
     async def test_stop_mission_immediately(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that stop_mission stops execution immediately."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 # Start mission
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
@@ -235,7 +235,7 @@ class TestEmergencyStop:
     async def test_stop_sets_stopped_flag(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that stop sets the internal stopped flag."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Test stop flag",
@@ -261,7 +261,7 @@ class TestEmergencyStop:
     async def test_stopped_mission_skips_tasks(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that a stopped mission doesn't execute more tasks."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Multi-task mission",
@@ -285,7 +285,7 @@ class TestEmergencyStop:
     async def test_stop_updates_status(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that stopping updates mission status appropriately."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Status test",
@@ -310,7 +310,7 @@ class TestMissionStateManagement:
     async def test_list_missions(self, mission_manager: MissionManager, test_target_ip: str):
         """Test listing all missions."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 # Start multiple missions
                 id1 = await mission_manager.start_mission(test_target_ip, "Mission 1")
                 id2 = await mission_manager.start_mission(test_target_ip, "Mission 2")
@@ -325,7 +325,7 @@ class TestMissionStateManagement:
     async def test_mission_to_dict(self, mission_manager: MissionManager, test_target_ip: str):
         """Test mission serialization."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     test_target_ip,
                     "Serialization test",

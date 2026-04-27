@@ -296,7 +296,7 @@ class StorageService:
         """Upload data to S3. Returns the s3:// URI."""
         from botocore.exceptions import BotoCoreError, ClientError
 
-        from app.core.exceptions import StorageError
+        from app.auth.exceptions import StorageError
 
         await self._ensure_bucket(bucket)
         try:
@@ -312,7 +312,7 @@ class StorageService:
         """Upload a local file to S3."""
         from botocore.exceptions import BotoCoreError, ClientError
 
-        from app.core.exceptions import StorageError
+        from app.auth.exceptions import StorageError
 
         await self._ensure_bucket(bucket)
         try:
@@ -328,7 +328,7 @@ class StorageService:
         """Download data from S3."""
         from botocore.exceptions import BotoCoreError, ClientError
 
-        from app.core.exceptions import StorageError
+        from app.auth.exceptions import StorageError
 
         try:
             async with self._client() as s3:
@@ -346,7 +346,7 @@ class StorageService:
 
         from botocore.exceptions import BotoCoreError, ClientError
 
-        from app.core.exceptions import StorageError
+        from app.auth.exceptions import StorageError
 
         dest = Path(dest_path)
         dest.parent.mkdir(parents=True, exist_ok=True)

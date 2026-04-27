@@ -9,10 +9,10 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-from app.core.enums import MissionStatus
-from app.core.events import EventType, events
-from app.core.exceptions import MissionStateError
-from app.core.telemetry import telemetry as _telemetry
+from app.auth.exceptions import MissionStateError
+from app.infrastructure.events import EventType, events
+from app.mission.core.enums import MissionStatus
+from app.telemetry.telemetry import telemetry as _telemetry
 
 # Backward-compatible alias — new code should use MissionStatus directly.
 MissionState = MissionStatus

@@ -25,8 +25,8 @@ async def execute_via_worker(
     """Execute tool via PostgreSQL job queue worker and wait for result."""
     import html
 
-    from app.core.optimizations import tool_cache
-    from app.core.queue import Job, PostgresJobQueue
+    from app.infrastructure.queue import Job, PostgresJobQueue
+    from app.mission.core.optimizations import tool_cache
 
     # Check cache first
     cached = tool_cache.get(tool_id, target, args or {})
@@ -105,7 +105,7 @@ async def execute_via_worker(
 async def ensure_tool_installed(tool_id: str, install_timeout: int) -> bool:
     """Ensure a tool is installed via the worker."""
     from app.core.config import settings
-    from app.core.queue import Job, PostgresJobQueue
+    from app.infrastructure.queue import Job, PostgresJobQueue
 
     queue = PostgresJobQueue(settings.TOOL_QUEUE_NAME)
 

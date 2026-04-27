@@ -204,7 +204,7 @@ Spectra runs as 4 independently deployable services controlled by `SERVICE_MODE`
 **Coupling points preventing clean split today:**
 1. `app/services/ai/__main__.py` imports `app.services.ai.embeddings`, `app.services.ai.router`, `app.services.ai.rag` — all internal to AI service
 2. `app/services/scheduler/__main__.py` imports from `app/services/billing/`, `app/services/infrastructure/backup.py`, `app/services/scaling/`, `app/core/background_tasks.py` — crosses multiple service boundaries
-3. `app/worker/__main__.py` imports `app.worker.lifecycle`, `app.core.queue`, `app.services/shell/session_manager.py` — crosses into multiple services
+3. `app/worker/__main__.py` imports `app.worker.lifecycle`, `app.infrastructure.queue`, `app.services/shell/session_manager.py` — crosses into multiple services
 4. `app/core/` is truly shared but has some AI-specific code paths (telemetry, events)
 5. Database models (`app/models/`) are shared but have relationships that couple them (Mission → Finding → Exploit → Target)
 

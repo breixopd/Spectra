@@ -98,8 +98,8 @@ async def test_sandbox_watchdog_loop_runs_single_iteration():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.background_tasks",
-            make_module("app.core.background_tasks", sandbox_watchdog_loop=watchdog),
+            "app.infrastructure.background_tasks",
+            make_module("app.infrastructure.background_tasks", sandbox_watchdog_loop=watchdog),
         )
         mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
@@ -126,8 +126,8 @@ async def test_sandbox_watchdog_loop_handles_errors_and_continues():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.background_tasks",
-            make_module("app.core.background_tasks", sandbox_watchdog_loop=watchdog),
+            "app.infrastructure.background_tasks",
+            make_module("app.infrastructure.background_tasks", sandbox_watchdog_loop=watchdog),
         )
         mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock(side_effect=stop_after_sleep))
@@ -154,8 +154,8 @@ async def test_sandbox_watchdog_skips_work_when_lock_not_acquired():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.background_tasks",
-            make_module("app.core.background_tasks", sandbox_watchdog_loop=watchdog),
+            "app.infrastructure.background_tasks",
+            make_module("app.infrastructure.background_tasks", sandbox_watchdog_loop=watchdog),
         )
         mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock(side_effect=stop_after_sleep))
@@ -246,8 +246,8 @@ async def test_metrics_collector_runs_single_iteration():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.metrics_store",
-            make_module("app.core.metrics_store", get_metrics_store=lambda: store),
+            "app.infrastructure.metrics_store",
+            make_module("app.infrastructure.metrics_store", get_metrics_store=lambda: store),
         )
         mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
@@ -276,8 +276,8 @@ async def test_metrics_collector_handles_collection_errors():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.metrics_store",
-            make_module("app.core.metrics_store", get_metrics_store=lambda: store),
+            "app.infrastructure.metrics_store",
+            make_module("app.infrastructure.metrics_store", get_metrics_store=lambda: store),
         )
         mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
@@ -301,8 +301,8 @@ async def test_health_reporter_runs_single_iteration():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.cache",
-            make_module("app.core.cache", get_cache=lambda: cache),
+            "app.infrastructure.cache",
+            make_module("app.infrastructure.cache", get_cache=lambda: cache),
         )
         mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
@@ -329,8 +329,8 @@ async def test_health_reporter_swallows_cache_errors():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.cache",
-            make_module("app.core.cache", get_cache=lambda: cache),
+            "app.infrastructure.cache",
+            make_module("app.infrastructure.cache", get_cache=lambda: cache),
         )
         mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock(side_effect=stop_after_sleep))

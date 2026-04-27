@@ -20,7 +20,7 @@ class MetricsStore:
 
     async def start(self) -> None:
         """Start periodic snapshotting."""
-        from app.core.tasks import create_safe_task
+        from app.infrastructure.tasks import create_safe_task
         self._task = create_safe_task(self._snapshot_loop(), name="metrics_snapshot")
         logger.info(
             "MetricsStore started (interval=%ds, max_history=%d)",
@@ -45,7 +45,7 @@ class MetricsStore:
                 logger.exception("Error taking metrics snapshot")
 
     def _take_snapshot(self) -> None:
-        from app.core.telemetry import telemetry
+        from app.telemetry.telemetry import telemetry
 
         overview = telemetry.get_overview_stats()
         snapshot: dict[str, Any] = {

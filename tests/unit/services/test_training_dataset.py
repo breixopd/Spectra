@@ -43,7 +43,7 @@ class TestTrainingRouter:
         from httpx import ASGITransport, AsyncClient
 
         from app.api.routers.admin.training import router
-        from app.core.rate_limit import limiter
+        from app.auth.rate_limit import limiter
 
         app = FastAPI()
         app.state.limiter = limiter
@@ -87,7 +87,7 @@ class TestTrainingRouter:
         from httpx import ASGITransport, AsyncClient
 
         from app.api.routers.admin.training import router
-        from app.core.rate_limit import limiter
+        from app.auth.rate_limit import limiter
 
         app = FastAPI()
         app.state.limiter = limiter

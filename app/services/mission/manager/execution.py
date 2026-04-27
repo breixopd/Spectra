@@ -10,7 +10,7 @@ from typing import Any, cast
 from app.core.constants import (
     MAX_HOSTS_DEFAULT,
 )
-from app.core.events import events
+from app.infrastructure.events import events
 from app.services.ai.agents.base import AgentContext
 from app.services.ai.agents.mission_controller import (
     MissionController,

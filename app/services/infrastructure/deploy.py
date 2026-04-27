@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 
-from app.core.paths import data_path
+from app.infrastructure.paths import data_path
 
 logger = logging.getLogger(__name__)
 

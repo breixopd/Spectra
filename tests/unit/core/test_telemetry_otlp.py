@@ -1,10 +1,10 @@
-"""Tests for OTLP export and SaaS metrics in app.core.telemetry."""
+"""Tests for OTLP export and SaaS metrics in app.telemetry.telemetry."""
 
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.core.telemetry import TelemetryCollector
+from app.telemetry.telemetry import TelemetryCollector
 
 
 @pytest.fixture

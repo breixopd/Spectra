@@ -47,11 +47,11 @@ from app.api.schemas import (
     ToolUIResponse,
     ValidationResponse,
 )
+from app.auth.rate_limit import RateLimits, limiter
+from app.auth.rbac import Permission, require_permission
 from app.core.config import settings
 from app.core.database import async_session_maker
-from app.core.events import EventType, events
-from app.core.rate_limit import RateLimits, limiter
-from app.core.rbac import Permission, require_permission
+from app.infrastructure.events import EventType, events
 from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.services.system.audit import log_event as audit_log_event
@@ -103,7 +103,7 @@ def _validate_tool_config_schema(config: dict) -> ToolConfig:
 
 async def _get_cached_status(tool_id: str) -> dict[str, str | list[str] | None]:
     """Read cached status data for a tool, ignoring cache transport failures."""
-    from app.core.cache import get_cache
+    from app.infrastructure.cache import get_cache
 
     cache = get_cache()
     if not cache:
@@ -187,7 +187,7 @@ def _queue_background_job(
 
     async def _enqueue() -> None:
         try:
-            from app.core.queue import PostgresJobQueue
+            from app.infrastructure.queue import PostgresJobQueue
 
             queue = PostgresJobQueue(settings.TOOL_QUEUE_NAME)
             await queue.enqueue_job(job_name, **job_kwargs)
@@ -775,7 +775,7 @@ async def test_tool(
     tool = _get_tool_or_404(registry, tool_id)
 
     try:
-        from app.core.queue import Job, PostgresJobQueue
+        from app.infrastructure.queue import Job, PostgresJobQueue
 
         queue = PostgresJobQueue(settings.TOOL_QUEUE_NAME)
 
@@ -835,7 +835,7 @@ async def get_tool_stats(
 
     Returns success/failure counts, last run time, and average duration.
     """
-    from app.core.cache import get_cache
+    from app.infrastructure.cache import get_cache
 
     _get_tool_or_404(registry, tool_id)
 

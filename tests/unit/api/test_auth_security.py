@@ -16,7 +16,7 @@ import pytest
 from fastapi import HTTPException, Response
 from starlette.requests import Request
 
-from app.core.security import (
+from app.auth.security import (
     create_access_token,
     create_refresh_token,
     is_token_blacklisted,
@@ -81,7 +81,7 @@ class TestLogoutRevokesRefreshToken:
 
     def setup_method(self):
         """Clear JWT blacklist module-level state to isolate each test."""
-        from app.core import security as _sec
+        from app.auth import security as _sec
 
         _sec._blacklisted_tokens.clear()
         _sec._user_token_blacklist.clear()
@@ -183,7 +183,7 @@ class TestMfaCancelBlocklist:
     """cancel_mfa places the MFA-pending token in the JWT blacklist."""
 
     def setup_method(self):
-        from app.core import security as _sec
+        from app.auth import security as _sec
 
         _sec._blacklisted_tokens.clear()
         _sec._user_token_blacklist.clear()
@@ -533,7 +533,7 @@ class TestEmailVerifyIdempotency:
                 pass
 
         with (
-            patch("app.core.security.verify_email_verification_token", return_value="user-id-123"),
+            patch("app.auth.security.verify_email_verification_token", return_value="user-id-123"),
             patch("app.api.routers.public.async_session_maker", return_value=_MockCtx()),
             patch("app.api.routers.public.templates") as mock_tmpl,
         ):
@@ -577,7 +577,7 @@ class TestEmailVerifyIdempotency:
                 pass
 
         with (
-            patch("app.core.security.verify_email_verification_token", return_value="user-id-123"),
+            patch("app.auth.security.verify_email_verification_token", return_value="user-id-123"),
             patch("app.api.routers.public.async_session_maker", return_value=_MockCtx()),
             patch("app.api.routers.public.invalidate_token", new_callable=AsyncMock),
             patch("app.api.routers.public.templates") as mock_tmpl,
@@ -620,7 +620,7 @@ class TestEmailVerifyIdempotency:
                 pass
 
         with (
-            patch("app.core.security.verify_email_verification_token", return_value="user-id-456"),
+            patch("app.auth.security.verify_email_verification_token", return_value="user-id-456"),
             patch("app.api.routers.public.async_session_maker", return_value=_MockCtx()),
             patch("app.api.routers.public.invalidate_token", new_callable=AsyncMock),
             patch("app.api.routers.public.templates") as mock_tmpl,

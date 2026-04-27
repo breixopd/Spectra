@@ -32,7 +32,7 @@ class TestFullMissionWorkflow:
     async def test_mission_starts_and_scopes(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that a mission starts and defines scope correctly."""
         # Mock event emission
-        with patch("app.core.events.events.emit_sync"):
+        with patch("app.infrastructure.events.events.emit_sync"):
             with patch("app.services.mission.manager.lifecycle.async_session_maker"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
@@ -51,7 +51,7 @@ class TestFullMissionWorkflow:
         """Test that mission planning triggers consensus validation."""
         # Test passes if mission starts without error - consensus is internal to workflow
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 # Start mission
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
@@ -69,7 +69,7 @@ class TestFullMissionWorkflow:
     async def test_mission_logs_show_workflow_stages(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that mission logs capture key workflow stages."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Test scan",
@@ -98,7 +98,7 @@ class TestFullMissionWorkflow:
     async def test_mission_can_be_stopped(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that a running mission can be stopped."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Long running test",
@@ -116,7 +116,7 @@ class TestFullMissionWorkflow:
     async def test_mission_tracks_findings(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that findings are tracked in the mission."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Find vulnerabilities",
@@ -161,7 +161,7 @@ class TestMissionConsensusValidation:
             "validate_at_gate",
             side_effect=mock_validate,
         ), patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 _mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Tool selection test",
@@ -198,7 +198,7 @@ class TestMissionConsensusValidation:
             "validate_at_gate",
             side_effect=mock_reject,
         ), patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Should be rejected",
@@ -233,7 +233,7 @@ class TestMissionAttackSurface:
     async def test_services_added_to_attack_surface(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that discovered services are added to attack surface."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Discover services",
@@ -257,7 +257,7 @@ class TestMissionAttackSurface:
     async def test_vulnerabilities_added_to_attack_surface(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that discovered vulnerabilities are added to attack surface."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Find vulnerabilities",
@@ -279,7 +279,7 @@ class TestMissionAttackSurface:
     async def test_attack_surface_summary(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that attack surface summary is correct."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+            with patch("app.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Map attack surface",

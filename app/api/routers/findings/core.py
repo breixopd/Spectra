@@ -11,11 +11,11 @@ from sqlalchemy.orm import selectinload
 
 from app.api.dependencies import check_resource_owner, get_current_active_user, validate_uuid_param
 from app.api.schemas import FindingResponse, PaginatedResponse
+from app.auth.rate_limit import RateLimits, limiter
+from app.auth.rbac import Permission, require_permission
 from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from app.core.database import get_async_session
-from app.core.rate_limit import RateLimits, limiter
-from app.core.rbac import Permission, require_permission
 from app.models.audit_log import AuditEventType
 from app.models.finding import FindingStatus, Severity
 from app.models.user import User

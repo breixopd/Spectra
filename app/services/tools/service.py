@@ -160,7 +160,7 @@ class ToolExecutionService:
                 f"Blocked by Safety Supervisor: {reason}",
             )
 
-        from app.core.queue import Job, PostgresJobQueue
+        from app.infrastructure.queue import Job, PostgresJobQueue
 
         try:
             queue_name = self._get_queue_name(mission.id) if hasattr(mission, "id") and mission.id else "default"

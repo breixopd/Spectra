@@ -14,9 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
 from app.api.routers.findings.core import FindingUpdate
+from app.auth.rate_limit import RateLimits, limiter
 from app.core.constants import MAX_BULK_FINDINGS, MAX_EXPORT_ROWS
 from app.core.database import get_async_session
-from app.core.rate_limit import RateLimits, limiter
 from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.repositories.finding import FindingRepository
@@ -94,7 +94,7 @@ def _build_export_response(
     response_filename = filename
 
     if encrypted:
-        from app.core.encryption import encrypt_data_with_password
+        from app.auth.encryption import encrypt_data_with_password
 
         payload = encrypt_data_with_password(
             payload,

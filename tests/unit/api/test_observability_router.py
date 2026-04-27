@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.core.telemetry import TelemetryCollector
+from app.telemetry.telemetry import TelemetryCollector
 
 # ---------------------------------------------------------------------------
 # Helpers

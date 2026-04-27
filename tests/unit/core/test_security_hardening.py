@@ -22,7 +22,7 @@ def _mission_runtime_isolation(tmp_path):
         yield
 
 
-from app.core.encryption import (
+from app.auth.encryption import (
     _derive_fernet_key,
     decrypt_field,
     decrypt_sensitive_fields,
@@ -30,7 +30,7 @@ from app.core.encryption import (
     encrypt_sensitive_fields,
     is_sensitive_key,
 )
-from app.core.rbac import ROLE_PERMISSIONS, Permission, has_permission, require_permission
+from app.auth.rbac import ROLE_PERMISSIONS, Permission, has_permission, require_permission
 from app.models.user import User
 from app.services.ai.agents.post_exploitation import (
     POST_EXPLOIT_TOOLS,

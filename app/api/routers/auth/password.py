@@ -9,16 +9,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import get_current_active_user
 from app.api.routers.auth.schemas import ChangePasswordRequest
 from app.api.schemas.auth import ForgotPasswordRequest, ResetPasswordRequest
-from app.core.config import settings
-from app.core.database import get_async_session
-from app.core.rate_limit import RateLimits, limiter
-from app.core.security import (
+from app.auth.rate_limit import RateLimits, limiter
+from app.auth.security import (
     create_password_reset_token,
     get_password_hash,
     invalidate_token,
     verify_password,
     verify_password_reset_token,
 )
+from app.core.config import settings
+from app.core.database import get_async_session
 from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.services.system.audit import log_event as audit_log_event

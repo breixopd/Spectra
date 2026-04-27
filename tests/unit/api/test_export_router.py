@@ -101,7 +101,7 @@ class TestRowToDict:
 
 def _make_app() -> FastAPI:
     """Build a minimal FastAPI app with the export router mounted."""
-    from app.core.rate_limit import limiter
+    from app.auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter

@@ -1,10 +1,10 @@
-"""Tests for app.core.telemetry module."""
+"""Tests for app.telemetry.telemetry module."""
 
 from unittest.mock import patch
 
 import pytest
 
-from app.core.telemetry import TelemetryCollector, record_llm_call
+from app.telemetry.telemetry import TelemetryCollector, record_llm_call
 
 
 @pytest.fixture
@@ -141,7 +141,7 @@ class TestRecordLLMCall:
     @pytest.mark.asyncio
     async def test_successful_call(self):
         fresh = TelemetryCollector()
-        with patch("app.core.telemetry.telemetry", fresh):
+        with patch("app.telemetry.telemetry.telemetry", fresh):
             await record_llm_call("openai", "gpt-4", 150.0, 500, success=True)
         summary = fresh.get_metrics_summary()
         assert summary["counters"]["llm_calls_total:model=gpt-4,provider=openai"] == 1
@@ -151,7 +151,7 @@ class TestRecordLLMCall:
     @pytest.mark.asyncio
     async def test_failed_call_records_error(self):
         fresh = TelemetryCollector()
-        with patch("app.core.telemetry.telemetry", fresh):
+        with patch("app.telemetry.telemetry.telemetry", fresh):
             await record_llm_call("anthropic", "claude", 200.0, 0, success=False)
         summary = fresh.get_metrics_summary()
         assert summary["counters"]["llm_errors_total:model=claude,provider=anthropic"] == 1

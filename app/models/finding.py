@@ -14,7 +14,7 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.enums import Severity
+from app.mission.core.enums import Severity
 from app.models.base import Base
 
 if TYPE_CHECKING:

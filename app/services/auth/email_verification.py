@@ -13,7 +13,7 @@ def build_email_verification_url(request: Request | None, user_id: str) -> str |
     if request is None and not settings.PLATFORM_BASE_URL:
         return None
 
-    from app.core.security import create_email_verification_token
+    from app.auth.security import create_email_verification_token
 
     token = create_email_verification_token(user_id)
     base_url = settings.PLATFORM_BASE_URL or str(request.base_url).rstrip("/")

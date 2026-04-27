@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.core.constants import MAX_CONCURRENT_MISSIONS, MAX_REPLANS_PER_MISSION
-from app.core.optimizations import ToolResultCache
+from app.mission.core.optimizations import ToolResultCache
 from app.services.mission.mission import Mission
 
 

@@ -45,7 +45,7 @@ def _encrypt_config_value(value: str) -> str:
     if not value or value.startswith(_FERNET_TOKEN_PREFIX):
         return value
     try:
-        from app.core.encryption import _get_default_secret, encrypt_field
+        from app.auth.encryption import _get_default_secret, encrypt_field
 
         return encrypt_field(value, _get_default_secret())
     except Exception:
@@ -58,7 +58,7 @@ def _decrypt_config_value(value: str) -> str:
     if not value:
         return value
     try:
-        from app.core.encryption import _get_default_secret, decrypt_field
+        from app.auth.encryption import _get_default_secret, decrypt_field
 
         return decrypt_field(value, _get_default_secret())
     except Exception:

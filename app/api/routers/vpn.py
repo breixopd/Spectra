@@ -11,10 +11,10 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import check_feature_allowed, get_current_active_user
+from app.auth.rate_limit import RateLimits, limiter
+from app.auth.rbac import Permission, require_permission
 from app.core.config import settings
 from app.core.database import get_async_session
-from app.core.rate_limit import RateLimits, limiter
-from app.core.rbac import Permission, require_permission
 from app.models.user import User
 from app.services.tools.vpn import VPNManager
 

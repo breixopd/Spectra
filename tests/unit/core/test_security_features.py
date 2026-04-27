@@ -14,7 +14,7 @@ from app.api.routers.auth import (
     _check_lockout,
     _record_failure,
 )
-from app.core.security import (
+from app.auth.security import (
     _blacklisted_tokens,
     _user_token_blacklist,
     create_access_token,
@@ -23,12 +23,12 @@ from app.core.security import (
     invalidate_token,
     is_token_blacklisted,
 )
-from app.core.websocket import ConnectionManager
+from app.mission.core.websocket import ConnectionManager
 
 
 @pytest.fixture(autouse=True)
 def _clear_blacklist():
-    from app.core.security import _blacklist_ready
+    from app.auth.security import _blacklist_ready
 
     _blacklisted_tokens.clear()
     _user_token_blacklist.clear()

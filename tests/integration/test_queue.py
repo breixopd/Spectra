@@ -11,9 +11,9 @@ from sqlalchemy import delete, select, text
 from sqlalchemy.exc import InterfaceError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-import app.core.queue
+import app.infrastructure.queue
 from app.core.config import settings
-from app.core.queue import Job, PostgresJobQueue
+from app.infrastructure.queue import Job, PostgresJobQueue
 from app.models.infrastructure import InfrastructureBase, JobQueue
 
 
@@ -69,7 +69,7 @@ async def db_session_maker(queue_engine):
 
 @pytest.fixture
 def mock_session_maker(db_session_maker, monkeypatch):
-    monkeypatch.setattr(app.core.queue, "async_session_maker", db_session_maker)
+    monkeypatch.setattr(app.infrastructure.queue, "async_session_maker", db_session_maker)
     return db_session_maker
 
 
@@ -139,7 +139,7 @@ async def test_postgres_job_queue_throughput(db_session_maker, mock_session_make
         return {"job_number": job_number}
 
     worker_task = asyncio.create_task(
-        app.core.queue.worker_loop([lightweight_job], queue_name=queue_name, poll_delay=0.01)
+        app.infrastructure.queue.worker_loop([lightweight_job], queue_name=queue_name, poll_delay=0.01)
     )
 
     try:

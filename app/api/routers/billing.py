@@ -8,9 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
+from app.auth.rate_limit import RateLimits, limiter
 from app.core.config import get_settings
 from app.core.database import get_async_session
-from app.core.rate_limit import RateLimits, limiter
 from app.models.plan import Plan, UsageRecord
 from app.models.user import User
 from app.services.billing import PaymentService

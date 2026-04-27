@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from app.core.logging_config import SensitiveFieldFilter, configure_logging
+from app.bootstrap.logging_config import SensitiveFieldFilter, configure_logging
 
 
 class TestSensitiveFieldFilter:

@@ -33,7 +33,7 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 @functools.lru_cache(maxsize=1)
 def get_job_queue():
     """Return the singleton job queue instance."""
-    from app.core.queue import PostgresJobQueue
+    from app.infrastructure.queue import PostgresJobQueue
 
     return PostgresJobQueue()
 

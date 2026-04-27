@@ -1,10 +1,10 @@
-"""Tests for app.core.events module."""
+"""Tests for app.infrastructure.events module."""
 
 import asyncio
 
 import pytest
 
-from app.core.events import Event, EventBus, EventType
+from app.infrastructure.events import Event, EventBus, EventType
 
 
 class TestEventType:
@@ -197,7 +197,7 @@ class TestOnEventDecorator:
     @pytest.mark.asyncio
     async def test_decorator_registers_handler(self):
         # Use a fresh bus to avoid global state pollution
-        from app.core.events import events as global_bus
+        from app.infrastructure.events import events as global_bus
 
         received = []
 

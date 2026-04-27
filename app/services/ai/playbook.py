@@ -28,7 +28,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app.core.paths import data_path
+from app.infrastructure.paths import data_path
 
 logger = logging.getLogger(__name__)
 

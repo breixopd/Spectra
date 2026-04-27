@@ -9,7 +9,7 @@ from httpx import ASGITransport, AsyncClient
 
 def _make_app():
     from app.api.routers.admin.monitoring import router
-    from app.core.rate_limit import limiter
+    from app.auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter

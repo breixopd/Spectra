@@ -98,8 +98,8 @@ async def test_work_loop_calls_startup_worker_loop_and_shutdown_in_finally():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.queue",
-            make_module("app.core.queue", worker_loop=fake_worker_loop),
+            "app.infrastructure.queue",
+            make_module("app.infrastructure.queue", worker_loop=fake_worker_loop),
         )
         mp.setitem(
             sys.modules,

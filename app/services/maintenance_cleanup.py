@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import delete, select
 
 from app.core.config import get_settings as _get_settings
-from app.core.paths import data_path
+from app.infrastructure.paths import data_path
 from app.models.audit_log import AuditLog
 from app.models.infrastructure import CacheEntry, JobQueue, SystemCache
 

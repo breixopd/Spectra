@@ -44,19 +44,19 @@ from app.api.routers import (
     wordlists,
 )
 from app.api.schemas import ErrorResponse
-from app.core.config import settings
-from app.core.constants import SECONDS_PER_DAY
-from app.core.exceptions import SpectraError, get_status_code_for_exception
-from app.core.lifespan import lifespan
-from app.core.logging_config import CorrelationIdMiddleware, configure_logging
-from app.core.middleware import AdminIPAllowlistMiddleware, SecurityHeadersMiddleware
-from app.core.rate_limit import (
+from app.auth.exceptions import SpectraError, get_status_code_for_exception
+from app.auth.rate_limit import (
     RateLimits,
     limiter,
     rate_limit_exceeded_handler_sync,
 )
-from app.core.telemetry_middleware import TelemetryMiddleware
-from app.core.websocket import manager
+from app.bootstrap.lifespan import lifespan
+from app.bootstrap.logging_config import CorrelationIdMiddleware, configure_logging
+from app.bootstrap.middleware import AdminIPAllowlistMiddleware, SecurityHeadersMiddleware
+from app.core.config import settings
+from app.core.constants import SECONDS_PER_DAY
+from app.mission.core.websocket import manager
+from app.telemetry.telemetry_middleware import TelemetryMiddleware
 
 # --- Logging Setup ---
 configure_logging(log_format=settings.LOG_FORMAT, log_level=settings.LOG_LEVEL)
@@ -280,7 +280,7 @@ if settings.SERVICE_MODE in ("", "all", "api"):
     )
 
 # --- Custom Error Handlers ---
-from app.core.templates import templates as _shared_templates
+from app.bootstrap.templates import templates as _shared_templates
 
 _error_templates = _shared_templates
 _maint_templates = _shared_templates

@@ -216,7 +216,7 @@ class ToolRegistry:
         Returns:
             Number of tools updated.
         """
-        from app.core.cache import get_cache
+        from app.infrastructure.cache import get_cache
 
         cache = get_cache()
         if not cache:

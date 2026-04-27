@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.core.advisory_locks import advisory_lock_owner, stable_lock_id
+from app.auth.advisory_locks import advisory_lock_owner, stable_lock_id
 
 
 def _connection_factory(connection):

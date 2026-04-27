@@ -189,7 +189,7 @@ class MetricsCollector:
     async def _collect_queue_metrics(self) -> QueueMetrics:
         """Collect queue metrics from the application job queue."""
         try:
-            from app.core.queue import queue_metrics
+            from app.infrastructure.queue import queue_metrics
 
             raw = await queue_metrics()
             return QueueMetrics(

@@ -7,8 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas import SystemSetupRequest, UserResponse
+from app.auth.rate_limit import RateLimits, limiter
 from app.core.database import get_async_session
-from app.core.rate_limit import RateLimits, limiter
 from app.models.user import User
 
 logger = logging.getLogger(__name__)

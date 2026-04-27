@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import BaseModel, Field
 
-from app.core.enums import AssessmentPhase
+from app.mission.core.enums import AssessmentPhase
 from app.services.ai.agents.base import (
     ActionRisk,
     Agent,

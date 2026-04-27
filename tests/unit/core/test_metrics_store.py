@@ -3,7 +3,7 @@
 import time
 from unittest.mock import patch
 
-from app.core.metrics_store import MetricsStore, get_metrics_store
+from app.infrastructure.metrics_store import MetricsStore, get_metrics_store
 
 
 class TestMetricsStoreCreation:
@@ -83,7 +83,7 @@ class TestTakeSnapshot:
             "active_services": 3,
             "healthy_services": 3,
         }
-        with patch("app.core.telemetry.telemetry") as mock_telemetry:
+        with patch("app.telemetry.telemetry.telemetry") as mock_telemetry:
             mock_telemetry.get_overview_stats.return_value = mock_overview
             store._take_snapshot()
 
@@ -97,7 +97,7 @@ class TestTakeSnapshot:
     def test_snapshot_respects_max_history(self):
         store = MetricsStore(max_history=2)
         mock_overview = {"latency_percentiles": {}}
-        with patch("app.core.telemetry.telemetry") as mock_telemetry:
+        with patch("app.telemetry.telemetry.telemetry") as mock_telemetry:
             mock_telemetry.get_overview_stats.return_value = mock_overview
             store._take_snapshot()
             store._take_snapshot()
@@ -126,7 +126,7 @@ class TestHistoryFiltering:
 
 class TestGetMetricsStoreSingleton:
     def test_returns_instance(self):
-        import app.core.metrics_store as mod
+        import app.infrastructure.metrics_store as mod
 
         original = mod._store
         try:
@@ -137,7 +137,7 @@ class TestGetMetricsStoreSingleton:
             mod._store = original
 
     def test_returns_same_instance(self):
-        import app.core.metrics_store as mod
+        import app.infrastructure.metrics_store as mod
 
         original = mod._store
         try:

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.config import settings
-from app.core.queue import PostgresJobQueue
+from app.infrastructure.queue import PostgresJobQueue
 from app.services.storage import get_storage_service
 
 logger = logging.getLogger(__name__)

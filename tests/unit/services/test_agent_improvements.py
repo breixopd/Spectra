@@ -2,8 +2,8 @@
 
 import pytest
 
-from app.core.enums import MissionStatus
-from app.core.state_machine import MissionState
+from app.mission.core.enums import MissionStatus
+from app.mission.core.state_machine import MissionState
 from app.services.ai.agents.base import (
     ActionRisk,
     Agent,

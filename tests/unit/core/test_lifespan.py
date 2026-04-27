@@ -1,4 +1,4 @@
-"""Tests for app.core.lifespan module."""
+"""Tests for app.bootstrap.lifespan module."""
 
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -9,9 +9,9 @@ from fastapi import FastAPI
 
 class TestRunStartupChecks:
     @pytest.mark.asyncio
-    @patch("app.core.lifespan.async_session_maker")
+    @patch("app.bootstrap.lifespan.async_session_maker")
     async def test_startup_checks_succeed(self, mock_session_maker):
-        from app.core.lifespan import run_startup_checks
+        from app.bootstrap.lifespan import run_startup_checks
 
         mock_session = AsyncMock()
         mock_result = MagicMock()
@@ -32,9 +32,9 @@ class TestRunStartupChecks:
         await run_startup_checks()
 
     @pytest.mark.asyncio
-    @patch("app.core.lifespan.async_session_maker")
+    @patch("app.bootstrap.lifespan.async_session_maker")
     async def test_startup_checks_handle_db_failure(self, mock_session_maker):
-        from app.core.lifespan import run_startup_checks
+        from app.bootstrap.lifespan import run_startup_checks
 
         mock_session = AsyncMock()
         mock_session.execute.side_effect = OSError("connection refused")
@@ -48,21 +48,21 @@ class TestRunStartupChecks:
 
 class TestSetSystemStatus:
     @pytest.mark.asyncio
-    @patch("app.core.lifespan.get_cache", create=True)
+    @patch("app.bootstrap.lifespan.get_cache", create=True)
     async def test_set_system_status(self, mock_get_cache):
-        from app.core.lifespan import set_system_status
+        from app.bootstrap.lifespan import set_system_status
 
         mock_cache = AsyncMock()
         mock_get_cache.return_value = mock_cache
 
-        with patch("app.core.lifespan.get_cache", return_value=mock_cache):
+        with patch("app.bootstrap.lifespan.get_cache", return_value=mock_cache):
             await set_system_status("ready", "All good")
 
     @pytest.mark.asyncio
     async def test_set_system_status_handles_error(self):
-        from app.core.lifespan import set_system_status
+        from app.bootstrap.lifespan import set_system_status
 
-        with patch("app.core.cache.get_cache", side_effect=RuntimeError("fail")):
+        with patch("app.infrastructure.cache.get_cache", side_effect=RuntimeError("fail")):
             # Should not raise
             await set_system_status("error", "bad")
 
@@ -70,19 +70,19 @@ class TestSetSystemStatus:
 class TestAddRemoveSystemOperation:
     @pytest.mark.asyncio
     async def test_add_system_operation(self):
-        from app.core.lifespan import add_system_operation
+        from app.bootstrap.lifespan import add_system_operation
 
         mock_cache = AsyncMock()
-        with patch("app.core.cache.get_cache", return_value=mock_cache):
+        with patch("app.infrastructure.cache.get_cache", return_value=mock_cache):
             await add_system_operation("op1", "install", "Installing tools")
             mock_cache.set.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_remove_system_operation(self):
-        from app.core.lifespan import remove_system_operation
+        from app.bootstrap.lifespan import remove_system_operation
 
         mock_cache = AsyncMock()
-        with patch("app.core.cache.get_cache", return_value=mock_cache):
+        with patch("app.infrastructure.cache.get_cache", return_value=mock_cache):
             await remove_system_operation("op1")
             mock_cache.delete.assert_called_once()
 
@@ -98,21 +98,21 @@ def _make_done_task(coro):
 
 class TestLifespanContextManager:
     @pytest.mark.asyncio
-    @patch("app.core.lifespan.engine")
+    @patch("app.bootstrap.lifespan.engine")
     @patch("app.services.ai.llm.close_global_llm_client", new_callable=AsyncMock)
-    @patch("app.core.lifespan.async_session_maker")
-    @patch("app.core.lifespan.CacheService")
-    @patch("app.core.lifespan.set_cache")
-    @patch("app.core.lifespan.events")
-    @patch("app.core.lifespan.telemetry")
-    @patch("app.core.lifespan.settings")
-    @patch("app.core.lifespan.hydrate_runtime_settings_from_db", new_callable=AsyncMock)
-    @patch("app.core.lifespan.run_startup_checks", new_callable=AsyncMock)
-    @patch("app.core.lifespan.seed_default_plans", new_callable=AsyncMock)
-    @patch("app.core.lifespan.set_system_status", new_callable=AsyncMock)
-    @patch("app.core.lifespan.run_startup_tasks", new_callable=AsyncMock)
-    @patch("app.core.lifespan.add_system_operation", new_callable=AsyncMock)
-    @patch("app.core.lifespan.remove_system_operation", new_callable=AsyncMock)
+    @patch("app.bootstrap.lifespan.async_session_maker")
+    @patch("app.bootstrap.lifespan.CacheService")
+    @patch("app.bootstrap.lifespan.set_cache")
+    @patch("app.bootstrap.lifespan.events")
+    @patch("app.bootstrap.lifespan.telemetry")
+    @patch("app.bootstrap.lifespan.settings")
+    @patch("app.bootstrap.lifespan.hydrate_runtime_settings_from_db", new_callable=AsyncMock)
+    @patch("app.bootstrap.lifespan.run_startup_checks", new_callable=AsyncMock)
+    @patch("app.bootstrap.lifespan.seed_default_plans", new_callable=AsyncMock)
+    @patch("app.bootstrap.lifespan.set_system_status", new_callable=AsyncMock)
+    @patch("app.bootstrap.lifespan.run_startup_tasks", new_callable=AsyncMock)
+    @patch("app.bootstrap.lifespan.add_system_operation", new_callable=AsyncMock)
+    @patch("app.bootstrap.lifespan.remove_system_operation", new_callable=AsyncMock)
     @patch("app.services.system.secret_bootstrap.ensure_persistent_secrets", new_callable=AsyncMock)
     async def test_lifespan_startup_and_shutdown(
         self,
@@ -133,7 +133,7 @@ class TestLifespanContextManager:
         mock_close_llm,
         mock_engine,
     ):
-        from app.core.lifespan import lifespan
+        from app.bootstrap.lifespan import lifespan
 
         mock_settings.DEBUG = True  # Skip production security checks
         mock_settings.SERVICE_MODE = "api"
@@ -159,19 +159,19 @@ class TestLifespanContextManager:
             patch("app.services.gateway.service_registry.get_service_registry", return_value=MagicMock()),
             patch("app.services.gateway.service_registry.close_service_registry", new_callable=AsyncMock),
             patch("app.services.ai.embeddings.EmbeddingService", return_value=MagicMock(_load_model=AsyncMock())),
-            patch("app.core.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock())),
-            patch("app.core.lifespan._validate_rate_limit_storage"),
+            patch("app.infrastructure.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock())),
+            patch("app.bootstrap.lifespan._validate_rate_limit_storage"),
             patch(
                 "app.services.scaling.get_pool_manager",
                 return_value=MagicMock(start_health_loop=AsyncMock(), stop_health_loop=AsyncMock()),
             ),
-            patch("app.core.lifespan._config_change_listener", new_callable=AsyncMock),
-            patch("app.core.lifespan._blacklist_change_listener", new_callable=AsyncMock),
+            patch("app.bootstrap.lifespan._config_change_listener", new_callable=AsyncMock),
+            patch("app.bootstrap.lifespan._blacklist_change_listener", new_callable=AsyncMock),
             patch(
-                "app.core.lifespan.create_safe_task",
+                "app.bootstrap.lifespan.create_safe_task",
                 side_effect=lambda coro, **kw: _make_done_task(coro),
             ),
-            patch("app.core.bridge.EventWebSocketBridge", return_value=MagicMock()),
+            patch("app.mission.core.bridge.EventWebSocketBridge", return_value=MagicMock()),
         ):
             app = FastAPI()
             app.state = MagicMock()
