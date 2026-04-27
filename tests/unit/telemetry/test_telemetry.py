@@ -1,9 +1,14 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.telemetry.telemetry import (
-    SpanData, MetricData, TelemetryCollector,
-    record_llm_call, record_tool_execution, record_mission_event,
+    MetricData,
+    SpanData,
+    TelemetryCollector,
+    record_llm_call,
+    record_mission_event,
+    record_tool_execution,
 )
 
 

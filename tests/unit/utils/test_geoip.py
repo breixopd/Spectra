@@ -1,7 +1,8 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.utils.geoip import _is_private_ip, resolve_ip, resolve_batch, GeoLocation
+import pytest
+
+from app.utils.geoip import GeoLocation, _is_private_ip, resolve_batch, resolve_ip
 
 
 def test_is_private_ip_localhost():

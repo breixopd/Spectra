@@ -1,8 +1,9 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.tools.safety_checks import perform_safety_check, perform_safety_check_with_retry, _try_fix_command
+import pytest
+
 from app.services.ai.agents.safety import SafetyAction
+from app.services.tools.safety_checks import _try_fix_command, perform_safety_check, perform_safety_check_with_retry
 
 
 @pytest.mark.asyncio
@@ -83,7 +84,7 @@ async def test_perform_safety_check_with_retry_safe_first_try():
 
     builder = MagicMock()
 
-    is_safe, reason, fixed_args = await perform_safety_check_with_retry(
+    is_safe, _reason, fixed_args = await perform_safety_check_with_retry(
         mission, "nmap 1.2.3.4", "nmap", "1.2.3.4", {}, builder, "/tmp", supervisor, AsyncMock(), max_retries=2
     )
     assert is_safe is True
@@ -116,7 +117,7 @@ async def test_perform_safety_check_with_retry_fixes():
     llm_client = AsyncMock()
 
     with patch("app.services.tools.safety_checks._try_fix_command", new_callable=AsyncMock, return_value={"--safe": True}):
-        is_safe, reason, fixed_args = await perform_safety_check_with_retry(
+        is_safe, _reason, fixed_args = await perform_safety_check_with_retry(
             mission, "nmap 1.2.3.4", "nmap", "1.2.3.4", {}, builder, "/tmp", supervisor, llm_client, max_retries=2
         )
 

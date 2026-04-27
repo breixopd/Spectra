@@ -1,7 +1,8 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from app.services.training.dataset import create_training_sample, get_dataset_stats, export_dataset
+import pytest
+
+from app.services.training.dataset import create_training_sample, export_dataset, get_dataset_stats
 
 
 @pytest.mark.asyncio

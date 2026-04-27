@@ -1,7 +1,8 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.tools.execution import execute_via_worker, ensure_tool_installed
+import pytest
+
+from app.services.tools.execution import ensure_tool_installed, execute_via_worker
 from app.services.tools.models import ToolExecutionResult
 
 
