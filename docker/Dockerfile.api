@@ -26,9 +26,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Build Tailwind CSS with PostCSS pipeline in builder stage
 RUN apt-get update && apt-get install -y --no-install-recommends nodejs npm && \
     rm -rf /var/lib/apt/lists/*
-COPY config/package.json config/postcss.config.js config/tailwind.config.js ./config/
+COPY config/package.json config/package-lock.json config/postcss.config.js config/tailwind.config.js ./config/
 COPY static/css/input.css ./static/css/input.css
-RUN npm install && \
+RUN cp config/package.json config/package-lock.json . && npm install && \
     NODE_ENV=production npx postcss static/css/input.css -o static/css/output.css --config config/postcss.config.js
 
 # ── Runtime stage ──
