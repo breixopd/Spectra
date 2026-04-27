@@ -476,7 +476,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.api
     container_name: spectra-app-replica
-    profiles: [dev]
+    profiles: [dev, test]
     labels:
       spectra.managed: "true"
       spectra.role: "api-replica"
@@ -799,7 +799,7 @@ services:
   metasploitable:
     image: tleemcjr/metasploitable2
     container_name: spectra-metasploitable
-    profiles: [targets]
+    profiles: [targets, test]
     labels:
       spectra.role: test-target
     tty: true
@@ -810,7 +810,7 @@ services:
   dvwa:
     image: vulnerables/web-dvwa
     container_name: spectra-dvwa
-    profiles: [targets]
+    profiles: [targets, test]
     labels:
       spectra.role: test-target
     environment:
@@ -824,7 +824,7 @@ services:
       context: targets
       dockerfile: Dockerfile.vuln-web
     container_name: spectra-vuln-web
-    profiles: [targets]
+    profiles: [targets, test]
     labels:
       spectra.role: test-target
       spectra.target: vuln-web
@@ -848,7 +848,7 @@ services:
       context: targets
       dockerfile: Dockerfile.vuln-ssh
     container_name: spectra-vuln-ssh
-    profiles: [targets]
+    profiles: [targets, test]
     labels:
       spectra.role: test-target
       spectra.target: vuln-ssh
@@ -872,7 +872,7 @@ services:
       context: targets
       dockerfile: Dockerfile.vuln-network
     container_name: spectra-vuln-network
-    profiles: [targets]
+    profiles: [targets, test]
     labels:
       spectra.role: test-target
       spectra.target: vuln-network
