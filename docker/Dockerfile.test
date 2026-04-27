@@ -33,6 +33,8 @@ COPY scripts/ scripts/
 COPY plugins/ plugins/
 COPY config/ config/
 COPY alembic/ alembic/
+COPY static/ static/
+COPY templates/ templates/
 COPY pyproject.toml .
 
 # Default: run unit tests
