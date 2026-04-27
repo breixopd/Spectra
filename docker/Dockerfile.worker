@@ -72,6 +72,8 @@ RUN useradd --create-home --shell /bin/bash spectra && \
 
 USER spectra
 
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 ENV SERVICE_MODE=worker
 
 EXPOSE 5012

@@ -95,11 +95,11 @@ services:
     labels:
       spectra.managed: "true"
       spectra.role: "cache"
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-change-me-redis-pass}"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?set in .env}"]
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-change-me-redis-pass}", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD:?set in .env}\" ping || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -117,9 +117,6 @@ services:
   # Caddy reverse proxy
   caddy:
     image: ${REGISTRY:-}spectra-caddy:${VERSION:-dev}
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.caddy
     container_name: spectra-caddy
     labels:
       spectra.managed: "true"
@@ -149,6 +146,9 @@ services:
       resources:
         limits:
           memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
     networks:
       - frontend
     <<: *security-defaults
@@ -156,14 +156,11 @@ services:
   # API
   app:
     image: ${REGISTRY:-}spectra-app:${VERSION:-dev}
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.api
     labels:
       spectra.managed: "true"
       spectra.role: "api"
-    expose:
-      - "5000"
+    ports:
+      - "5000:5000"
     depends_on:
       db:
         condition: service_healthy
@@ -175,16 +172,13 @@ services:
         condition: service_healthy
       tensorzero:
         condition: service_healthy
-    env_file:
-      - ../.env
     environment:
       <<: *common-env
       AI_SERVICE_URL: http://ai-svc:5010
       WORKER_SERVICE_URL: http://worker:5012
       CONNECT_BACK_HOST: ${CALLBACK_RELAY_HOST:-worker}
       SHELL_ROUTING_MODE: proxy
-      # Shared Redis-backed rate limiting; use memory:// for tests
-      RATE_LIMIT_STORAGE: "redis://:${REDIS_PASSWORD:-change-me-redis-pass}@redis:6379/0"
+      RATE_LIMIT_STORAGE: "redis://:${REDIS_PASSWORD:?set in .env}@redis:6379/0"
     volumes:
       - spectra_data:/app/data
       - spectra_plugins:/app/plugins
@@ -212,20 +206,10 @@ services:
       - backend
     logging: *default-logging
     <<: *security-stateful
-    develop:
-      watch:
-        - action: sync
-          path: ../app
-          target: /app/app
-        - action: rebuild
-          path: ../requirements/app.txt
 
   # AI service
   ai-svc:
     image: ${REGISTRY:-}spectra-ai-svc:${VERSION:-dev}
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.ai
     container_name: spectra-ai
     labels:
       spectra.managed: "true"
@@ -237,8 +221,6 @@ services:
         condition: service_healthy
       tensorzero:
         condition: service_healthy
-    env_file:
-      - ../.env
     environment:
       <<: *common-env
       SKIP_MIGRATIONS: "true"
@@ -262,6 +244,9 @@ services:
         limits:
           cpus: '1'
           memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
     networks:
       - frontend
       - backend
@@ -279,10 +264,15 @@ services:
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     environment:
-      - CLICKHOUSE_DB=tensorzero
-      - CLICKHOUSE_USER=default
-      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
+      CLICKHOUSE_DB: tensorzero
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
     healthcheck:
       test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
       interval: 10s
@@ -302,7 +292,7 @@ services:
 
   # TensorZero gateway
   tensorzero:
-    image: ${TENSORZERO_IMAGE:-tensorzero/gateway:latest}
+    image: ${TENSORZERO_IMAGE:-tensorzero/gateway:2026.4.1}
     container_name: spectra-tensorzero
     labels:
       spectra.managed: "true"
@@ -315,10 +305,10 @@ services:
     volumes:
       - ../config/tensorzero.toml:/app/config/tensorzero.toml:ro
     environment:
-      - TENSORZERO_CONFIG_FILE=/app/config/tensorzero.toml
-      - TENSORZERO_CLICKHOUSE_URL=http://clickhouse:8123/tensorzero
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
+      TENSORZERO_CONFIG_FILE: /app/config/tensorzero.toml
+      TENSORZERO_CLICKHOUSE_URL: http://default:${CLICKHOUSE_PASSWORD:-}@clickhouse:8123/tensorzero
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
       interval: 10s
@@ -331,6 +321,7 @@ services:
           cpus: '1'
           memory: 512M
     networks:
+      - frontend
       - backend
     logging: *default-logging
     <<: *security-stateful
@@ -338,9 +329,6 @@ services:
   # Scheduler
   scheduler:
     image: ${REGISTRY:-}spectra-scheduler:${VERSION:-dev}
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.scheduler
     container_name: spectra-scheduler
     labels:
       spectra.managed: "true"
@@ -350,18 +338,18 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    env_file:
-      - ../.env
     environment:
       <<: *common-env
       BACKUP_ENABLED: "${BACKUP_ENABLED:-false}"
       SKIP_MIGRATIONS: "true"
     volumes:
       - spectra_data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run/docker.sock:/var/run/docker.sock:rw
     read_only: true
     tmpfs:
       - /tmp
+    cap_add:
+      - CHOWN
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5011/health"]
       interval: 10s
@@ -374,6 +362,9 @@ services:
         limits:
           cpus: '0.5'
           memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
     networks:
       - frontend
       - backend
@@ -383,9 +374,6 @@ services:
   # Worker
   worker:
     image: ${REGISTRY:-}spectra-worker:${VERSION:-dev}
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.worker
     container_name: spectra-worker
     labels:
       spectra.managed: "true"
@@ -395,8 +383,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    env_file:
-      - ../.env
     environment:
       <<: *common-env
       SKIP_MIGRATIONS: "true"

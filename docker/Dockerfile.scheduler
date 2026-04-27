@@ -58,7 +58,9 @@ COPY --chown=spectra:spectra app/auth/ ./app/auth/
 COPY --chown=spectra:spectra app/core/ ./app/core/
 COPY --chown=spectra:spectra app/di/ ./app/di/
 COPY --chown=spectra:spectra app/infrastructure/ ./app/infrastructure/
+COPY --chown=spectra:spectra app/mission/ ./app/mission/
 COPY --chown=spectra:spectra app/models/ ./app/models/
+COPY --chown=spectra:spectra app/telemetry/ ./app/telemetry/
 COPY --chown=spectra:spectra app/repositories/ ./app/repositories/
 COPY --chown=spectra:spectra app/services/ ./app/services/
 COPY --chown=spectra:spectra app/utils/ ./app/utils/
@@ -68,6 +70,8 @@ COPY --chown=spectra:spectra plugins/ ./plugins/
 COPY --chown=spectra:spectra keys/ ./keys/
 RUN chmod +x /app/scripts/start.sh
 
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 ENV SERVICE_MODE=scheduler
 
 ENTRYPOINT ["/app/scripts/start.sh"]

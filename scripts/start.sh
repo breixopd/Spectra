@@ -83,10 +83,10 @@ fi
 # Drop privileges and start application
 echo "Starting application..."
 if [ "${SERVICE_MODE:-}" = "scheduler" ]; then
-    # Grant docker socket access to spectra group
+    # Grant docker socket access to spectra group (graceful on read-only mounts)
     if [ -S /var/run/docker.sock ]; then
-        chown root:docker /var/run/docker.sock
-        chmod 660 /var/run/docker.sock
+        chown root:docker /var/run/docker.sock 2>/dev/null || true
+        chmod 660 /var/run/docker.sock 2>/dev/null || true
     fi
     exec gosu spectra "$@"
 else
