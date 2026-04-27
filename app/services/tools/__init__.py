@@ -15,7 +15,6 @@ from app.services.tools.models import (
 )
 from app.services.tools.registry import (
     PluginInstallationError,
-    PluginSignatureError,
     PluginValidationError,
     ToolRegistry,
     get_registry,
@@ -26,7 +25,6 @@ __all__ = [
     # Adapter
     "CommandToolAdapter",
     "PluginInstallationError",
-    "PluginSignatureError",
     "PluginValidationError",
     "RegisteredTool",
     # Models

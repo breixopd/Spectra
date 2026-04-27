@@ -3,7 +3,7 @@ Tests for API docs permission filtering.
 
 Complements test_api_docs_route.py with additional coverage of:
 - Admin users see all route groups including the admin group
-- Non-admin users (viewer role) cannot see the admin route group
+- Non-admin users (staff role) cannot see the admin route group
 - Route group keys are determined by the second URL segment
 """
 
@@ -96,7 +96,7 @@ class TestDocsAdminVisibility:
         assert "v1" in groups, "Operator should still see /api/v1/* routes"
 
     @pytest.mark.asyncio
-    async def test_viewer_does_not_see_admin_route_group(self):
+    async def test_staff_does_not_see_admin_route_group(self):
         from app.api.routers.ui import api_docs_page
 
         mock_routes = [

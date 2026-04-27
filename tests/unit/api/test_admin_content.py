@@ -269,7 +269,7 @@ class TestDeleteContent:
 
 @pytest.mark.asyncio
 class TestPermissionEnforcement:
-    async def test_viewer_gets_403(self):
+    async def test_staff_gets_403(self):
         app = _make_app()
         mock_session = AsyncMock()
         _override_deps(app, _fake_user(role="staff"), mock_session)

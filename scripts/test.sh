@@ -92,7 +92,6 @@ run_in_docker() {
         -e AI_PROVIDER=litellm \
         -e JWT_SECRET_KEY=test-secret-key \
         -e FULLY_AUTOMATED=true \
-        -e PLUGIN_SAFE_MODE=false \
         -e COVERAGE_FILE=/tmp/spectra-coverage/.coverage \
         --tmpfs /tmp:rw,nosuid,nodev,size=512m \
         --tmpfs /app/data:rw,nosuid,nodev,size=256m \

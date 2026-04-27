@@ -216,7 +216,7 @@ def test_operator_cannot_access_admin_page(page: Page, app_url: str, authenticat
 
 
 @pytest.mark.timeout(45)
-def test_viewer_cannot_see_admin_link(page: Page, app_url: str, authenticated_cookies: list[dict]):
+def test_staff_cannot_see_admin_link(page: Page, app_url: str, authenticated_cookies: list[dict]):
     """Staff role user should not see the admin navigation link."""
     result = _create_user_or_fail(app_url, authenticated_cookies, "staff", "vw")
     assert result["status"] == 201, f"Failed to create staff user: {result}"
@@ -240,7 +240,7 @@ def test_viewer_cannot_see_admin_link(page: Page, app_url: str, authenticated_co
 
 
 @pytest.mark.timeout(45)
-def test_viewer_cannot_launch_mission(page: Page, app_url: str, authenticated_cookies: list[dict]):
+def test_staff_cannot_launch_mission(page: Page, app_url: str, authenticated_cookies: list[dict]):
     """Staff role user should not have a launch button on the dashboard."""
     result = _create_user_or_fail(app_url, authenticated_cookies, "staff", "vw2")
     assert result["status"] == 201, f"Failed to create staff user: {result}"

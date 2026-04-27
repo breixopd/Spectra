@@ -7,16 +7,15 @@ const USER_ROLE_BADGE_CLASSES = {
     admin: 'badge-admin',
     operator: 'badge-operator',
     staff: 'badge-operator',
-    user: 'badge-viewer',
-    viewer: 'badge-viewer'
+    user: 'badge-user'
 };
 
 function getUserRoleBadgeClass(role) {
-    return USER_ROLE_BADGE_CLASSES[String(role || 'viewer').toLowerCase()] || USER_ROLE_BADGE_CLASSES.viewer;
+    return USER_ROLE_BADGE_CLASSES[String(role || 'user').toLowerCase()] || USER_ROLE_BADGE_CLASSES.user;
 }
 
 function getUserRoleLabel(role) {
-    return escapeHtml(String(role || 'viewer'));
+    return escapeHtml(String(role || 'user'));
 }
 
 let statsErrorVisible = false;

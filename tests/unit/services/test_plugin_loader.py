@@ -37,7 +37,7 @@ def _write_plugin(path, filename, data):
 async def test_load_valid_plugin(tmp_path):
     """Loading a well-formed plugin JSON registers the tool."""
     _write_plugin(tmp_path, "test-tool.json", _minimal_plugin())
-    validator = PluginValidator(public_key=None, safe_mode=False)
+    validator = PluginValidator()
     loader = PluginLoader(tmp_path, validator)
 
     tools = await loader.load_plugins({})
@@ -51,7 +51,7 @@ async def test_load_valid_plugin(tmp_path):
 async def test_corrupted_json_handled_gracefully(tmp_path):
     """Corrupted JSON should be skipped without crashing."""
     (tmp_path / "bad.json").write_text("{invalid json!!")
-    validator = PluginValidator(public_key=None, safe_mode=False)
+    validator = PluginValidator()
     loader = PluginLoader(tmp_path, validator)
 
     tools = await loader.load_plugins({})
@@ -64,7 +64,7 @@ async def test_missing_required_fields(tmp_path):
     """Plugin missing required fields should be skipped."""
     incomplete = {"id": "incomplete", "name": "No version"}
     _write_plugin(tmp_path, "incomplete.json", incomplete)
-    validator = PluginValidator(public_key=None, safe_mode=False)
+    validator = PluginValidator()
     loader = PluginLoader(tmp_path, validator)
 
     tools = await loader.load_plugins({})
@@ -77,7 +77,7 @@ async def test_filename_id_mismatch_warning(tmp_path, caplog):
     """Plugin whose ID differs from filename should log a warning."""
     plugin = _minimal_plugin("actual-id")
     _write_plugin(tmp_path, "wrong-name.json", plugin)
-    validator = PluginValidator(public_key=None, safe_mode=False)
+    validator = PluginValidator()
     loader = PluginLoader(tmp_path, validator)
 
     tools = await loader.load_plugins({})
@@ -92,7 +92,7 @@ async def test_mixed_valid_and_invalid_plugins(tmp_path):
     _write_plugin(tmp_path, "good-tool.json", _minimal_plugin("good-tool"))
     (tmp_path / "broken.json").write_text("NOT JSON")
     _write_plugin(tmp_path, "incomplete.json", {"id": "incomplete"})
-    validator = PluginValidator(public_key=None, safe_mode=False)
+    validator = PluginValidator()
     loader = PluginLoader(tmp_path, validator)
 
     tools = await loader.load_plugins({})
@@ -105,7 +105,7 @@ async def test_mixed_valid_and_invalid_plugins(tmp_path):
 @pytest.mark.asyncio
 async def test_empty_plugin_directory(tmp_path):
     """An empty directory should return whatever was already loaded."""
-    validator = PluginValidator(public_key=None, safe_mode=False)
+    validator = PluginValidator()
     loader = PluginLoader(tmp_path, validator)
 
     tools = await loader.load_plugins({})
@@ -117,7 +117,7 @@ async def test_empty_plugin_directory(tmp_path):
 async def test_nonexistent_directory(tmp_path):
     """A directory that doesn't exist should return existing_tools unchanged."""
     missing = tmp_path / "does_not_exist"
-    validator = PluginValidator(public_key=None, safe_mode=False)
+    validator = PluginValidator()
     loader = PluginLoader(missing, validator)
     existing = {"kept": "sentinel"}  # type: ignore[dict-item]
 
@@ -130,7 +130,7 @@ async def test_nonexistent_directory(tmp_path):
 async def test_removed_plugin_is_pruned(tmp_path):
     """Plugins no longer on disk should be removed from the registry."""
     _write_plugin(tmp_path, "survivor.json", _minimal_plugin("survivor"))
-    validator = PluginValidator(public_key=None, safe_mode=False)
+    validator = PluginValidator()
     loader = PluginLoader(tmp_path, validator)
 
     # Pre-populate with an extra tool that has no file on disk

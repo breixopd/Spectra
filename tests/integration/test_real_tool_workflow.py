@@ -52,17 +52,8 @@ class TestRealToolRegistry:
 
     @pytest_asyncio.fixture
     async def real_registry(self):
-        """Load the REAL registry with actual plugin files.
-
-        We disable safe_mode because we don't have the private key to sign/verify
-        in this environment, or we don't want to set up keys for this test.
-        """
-        registry = await initialize_registry(safe_mode=False)
-
-        # Enforce safe_mode=False even if previously initialized with True
-        registry.safe_mode = False
-        registry.validator.safe_mode = False
-        # Reload plugins to ensure all are loaded with safe_mode=False
+        """Load the REAL registry with actual plugin files."""
+        registry = await initialize_registry()
         await registry.load_plugins()
 
         return registry

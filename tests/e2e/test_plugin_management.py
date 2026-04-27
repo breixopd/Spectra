@@ -73,8 +73,9 @@ async def cleanup_registry(registry):
 async def wait_for_job(job_id: str, timeout: int = 30):
     """Wait for a postgres job to complete."""
     from sqlalchemy import select as sa_select
-    from app.infrastructure.queue import JobQueue
+
     from app.core.database import async_session_maker
+    from app.infrastructure.queue import JobQueue
 
     start_time = asyncio.get_running_loop().time()
 
@@ -103,9 +104,6 @@ class TestPluginLifecycle:
 
     async def test_plugin_upload_and_install(self, registry):
         """Test uploading a valid plugin and its auto-installation."""
-        registry.safe_mode = False
-        registry.validator.safe_mode = False
-
         tool = await registry.add_plugin(VALID_PLUGIN)
         assert tool.status == ToolStatus.PENDING
         assert tool.config.id == "test-plugin"
@@ -133,9 +131,6 @@ class TestPluginLifecycle:
 
     async def test_broken_plugin_verification_failure(self, registry):
         """Test that a plugin with failing verification is marked as failed."""
-        registry.safe_mode = False
-        registry.validator.safe_mode = False
-
         tool = await registry.add_plugin(BROKEN_PLUGIN)
         assert tool.status == ToolStatus.PENDING
 
@@ -156,9 +151,6 @@ class TestPluginLifecycle:
 
     async def test_plugin_uninstall(self, registry):
         """Test uninstalling a plugin removes it from registry and disk."""
-        registry.safe_mode = False
-        registry.validator.safe_mode = False
-
         await registry.add_plugin(VALID_PLUGIN)
         plugin_path = registry.plugins_dir / "test-plugin.json"
         assert plugin_path.exists()

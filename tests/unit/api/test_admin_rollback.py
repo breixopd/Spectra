@@ -79,7 +79,7 @@ async def test_list_snapshots_as_admin(mock_get_all):
 
 
 @pytest.mark.asyncio
-async def test_list_snapshots_as_viewer_forbidden():
+async def test_list_snapshots_as_user_forbidden():
     app = _make_app()
     mock_session = AsyncMock()
     _override_deps(app, _fake_user("user"), mock_session)

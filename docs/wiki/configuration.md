@@ -177,7 +177,6 @@ When gateway URLs are empty, services run in-process (default monolith mode). Se
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `PLUGIN_SAFE_MODE` | bool | `true` | Require Ed25519 signatures on plugins |
 | `REQUIRE_APPROVAL` | bool | `false` | Require human approval for high-risk actions |
 | `FULLY_AUTOMATED` | bool | `true` | Skip all human approval — fully autonomous operation |
 
@@ -239,7 +238,7 @@ Some settings can be changed at runtime through the web UI (Admin panel → Sett
 
 Admin-UI-manageable settings include:
 
-- `LOG_LEVEL`, `PLUGIN_SAFE_MODE`, `CONNECT_BACK_HOST`
+- `LOG_LEVEL`, `CONNECT_BACK_HOST`
 - `REQUIRE_APPROVAL`, `FULLY_AUTOMATED`
 - `NOTIFICATION_WEBHOOK`
 - `PLATFORM_DOMAIN`, `PLATFORM_BASE_URL`, `PLATFORM_EXPOSED`

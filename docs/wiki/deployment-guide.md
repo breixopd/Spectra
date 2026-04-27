@@ -96,7 +96,6 @@ TENSORZERO_GATEWAY_URL=http://tensorzero:3000
 
 # --- Security ---
 FULLY_AUTOMATED=false
-PLUGIN_SAFE_MODE=true
 
 # --- Required S3/Garage ---
 GARAGE_ACCESS_KEY=spectra
@@ -526,7 +525,6 @@ docker stack deploy -c docker/docker-compose.swarm.yml spectra
 Spectra does not have custom pip packages to host — all Python dependencies come from `requirements/*.txt` and are baked into the Docker images at build time. The only custom assets to distribute are:
 
 - **Docker images** (via the registry above)
-- **Plugin signing key** (`keys/plugin_signing.pub`)
 
 ---
 
@@ -685,7 +683,7 @@ cat backup.sql | docker compose exec -T db psql -U spectra spectra
 | Database | PostgreSQL container | Daily (automated via scheduler) |
 | Mission data | `data/missions/` or S3 | Daily |
 | Auth state | `data/auth/` | Daily |
-| Plugin signing keys | `keys/` | On change |
+
 | Configuration | `.env` | On change |
 | TLS certificates | Caddy volume `caddy_data` | Weekly |
 

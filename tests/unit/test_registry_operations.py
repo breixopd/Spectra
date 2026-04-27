@@ -57,8 +57,8 @@ def _make_tool(
 
 @pytest.fixture
 def registry(tmp_path):
-    """Create a ToolRegistry with temp plugins dir and safe_mode=False."""
-    reg = ToolRegistry(plugins_dir=tmp_path, safe_mode=False)
+    """Create a ToolRegistry with temp plugins dir."""
+    reg = ToolRegistry(plugins_dir=tmp_path)
 
     # Pre-populate with test tools
     reg._tools["nmap"] = _make_tool("nmap", ToolStatus.READY)
@@ -82,7 +82,7 @@ class TestListTools:
         assert ids == {"nmap", "hydra", "nikto", "builtin"}
 
     def test_returns_empty_when_no_tools(self, tmp_path):
-        reg = ToolRegistry(plugins_dir=tmp_path, safe_mode=False)
+        reg = ToolRegistry(plugins_dir=tmp_path)
         assert reg.list_tools() == []
 
 
@@ -127,7 +127,7 @@ class TestGetAvailableTools:
         assert "nikto" not in ids  # PENDING, not READY
 
     def test_empty_if_none_ready(self, tmp_path):
-        reg = ToolRegistry(plugins_dir=tmp_path, safe_mode=False)
+        reg = ToolRegistry(plugins_dir=tmp_path)
         reg._tools["a"] = _make_tool("aa", ToolStatus.PENDING)
         reg._tools["b"] = _make_tool("bb", ToolStatus.FAILED)
         assert reg.get_available_tools() == []
@@ -278,7 +278,7 @@ class TestSavePlugin:
     @pytest.mark.asyncio
     async def test_creates_plugins_dir(self, tmp_path):
         nested_dir = tmp_path / "subdir" / "plugins"
-        reg = ToolRegistry(plugins_dir=nested_dir, safe_mode=False)
+        reg = ToolRegistry(plugins_dir=nested_dir)
         config = _make_config("test-tool")
 
         with patch("app.services.tools.registry.aiofiles.open") as mock_aiofiles:
@@ -334,7 +334,7 @@ class TestListToolsForAI:
             assert "summary" in tool_dict
 
     def test_empty_when_none_available(self, tmp_path):
-        reg = ToolRegistry(plugins_dir=tmp_path, safe_mode=False)
+        reg = ToolRegistry(plugins_dir=tmp_path)
         assert reg.list_tools_for_ai() == []
 
 

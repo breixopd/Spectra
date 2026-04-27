@@ -1,0 +1,921 @@
+# Spectra — unified Compose with profiles
+#
+# Infrastructure (no profile):   db, redis, garage, clickhouse, tensorzero
+# Production apps (app):         app, ai-svc, scheduler, worker, caddy
+# Test runners (test):           test-runner, unit-test-runner, ui-test-runner, settings-test-runner, load-test-runner
+# Vulnerable targets (targets):  metasploitable, dvwa, vuln-web, vuln-ssh, vuln-network
+# Development extras (dev):      app-replica, tools
+#
+# Examples:
+#   docker compose -f docker/compose.yaml --profile app --profile targets up -d
+#   docker compose -f docker/compose.yaml --profile test up -d
+#
+# Migration notes:
+# - Prod: add POSTGRES_DB=spectra to .env (db defaults to spectra_test for test compatibility)
+# - Test: ensure .env.test sets DB_HOST_PORT=5433 and SPECTRA_PORT=15080
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-security: &security-defaults
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
+x-security-stateful: &security-stateful
+  cap_drop: [ALL]
+  cap_add: [SETUID, SETGID]
+  security_opt: ["no-new-privileges:true"]
+
+x-common-env: &common-env
+  DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_test}@db:5432/${POSTGRES_DB:-spectra_test}}
+  S3_ENDPOINT_URL: http://garage:3900
+  S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
+  S3_SECRET_KEY: ${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+  GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-}
+  GARAGE_ADMIN_URL: http://garage:3903
+  SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:-test-service-secret-key}
+  TENSORZERO_GATEWAY_URL: http://tensorzero:3000
+
+services:
+  # ── Infrastructure (no profile) ──────────────────────────────
+
+  garage:
+    image: dxflrs/garage:v2.2.0
+    container_name: spectra-garage
+    labels:
+      spectra.managed: "true"
+      spectra.role: "storage"
+    environment:
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-}
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+    ports:
+      - "127.0.0.1:3900:3900"
+      - "127.0.0.1:3903:3903"
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    <<: *security-stateful
+
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: spectra-db
+    labels:
+      spectra.managed: "true"
+      spectra.role: "database"
+    environment:
+      POSTGRES_USER: spectra
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spectra_test}
+      POSTGRES_DB: ${POSTGRES_DB:-spectra_test}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      # Test sets DB_HOST_PORT=5433 in .env.test to avoid conflicts with prod db
+      - "${DB_HOST_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spectra -d $${POSTGRES_DB:-spectra_test}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    networks:
+      - backend
+    logging: *default-logging
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    security_opt:
+      - "no-new-privileges:true"
+
+  redis:
+    image: redis:7-alpine
+    container_name: spectra-redis
+    labels:
+      spectra.managed: "true"
+      spectra.role: "cache"
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-spectra_test_redis}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-spectra_test_redis}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    networks:
+      - backend
+    logging: *default-logging
+    <<: *security-stateful
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.11-alpine
+    container_name: spectra-clickhouse
+    labels:
+      spectra.managed: "true"
+      spectra.role: "analytics"
+    restart: unless-stopped
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_DB: tensorzero
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+    networks:
+      - frontend
+      - backend
+    logging: *default-logging
+    <<: *security-stateful
+
+  tensorzero:
+    image: ${TENSORZERO_IMAGE:-tensorzero/gateway:2026.4.1}
+    container_name: spectra-tensorzero
+    labels:
+      spectra.managed: "true"
+      spectra.role: "ai-gateway"
+    command: ["--config-file", "/app/config/tensorzero.toml"]
+    restart: unless-stopped
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    volumes:
+      - ../config/tensorzero.toml:/app/config/tensorzero.toml:ro
+    environment:
+      TENSORZERO_CONFIG_FILE: /app/config/tensorzero.toml
+      TENSORZERO_CLICKHOUSE_URL: http://default:${CLICKHOUSE_PASSWORD:-}@clickhouse:8123/tensorzero
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+    networks:
+      - frontend
+      - backend
+    logging: *default-logging
+    <<: *security-stateful
+
+  # ── Production App Services (profile: app) ───────────────────
+
+  caddy:
+    image: ${REGISTRY:-}spectra-caddy:${VERSION:-dev}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.caddy
+    container_name: spectra-caddy
+    profiles: [app]
+    labels:
+      spectra.managed: "true"
+      spectra.role: "proxy"
+    ports:
+      # Test sets SPECTRA_PORT=15080 in .env.test
+      - "${SPECTRA_PORT:-80}:80"
+      - "${SPECTRA_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./Caddyfile.snippets:/etc/caddy/Caddyfile.snippets:ro
+      - ${CADDYFILE:-./Caddyfile.prod}:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      PLATFORM_DOMAIN: "${PLATFORM_DOMAIN:-localhost}"
+      TLS_MODE: "${TLS_MODE:-internal}"
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    networks:
+      - frontend
+    <<: *security-defaults
+
+  app:
+    image: ${REGISTRY:-}spectra-app:${VERSION:-dev}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: spectra-app
+    profiles: [app]
+    labels:
+      spectra.managed: "true"
+      spectra.role: "api"
+    ports:
+      - "5000:5000"
+    env_file:
+      - ${ENV_FILE:-../.env}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+      ai-svc:
+        condition: service_healthy
+      tensorzero:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      AI_SERVICE_URL: http://ai-svc:5010
+      WORKER_SERVICE_URL: http://worker:5012
+      CONNECT_BACK_HOST: ${CALLBACK_RELAY_HOST:-worker}
+      SHELL_ROUTING_MODE: proxy
+      RATE_LIMIT_STORAGE: redis://:${REDIS_PASSWORD:-spectra_test_redis}@redis:6379/0
+      TEST_TARGET_IP: ${TEST_TARGET_IP:-}
+      TEST_TARGET_URL: ${TEST_TARGET_URL:-}
+    volumes:
+      - spectra_data:/app/data
+      - spectra_plugins:/app/plugins
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    stop_grace_period: 30s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    networks:
+      frontend:
+        aliases:
+          - spectra-ui-app
+      backend:
+    logging: *default-logging
+    <<: *security-stateful
+
+  ai-svc:
+    image: ${REGISTRY:-}spectra-ai-svc:${VERSION:-dev}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ai
+    container_name: spectra-ai
+    profiles: [app]
+    labels:
+      spectra.managed: "true"
+      spectra.role: "ai"
+    expose:
+      - "5010"
+    depends_on:
+      db:
+        condition: service_healthy
+      tensorzero:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      SKIP_MIGRATIONS: "true"
+      CONNECT_BACK_HOST: ${CALLBACK_RELAY_HOST:-worker}
+      SHELL_ROUTING_MODE: direct
+      SHELL_LISTEN_HOST: 0.0.0.0
+      DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-8}
+      DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-8}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-https://openrouter.ai/api/v1}
+    volumes:
+      - spectra_data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5010/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    stop_grace_period: 30s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    networks:
+      - frontend
+      - backend
+    logging: *default-logging
+    <<: *security-stateful
+
+  scheduler:
+    image: ${REGISTRY:-}spectra-scheduler:${VERSION:-dev}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.scheduler
+    container_name: spectra-scheduler
+    profiles: [app, test]
+    labels:
+      spectra.managed: "true"
+      spectra.role: "scheduler"
+    expose:
+      - "5011"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      BACKUP_ENABLED: "${BACKUP_ENABLED:-false}"
+      SKIP_MIGRATIONS: "true"
+      DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-8}
+      DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-8}
+    volumes:
+      - spectra_data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5011/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    stop_grace_period: 30s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    networks:
+      - frontend
+      - backend
+    logging: *default-logging
+    <<: *security-stateful
+
+  worker:
+    image: ${REGISTRY:-}spectra-worker:${VERSION:-dev}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.worker
+    container_name: spectra-worker
+    profiles: [app, test]
+    labels:
+      spectra.managed: "true"
+      spectra.role: "worker"
+    expose:
+      - "5012"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      SKIP_MIGRATIONS: "true"
+    volumes:
+      - spectra_data:/app/data
+      - spectra_plugins:/app/plugins
+      - spectra_tools_data:/opt/spectra_tools
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5012/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    stop_grace_period: 30s
+    restart: unless-stopped
+    <<: *security-defaults
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    logging: *default-logging
+    networks:
+      - frontend
+      - backend
+      - targets
+
+  # ── Development Extras (profile: dev) ─────────────────────────
+
+  app-replica:
+    image: ${REGISTRY:-}spectra-app:${VERSION:-dev}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: spectra-app-replica
+    profiles: [dev]
+    labels:
+      spectra.managed: "true"
+      spectra.role: "api-replica"
+    env_file:
+      - ${ENV_FILE:-../.env}
+    environment:
+      <<: *common-env
+      AI_SERVICE_URL: http://ai-svc:5010
+      WORKER_SERVICE_URL: http://worker:5012
+      CONNECT_BACK_HOST: ${CALLBACK_RELAY_HOST:-worker}
+      SHELL_ROUTING_MODE: proxy
+      RATE_LIMIT_STORAGE: redis://:${REDIS_PASSWORD:-spectra_test_redis}@redis:6379/0
+      SKIP_MIGRATIONS: "true"
+      TEST_TARGET_IP: ${TEST_TARGET_IP:-}
+      TEST_TARGET_URL: ${TEST_TARGET_URL:-}
+    volumes:
+      - spectra_data:/app/data
+      - spectra_plugins:/app/plugins
+      - ../app:/app/app:ro
+      - ../alembic:/app/alembic:ro
+      - ../config/alembic.ini:/app/config/alembic.ini:ro
+      - ../plugins:/app/plugins
+      - ../tests:/app/tests:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      app:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ai-svc:
+        condition: service_healthy
+    networks:
+      frontend:
+        aliases:
+          - spectra-ui-app-replica
+      backend:
+    <<: *security-stateful
+
+  tools:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.worker
+    container_name: spectra-tools
+    profiles: [dev]
+    labels:
+      spectra.managed: "true"
+      spectra.role: "tools"
+    user: root
+    cap_add:
+      - NET_ADMIN
+    env_file:
+      - ${ENV_FILE:-../.env}
+    environment:
+      <<: *common-env
+      IS_TOOLS_CONTAINER: "true"
+      QUEUE_NAME: tools
+      WORKER_SKIP_STARTUP_AUTO_INSTALL: "true"
+    volumes:
+      - spectra_plugins:/app/plugins
+      - ../plugins:/app/plugins
+      - ../app:/app/app:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      app:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+      - targets
+
+  # ── Test Runners (profile: test) ─────────────────────────────
+
+  test-runner:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+    container_name: spectra-test-runner
+    profiles: [test]
+    labels:
+      spectra.managed: "true"
+      spectra.role: "test-runner"
+    user: root
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - seccomp:unconfined
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        python3 -m pytest tests/ -v --tb=short -x --ignore=tests/e2e/ui --ignore=tests/unit --ignore=tests/load --ignore=tests/performance --ignore=tests/soak
+    env_file:
+      - ../.env.test
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+      - S3_ENDPOINT_URL=http://garage:3900
+      - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
+      - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      - TEST_TARGET_IP=172.21.0.50
+      - TEST_TARGET_URL=http://172.21.0.50
+      - METASPLOITABLE_AVAILABLE=true
+      - DVWA_URL=http://172.21.0.51
+      - WEB_TARGET_URL=http://testphp.vulnweb.com
+      - SAFE_MODE=true
+      - PERMISSION_BOUNDARY=172.21.0.0/24
+      - APP_BASE_URL=http://caddy
+      - APP_USERNAME=admin
+      - APP_PASSWORD=${ADMIN_PASSWORD:-Admin123!}
+      - AI_SERVICE_URL=http://ai-svc:5010
+      - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
+      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-test-service-secret-key}
+      - SERVICE_MODE=all
+      - COVERAGE_FILE=/tmp/spectra-coverage/.coverage
+    volumes:
+      - ../app:/app/app:ro
+      - ../tests:/app/tests:ro
+      - ../plugins:/app/plugins
+      - ../requirements:/app/requirements:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+      caddy:
+        condition: service_healthy
+      ai-svc:
+        condition: service_healthy
+      tensorzero:
+        condition: service_healthy
+      metasploitable:
+        condition: service_started
+      dvwa:
+        condition: service_started
+      tools:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+
+  load-test-runner:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+    container_name: spectra-load-test-runner
+    profiles: [test]
+    labels:
+      spectra.managed: "true"
+      spectra.role: "load-test-runner"
+    user: root
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        python3 -m pytest tests/load tests/performance tests/soak tests/integration/test_queue.py
+        -m "load or performance or soak" -q --override-ini=addopts=
+    env_file:
+      - ../.env.test
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+      - S3_ENDPOINT_URL=http://garage:3900
+      - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
+      - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      - RATE_LIMIT_STORAGE=redis://:spectra_test_redis@redis:6379/0
+      - LOAD_TEST_APP_URL=http://app:5000
+      - LOAD_TEST_APP_REPLICA_URL=http://app-replica:5000
+      - LOAD_TEST_CADDY_URL=http://caddy
+      - LOAD_TEST_RESET_RATE_LIMIT_STATE=1
+    volumes:
+      - ../.env.test:/app/.env.test:ro
+      - ../app:/app/app:ro
+      - ../tests:/app/tests:ro
+      - ../pyproject.toml:/app/pyproject.toml:ro
+      - ../docker:/app/docker:ro
+      - ../alembic:/app/alembic:ro
+      - ../config/alembic.ini:/app/config/alembic.ini:ro
+      - ../plugins:/app/plugins:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+      app-replica:
+        condition: service_healthy
+      caddy:
+        condition: service_healthy
+      tools:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+
+  settings-test-runner:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+    container_name: spectra-settings-test-runner
+    profiles: [test]
+    labels:
+      spectra.managed: "true"
+      spectra.role: "settings-test-runner"
+    user: root
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        python -m pytest
+        tests/unit/test_runtime_settings.py
+        tests/unit/test_system_setup.py
+        tests/unit/test_smart_router.py
+        tests/unit/test_settings_runtime_api.py
+        tests/unit/test_settings_templates.py
+        -q --override-ini=addopts=
+    env_file:
+      - ../.env.test
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+      - S3_ENDPOINT_URL=http://garage:3900
+      - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
+      - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
+    volumes:
+      - ../.env.test:/app/.env.test:ro
+      - ../app:/app/app:ro
+      - ../tests:/app/tests:ro
+      - ../pyproject.toml:/app/pyproject.toml:ro
+      - ../docker:/app/docker:ro
+      - ../alembic:/app/alembic:ro
+      - ../config/alembic.ini:/app/config/alembic.ini:ro
+      - ../plugins:/app/plugins:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+
+  unit-test-runner:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+    container_name: spectra-unit-test-runner
+    profiles: [test]
+    labels:
+      spectra.managed: "true"
+      spectra.role: "unit-test-runner"
+    user: root
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        python -m pytest tests/unit/ -q --override-ini=addopts=
+    env_file:
+      - ../.env.test
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+      - S3_ENDPOINT_URL=http://garage:3900
+      - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
+      - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
+    volumes:
+      - ../.env.test:/app/.env.test:ro
+      - ../app:/app/app:ro
+      - ../tests:/app/tests:ro
+      - ../pyproject.toml:/app/pyproject.toml:ro
+      - ../docker:/app/docker:ro
+      - ../alembic:/app/alembic:ro
+      - ../config/alembic.ini:/app/config/alembic.ini:ro
+      - ../plugins:/app/plugins:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+
+  ui-test-runner:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.playwright
+    container_name: spectra-ui-test-runner
+    profiles: [test]
+    labels:
+      spectra.managed: "true"
+      spectra.role: "ui-test-runner"
+    entrypoint: ["python3", "-m", "pytest"]
+    command: ["tests/e2e/ui/", "-v", "--tb=short", "-x", "--confcutdir=tests/e2e/ui", "-p", "no:cov", "-o", "addopts="]
+    env_file:
+      - ../.env.test
+    environment:
+      - APP_BASE_URL=http://app:5000
+      - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+    volumes:
+      - ../tests:/app/tests:ro
+      - ../app:/app/app:ro
+    depends_on:
+      app:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - frontend
+      - backend
+
+  # ── Vulnerable Test Targets (profile: targets) ───────────────
+
+  metasploitable:
+    image: tleemcjr/metasploitable2
+    container_name: spectra-metasploitable
+    profiles: [targets]
+    labels:
+      spectra.role: test-target
+    tty: true
+    networks:
+      targets:
+        ipv4_address: 172.21.0.50
+
+  dvwa:
+    image: vulnerables/web-dvwa
+    container_name: spectra-dvwa
+    profiles: [targets]
+    labels:
+      spectra.role: test-target
+    environment:
+      - MYSQL_ROOT_PASSWORD=dvwa
+    networks:
+      targets:
+        ipv4_address: 172.21.0.51
+
+  vuln-web:
+    build:
+      context: targets
+      dockerfile: Dockerfile.vuln-web
+    container_name: spectra-vuln-web
+    profiles: [targets]
+    labels:
+      spectra.role: test-target
+      spectra.target: vuln-web
+    expose:
+      - "80"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:80/')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
+    networks:
+      - targets
+
+  vuln-ssh:
+    build:
+      context: targets
+      dockerfile: Dockerfile.vuln-ssh
+    container_name: spectra-vuln-ssh
+    profiles: [targets]
+    labels:
+      spectra.role: test-target
+      spectra.target: vuln-ssh
+    expose:
+      - "22"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "22"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 32M
+    networks:
+      - targets
+
+  vuln-network:
+    build:
+      context: targets
+      dockerfile: Dockerfile.vuln-network
+    container_name: spectra-vuln-network
+    profiles: [targets]
+    labels:
+      spectra.role: test-target
+      spectra.target: vuln-network
+    expose:
+      - "21"
+      - "80"
+      - "443"
+      - "3306"
+    healthcheck:
+      test: ["CMD-SHELL", "echo | nc -w 1 localhost 80"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 32M
+    networks:
+      - targets
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true
+  targets:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+
+volumes:
+  postgres_data:
+  spectra_data:
+  spectra_tools_data:
+  spectra_plugins:
+  caddy_data:
+  caddy_config:
+  garage_meta:
+  garage_data:
+  clickhouse_data:
+  redis_data:

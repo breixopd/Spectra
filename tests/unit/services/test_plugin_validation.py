@@ -30,7 +30,7 @@ def _minimal_valid_plugin() -> dict:
 
 def test_valid_plugin_schema_validates():
     """A well-formed plugin dict should pass validation and return ToolConfig."""
-    validator = PluginValidator(public_key=None, safe_mode=False)
+    validator = PluginValidator()
     data = _minimal_valid_plugin()
 
     config = validator.validate_plugin(data)
@@ -49,7 +49,7 @@ def test_valid_plugin_schema_validates():
 @pytest.mark.parametrize("missing_field", ["id", "name", "version", "category", "description", "execution"])
 def test_invalid_plugin_missing_required_fields(missing_field: str):
     """Omitting any required field must raise PluginValidationError."""
-    validator = PluginValidator(public_key=None, safe_mode=False)
+    validator = PluginValidator()
     data = _minimal_valid_plugin()
     del data[missing_field]
 
@@ -73,7 +73,7 @@ def test_invalid_plugin_missing_required_fields(missing_field: str):
 )
 def test_plugin_blocklist_detection(dangerous_cmd: str):
     """Commands matching DANGEROUS_PATTERNS must be rejected."""
-    validator = PluginValidator(public_key=None, safe_mode=False)
+    validator = PluginValidator()
     data = _minimal_valid_plugin()
     data["execution"]["command"] = dangerous_cmd
 
@@ -88,7 +88,7 @@ def test_plugin_blocklist_detection(dangerous_cmd: str):
 
 def test_invalid_tool_id_format():
     """Tool IDs with invalid characters must be rejected."""
-    validator = PluginValidator(public_key=None, safe_mode=False)
+    validator = PluginValidator()
     data = _minimal_valid_plugin()
     data["id"] = "invalid tool!@#"
 

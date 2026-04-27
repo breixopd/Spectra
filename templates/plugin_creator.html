@@ -172,39 +172,14 @@
                 </div>
             </div>
 
-            <!-- Signing Options -->
-            <div class="glass-panel p-6 rounded-xl">
-                <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <i data-lucide="key" class="w-5 h-5 inline-block text-amber-400"></i> Plugin Signing
-                </h3>
-                <div class="space-y-3">
-                    <div class="flex items-center gap-2">
-                        <input type="radio" id="sign-server" name="sign-method" value="server" checked class="text-violet-500">
-                        <label for="sign-server" class="text-sm text-slate-300">Use server key (default)</label>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <input type="radio" id="sign-custom" name="sign-method" value="custom" class="text-violet-500">
-                        <label for="sign-custom" class="text-sm text-slate-300">Upload custom key (official/dev)</label>
-                    </div>
-                    <div id="custom-key-section" class="hidden mt-3 p-3 bg-slate-900/50 rounded-lg border border-white/10">
-                        <label for="private-key-file" class="block text-xs font-bold text-slate-500 uppercase mb-2">Private Key (Ed25519 PEM)</label>
-                        <input type="file" id="private-key-file" accept=".pem,.key" class="w-full text-sm text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:bg-violet-600 file:text-white hover:file:bg-violet-500">
-                        <p class="text-xs text-slate-500 mt-2">Upload your Ed25519 private key to sign plugins officially.</p>
-                    </div>
-                </div>
-            </div>
-
             <!-- Actions -->
             <div class="glass-panel p-6 rounded-xl">
                 <div class="flex flex-col gap-3">
                     <button data-action="validatePlugin" class="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors flex items-center justify-center gap-2">
                         <i data-lucide="check-circle" class="w-4 h-4 inline-block"></i> Validate Config
                     </button>
-                    <button data-action="saveWithoutSigning" class="w-full py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors flex items-center justify-center gap-2 text-sm">
-                        <i data-lucide="save" class="w-4 h-4 inline-block"></i> Save Without Signing
-                    </button>
-                    <button data-action="signAndSave" class="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors flex items-center justify-center gap-2">
-                        <i data-lucide="file-signature" class="w-4 h-4 inline-block"></i> Sign & Save Plugin
+                    <button data-action="savePlugin" class="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors flex items-center justify-center gap-2">
+                        <i data-lucide="save" class="w-4 h-4 inline-block"></i> Save Plugin
                     </button>
                 </div>
                 <div id="action-status" class="mt-4 text-center text-sm hidden"></div>
@@ -215,17 +190,4 @@
 </div>
 
 <script src="/static/js/plugin_creator.js"></script>
-<script nonce="{{ request.state.csp_nonce }}">
-    // Toggle custom key section visibility
-    document.querySelectorAll('input[name="sign-method"]').forEach(radio => {
-        radio.addEventListener('change', () => {
-            const customSection = document.getElementById('custom-key-section');
-            if (document.getElementById('sign-custom').checked) {
-                customSection.classList.remove('hidden');
-            } else {
-                customSection.classList.add('hidden');
-            }
-        });
-    });
-</script>
 {% endblock %}

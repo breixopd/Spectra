@@ -85,7 +85,7 @@
 - [ ] **E2E-4**: Add billing/payment flow tests
 - [ ] **E2E-5**: Add dark mode / theme switching tests
 - [ ] **E2E-6**: Add file upload functionality tests
-- [ ] **E2E-7**: Add multi-role matrix tests (admin, operator, viewer across all pages)
+- [ ] **E2E-7**: Add multi-role matrix tests (admin, staff, user across all pages)
 - [ ] **E2E-8**: Add plan limitation tests (free vs pro vs enterprise)
 
 ---

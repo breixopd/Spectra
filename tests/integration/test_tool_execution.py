@@ -72,7 +72,7 @@ class TestToolRegistry:
         root_dir = Path(__file__).parent.parent.parent
         plugins_dir = root_dir / "plugins"
 
-        registry = await initialize_registry(plugins_dir=plugins_dir, safe_mode=False)
+        registry = await initialize_registry(plugins_dir=plugins_dir)
 
         # Should have loaded some plugins
         tools = registry.list_tools()
@@ -86,7 +86,7 @@ class TestToolRegistry:
         # Ensure consistent plugins loading
         root_dir = Path(__file__).parent.parent.parent
         plugins_dir = root_dir / "plugins"
-        registry = await initialize_registry(plugins_dir=plugins_dir, safe_mode=False)
+        registry = await initialize_registry(plugins_dir=plugins_dir)
 
         # Try to get nmap (should exist)
         nmap = registry.get_tool("nmap")
@@ -97,7 +97,7 @@ class TestToolRegistry:
         """Test listing available tools."""
         root_dir = Path(__file__).parent.parent.parent
         plugins_dir = root_dir / "plugins"
-        registry = await initialize_registry(plugins_dir=plugins_dir, safe_mode=False)
+        registry = await initialize_registry(plugins_dir=plugins_dir)
 
         available = registry.get_available_tools()
 
@@ -110,7 +110,7 @@ class TestToolRegistry:
         """Test filtering tools by category."""
         root_dir = Path(__file__).parent.parent.parent
         plugins_dir = root_dir / "plugins"
-        registry = await initialize_registry(plugins_dir=plugins_dir, safe_mode=False)
+        registry = await initialize_registry(plugins_dir=plugins_dir)
 
         # Get discovery tools
         discovery_tools = [t for t in registry.list_tools() if t.config.category == ToolCategory.DISCOVERY]
@@ -123,7 +123,7 @@ class TestToolRegistry:
         """Test filtering tools by capability."""
         root_dir = Path(__file__).parent.parent.parent
         plugins_dir = root_dir / "plugins"
-        registry = await initialize_registry(plugins_dir=plugins_dir, safe_mode=False)
+        registry = await initialize_registry(plugins_dir=plugins_dir)
 
         # Get all tools and filter by capability
         all_tools = registry.list_tools()
@@ -525,7 +525,7 @@ class TestPluginLoading:
         """Test that all registered tools can be verified (installed and runnable)."""
         root_dir = Path(__file__).parent.parent.parent
         plugins_dir = root_dir / "plugins"
-        registry = await initialize_registry(plugins_dir=plugins_dir, safe_mode=False)
+        registry = await initialize_registry(plugins_dir=plugins_dir)
         tools = registry.list_tools()
 
         assert len(tools) > 0, "No tools found in registry"

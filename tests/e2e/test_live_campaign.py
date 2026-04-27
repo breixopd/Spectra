@@ -1,12 +1,10 @@
 import asyncio
 import logging
 import os
-import subprocess
 
 import pytest
 import pytest_asyncio
 
-from app.core.config import settings
 from app.core.database import engine
 from app.models.base import Base
 from app.services.tools.registry import get_registry
@@ -41,14 +39,10 @@ class TestLiveCampaign:
 
     @pytest_asyncio.fixture(autouse=True)
     async def setup_campaign(self):
-        settings.PLUGIN_SAFE_MODE = False
         await engine.dispose()
         import app.services.tools.registry as registry_module
         registry_module._registry = None
         registry = get_registry()
-        registry.safe_mode = False
-        if hasattr(registry, "validator"):
-            registry.validator.safe_mode = False
         await registry.load_plugins()
         critical_tools = ["nmap", "searchsploit", "metasploit", "curl", "nikto", "sqlmap"]
         for tool_id in critical_tools:

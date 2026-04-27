@@ -11,9 +11,7 @@ Provides endpoints for:
 import json
 import logging
 import re
-from pathlib import Path
 
-import aiofiles
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -32,7 +30,6 @@ from app.api.dependencies import get_current_active_user, get_current_superuser
 from app.api.schemas import (
     CommandInfoResponse,
     InstallToolResponse,
-    PluginSaveResponse,
     PluginUploadResponse,
     TestExecutionResponse,
     ToolAdminResponse,
@@ -63,7 +60,6 @@ from app.services.tools.models import (
     ToolStatus,
 )
 from app.services.tools.registry import (
-    PluginSignatureError,
     PluginValidationError,
     ToolRegistry,
     get_registry,
@@ -285,7 +281,6 @@ async def validate_plugin_config(
 ):
     """
     Validate a plugin configuration schema.
-    Does NOT check signature (as this is for pre-signing validation).
     """
     try:
         tool_config = _validate_tool_config_schema(config)
@@ -298,130 +293,6 @@ async def validate_plugin_config(
     except (TypeError, KeyError, AttributeError) as e:
         logger.warning("Plugin validation failed: %s", e)
         raise HTTPException(status_code=400, detail="Invalid plugin configuration") from e
-
-
-@router.post("/sign")
-async def sign_plugin_config(
-    config: dict = Body(...),
-    private_key_pem: str | None = Body(None, description="Optional PEM-encoded Ed25519 private key"),
-    _current_user: User = Depends(get_current_superuser),
-):
-    """
-    Sign a plugin configuration using server key or a provided private key.
-
-    If private_key_pem is provided, uses that key (for official/dev signing).
-    Otherwise, uses the server's private key (only in DEBUG mode).
-    """
-    try:
-        from cryptography.hazmat.primitives import serialization
-        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-
-        pREDACTED_SECRET_185ba9dfb10c None = None
-
-        if private_key_pem:
-            # Use provided key (works in any mode)
-            try:
-                key_data = private_key_pem.encode("utf-8")
-                loaded_key = serialization.load_pem_private_key(key_data, password=None)
-                if not isinstance(loaded_key, Ed25519PrivateKey):
-                    raise HTTPException(status_code=400, detail="Key must be Ed25519 type")
-                private_key = loaded_key
-            except HTTPException:
-                raise
-            except (ValueError, TypeError, OSError) as e:
-                logger.warning("Private key parsing failed: %s", e)
-                raise HTTPException(status_code=400, detail="Invalid private key format") from e
-        else:
-            # Use server key (DEBUG only)
-            if not settings.DEBUG:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Server signing disabled in production. Provide your own key or sign offline.",
-                )
-
-            key_path = Path("keys/plugin_signing.pem")
-            if not key_path.exists():
-                raise HTTPException(status_code=503, detail="Signing key not available on server")
-
-            async with aiofiles.open(key_path, "rb") as f:
-                key_data = await f.read()
-            loaded_key = serialization.load_pem_private_key(key_data, password=None)
-
-            if not isinstance(loaded_key, Ed25519PrivateKey):
-                raise HTTPException(status_code=500, detail="Invalid server key type")
-            private_key = loaded_key
-
-        # Remove existing signature
-        config.pop("signature", None)
-
-        # Canonicalize
-        canonical_json = json.dumps(config, sort_keys=True, separators=(",", ":")).encode("utf-8")
-
-        # Sign
-        if private_key is None:
-            raise HTTPException(status_code=500, detail="Signing key not resolved")
-        signature = private_key.sign(canonical_json)
-        config["signature"] = signature.hex()
-
-        return config
-
-    except ImportError as e:
-        raise HTTPException(status_code=500, detail="Cryptography package not available") from e
-    except HTTPException:
-        raise
-    except (ValueError, TypeError, OSError) as e:
-        logger.error("Plugin signing failed: %s", e)
-        raise HTTPException(status_code=500, detail="Signing failed - check server logs") from e
-
-
-@router.post("/save-unsigned", response_model=PluginSaveResponse, status_code=status.HTTP_201_CREATED)
-async def save_plugin_unsigned(
-    config: dict = Body(...),
-    _current_user: User = Depends(get_current_superuser),
-):
-    """
-    Save a plugin without signing.
-    Will only work if safe_mode is disabled.
-    """
-    from app.services.tools.registry import get_registry
-
-    registry = get_registry()
-    if not registry:
-        raise HTTPException(status_code=503, detail="Tool registry not available")
-
-    if settings.PLUGIN_SAFE_MODE:
-        raise HTTPException(
-            status_code=403,
-            detail="Cannot save unsigned plugins in safe mode. Disable safe_mode or sign the plugin.",
-        )
-
-    try:
-        # Remove any signature field
-        config.pop("signature", None)
-
-        # Validate structure
-        tool_config = registry.validate_plugin(config)
-
-        # Save to file
-        plugin_path = Path("plugins") / f"{tool_config.id}.json"
-        async with aiofiles.open(plugin_path, "w") as f:
-            await f.write(json.dumps(config, indent=2))
-
-        # Reload into registry
-        await registry.load_plugins()
-
-        await events.emit(EventType.PLUGIN_UPDATED, source="tools", tool_id=tool_config.id, action="saved")
-
-        return PluginSaveResponse(
-            status="saved",
-            tool_id=tool_config.id,
-            message="Plugin saved without signature (safe_mode disabled)",
-        )
-    except (ValueError, TypeError, OSError) as e:
-        logger.error("Failed to save unsigned plugin: %s", e)
-        raise HTTPException(
-            status_code=400, detail="Failed to save unsigned plugin due to validation or server error."
-        ) from e
 
 
 @router.get(
@@ -595,18 +466,15 @@ async def upload_plugin(
     Upload a new tool plugin.
 
     The file should be a JSON configuration following the plugin schema.
-    If safe_mode is enabled, the plugin must be signed.
     After upload, the tool will be installed in the background via the tools container.
     """
-    # Validate file type
     if not file.filename or not file.filename.endswith(".json"):
         raise HTTPException(status_code=400, detail="File must be a JSON file")
 
     if file.content_type != "application/json":
         raise HTTPException(status_code=400, detail="Invalid Content-Type. Must be application/json")
 
-    # Read and parse (with size limit)
-    MAX_PLUGIN_SIZE = 5 * 1024 * 1024  # 5MB
+    MAX_PLUGIN_SIZE = 5 * 1024 * 1024
     try:
         content = await file.read(MAX_PLUGIN_SIZE + 1)
         if len(content) > MAX_PLUGIN_SIZE:
@@ -616,7 +484,6 @@ async def upload_plugin(
         logger.warning("Plugin upload JSON parse error: %s", e)
         raise HTTPException(status_code=400, detail="Invalid JSON in plugin file") from e
 
-    # Add to registry
     try:
         tool = await registry.add_plugin(data)
         _queue_background_job(
@@ -634,9 +501,6 @@ async def upload_plugin(
             tool_id=tool.config.id,
             message=f"Plugin '{tool.config.name}' uploaded successfully. Installation queued in background.",
         )
-    except PluginSignatureError as e:
-        logger.warning("Plugin signature verification failed: %s", e)
-        raise HTTPException(status_code=403, detail="Plugin signature verification failed") from e
     except PluginValidationError as e:
         logger.warning("Plugin validation failed: %s", e)
         raise HTTPException(status_code=400, detail="Plugin validation failed") from e

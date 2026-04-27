@@ -60,7 +60,6 @@ ROLE_PERMISSIONS: dict[str, set[Permission]] = {
 
 ROLE_ALIASES: dict[str, str] = {
     "operator": "staff",
-    "viewer": "user",
 }
 
 

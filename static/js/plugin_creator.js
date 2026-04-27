@@ -96,91 +96,27 @@ async function validatePlugin() {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-async function getPrivateKeyPem() {
-    const useCustom = document.getElementById('sign-custom')?.checked;
-    if (!useCustom) return null;
-
-    const fileInput = document.getElementById('private-key-file');
-    if (!fileInput || !fileInput.files[0]) {
-        throw new Error('Please select a private key file');
-    }
-
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(new Error('Failed to read key file'));
-        reader.readAsText(fileInput.files[0]);
-    });
-}
-
-async function signAndSave() {
+async function savePlugin() {
     const status = document.getElementById('action-status');
     status.classList.remove('hidden');
-    status.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin"></i> Signing & Saving...';
+    status.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin"></i> Saving...';
     
     try {
         const config = buildConfig();
-        
-        // Get custom key if selected
-        let privateKeyPem = null;
-        try {
-            privateKeyPem = await getPrivateKeyPem();
-        } catch (e) {
-            renderActionStatus(status, e.message || 'Failed to read key file', 'error');
-            return;
-        }
-
-        // 1. Sign
-        const signBody = { config };
-        if (privateKeyPem) {
-            signBody.private_key_pem = privateKeyPem;
-        }
-
-        const { data: signedConfig, error: signError } = await spectraApi.post('/api/v1/tools/sign', signBody);
-        if (signError) {
-            throw new Error(signError);
-        }
-        
-        // 2. Save (Upload)
-        const blob = new Blob([JSON.stringify(signedConfig)], { type: 'application/json' });
+        const blob = new Blob([JSON.stringify(config)], { type: 'application/json' });
         const formData = new FormData();
         formData.append('file', blob, `${config.id}.json`);
         
-        const { error: uploadError } = await spectraApi.request('/api/v1/tools/upload', {
+        const { error } = await spectraApi.request('/api/v1/tools/upload', {
             method: 'POST',
             body: formData
         });
-        if (uploadError) throw new Error(uploadError);
-        
-        renderActionStatus(status, 'Plugin signed and saved. Redirecting...', 'success');
-
-        setTimeout(() => {
-            window.location.href = '/toolbox';
-        }, 1500);
-
-    } catch (e) {
-        renderActionStatus(status, e.message || 'Operation failed', 'error');
-    }
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-async function saveWithoutSigning() {
-    const status = document.getElementById('action-status');
-    status.classList.remove('hidden');
-    status.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin"></i> Saving (unsigned)...';
-
-    try {
-        const config = buildConfig();
-
-        const { error } = await spectraApi.post('/api/v1/tools/save-unsigned', config);
         if (error) throw new Error(error);
-
-        renderActionStatus(status, 'Plugin saved without signing. Redirecting...', 'success');
         
+        renderActionStatus(status, 'Plugin saved. Redirecting...', 'success');
         setTimeout(() => {
             window.location.href = '/toolbox';
         }, 1500);
-        
     } catch (e) {
         renderActionStatus(status, e.message || 'Operation failed', 'error');
     }

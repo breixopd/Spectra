@@ -85,7 +85,6 @@ GENERAL_RUNTIME_FIELD_MAP: dict[str, tuple[str, str]] = {
     "S3_SECRET_KEY": ("S3_SECRET_KEY", "secret"),
     "S3_REGION": ("S3_REGION", "str"),
     "LOG_LEVEL": ("LOG_LEVEL", "str"),
-    "PLUGIN_SAFE_MODE": ("PLUGIN_SAFE_MODE", "bool"),
     "CONNECT_BACK_HOST": ("CONNECT_BACK_HOST", "str"),
     "REQUIRE_APPROVAL": ("REQUIRE_APPROVAL", "bool"),
     "NOTIFICATION_WEBHOOK": ("NOTIFICATION_WEBHOOK", "nullable_str"),

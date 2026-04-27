@@ -26,7 +26,6 @@ from app.services.tools.models import (
     ToolStatus,
 )
 from app.services.tools.registry import (
-    PluginSignatureError,
     PluginValidationError,
     ToolRegistry,
 )
@@ -121,10 +120,9 @@ class TestToolRegistry:
 
     @pytest.fixture
     def registry(self, temp_plugins_dir):
-        """Create a registry with safe_mode disabled for testing."""
+        """Create a registry for testing."""
         return ToolRegistry(
             plugins_dir=temp_plugins_dir,
-            safe_mode=False,
         )
 
     def test_validate_plugin_valid(self, registry):
@@ -198,31 +196,6 @@ class TestToolRegistry:
         assert ai_tools[0]["id"] == "test-tool"
         assert ai_tools[0]["description"] == "A test security tool"
         assert "command" in ai_tools[0]
-
-
-class TestToolRegistrySafeMode:
-    """Tests for signature verification in safe mode."""
-
-    @pytest.fixture
-    def registry_safe(self):
-        """Create a registry with safe_mode enabled."""
-        return ToolRegistry(
-            plugins_dir="plugins",
-            safe_mode=True,
-        )
-
-    def test_safe_mode_rejects_unsigned(self, registry_safe):
-        """Test that unsigned plugins are rejected in safe mode."""
-        with pytest.raises(PluginSignatureError, match="no signature"):
-            registry_safe.validate_plugin(VALID_PLUGIN_DATA.copy())
-
-    def test_safe_mode_rejects_invalid_signature(self, registry_safe):
-        """Test that invalid signatures are rejected."""
-        data = VALID_PLUGIN_DATA.copy()
-        data["signature"] = "invalid_hex_signature"
-
-        with pytest.raises(PluginSignatureError):
-            registry_safe.validate_plugin(data)
 
 
 # --- CommandBuilder Tests ---

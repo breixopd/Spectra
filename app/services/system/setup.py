@@ -62,9 +62,6 @@ class SystemSetupService:
                 commit=True,
             )
 
-            # 4. Generate Security Keys (for Plugin Signing)
-            await self._generate_signing_keys()
-
             return user
 
         except (OSError, RuntimeError, ValueError) as e:
@@ -74,51 +71,6 @@ class SystemSetupService:
                 "Setup failed due to an internal error.",
                 code="SETUP_FAILED",
             ) from e
-
-    async def _generate_signing_keys(self) -> None:
-        """Generate Ed25519 keys for plugin signing if they don't exist."""
-        try:
-            from cryptography.hazmat.primitives import serialization
-            from cryptography.hazmat.primitives.asymmetric import ed25519
-
-            keys_dir = data_path("keys")
-
-            private_key_path = keys_dir / "plugin_signing.pem"
-            public_key_path = keys_dir / "plugin_signing.pub"
-
-            if private_key_path.exists() and public_key_path.exists():
-                logger.info("Signing keys already exist")
-                return
-
-            keys_dir.mkdir(parents=True, exist_ok=True)
-
-            logger.info("Generating new Ed25519 signing keys...")
-            private_key = ed25519.Ed25519PrivateKey.generate()
-            public_key = private_key.public_key()
-
-            import asyncio
-
-            # Save Private Key
-            private_bytes = private_key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=serialization.NoEncryption(),
-            )
-            await asyncio.to_thread(private_key_path.write_bytes, private_bytes)
-
-            # Save Public Key
-            public_bytes = public_key.public_bytes(
-                encoding=serialization.Encoding.OpenSSH,
-                format=serialization.PublicFormat.OpenSSH,
-            )
-            await asyncio.to_thread(public_key_path.write_bytes, public_bytes)
-
-            logger.info("Signing keys generated successfully")
-
-        except ImportError:
-            logger.error("Cryptography package missing - cannot generate keys")
-        except (OSError, RuntimeError, ValueError) as e:
-            logger.error("Failed to generate signing keys: %s", e)
 
     async def _create_admin_user(self, setup_in: SystemSetupRequest) -> User:
         """Create the initial superuser."""
