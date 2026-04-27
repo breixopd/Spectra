@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
-COMPOSE_FILE="${PROJECT_DIR}/docker/docker-compose.test.yml"
+COMPOSE_FILE="${PROJECT_DIR}/docker/compose.yaml"
 KEEP_STACK="${KEEP_STACK:-0}"
 export GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}"
 export GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
@@ -113,7 +113,7 @@ docker compose -f "${COMPOSE_FILE}" up -d --build db garage redis >/dev/null
 
 bootstrap_garage
 
-docker compose -f "${COMPOSE_FILE}" up -d --build app app-replica caddy tools >/dev/null
+docker compose -f "${COMPOSE_FILE}" --profile app up -d --build app app-replica caddy tools >/dev/null
 
 wait_for_service_health app 60
 wait_for_service_health app-replica 60

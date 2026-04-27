@@ -3,14 +3,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-COMPOSE_FILE="docker/docker-compose.test.yml"
+COMPOSE_FILE="docker/compose.yaml"
 export GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}"
 export GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
 
 cleanup() {
     echo ""
     echo "Cleaning up test environment..."
-    docker compose -f "$COMPOSE_FILE" down -v --remove-orphans 2>/dev/null || true
+    docker compose -f "$COMPOSE_FILE" --profile app --profile test down -v --remove-orphans 2>/dev/null || true
 }
 
 trap cleanup EXIT
@@ -20,7 +20,7 @@ echo "Resetting test environment..."
 
 cd "$PROJECT_DIR"
 
-docker compose -f "$COMPOSE_FILE" down -v --remove-orphans 2>/dev/null || true
+docker compose -f "$COMPOSE_FILE" --profile app --profile test down -v --remove-orphans 2>/dev/null || true
 
 echo "Starting test environment..."
 
@@ -33,8 +33,8 @@ GARAGE_ACCESS_KEY="$GARAGE_ACCESS_KEY" \
 GARAGE_SECRET_KEY="$GARAGE_SECRET_KEY" \
 bash ./docker/garage-init.sh
 
-docker compose -f "$COMPOSE_FILE" build app
-docker compose -f "$COMPOSE_FILE" up -d --force-recreate app
+docker compose -f "$COMPOSE_FILE" --profile app build app
+docker compose -f "$COMPOSE_FILE" --profile app up -d --force-recreate app
 
 # Wait for app to be ready
 echo "Waiting for app to be ready..."
@@ -61,9 +61,9 @@ except urllib.error.HTTPError as exc:
 
 # Run Playwright tests
 echo "Running UI tests..."
-docker compose -f "${COMPOSE_FILE}" build ui-test-runner
+docker compose -f "${COMPOSE_FILE}" --profile test build ui-test-runner
 # Playwright runs in ui-test-runner on the compose network: reach the API as service `app:5000`
 # (Caddy on host :15080 is for manual browser testing, not this job.)
-docker compose -f "${COMPOSE_FILE}" run --rm -e APP_BASE_URL=http://app:5000 ui-test-runner tests/e2e/ui/ -v --tb=short -x --no-cov --confcutdir=tests/e2e/ui --override-ini=addopts= "$@"
+docker compose -f "${COMPOSE_FILE}" --profile test run --rm -e APP_BASE_URL=http://app:5000 ui-test-runner tests/e2e/ui/ -v --tb=short -x --no-cov --confcutdir=tests/e2e/ui --override-ini=addopts= "$@"
 
 echo "=== Done ==="

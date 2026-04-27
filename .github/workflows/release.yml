@@ -77,27 +77,30 @@ jobs:
 
       # ── Run tests before release ──────────────────────────────
       - name: Build Docker test runners
-        run: docker compose -f docker/docker-compose.test.yml build unit-test-runner test-runner
+        run: docker compose -f docker/compose.yaml --profile app --profile test build unit-test-runner test-runner
 
       - name: Validate TensorZero config
-        run: docker compose -f docker/docker-compose.test.yml run --rm --no-deps unit-test-runner "python -c \"import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')\""
+        run: docker compose -f docker/compose.yaml --profile test run --rm --no-deps unit-test-runner "python -c \"import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')\""
 
       - name: Run unit tests with coverage in Docker
         run: |
-          docker compose -f docker/docker-compose.test.yml run --rm unit-test-runner \
+          docker compose -f docker/compose.yaml --profile test run --rm unit-test-runner \
             "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=app --cov-report=term-missing --cov-fail-under=67.4"
 
       - name: Run integration tests in Docker
         run: |
-          docker compose -f docker/docker-compose.test.yml run --rm test-runner \
+          docker compose -f docker/compose.yaml --profile app --profile test run --rm test-runner \
             "python -m pytest tests/integration/ -v --tb=short --timeout=120 --override-ini=addopts= -k 'not live and not e2e'"
 
       # ── Security gate ─────────────────────────────────────────
       - name: Security scan (bandit)
-        run: docker compose -f docker/docker-compose.test.yml run --rm --no-deps unit-test-runner "bandit -r app/ -c pyproject.toml --severity-filter HIGH --confidence-filter HIGH"
+        run: docker compose -f docker/compose.yaml --profile test run --rm --no-deps unit-test-runner "bandit -r app/ -c pyproject.toml --severity-filter HIGH --confidence-filter HIGH"
 
       - name: Validate Docker Compose config
         run: docker compose --env-file .env.example -f docker/docker-compose.yml config --quiet
+
+      - name: Validate new Compose config
+        run: docker compose --env-file .env.example -f docker/compose.yaml --profile app --profile test --profile targets config --quiet
 
       - name: Validate Swarm stack config
         env:

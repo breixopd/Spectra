@@ -4,6 +4,7 @@
 
 **AI-Driven Security Assessment Platform**
 
+[![CI](https://github.com/breixopd14/spectra/actions/workflows/ci.yml/badge.svg)](https://github.com/breixopd14/spectra/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue.svg)](https://www.postgresql.org/)

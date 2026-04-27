@@ -61,7 +61,5 @@ async def test_full_node_lifecycle():
             removed = await pool.remove_node(session, node["id"])
             await session.commit()
             assert removed is True
-    except (ConnectionRefusedError, OSError, OperationalError) as e:
-        pytest.skip(f"PostgreSQL not reachable: {e}")
     finally:
         await engine.dispose()
