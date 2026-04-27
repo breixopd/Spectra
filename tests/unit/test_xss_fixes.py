@@ -6,7 +6,7 @@ from pathlib import Path
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
 DASHBOARD = TEMPLATES_DIR / "dashboard.html"
 BASE = TEMPLATES_DIR / "base.html"
-DASHBOARD_JS = Path(__file__).resolve().parents[2] / "static" / "js" / "dashboard.js"
+DASHBOARD_JS = Path(__file__).resolve().parents[2] / "static" / "js" / "pages" / "dashboard" / "init.js"
 
 # Templates that previously had duplicate escapeHtml
 PREVIOUSLY_DUPLICATED = [
