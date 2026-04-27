@@ -538,7 +538,7 @@ services:
 
   # TensorZero gateway
   tensorzero:
-    image: ${TENSORZERO_IMAGE:-tensorzero/gateway:latest}
+    image: ${TENSORZERO_IMAGE:-tensorzero/gateway:v0.14.0}
     entrypoint: ["/bin/sh", "/app/init.sh"]
     deploy:
       replicas: 1

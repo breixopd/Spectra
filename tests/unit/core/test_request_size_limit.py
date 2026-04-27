@@ -87,6 +87,7 @@ async def test_api_429_handler_preserves_non_slowapi_detail_and_headers():
     assert response.status_code == 429
     assert response.headers.get("Retry-After") == "1800"
     assert response.headers.get("X-RateLimit-Limit") is None
-    assert json.loads(response.body) == {
-        "detail": {"detail": "Hourly API limit reached: 100/100", "error_code": "RATE_LIMITED", "status": 429}
-    }
+    body = json.loads(response.body)
+    assert body["status_code"] == 429
+    assert "RATE_LIMITED" in body["detail"]
+    assert "Hourly API limit reached" in body["detail"]

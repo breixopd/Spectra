@@ -55,7 +55,7 @@ class TestDocsAdminVisibility:
                 return_value=MagicMock(role="admin", is_superuser=True),
             ),
             patch("app.api.routers.ui._is_admin_user", return_value=True),
-            patch("app.api.routers.ui._check_user_feature", return_value=True),
+            patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="admin", is_superuser=True)),
             patch("app.api.routers.ui.templates") as mock_tmpl,
             patch("app.main.app", _mock_app_with_routes(mock_routes)),
         ):
@@ -83,7 +83,7 @@ class TestDocsAdminVisibility:
                 return_value=MagicMock(role="user", is_superuser=False),
             ),
             patch("app.api.routers.ui._is_admin_user", return_value=False),
-            patch("app.api.routers.ui._check_user_feature", return_value=True),
+            patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="user", is_superuser=False)),
             patch("app.api.routers.ui.templates") as mock_tmpl,
             patch("app.main.app", _mock_app_with_routes(mock_routes)),
         ):
@@ -112,7 +112,7 @@ class TestDocsAdminVisibility:
                 return_value=MagicMock(role="staff", is_superuser=False),
             ),
             patch("app.api.routers.ui._is_admin_user", return_value=False),
-            patch("app.api.routers.ui._check_user_feature", return_value=True),
+            patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="staff", is_superuser=False)),
             patch("app.api.routers.ui.templates") as mock_tmpl,
             patch("app.main.app", _mock_app_with_routes(mock_routes)),
         ):
@@ -143,7 +143,7 @@ class TestDocsAdminVisibility:
                 return_value=MagicMock(role="admin", is_superuser=True),
             ),
             patch("app.api.routers.ui._is_admin_user", return_value=True),
-            patch("app.api.routers.ui._check_user_feature", return_value=True),
+            patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="admin", is_superuser=True)),
             patch("app.api.routers.ui.templates") as mock_tmpl,
             patch("app.main.app", _mock_app_with_routes(mock_routes)),
         ):

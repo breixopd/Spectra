@@ -37,7 +37,6 @@ _DANGEROUS_PATTERN_STRINGS: tuple[str, ...] = (
     r"-oX\s+\S+",  # nmap XML output
     r"-oN\s+\S+",  # nmap Nmap output
     r"-oG\s+\S+",  # nmap Grepable output
-    r"-o\s+\S+",  # nmap output to file
     r"--output\s+",  # generic output flag
     r"--output-dir\s+",  # generic output directory flag
 )

@@ -413,7 +413,7 @@ async def list_users(
     page: int = Query(1, ge=1),
     per_page: int = Query(API_DEFAULT_PAGE_SIZE, ge=1, le=API_MAX_PAGE_SIZE),
     search: str | None = Query(None, max_length=100),
-    role: str | None = Query(None, pattern="^(admin|operator|viewer)$"),
+    role: str | None = Query(None, pattern="^(admin|staff|user)$"),
     is_active: bool | None = Query(None),
     _user: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
