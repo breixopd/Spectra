@@ -56,6 +56,9 @@ class PostgresJobQueue:
                 raw_conn = await conn.get_raw_connection()
                 # Use driver_connection for asyncpg
                 if hasattr(raw_conn, "driver_connection"):
+                    # The queue_name is validated in __init__ against
+                    # ^[a-z][a-z0-9_]{0,62}$ which prevents SQL injection.
+                    assert re.match(r"^[a-z][a-z0-9_]{0,62}$", self.queue_name), "Invalid queue_name"
                     await raw_conn.driver_connection.execute(f"NOTIFY spectra_jobs, '{self.queue_name}'")
             except (OSError, RuntimeError) as e:
                 logger.warning("NOTIFY failed: %s", e)
