@@ -157,6 +157,7 @@ async def test_internal_shell_listener_start():
 @pytest.mark.asyncio
 async def test_internal_shell_listener_start_failure():
     from fastapi import HTTPException
+
     from app.worker import __main__ as worker_service
 
     with patch("app.worker.__main__.shell_manager") as mock_shell:
@@ -190,6 +191,7 @@ async def test_internal_shell_listener_stop():
 @pytest.mark.asyncio
 async def test_internal_shell_listener_stop_not_found():
     from fastapi import HTTPException
+
     from app.worker import __main__ as worker_service
 
     with patch("app.worker.__main__.shell_manager") as mock_shell:

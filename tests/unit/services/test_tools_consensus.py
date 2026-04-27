@@ -1,8 +1,8 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.services.tools.consensus import perform_consensus_check
-from app.services.ai.agents.base import ActionRisk
 
 
 @pytest.mark.asyncio

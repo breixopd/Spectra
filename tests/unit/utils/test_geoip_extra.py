@@ -1,9 +1,9 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
+import pytest
 
-from app.utils.geoip import resolve_ip, resolve_batch
+from app.utils.geoip import resolve_batch, resolve_ip
 
 
 @pytest.mark.asyncio

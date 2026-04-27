@@ -1,16 +1,15 @@
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from app.services.tools.output import (
-    normalize_tool_name,
-    validate_tool_name,
-    prepare_output_directory,
-    cleanup_output_directory,
     cleanup_mission_workspace,
+    cleanup_output_directory,
     create_error_result,
     log_success,
+    normalize_tool_name,
+    prepare_output_directory,
     update_attack_surface_from_finding,
+    validate_tool_name,
 )
 
 

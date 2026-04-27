@@ -1,7 +1,7 @@
 import json
+from unittest.mock import patch
+
 import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 from app.services.tools.sandbox.golden_image import GoldenImageBuilder
 

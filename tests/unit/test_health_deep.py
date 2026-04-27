@@ -219,7 +219,7 @@ def test_probe_http_health_wrapper():
 
 
 def test_probe_http_health_wrapper_unhealthy():
-    with patch("app.api.routers.health.probe_http_health", new=AsyncMock(return_value={"status": "degraded"})) as mock_probe:
+    with patch("app.api.routers.health.probe_http_health", new=AsyncMock(return_value={"status": "degraded"})):
         from app.api.routers.health import _probe_http_health
 
         result = asyncio.run(_probe_http_health("http://test", path="/health"))

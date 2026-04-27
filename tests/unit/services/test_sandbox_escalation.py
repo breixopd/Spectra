@@ -1,7 +1,8 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.tools.sandbox.escalation import next_tier, attempt_oom_escalation
+import pytest
+
+from app.services.tools.sandbox.escalation import attempt_oom_escalation, next_tier
 
 
 def test_next_tier():
