@@ -30,7 +30,7 @@ x-security-stateful: &security-stateful
   security_opt: ["no-new-privileges:true"]
 
 x-common-env: &common-env
-  DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_test}@db:5432/${POSTGRES_DB:-spectra_test}}
+  DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_test}@db:5432/${POSTGRES_DB:-spectra}}
   S3_ENDPOINT_URL: http://garage:3900
   S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
   S3_SECRET_KEY: ${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
