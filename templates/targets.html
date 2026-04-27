@@ -211,8 +211,10 @@
 <script src="/static/vendor/js/xterm.js"></script>
 <script src="/static/vendor/js/xterm-addon-fit.js"></script>
 <script src="/static/js/reconnecting-ws.js"></script>
-{% endblock %}
-
-{% block page_module %}
-<script type="module" src="/static/js/targets.js"></script>
+<script src="/static/js/shared-utils.js"></script>
+<script src="/static/js/pages/targets/core.js"></script>
+<script src="/static/js/pages/targets/grid.js"></script>
+<script src="/static/js/pages/targets/import.js"></script>
+<script src="/static/js/pages/targets/shell.js"></script>
+<script src="/static/js/pages/targets/attack-surface.js"></script>
 {% endblock %}

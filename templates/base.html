@@ -24,6 +24,7 @@
     {% block extra_css %}{% endblock %}
     <!-- Centralized API client (must load before confirm bootstrap) -->
     <script src="/static/js/api.js?v={{ version }}"></script>
+    <script src="/static/js/shared-utils.js?v={{ version }}"></script>
     <script src="/static/js/confirm.js?v={{ version }}" nonce="{{ request.state.csp_nonce }}"></script>
 </head>
 <body class="bg-[#0a0e1a] text-slate-300 font-sans antialiased overflow-y-auto md:overflow-hidden h-screen selection:bg-violet-500/30 selection:text-violet-200">

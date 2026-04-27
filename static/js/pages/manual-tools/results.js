@@ -118,7 +118,7 @@ function previewEvidence(idx) {
     const content = isImage
         ? `<img src="${safeUrl}" class="max-w-full max-h-[70vh] mx-auto block p-4">`
         : `<div class="p-8 text-center"><i data-lucide="file" class="w-10 h-10 inline-block text-slate-500 mb-3"></i><p class="text-slate-300">${escapeHtml(e.name)}</p><a href="${safeDownload}" download="${escapeHtml(e.name)}" class="mt-3 inline-block px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm transition-colors">Download</a></div>`;
-    showModal(e.name, content, 'max-w-4xl');
+    showSpectraModal(e.name, content, 'max-w-4xl');
 }
 
 function removeEvidence(idx) {
