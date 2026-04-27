@@ -36,6 +36,11 @@ MODEL_PRICING: dict[str, tuple[float, float]] = {
     "ollama": (0.0, 0.0),
 }
 
+# Pre-sorted by prefix length descending so "gpt-4o-mini" matches before "gpt-4o"
+_SORTED_MODEL_PRICING: list[tuple[str, tuple[float, float]]] = sorted(
+    MODEL_PRICING.items(), key=lambda kv: len(kv[0]), reverse=True
+)
+
 
 @dataclass
 class AgentUsage:
@@ -50,6 +55,7 @@ class AgentUsage:
     estimated_cost_usd: float = 0.0
     errors: int = 0
     avg_latency_ms: float = 0.0
+    _latency_sum: float = 0.0
     _latencies: list[float] = field(default_factory=list, repr=False)
 
 
@@ -90,17 +96,15 @@ class CostTracker:
 
         if latency_ms > 0:
             entry._latencies.append(latency_ms)
-            entry.avg_latency_ms = sum(entry._latencies) / len(entry._latencies)
+            entry._latency_sum += latency_ms
+            entry.avg_latency_ms = entry._latency_sum / len(entry._latencies)
 
         entry.estimated_cost_usd += self._estimate_cost(model, input_tokens, output_tokens)
 
     def _estimate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         """Estimate cost based on model pricing."""
         model_lower = model.lower()
-        # Sort by prefix length descending so "gpt-4o-mini" matches before "gpt-4o"
-        for prefix, (input_price, output_price) in sorted(
-            MODEL_PRICING.items(), key=lambda kv: len(kv[0]), reverse=True
-        ):
+        for prefix, (input_price, output_price) in _SORTED_MODEL_PRICING:
             if prefix in model_lower:
                 return (input_tokens / 1_000_000) * input_price + (output_tokens / 1_000_000) * output_price
         return 0.0  # Unknown model, assume free
