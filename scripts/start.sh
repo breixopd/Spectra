@@ -1,6 +1,31 @@
 #!/bin/bash
 set -euo pipefail
 
+# ── Auto-generate secrets on first boot ──
+# If core secrets are missing, generate them and persist to the data volume.
+# This allows first-time setup without manual .env configuration.
+SECRETS_DIR="/app/data/secrets"
+mkdir -p "$SECRETS_DIR"
+
+_generate_secret() {
+    local name="$1"
+    local length="${2:-64}"
+    local file="$SECRETS_DIR/$name"
+    if [[ -z "${!name:-}" ]] && [[ ! -f "$file" ]] && [[ ! -f "/run/secrets/${name,,}" ]]; then
+        echo "Generating $name..."
+        openssl rand -hex "$((length / 2))" > "$file"
+        chmod 600 "$file"
+    fi
+    if [[ -f "$file" ]] && [[ -z "${!name:-}" ]]; then
+        export "$name"="$(< "$file")"
+    fi
+}
+
+_generate_secret JWT_SECRET_KEY 64
+_generate_secret SECRET_KEY 64
+_generate_secret SERVICE_AUTH_SECRET 64
+_generate_secret ENCRYPTION_KEY 64
+
 # ── Resolve Docker secrets (Swarm mode) ──
 # Docker secrets are mounted as files at /run/secrets/<name>.
 # If a *_FILE env var is set, read the file content into the base env var.
@@ -10,6 +35,11 @@ for secret_var in JWT_SECRET_KEY SECRET_KEY SERVICE_AUTH_SECRET ENCRYPTION_KEY \
     file_var="${secret_var}_FILE"
     if [[ -n "${!file_var:-}" ]] && [[ -f "${!file_var}" ]]; then
         export "$secret_var"="$(< "${!file_var}")"
+    fi
+    # Also check Swarm secret path directly
+    swarm_secret="/run/secrets/${secret_var,,}"
+    if [[ -f "$swarm_secret" ]] && [[ -z "${!secret_var:-}" ]]; then
+        export "$secret_var"="$(< "$swarm_secret")"
     fi
 done
 
