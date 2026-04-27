@@ -534,7 +534,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.playwright
     entrypoint: ["python3", "-m", "pytest"]
-    command: ["tests/e2e/ui/", "-v", "--tb=short", "-x", "--no-cov", "--confcutdir=tests/e2e/ui", "--override-ini=addopts="]
+    command: ["tests/e2e/ui/", "-v", "--tb=short", "-x", "--confcutdir=tests/e2e/ui", "--override-ini=addopts="]
     env_file:
       - ../.env.test
     environment:
