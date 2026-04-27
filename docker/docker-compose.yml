@@ -302,7 +302,7 @@ services:
 
   # TensorZero gateway
   tensorzero:
-    image: ${TENSORZERO_IMAGE:-tensorzero/gateway:latest}
+    image: ${TENSORZERO_IMAGE:-tensorzero/gateway:v0.14.0}
     container_name: spectra-tensorzero
     labels:
       spectra.managed: "true"

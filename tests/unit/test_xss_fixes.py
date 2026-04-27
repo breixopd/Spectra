@@ -3,10 +3,10 @@
 import re
 from pathlib import Path
 
-TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "app" / "templates"
+TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
 DASHBOARD = TEMPLATES_DIR / "dashboard.html"
 BASE = TEMPLATES_DIR / "base.html"
-DASHBOARD_JS = Path(__file__).resolve().parents[2] / "app" / "static" / "js" / "dashboard.js"
+DASHBOARD_JS = Path(__file__).resolve().parents[2] / "static" / "js" / "dashboard.js"
 
 # Templates that previously had duplicate escapeHtml
 PREVIOUSLY_DUPLICATED = [
@@ -34,7 +34,7 @@ class TestEscapeHtmlConsolidation:
                 assert len(matches) == 0, f"{tmpl.name} still has duplicate escapeHtml ({len(matches)} found)"
 
     def test_api_js_no_escape_html(self):
-        api_js = Path(__file__).resolve().parents[2] / "app" / "static" / "js" / "api.js"
+        api_js = Path(__file__).resolve().parents[2] / "static" / "js" / "api.js"
         content = api_js.read_text()
         assert not re.search(r"function\s+escapeHtml\s*\(", content), (
             "api.js must not define escapeHtml (consolidated in base.html)"

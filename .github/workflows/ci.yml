@@ -227,14 +227,14 @@ jobs:
           python-version: "3.11"
       - name: Verify app/version.py exists and has __version__
         run: |
-          python3 -c "exec(open('app/version.py').read()); print('Version:', __version__)"
+          python3 -c "exec(open('app/_meta/version.py').read()); print('Version:', __version__)"
 
   performance-smoke:
     name: Performance Smoke Tests
     runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'push'
-    continue-on-error: true
+    continue-on-error: false
     env:
       ENCRYPTION_KEY: test-encryption-key
     steps:

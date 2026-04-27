@@ -100,18 +100,17 @@ class TestApiDocsRoute:
                 return_value=MagicMock(role="admin", is_superuser=True),
             ),
             patch("app.api.routers.ui._is_admin_user", return_value=True),
+            patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="admin", is_superuser=True)),
+            patch("app.api.routers.ui.templates") as mock_templates,
+            patch("app.main.app", mock_app),
         ):
-            with patch("app.api.routers.ui._check_user_feature", return_value=True):
-                with patch("app.api.routers.ui.templates") as mock_templates:
-                    mock_templates.TemplateResponse.return_value = MagicMock(status_code=200)
+            mock_templates.TemplateResponse.return_value = MagicMock(status_code=200)
+            await api_docs_page(mock_request)
 
-                    with patch("app.main.app", mock_app):
-                        await api_docs_page(mock_request)
-
-                    _, context = _template_call_context(mock_templates)
-                    groups = context["route_groups"]
-                    assert "v1" in groups
-                    assert "admin" in groups
+            _, context = _template_call_context(mock_templates)
+            groups = context["route_groups"]
+            assert "v1" in groups
+            assert "admin" in groups
 
     @pytest.mark.asyncio
     async def test_docs_page_hides_admin_routes_for_non_admin(self):
@@ -147,18 +146,17 @@ class TestApiDocsRoute:
                 return_value=MagicMock(role="user", is_superuser=False),
             ),
             patch("app.api.routers.ui._is_admin_user", return_value=False),
+            patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="user", is_superuser=False)),
+            patch("app.api.routers.ui.templates") as mock_templates,
+            patch("app.main.app", mock_app),
         ):
-            with patch("app.api.routers.ui._check_user_feature", return_value=True):
-                with patch("app.api.routers.ui.templates") as mock_templates:
-                    mock_templates.TemplateResponse.return_value = MagicMock(status_code=200)
+            mock_templates.TemplateResponse.return_value = MagicMock(status_code=200)
+            await api_docs_page(mock_request)
 
-                    with patch("app.main.app", mock_app):
-                        await api_docs_page(mock_request)
-
-                    _, context = _template_call_context(mock_templates)
-                    groups = context["route_groups"]
-                    assert "v1" in groups
-                    assert "admin" not in groups
+            _, context = _template_call_context(mock_templates)
+            groups = context["route_groups"]
+            assert "v1" in groups
+            assert "admin" not in groups
 
 
 class TestHelpRoute:

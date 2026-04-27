@@ -300,6 +300,8 @@ def _make_error_handler(status_code: int, default_detail: str, template: str, lo
         detail = getattr(exc, "detail", None) or default_detail
         if status_code >= 500:
             detail = default_detail
+        if not isinstance(detail, str):
+            detail = str(detail)
 
         if status_code == 429 and request.url.path.startswith("/api/"):
             if isinstance(exc, RateLimitExceeded):

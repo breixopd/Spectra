@@ -30,12 +30,20 @@ class TestPublicStatusApi:
 
     @pytest.mark.asyncio
     async def test_public_status_returns_operational_when_db_healthy(self):
+        from unittest.mock import patch
+
         from app.api.routers.system.health import get_public_system_status
 
-        mock_session = AsyncMock()
-        mock_session.execute = AsyncMock()
-
-        result = await get_public_system_status(session=mock_session)
+        with patch("app.api.routers.system.health.collect_platform_health", new_callable=AsyncMock) as mock_health:
+            mock_health.return_value = {
+                "status": "healthy",
+                "version": "1.0.0",
+                "timestamp": "2024-01-01T00:00:00Z",
+                "components": {"database": {"status": "healthy"}},
+                "services": {"api": "healthy"},
+            }
+            mock_session = AsyncMock()
+            result = await get_public_system_status(session=mock_session)
 
         assert result["status"] == "operational"
         assert "database" in result
