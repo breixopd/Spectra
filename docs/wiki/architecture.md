@@ -240,15 +240,21 @@ spectra/
 │   ├── api/                # HTTP layer — FastAPI routers, schemas
 │   │   ├── routers/        # One module per domain
 │   │   └── schemas/        # Request/response Pydantic models
-│   ├── core/               # Infrastructure — config, DB, security, cache, events, redis
+│   ├── auth/               # Security — JWT, RBAC, encryption, rate limiting
+│   ├── bootstrap/          # App bootstrap — lifespan, middleware, templates, logging
+│   ├── core/               # Foundational — config, constants, database (stable)
+│   ├── di/                 # Dependency injection — container, protocols, service auth
+│   ├── infrastructure/     # Ops infrastructure — cache, queue, events, tasks, metrics
+│   ├── mission/core/       # Mission execution — state machine, enums, websocket, bridge
 │   ├── models/             # Data layer — SQLAlchemy ORM models
-│   ├── repositories/        # Data access — Repository pattern CRUD
+│   ├── repositories/       # Data access — Repository pattern CRUD
 │   ├── services/
 │   │   ├── ai/             # AI service entry point + LLM clients, agents, RAG
 │   │   ├── scheduler/      # Scheduler entry point + background task loops
 │   │   ├── mission/        # Mission lifecycle, execution, credentials
 │   │   ├── tools/          # Tool registry, adapters, sandbox pool
 │   │   └── ...             # billing, email, gateway, scaling, etc.
+│   ├── telemetry/          # Observability — telemetry, tracing, middleware
 │   ├── utils/              # Shared utilities
 │   └── worker/             # Worker entry point + job queue consumer
 ├── static/                 # CSS, JS, vendor libs (project root)
