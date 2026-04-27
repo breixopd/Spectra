@@ -9,7 +9,6 @@ x-test-env: &test-env
   SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:-test-service-secret-key}
   TENSORZERO_GATEWAY_URL: http://tensorzero:3000
   TOOL_QUEUE_NAME: tools
-  PLUGIN_SAFE_MODE: "false"
   COVERAGE_FILE: /tmp/spectra-coverage/.coverage
 
 services:
@@ -176,7 +175,6 @@ services:
       - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
       - TEST_TARGET_IP=metasploitable
       - TEST_TARGET_URL=http://metasploitable
-      - PLUGIN_SAFE_MODE=false
       - TOOL_QUEUE_NAME=tools
       - QUEUE_STARTUP_TOOL_INSTALL=false
       - RATE_LIMIT_STORAGE=redis://:spectra_test_redis@redis:6379/0
@@ -232,7 +230,6 @@ services:
       - SKIP_MIGRATIONS=true
       - TEST_TARGET_IP=metasploitable
       - TEST_TARGET_URL=http://metasploitable
-      - PLUGIN_SAFE_MODE=false
       - TOOL_QUEUE_NAME=tools
       - QUEUE_STARTUP_TOOL_INSTALL=false
       - RATE_LIMIT_STORAGE=redis://:spectra_test_redis@redis:6379/0
@@ -369,7 +366,6 @@ services:
       - METASPLOITABLE_AVAILABLE=true
       - DVWA_URL=http://172.21.0.51
       - WEB_TARGET_URL=http://testphp.vulnweb.com
-      - PLUGIN_SAFE_MODE=false
       - SAFE_MODE=true
       - PERMISSION_BOUNDARY=172.21.0.0/24
       - APP_BASE_URL=http://caddy
@@ -429,7 +425,6 @@ services:
       - LOAD_TEST_APP_REPLICA_URL=http://app-replica:5000
       - LOAD_TEST_CADDY_URL=http://caddy
       - LOAD_TEST_RESET_RATE_LIMIT_STATE=1
-      - PLUGIN_SAFE_MODE=false
     volumes:
       - ../.env.test:/app/.env.test:ro
       - ../app:/app/app:ro
@@ -482,7 +477,6 @@ services:
       - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
       - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
-      - PLUGIN_SAFE_MODE=false
     volumes:
       - ../.env.test:/app/.env.test:ro
       - ../app:/app/app:ro
@@ -516,7 +510,6 @@ services:
       - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
       - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
-      - PLUGIN_SAFE_MODE=false
     volumes:
       - ../.env.test:/app/.env.test:ro
       - ../app:/app/app:ro
