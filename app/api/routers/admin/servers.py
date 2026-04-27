@@ -449,7 +449,7 @@ async def list_service_nodes(
 
     from app.models.server_node import ServerNode
 
-    nodes = (await session.execute(sa_select(ServerNode).order_by(ServerNode.created_at.desc()))).scalars().all()
+    nodes = (await session.execute(sa_select(ServerNode).order_by(ServerNode.created_at.desc()).limit(1000))).scalars().all()
     return {"nodes": [n.to_dict() for n in nodes]}
 
 

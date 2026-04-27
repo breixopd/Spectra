@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import shutil
 import tempfile
@@ -48,12 +49,12 @@ async def _build_script_command(
 
     if normalized_language in ("python", "python3"):
         script_path = work_dir / "exploit.py"
-        script_path.write_text(content)
+        await asyncio.to_thread(script_path.write_text, content)
         return ["python3", str(script_path), str(target)], None
 
     if normalized_language == "go":
         script_path = work_dir / "exploit.go"
-        script_path.write_text(content)
+        await asyncio.to_thread(script_path.write_text, content)
         compile_cmd = ["go", "build", "-o", f"{work_dir}/exploit", str(script_path)]
         returncode, stdout, stderr = await _run_command(compile_cmd, GO_COMPILE_TIMEOUT, str(work_dir))
         if returncode != 0:
@@ -66,7 +67,7 @@ async def _build_script_command(
 
     if normalized_language in ("bash", "sh"):
         script_path = work_dir / "exploit.sh"
-        script_path.write_text(content)
+        await asyncio.to_thread(script_path.write_text, content)
         await _run_command(["chmod", "+x", str(script_path)], 5)
         return [str(script_path), str(target)], None
 
@@ -143,6 +144,6 @@ async def execute_script_job(
         return _error_job_result(str(e))
     finally:
         try:
-            shutil.rmtree(work_dir)
+            await asyncio.to_thread(shutil.rmtree, work_dir)
         except OSError as e:
             logger.debug("Cleanup failed: %s", e)

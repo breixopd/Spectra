@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import logging
 import shutil
@@ -155,7 +156,7 @@ async def execute_tool_job(
         return error_result
 
     output_dir = _resolve_output_dir(tool_id, output_dir)
-    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    await asyncio.to_thread(Path(output_dir).mkdir, parents=True, exist_ok=True)
 
     try:
         config = tool.config
@@ -226,7 +227,7 @@ async def execute_tool_job(
         # Clean up temp output directory to prevent disk exhaustion
         output_dir_path = Path(output_dir)
         if output_dir_path.exists() and str(output_dir_path).startswith(tempfile.gettempdir()):
-            shutil.rmtree(output_dir_path, ignore_errors=True)
+            await asyncio.to_thread(shutil.rmtree, output_dir_path, ignore_errors=True)
 
 
 @with_retry()
