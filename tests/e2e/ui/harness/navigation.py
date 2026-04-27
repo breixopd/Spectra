@@ -10,4 +10,4 @@ def goto_authenticated_app_path(page: Page, app_url: str, path: str) -> None:
     if not path.startswith("/"):
         path = f"/{path}"
     page.goto(f"{app_url}{path}", wait_until="domcontentloaded")
-    expect(page.locator("#sidebar")).to_be_visible(timeout=20_000)
+    expect(page.get_by_test_id("sidebar")).to_be_visible(timeout=20_000)

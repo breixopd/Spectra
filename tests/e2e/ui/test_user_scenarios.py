@@ -44,7 +44,7 @@ def test_plan_displayed_on_profile(authenticated_page: Page, app_url: str):
         fresh = _refresh_auth_cookies(app_url)
         page.context.add_cookies(fresh)
         page.goto(f"{app_url}/profile", wait_until="domcontentloaded")
-    expect(page.locator("#sidebar")).to_be_visible(timeout=15_000)
+    expect(page.get_by_test_id("sidebar")).to_be_visible(timeout=15_000)
 
     # Use JS to switch to the Plan tab (more reliable than clicking)
     page.evaluate("""() => {
@@ -82,7 +82,7 @@ def test_admin_create_user_modal(fresh_authenticated_page: Page, app_url: str):
     expect(section).to_be_visible(timeout=10_000)
 
     # Wait for the users table to be populated (async loadUsers)
-    page.wait_for_timeout(1_000)
+    expect(page.locator("#users-tbody tr").first).to_be_visible(timeout=10_000)
 
     # Open the modal — prefer JS invocation for reliability
     page.evaluate("openCreateUserModal()")
@@ -143,7 +143,7 @@ def test_mission_launch_form(authenticated_page: Page, app_url: str):
     goto_authenticated_app_path(page, app_url, "/dashboard")
 
     # Mission target input
-    target_input = page.locator("#mission-target")
+    target_input = page.get_by_test_id("mission-target")
     expect(target_input).to_be_visible(timeout=15_000)
 
     # Mission directive input
@@ -151,7 +151,7 @@ def test_mission_launch_form(authenticated_page: Page, app_url: str):
     expect(directive_input).to_be_visible(timeout=10_000)
 
     # Launch button
-    launch_btn = page.locator("#launch-btn")
+    launch_btn = page.get_by_test_id("launch-btn")
     expect(launch_btn).to_be_visible(timeout=10_000)
 
     # Fill in values (do NOT click launch to avoid starting a real mission)
@@ -187,7 +187,6 @@ def test_settings_all_sections(authenticated_page: Page, app_url: str):
             continue
         expect(tab_btn).to_be_visible(timeout=10_000)
         tab_btn.click()
-        page.wait_for_timeout(500)
         # After clicking, the tab should indicate it is active
         # (gets bg-white/5 class or aria-current)
 
@@ -204,11 +203,11 @@ def test_admin_link_visible_for_admin(authenticated_page: Page, app_url: str):
     goto_authenticated_app_path(page, app_url, "/dashboard")
 
     # The admin nav link starts as hidden and is shown by JS for admin users
-    admin_link = page.locator("#admin-nav-link")
+    admin_link = page.get_by_test_id("admin-nav-link")
     expect(admin_link).to_be_attached(timeout=15_000)
 
     # Wait for sidebar JS to initialise
-    expect(page.locator("#sidebar")).to_be_visible(timeout=10_000)
+    expect(page.get_by_test_id("sidebar")).to_be_visible(timeout=10_000)
 
     # Admin link should now be visible (JS removes the `hidden` class for admins)
     # Use Playwright auto-wait to handle async /api/v1/auth/me response timing
@@ -247,7 +246,7 @@ def test_sidebar_navigation_all_links(authenticated_page: Page, app_url: str):
             assert not code_text.startswith("5"), f"Server error {code_text} on {path}"
 
         # Sidebar should remain visible on every page
-        expect(page.locator("#sidebar")).to_be_visible(timeout=10_000)
+        expect(page.get_by_test_id("sidebar")).to_be_visible(timeout=10_000)
 
 
 # ---------------------------------------------------------------------------
@@ -280,11 +279,10 @@ def test_profile_all_tabs(authenticated_page: Page, app_url: str):
                 document.querySelectorAll('.profile-section').forEach(s => s.classList.remove('active'));
                 document.getElementById('section-' + key)?.classList.add('active');
                 document.querySelectorAll('nav a[data-section]').forEach(a => a.classList.remove('active'));
-                document.querySelector('nav a[data-section="' + key + '"]')?.classList.add('active');
+                document.querySelector('nav a[data-section="' + key + '"]').classList.add('active');
             }""",
             section_key,
         )
-        page.wait_for_timeout(300)
 
         section = page.locator(f"#{section_id}")
         expect(section).to_be_visible(timeout=5_000)
@@ -301,7 +299,7 @@ def test_dashboard_getting_started(authenticated_page: Page, app_url: str):
     page = authenticated_page
     goto_authenticated_app_path(page, app_url, "/dashboard")
 
-    getting_started = page.locator("#getting-started")
+    getting_started = page.get_by_test_id("getting-started")
     # Getting started may or may not be visible (hidden after first use),
     # but if visible it should contain a link to settings
     if getting_started.is_visible():
@@ -412,7 +410,7 @@ def test_regular_user_no_admin_access(page: Page, app_url: str):
 
     # If we reached dashboard, check admin link is NOT visible
     if "/dashboard" in page.url:
-        admin_link = page.locator("#admin-nav-link")
+        admin_link = page.get_by_test_id("admin-nav-link")
         if admin_link.count() > 0:
             # Admin link should be hidden for regular users
             is_hidden = "hidden" in (admin_link.get_attribute("class") or "")

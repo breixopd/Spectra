@@ -91,7 +91,7 @@ addopts = [
     "--strict-markers",
     "--cov=app",
     "--cov-report=term-missing",
-    "--cov-fail-under=67.4",
+    "--cov-fail-under=75",
 ]
 filterwarnings = []
 pythonpath = ["."]

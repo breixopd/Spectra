@@ -172,7 +172,7 @@ def test_operator_cannot_see_admin_link(page: Page, app_url: str, authenticated_
     _login_as(page, app_url, username)
 
     # Admin nav link should be hidden for regular users
-    admin_link = page.locator("#admin-nav-link")
+    admin_link = page.get_by_test_id("admin-nav-link")
     if admin_link.count() > 0:
         is_hidden = "hidden" in (admin_link.get_attribute("class") or "")
         assert not admin_link.is_visible() or is_hidden, (
@@ -229,7 +229,7 @@ def test_viewer_cannot_see_admin_link(page: Page, app_url: str, authenticated_co
 
     _login_as(page, app_url, username)
 
-    admin_link = page.locator("#admin-nav-link")
+    admin_link = page.get_by_test_id("admin-nav-link")
     if admin_link.count() > 0:
         is_hidden = "hidden" in (admin_link.get_attribute("class") or "")
         assert not admin_link.is_visible() or is_hidden, (
@@ -257,7 +257,7 @@ def test_viewer_cannot_launch_mission(page: Page, app_url: str, authenticated_co
 
     # Launch button may be visible for all roles (enforcement is server-side).
     # Verify the staff user does not have admin privileges instead.
-    admin_link = page.locator("#admin-nav-link")
+    admin_link = page.get_by_test_id("admin-nav-link")
     if admin_link.count() > 0:
         is_hidden = "hidden" in (admin_link.get_attribute("class") or "")
         assert not admin_link.is_visible() or is_hidden, (
@@ -278,11 +278,11 @@ def test_admin_can_see_admin_link(authenticated_page: Page, app_url: str):
     page = authenticated_page
     goto_authenticated_app_path(page, app_url, "/dashboard")
 
-    admin_link = page.locator("#admin-nav-link")
+    admin_link = page.get_by_test_id("admin-nav-link")
     expect(admin_link).to_be_attached(timeout=15_000)
 
     # Wait for sidebar JS to initialize and un-hide the link
-    expect(page.locator("#sidebar")).to_be_visible(timeout=10_000)
+    expect(page.get_by_test_id("sidebar")).to_be_visible(timeout=10_000)
 
     # Wait for JS to remove the hidden class (async /api/v1/auth/me call)
     expect(admin_link).to_be_visible(timeout=15_000)
@@ -332,7 +332,7 @@ def test_registered_user_gets_non_admin_role(page: Page, app_url: str):
     )
 
     # Wait for auto-redirect to /login (the JS setTimeout is 1.5s)
-    page.wait_for_timeout(2_500)
+    page.wait_for_url("**/login", timeout=5_000)
 
     # Log in with the new user
     page.goto(f"{app_url}/login", wait_until="domcontentloaded")
@@ -343,7 +343,7 @@ def test_registered_user_gets_non_admin_role(page: Page, app_url: str):
 
     if "/dashboard" in page.url:
         # Admin link should NOT be visible for a self-registered user
-        admin_link = page.locator("#admin-nav-link")
+        admin_link = page.get_by_test_id("admin-nav-link")
         if admin_link.count() > 0:
             is_hidden = "hidden" in (admin_link.get_attribute("class") or "")
             assert not admin_link.is_visible() or is_hidden, (

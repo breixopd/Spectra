@@ -121,7 +121,7 @@ def test_manual_tools_page(logged_in_page: Page, app_url: str, ensure_manual_mod
     page = logged_in_page
 
     response = page.goto(f"{app_url}/manual", wait_until="domcontentloaded")
-    expect(page.locator("#sidebar")).to_be_visible(timeout=20_000)
+    expect(page.get_by_test_id("sidebar")).to_be_visible(timeout=20_000)
 
     assert "/dashboard" not in page.url, "Redirected to /dashboard — manual_mode subscription setup failed"
 
@@ -239,7 +239,7 @@ def test_dashboard_mission_launch_form(logged_in_page: Page, app_url: str):
     goto_authenticated_app_path(page, app_url, "/dashboard")
 
     # Mission target input
-    target_input = page.locator("#mission-target")
+    target_input = page.get_by_test_id("mission-target")
     expect(target_input).to_be_visible(timeout=10_000)
 
     # Launch/start button

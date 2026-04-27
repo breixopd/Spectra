@@ -27,7 +27,7 @@ def test_shield_icon_on_login(login_page: Page):
 
 def test_shield_icon_in_sidebar(authenticated_page: Page):
     """Sidebar should use shield icon for branding."""
-    sidebar = authenticated_page.locator("#sidebar")
+    sidebar = authenticated_page.get_by_test_id("sidebar")
     if sidebar.is_visible():
         shield = sidebar.locator(SIDEBAR_BRAND_SHIELD_SELECTOR)
         expect(shield.first).to_be_visible()

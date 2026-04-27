@@ -10,6 +10,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.api.dependencies import check_resource_owner, check_target_limit, get_current_active_user, validate_uuid_param
 from app.api.schemas import FindingResponse, PaginatedResponse, TargetCreate, TargetResponse, TargetUpdate
@@ -147,6 +148,8 @@ async def list_targets(
 
     Pagination: max 100 items per page.
     """
+    from app.models.target import Target
+
     repo = TargetRepository(db)
     filters = _target_scope_filters(_current_user)
 
@@ -154,10 +157,11 @@ async def list_targets(
     skip = (page - 1) * per_page
     limit = min(per_page, MAX_PAGE_SIZE)
 
+    options = [selectinload(Target.findings), selectinload(Target.exploits)]
     if filters:
-        targets = await repo.find_many_by(skip=skip, limit=limit, **filters)
+        targets = await repo.find_many_by(skip=skip, limit=limit, options=options, **filters)
     else:
-        targets = await repo.get_all(skip=skip, limit=limit)
+        targets = await repo.get_all(skip=skip, limit=limit, options=options)
 
     items = [_target_to_response(target) for target in targets]
     return PaginatedResponse(items=items, total=total, page=page, per_page=per_page)

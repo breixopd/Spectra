@@ -55,7 +55,7 @@ def test_manual_mode_redirects_without_entitlement(page: Page, app_url: str) -> 
     page.goto(f"{app_url}/manual", wait_until="domcontentloaded")
 
     page.wait_for_url("**/dashboard", timeout=15_000)
-    expect(page.locator("#sidebar")).to_be_visible(timeout=10_000)
+    expect(page.get_by_test_id("sidebar")).to_be_visible(timeout=10_000)
 
 
 @pytest.mark.timeout(60)
