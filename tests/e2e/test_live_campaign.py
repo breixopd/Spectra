@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import subprocess
 
 import pytest
 import pytest_asyncio
@@ -20,6 +21,8 @@ pytestmark = [
     pytest.mark.slow,
 ]
 
+
+
 # Targets from docker-compose.test.yml
 TARGET_SERVER = os.getenv("TARGET_SERVER", "172.21.0.50")  # Metasploitable
 TARGET_WEB = os.getenv("TARGET_WEB", "172.21.0.51")  # DVWA
@@ -38,85 +41,25 @@ class TestLiveCampaign:
 
     @pytest_asyncio.fixture(autouse=True)
     async def setup_campaign(self):
-        """Ensure environment is ready for testing."""
-        # Tools run locally in the test runner container
-        settings.PLUGIN_SAFE_MODE = False  # Disable signature checks for tests
-
-        # Dispose engine to ensure fresh connection on current loop
+        settings.PLUGIN_SAFE_MODE = False
         await engine.dispose()
-
-        # Initialize Registry (Reset singleton to pick up safe_mode change)
         import app.services.tools.registry as registry_module
-
         registry_module._registry = None
-
         registry = get_registry()
         registry.safe_mode = False
         if hasattr(registry, "validator"):
             registry.validator.safe_mode = False
-
         await registry.load_plugins()
-
-        # Ensure critical tools are ready and installed
-        critical_tools = [
-            "nmap",
-            "searchsploit",
-            "metasploit",
-            "curl",
-            "nikto",
-            "sqlmap",
-        ]
-        # Check for root or pre-installed tools
-        # force the test to run by assuming we are in a containerized environment capable of installation
-        # But we need an actual container running for 'docker exec' to work.
-        # Use a fixture or assume 'spectra-tools' exists?
-        # The user says "tool container shouldnt have tools preinstalled", implying one exists.
-
-        # We will mock the TOOL_CONTAINER_NAME setting to 'spectra-tools-test' (or whatever is running)
-        # However, if we are running the test LOCALLY, we might not have that container.
-
-        # If we are in restricted env (no root), we CANNOT install tools unless we delegate to a container.
-        # Let's assume the user has a container named 'spectra-tools' running.
-
-        # Check if 'spectra-tools' container is running
-        import subprocess
-
-        try:
-            res = subprocess.run(
-                ["docker", "ps", "--format", "{{.Names}}"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if "spectra-tools" in res.stdout:
-                print("DEBUG: specialized 'spectra-tools' container found.")
-            else:
-                print("DEBUG: 'spectra-tools' container NOT found.")
-        except Exception:
-            pass
-
-        # Revert skip logic - we WANT to fail if installation fails now, to debug logs.
-        # But if no root and no container, it WILL fail.
-
-        # If we don't have a container and not root, we can't install.
-        # But the User wants us to "look at logs and fix issues".
-        # This implies we *should* be able to install.
-
+        critical_tools = ["nmap", "searchsploit", "metasploit", "curl", "nikto", "sqlmap"]
         for tool_id in critical_tools:
             if tool_id in registry._tools:
                 tool = registry._tools[tool_id]
-                # Only install if not already ready
                 if tool.status.name != "READY":
-                    print(f"Ensuring {tool_id} is installed...")
                     try:
-                        # Set DEBIAN_FRONTEND to avoid interactive prompts
                         os.environ["DEBIAN_FRONTEND"] = "noninteractive"
                         await registry.install_tool(tool_id)
                     except Exception as e:
                         print(f"Failed to install {tool_id}: {e}")
-                        # Continue anyway, maybe it was already there or we want to see it fail later
-
-        # Reset DB
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
@@ -165,10 +108,6 @@ class TestLiveCampaign:
 
     @pytest.mark.asyncio
     async def test_campaign_server_exploitation(self, real_mission_manager):
-        """
-        Campaign 1: Direct Server Exploitation (Metasploitable).
-        Goal: Find open ports, identify services, and exploit a critical vulnerability (e.g., vsftpd).
-        """
         print(f"\n[CAMPAIGN] Starting Server Exploitation against {TARGET_SERVER}")
 
         # Generic directive as requested
@@ -200,10 +139,6 @@ class TestLiveCampaign:
 
     @pytest.mark.asyncio
     async def test_campaign_web_exploitation(self, real_mission_manager):
-        """
-        Campaign 2: Web Application Exploitation (DVWA).
-        Goal: Identify web technologies and find vulnerabilities.
-        """
         print(f"\n[CAMPAIGN] Starting Web Exploitation against {TARGET_WEB}")
 
         # Generic directive as requested
