@@ -96,10 +96,12 @@ services:
       spectra.managed: "true"
       spectra.role: "cache"
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?set in .env}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set in .env}
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD:?set in .env}\" ping || exit 1"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -349,6 +351,8 @@ services:
     tmpfs:
       - /tmp
     cap_add:
+      - SETUID
+      - SETGID
       - CHOWN
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5011/health"]
