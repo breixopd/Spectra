@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import shlex
 import signal
 import time
 from pathlib import Path
@@ -133,8 +134,9 @@ class CommandToolAdapter(ToolAdapter):
         start_time = time.time()
 
         try:
-            proc = await asyncio.create_subprocess_shell(
-                cmd,
+            cmd_parts = shlex.split(cmd)
+            proc = await asyncio.create_subprocess_exec(
+                *cmd_parts,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 start_new_session=True,

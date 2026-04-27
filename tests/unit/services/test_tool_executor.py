@@ -60,6 +60,13 @@ class TestRunCommandSafe:
             assert "spawn failed" in stderr
 
     @pytest.mark.asyncio
+    async def test_subprocess_exec_creation_failure(self):
+        with patch("asyncio.create_subprocess_exec", side_effect=OSError("spawn failed")):
+            rc, _stdout, stderr = await run_command_safe(["echo", "test"])
+            assert rc == -1
+            assert "spawn failed" in stderr
+
+    @pytest.mark.asyncio
     async def test_stdout_and_stderr_both_captured(self):
         _rc, stdout, stderr = await run_command_safe("echo out && echo err >&2")
         assert "out" in stdout
@@ -79,6 +86,18 @@ class TestRunCommandSafe:
 
         with patch("asyncio.create_subprocess_shell", return_value=mock_proc):
             rc, _stdout, stderr = await run_command_safe("echo test")
+            assert rc == -1
+            assert "Failed to capture" in stderr
+
+    @pytest.mark.asyncio
+    async def test_missing_streams_exec_returns_error(self):
+        mock_proc = AsyncMock()
+        mock_proc.stdout = None
+        mock_proc.stderr = None
+        mock_proc.wait = AsyncMock()
+
+        with patch("asyncio.create_subprocess_exec", return_value=mock_proc):
+            rc, _stdout, stderr = await run_command_safe(["echo", "test"])
             assert rc == -1
             assert "Failed to capture" in stderr
 

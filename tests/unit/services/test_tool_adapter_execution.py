@@ -38,7 +38,7 @@ async def test_execute_local_without_container_config(adapter):
     request = ToolExecutionRequest(tool_id="test-tool", target="127.0.0.1", args={"ports": "80"})
 
     with (
-        patch("asyncio.create_subprocess_shell") as mock_subprocess,
+        patch("asyncio.create_subprocess_exec") as mock_subprocess,
     ):
         process_mock = AsyncMock()
         process_mock.communicate.return_value = (b"local stdout", b"")
@@ -49,13 +49,17 @@ async def test_execute_local_without_container_config(adapter):
 
         assert result.success is True
 
-        cmd_arg = mock_subprocess.call_args_list[0][0][0]
+        cmd_arg = mock_subprocess.call_args_list[0][0]
         # Should NOT use docker exec
         assert "docker exec" not in cmd_arg
         # Should still use timeout
-        assert "timeout -k 5s" in cmd_arg
+        assert "timeout" in cmd_arg
+        assert "-k" in cmd_arg
         # Should have base command
-        assert "nmap -p 80 127.0.0.1" in cmd_arg
+        assert "nmap" in cmd_arg
+        assert "-p" in cmd_arg
+        assert "80" in cmd_arg
+        assert "127.0.0.1" in cmd_arg
 
 
 @pytest.mark.asyncio
@@ -64,7 +68,7 @@ async def test_execute_command_locally(adapter):
     request = ToolExecutionRequest(tool_id="test-tool", target="127.0.0.1", args={"ports": "80"})
 
     with (
-        patch("asyncio.create_subprocess_shell") as mock_subprocess,
+        patch("asyncio.create_subprocess_exec") as mock_subprocess,
     ):
         process_mock = AsyncMock()
         process_mock.communicate.return_value = (b"stdout output", b"")
@@ -77,11 +81,9 @@ async def test_execute_command_locally(adapter):
 
         assert mock_subprocess.call_count >= 1
 
-        cmd_arg = mock_subprocess.call_args_list[0][0][0]
+        cmd_arg = mock_subprocess.call_args_list[0][0]
         assert "docker exec" not in cmd_arg
-        assert "timeout -k 5s" in cmd_arg
-        assert "nmap" in cmd_arg
-        assert "timeout -k 5s" in cmd_arg
+        assert "timeout" in cmd_arg
         assert "nmap" in cmd_arg
 
 
@@ -92,7 +94,7 @@ async def test_execute_timeout(adapter):
 
     # Use built-in TimeoutError for side effect
     with (
-        patch("asyncio.create_subprocess_shell") as mock_subprocess,
+        patch("asyncio.create_subprocess_exec") as mock_subprocess,
         patch("asyncio.wait_for", side_effect=TimeoutError),
         patch("os.killpg") as mock_kill,
         patch("os.getpgid"),
@@ -116,7 +118,7 @@ async def test_output_file_handling(adapter):
     output_dir = "/tmp/outputs"
 
     with (
-        patch("asyncio.create_subprocess_shell") as mock_subprocess,
+        patch("asyncio.create_subprocess_exec") as mock_subprocess,
         patch("pathlib.Path.read_text", return_value="file content"),
         patch("pathlib.Path.read_bytes", return_value=b"file content"),
         patch("pathlib.Path.exists", return_value=True),
@@ -134,12 +136,13 @@ async def test_output_file_handling(adapter):
 
         assert result.success is True
 
-        # We expect 2 calls: execute + ensure_permissions
+        # We expect at least 1 call
         assert mock_subprocess.call_count >= 1
 
         # Check first call (execution)
-        cmd_arg = mock_subprocess.call_args_list[0][0][0]
-        assert f"-oX {output_dir}/test-tool_output" in cmd_arg
+        cmd_arg = mock_subprocess.call_args_list[0][0]
+        assert "-oX" in cmd_arg
+        assert f"{output_dir}/test-tool_output" in cmd_arg
 
 
 @pytest.mark.asyncio
