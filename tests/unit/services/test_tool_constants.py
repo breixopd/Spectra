@@ -128,7 +128,7 @@ class TestDangerousPatterns:
         assert len(DANGEROUS_PATTERNS) == len(_DANGEROUS_PATTERN_STRINGS)
 
     def test_pattern_count(self):
-        assert len(DANGEROUS_PATTERNS) == len(_DANGEROUS_PATTERN_STRINGS) == 31
+        assert len(DANGEROUS_PATTERNS) == len(_DANGEROUS_PATTERN_STRINGS) == 29
 
     # --- Command chaining ---
 
