@@ -27,7 +27,32 @@ class ToolListResponse(BaseModel):
 
 
 class ToolDetailResponse(BaseModel):
-    """Detailed information about a tool."""
+    """Detailed information about a tool (public)."""
+
+    id: str
+    name: str
+    version: str
+    category: ToolCategory
+    description: str
+    status: ToolStatus
+    enabled: bool
+    installed_version: str | None
+    error_message: str | None
+    timeout: int
+    icon: str
+    color: str
+    status_message: str | None = None
+    status_phase: str | None = None
+    last_updated: str | None = None
+    install_logs: list[str] = []
+    last_output: str | None = None
+
+
+class ToolAdminResponse(BaseModel):
+    """Detailed information about a tool (admin-only).
+
+    Includes sensitive execution metadata not exposed to regular users.
+    """
 
     id: str
     name: str

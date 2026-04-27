@@ -35,6 +35,7 @@ from app.api.schemas import (
     PluginSaveResponse,
     PluginUploadResponse,
     TestExecutionResponse,
+    ToolAdminResponse,
     ToolDetailResponse,
     ToolExecConfigResponse,
     ToolListResponse,
@@ -482,6 +483,39 @@ async def get_tool(
     status_fields = _tool_detail_status_fields(cached_status)
 
     return ToolDetailResponse(
+        id=tool.config.id,
+        name=tool.config.name,
+        version=tool.config.version,
+        category=tool.config.category,
+        description=tool.config.description,
+        status=tool.status,
+        enabled=tool.config.enabled,
+        installed_version=tool.installed_version,
+        error_message=tool.error_message,
+        timeout=tool.config.execution.timeout,
+        icon=tool.config.ui.icon,
+        color=tool.config.ui.color,
+        **status_fields,
+    )
+
+
+@router.get("/{tool_id}/admin", response_model=ToolAdminResponse)
+async def get_tool_admin(
+    tool_id: str,
+    registry: ToolRegistry = Depends(get_tool_registry),
+    _current_user: User = Depends(get_current_superuser),
+):
+    """Get detailed information about a specific tool (admin-only).
+
+    Includes sensitive execution metadata not exposed to regular users.
+    """
+    await _sync_registry_status_from_cache(registry)
+    tool = _get_tool_or_404(registry, tool_id)
+
+    cached_status = await _get_cached_status(tool_id)
+    status_fields = _tool_detail_status_fields(cached_status)
+
+    return ToolAdminResponse(
         id=tool.config.id,
         name=tool.config.name,
         version=tool.config.version,
