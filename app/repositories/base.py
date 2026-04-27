@@ -87,6 +87,7 @@ class BaseRepository(Generic[ModelType]):
         self,
         skip: int = 0,
         limit: int = 100,
+        options: Sequence[Any] | None = None,
     ) -> Sequence[ModelType]:
         """
         Get all entities with pagination.
@@ -94,11 +95,14 @@ class BaseRepository(Generic[ModelType]):
         Args:
             skip: Number of records to skip.
             limit: Maximum number of records to return.
+            options: Optional SQLAlchemy loader options (e.g. selectinload).
 
         Returns:
             List of entities.
         """
         stmt = select(self.model).offset(skip).limit(limit)
+        if options:
+            stmt = stmt.options(*options)
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
@@ -121,6 +125,7 @@ class BaseRepository(Generic[ModelType]):
         self,
         skip: int = 0,
         limit: int = 100,
+        options: Sequence[Any] | None = None,
         **kwargs: Any,
     ) -> Sequence[ModelType]:
         """
@@ -129,6 +134,7 @@ class BaseRepository(Generic[ModelType]):
         Args:
             skip: Number of records to skip.
             limit: Maximum number of records to return.
+            options: Optional SQLAlchemy loader options (e.g. selectinload).
             **kwargs: Field-value pairs to match.
 
         Returns:
@@ -136,6 +142,8 @@ class BaseRepository(Generic[ModelType]):
         """
         self._validate_filters(kwargs)
         stmt = select(self.model).filter_by(**kwargs).offset(skip).limit(limit)
+        if options:
+            stmt = stmt.options(*options)
         result = await self.session.execute(stmt)
         return result.scalars().all()
 

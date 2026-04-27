@@ -20,7 +20,6 @@ def _body_scroll_width_after_navigation(page: Page) -> int:
         except Exception:
             if attempt == 2:
                 raise
-            page.wait_for_timeout(500)
     return int(page.evaluate("() => document.body.scrollWidth"))
 
 
@@ -68,7 +67,7 @@ def test_dashboard_mobile_layout(authenticated_page: Page, app_url: str):
     # but its bounding-box x position is negative (off-screen to the left).
     hamburger = page.locator(".hamburger-btn")
     expect(hamburger).to_be_visible(timeout=10_000)
-    sidebar = page.locator("#sidebar, nav.sidebar, aside")
+    sidebar = page.get_by_test_id("sidebar")
     if sidebar.count() > 0:
         box = sidebar.first.bounding_box()
         # Sidebar either has no box (hidden) or is positioned off-screen

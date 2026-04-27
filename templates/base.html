@@ -48,7 +48,7 @@
             </button>
             <span class="text-white font-semibold text-lg">Spectra</span>
         </div>
-        <aside id="sidebar" class="sidebar">
+        <aside id="sidebar" class="sidebar" data-testid="sidebar">
             <div class="p-4 h-full flex flex-col">
                 <!-- Logo -->
                 <div class="flex items-center gap-3 px-3 mb-8">
@@ -92,7 +92,7 @@
                         <i data-lucide="help-circle" class="w-4 h-4"></i>
                         <span class="ml-3 text-sm font-medium">Help Center</span>
                     </a>
-                    <a id="admin-nav-link" href="/admin" data-tooltip="Admin controls and oversight" data-tooltip-pos="right" class="hidden flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/admin' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                    <a id="admin-nav-link" href="/admin" data-testid="admin-nav-link" data-tooltip="Admin controls and oversight" data-tooltip-pos="right" class="hidden flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/admin' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i data-lucide="shield-check" class="w-4 h-4"></i>
                         <span class="ml-3 text-sm font-medium">Admin</span>
                     </a>

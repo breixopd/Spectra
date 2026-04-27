@@ -25,3 +25,11 @@ class StatusResponse(BaseModel):
 
     status: str | None = None
     message: str | None = None
+
+
+class ErrorResponse(BaseModel):
+    """Standardized error response schema for API endpoints."""
+
+    detail: str
+    status_code: int | None = None
+    error: str | None = None

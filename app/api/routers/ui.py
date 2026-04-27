@@ -10,7 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.routing import Route
 
-from app.api.dependencies import _is_admin_user, get_current_active_user, get_ui_user
+from app.api.dependencies import (
+    _is_admin_user,
+    get_current_active_user,
+    get_ui_user,
+    require_feature,
+)
 from app.api.schemas import SettingsUpdate
 from app.core.config import settings
 from app.core.database import async_session_maker, get_async_session
@@ -31,18 +36,9 @@ logger = logging.getLogger(__name__)
 templates.env.globals["get_nav_user"] = get_ui_user
 
 
-async def _get_ui_db_user(username: str | None) -> User | None:
+async def _get_user_features_dict(username: str | None) -> dict[str, bool]:
     if not username:
-        return None
-    async with async_session_maker() as session:
-        result = await session.execute(select(User).where(User.username == username))
-        return result.scalar_one_or_none()
-
-
-async def _check_user_feature(username: str | None, feature: str) -> bool:
-    """Check if a user's subscription plan has a specific feature enabled."""
-    if not username:
-        return False
+        return {}
     try:
         from app.models.plan import Plan, Subscription
         from app.models.user import User
@@ -51,7 +47,7 @@ async def _check_user_feature(username: str | None, feature: str) -> bool:
             user_result = await session.execute(select(User).where(User.username == username))
             db_user = user_result.scalar_one_or_none()
             if db_user and _is_admin_user(db_user):
-                return True
+                return {}
 
             result = await session.execute(
                 select(Plan.features)
@@ -66,10 +62,18 @@ async def _check_user_feature(username: str | None, feature: str) -> bool:
             )
             features = result.scalar_one_or_none()
             if features and isinstance(features, dict):
-                return bool(features.get(feature))
+                return {k: bool(v) for k, v in features.items()}
     except Exception:
-        logger.debug("Feature check failed", exc_info=True)
-    return False
+        logger.debug("Failed to load user features dict", exc_info=True)
+    return {}
+
+
+async def _get_ui_db_user(username: str | None) -> User | None:
+    if not username:
+        return None
+    async with async_session_maker() as session:
+        result = await session.execute(select(User).where(User.username == username))
+        return result.scalar_one_or_none()
 
 
 @router.get("/profile", response_class=HTMLResponse)
@@ -125,49 +129,55 @@ async def dashboard(request: Request):
         if not result.scalar_one_or_none():
             return RedirectResponse(url="/setup")
 
-    if not await get_ui_user(request):
+    user_payload = await get_ui_user(request)
+    if not user_payload:
         return RedirectResponse(url="/login")
 
+    user_features = await _get_user_features_dict(user_payload.get("sub"))
     return templates.TemplateResponse(
         request,
         "dashboard.html",
-        {"request": request, "title": f"{settings.APP_NAME} | Dashboard"},
+        {"request": request, "title": f"{settings.APP_NAME} | Dashboard", "user_features": user_features},
     )
 
 
 @router.get("/targets", response_class=HTMLResponse)
 async def targets_page(request: Request):
     """Serve the targets management page."""
-    if not await get_ui_user(request):
+    user_payload = await get_ui_user(request)
+    if not user_payload:
         return RedirectResponse(url="/login", status_code=303)
+    user_features = await _get_user_features_dict(user_payload.get("sub"))
     return templates.TemplateResponse(
         request,
         "targets.html",
-        {"request": request, "title": f"{settings.APP_NAME} | Targets"},
+        {"request": request, "title": f"{settings.APP_NAME} | Targets", "user_features": user_features},
     )
 
 
 @router.get("/history", response_class=HTMLResponse)
 async def history_page(request: Request):
-    """Serve the mission history page."""
-    if not await get_ui_user(request):
+    user_payload = await get_ui_user(request)
+    if not user_payload:
         return RedirectResponse(url="/login", status_code=303)
+    user_features = await _get_user_features_dict(user_payload.get("sub"))
     return templates.TemplateResponse(
         request,
         "history.html",
-        {"request": request, "title": f"{settings.APP_NAME} | History"},
+        {"request": request, "title": f"{settings.APP_NAME} | History", "user_features": user_features},
     )
 
 
 @router.get("/reports", response_class=HTMLResponse)
 async def reports_page(request: Request):
-    """Serve the reports page."""
-    if not await get_ui_user(request):
+    user_payload = await get_ui_user(request)
+    if not user_payload:
         return RedirectResponse(url="/login", status_code=303)
+    user_features = await _get_user_features_dict(user_payload.get("sub"))
     return templates.TemplateResponse(
         request,
         "reports.html",
-        {"request": request, "title": f"{settings.APP_NAME} | Reports"},
+        {"request": request, "title": f"{settings.APP_NAME} | Reports", "user_features": user_features},
     )
 
 
@@ -205,13 +215,10 @@ async def toolbox_page(request: Request):
 
 
 @router.get("/manual", response_class=HTMLResponse)
-async def manual_tools_page(request: Request):
-    """Serve the manual tools execution page."""
-    user_payload = await get_ui_user(request)
-    if not user_payload:
-        return RedirectResponse(url="/login", status_code=303)
-    if not await _check_user_feature(user_payload.get("sub"), "manual_mode"):
-        return RedirectResponse(url="/dashboard", status_code=302)
+async def manual_tools_page(
+    request: Request,
+    _user: User = Depends(require_feature("manual_mode")),
+):
     return templates.TemplateResponse(
         request,
         "manual_tools.html",
@@ -254,25 +261,11 @@ async def settings_page(request: Request):
 
 
 @router.get("/docs/api", response_class=HTMLResponse)
-async def api_docs_page(request: Request):
-    """Customer-facing API documentation — requires api_access plan feature."""
-    user = await get_ui_user(request)
-    if not user:
-        return RedirectResponse(url="/login", status_code=303)
-
-    db_user = await _get_ui_db_user(user.get("sub"))
-    is_admin = bool(db_user and _is_admin_user(db_user))
-
-    # Admins always have access; otherwise check plan features
-    if not is_admin:
-        has_api_access = await _check_user_feature(user.get("sub"), "api_access")
-        if not has_api_access:
-            return templates.TemplateResponse(
-                request,
-                "errors/403.html",
-                {"request": request, "detail": "API documentation requires a Professional or Enterprise plan."},
-                status_code=403,
-            )
+async def api_docs_page(
+    request: Request,
+    current_user: User = Depends(require_feature("api_access")),
+):
+    is_admin = _is_admin_user(current_user)
 
     from app.main import app as fastapi_app
 

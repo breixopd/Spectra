@@ -21,7 +21,7 @@ from app.api.schemas.auth import (
     UserCreate,
     UserResponse,
 )
-from app.api.schemas.common import PaginatedResponse, StatusResponse
+from app.api.schemas.common import ErrorResponse, PaginatedResponse, StatusResponse
 from app.api.schemas.cve import (
     CVEEnrichedResponse,
     CVEExploitsResponse,
@@ -78,20 +78,16 @@ from app.api.schemas.tool import (
 )
 
 __all__ = [
-    # mission
     "ActionApprovalResponse",
-    # system
     "AdminSettingsUpdate",
     "AdminUserCreate",
     "AdminUserCreateResponse",
     "AdminUserUpdate",
     "DeleteAccountRequest",
-    # finding
+    "ErrorResponse",
     "FindingResponse",
-    # auth
     "ForgotPasswordRequest",
     "HealthResponse",
-    # tool
     "InstallToolRequest",
     "InstallToolResponse",
     "LLMTestRequest",
@@ -99,7 +95,6 @@ __all__ = [
     "MissionDetailResponse",
     "MissionFindingSummary",
     "MissionResponse",
-    # common
     "PaginatedResponse",
     "PlanCreate",
     "PlanResponse",

@@ -359,6 +359,19 @@ async def check_feature_allowed(user: User, session: AsyncSession, feature: str)
         )
 
 
+def require_feature(feature: str):
+    """Return a FastAPI dependency that raises 403 if *feature* is not enabled for the current user."""
+
+    async def _check_feature_dependency(
+        user: User = Depends(get_current_active_user),
+        session: AsyncSession = Depends(get_async_session),
+    ) -> User:
+        await check_feature_allowed(user, session, feature)
+        return user
+
+    return _check_feature_dependency
+
+
 async def enforce_api_rate_limit(
     user: User = Depends(get_current_active_user),
 ) -> User:

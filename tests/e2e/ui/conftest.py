@@ -59,7 +59,9 @@ AUTH_COOKIE_SAMESITE = "Strict"
 #   - Auth bugs in UI code will not be caught
 #   - A/B testing or conditional auth logic cannot be tested
 #
-# TODO: Find a better solution:
+# TODO: Replace this workaround with proper auth state management.
+#   The suppression script should NOT run in production or non-test environments.
+#   Options to explore:
 #   - Option 1: Only suppress in specific tests that need it (not globally)
 #   - Option 2: Mock the auth check function to return soft failure
 #   - Option 3: Add a test mode flag that changes auth behavior in the app
@@ -68,8 +70,13 @@ AUTH_COOKIE_SAMESITE = "Strict"
 # See: https://github.com/breixopd14/spectra/issues/XXX
 # =============================================================================
 
+_TEST_MODE_INIT_SCRIPT = "window.__SPECTRA_TEST_MODE__ = true;"
+
 _AUTH_SUPPRESSION_INIT_SCRIPT = """
     (function() {
+        if (typeof window.__SPECTRA_TEST_MODE__ === 'undefined') {
+            return;
+        }
         var _origFetch = window.fetch;
         window.fetch = function(url, options) {
             return _origFetch.apply(this, arguments).then(function(response) {
@@ -88,6 +95,9 @@ _AUTH_SUPPRESSION_INIT_SCRIPT = """
         };
     })();
     setTimeout(function() {
+        if (typeof window.__SPECTRA_TEST_MODE__ === 'undefined') {
+            return;
+        }
         if (typeof socket !== 'undefined' && socket && socket.onclose) {
             var _orig = socket.onclose;
             socket.onclose = function(e) {
@@ -129,7 +139,7 @@ def _refresh_auth_cookies(app_url: str) -> list[dict[str, object]]:
 def _assert_authenticated_dashboard(page: Page, app_url: str):
     """Assert the browser reached the authenticated dashboard shell."""
     expect(page).to_have_url(f"{app_url}/dashboard", timeout=AUTHENTICATED_PAGE_TIMEOUT_MS)
-    expect(page.locator("#sidebar")).to_be_visible(timeout=AUTHENTICATED_PAGE_TIMEOUT_MS)
+    expect(page.get_by_test_id("sidebar")).to_be_visible(timeout=AUTHENTICATED_PAGE_TIMEOUT_MS)
 
 
 def _build_auth_cookies(app_url: str) -> list[dict[str, object]]:
@@ -264,6 +274,7 @@ def shared_context(browser: Browser):
     # wraps window.fetch BEFORE page scripts load: any API 401 is silently
     # converted to 200 so the client treats it as a soft failure.
     # A deferred block patches the WebSocket close handler too.
+    context.add_init_script(_TEST_MODE_INIT_SCRIPT)
     context.add_init_script(_AUTH_SUPPRESSION_INIT_SCRIPT)
 
     yield context
@@ -310,6 +321,7 @@ def authenticated_page(
     context = browser.new_context()
     context.set_default_navigation_timeout(30_000)
     context.set_default_timeout(15_000)
+    context.add_init_script(_TEST_MODE_INIT_SCRIPT)
     context.add_init_script(_AUTH_SUPPRESSION_INIT_SCRIPT)
     cookies_to_use = list(authenticated_cookies)
     context.add_cookies(cast(Any, cookies_to_use))
@@ -318,7 +330,7 @@ def authenticated_page(
 
     try:
         _page.goto(f"{app_url}/dashboard", wait_until="domcontentloaded")
-        expect(_page.locator("#sidebar")).to_be_visible(timeout=15_000)
+        expect(_page.get_by_test_id("sidebar")).to_be_visible(timeout=15_000)
         if "/login" in _page.url or "/dashboard" not in _page.url:
             needs_reauth = True
     except Exception:
@@ -369,6 +381,7 @@ def fresh_authenticated_page(
     context = browser.new_context()
     context.set_default_navigation_timeout(30_000)
     context.set_default_timeout(15_000)
+    context.add_init_script(_TEST_MODE_INIT_SCRIPT)
     context.add_init_script(_AUTH_SUPPRESSION_INIT_SCRIPT)
 
     cookies_to_use = list(authenticated_cookies)  # defensive copy
@@ -383,7 +396,7 @@ def fresh_authenticated_page(
         context.clear_cookies()
         context.add_cookies(cast(Any, cookies_to_use))
         _page.goto(f"{app_url}/dashboard", wait_until="domcontentloaded")
-    expect(_page.locator("#sidebar")).to_be_visible(timeout=15_000)
+    expect(_page.get_by_test_id("sidebar")).to_be_visible(timeout=15_000)
 
     yield _page
     if not _page.is_closed():

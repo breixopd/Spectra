@@ -30,11 +30,11 @@ def test_login_and_dashboard(logged_in_page: Page, app_url: str):
     expect(page).to_have_url(f"{app_url}/dashboard", timeout=10_000)
 
     # Sidebar should be visible
-    sidebar = page.locator("#sidebar")
+    sidebar = page.get_by_test_id("sidebar")
     expect(sidebar).to_be_visible(timeout=10_000)
 
     # At least one dashboard section present (the mission target input)
-    expect(page.locator("#mission-target")).to_be_visible(timeout=10_000)
+    expect(page.get_by_test_id("mission-target")).to_be_visible(timeout=10_000)
 
 
 # ---------------------------------------------------------------------------
@@ -303,11 +303,7 @@ def test_logout(logged_in_page: Page, app_url: str):
 
     page.wait_for_url("**/login", timeout=30_000, wait_until="domcontentloaded")
     expect(page).to_have_url(re.compile(r".*/login"))
-    # Wait for the keepalive logout response (which sends Set-Cookie to
-    # delete auth cookies) to complete before the fixture tears down.
-    # This prevents the delayed Set-Cookie from clobbering cookies
-    # injected by subsequent tests' fixtures.
-    page.wait_for_timeout(2000)
+    page.wait_for_load_state("networkidle", timeout=5_000)
     page.context.clear_cookies()
 
 

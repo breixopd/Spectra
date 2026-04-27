@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -42,6 +43,7 @@ from app.api.routers import (
     vpn,
     wordlists,
 )
+from app.api.schemas import ErrorResponse
 from app.core.config import settings
 from app.core.constants import SECONDS_PER_DAY
 from app.core.exceptions import SpectraError, get_status_code_for_exception
@@ -137,9 +139,26 @@ async def spectra_error_handler(request: Request, exc: SpectraError) -> HTMLResp
             content=_error_templates.get_template(template_name).render(detail=detail),
             status_code=status_code,
         )
+    error_response = ErrorResponse(
+        detail=exc.message,
+        status_code=status_code,
+        error=exc.code,
+    )
     return JSONResponse(
         status_code=status_code,
-        content={"detail": exc.message},
+        content=error_response.model_dump(exclude_none=True),
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Standardize validation error responses."""
+    errors = exc.errors()
+    detail = "; ".join(f"{e['loc']}: {e['msg']}" for e in errors) if errors else "Validation error"
+    error_response = ErrorResponse(detail=detail, status_code=422, error="VALIDATION_ERROR")
+    return JSONResponse(
+        status_code=422,
+        content=error_response.model_dump(exclude_none=True),
     )
 
 
@@ -286,8 +305,9 @@ def _make_error_handler(status_code: int, default_detail: str, template: str, lo
             if isinstance(exc, RateLimitExceeded):
                 return rate_limit_exceeded_handler_sync(request, exc)
             exc_headers = getattr(exc, "headers", None)
+            error_response = ErrorResponse(detail=detail, status_code=429)
             return JSONResponse(
-                {"detail": detail},
+                error_response.model_dump(exclude_none=True),
                 status_code=429,
                 headers=exc_headers,
             )
@@ -296,7 +316,8 @@ def _make_error_handler(status_code: int, default_detail: str, template: str, lo
                 content=_error_templates.get_template(template).render(detail=detail),
                 status_code=status_code,
             )
-        return JSONResponse({"detail": detail}, status_code=status_code)
+        error_response = ErrorResponse(detail=detail, status_code=status_code)
+        return JSONResponse(error_response.model_dump(exclude_none=True), status_code=status_code)
 
     return handler
 

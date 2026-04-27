@@ -7,6 +7,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.api.dependencies import check_resource_owner, get_current_active_user, validate_uuid_param
 from app.api.schemas import FindingResponse, PaginatedResponse
@@ -275,16 +276,19 @@ async def list_findings(
 
     Pagination: max 100 items per page.
     """
+    from app.models.finding import Finding
+
     repo = FindingRepository(db)
     filters = _finding_filters(_current_user, severity=severity, status_filter=status_filter)
 
     total = await repo.count(**filters)
     skip = (page - 1) * per_page
 
+    options = [selectinload(Finding.target)]
     if filters:
-        findings = await repo.find_many_by(skip=skip, limit=per_page, **filters)
+        findings = await repo.find_many_by(skip=skip, limit=per_page, options=options, **filters)
     else:
-        findings = await repo.get_all(skip=skip, limit=per_page)
+        findings = await repo.get_all(skip=skip, limit=per_page, options=options)
 
     items = [_finding_to_response(finding) for finding in findings]
     return PaginatedResponse(items=items, total=total, page=page, per_page=per_page)

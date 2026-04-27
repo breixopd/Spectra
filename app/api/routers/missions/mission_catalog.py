@@ -58,26 +58,25 @@ async def get_missions_summary(
     result = await db.execute(stmt)
     db_missions = result.scalars().all()
 
-    missions: list[dict[str, Any]] = []
-    totals: dict[str, int] = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "total": 0}
+    missions: list[dict[str, Any]] = [
+        {
+            "id": str(m.id),
+            "target": m.target,
+            "directive": m.directive,
+            "status": m.status,
+            "created_at": m.created_at.isoformat() if m.created_at else None,
+            "updated_at": m.updated_at.isoformat() if m.updated_at else None,
+            "findings": get_mission_finding_counts(m),
+        }
+        for m in db_missions
+    ]
 
-    for m in db_missions:
-        counts = get_mission_finding_counts(m)
-
-        missions.append(
-            {
-                "id": str(m.id),
-                "target": m.target,
-                "directive": m.directive,
-                "status": m.status,
-                "created_at": m.created_at.isoformat() if m.created_at else None,
-                "updated_at": m.updated_at.isoformat() if m.updated_at else None,
-                "findings": counts,
-            }
-        )
-        for sev in ("critical", "high", "medium", "low", "info"):
-            totals[sev] += counts[sev]
-        totals["total"] += counts["total"]
+    totals: dict[str, int] = {
+        "critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "total": 0
+    }
+    for sev in ("critical", "high", "medium", "low", "info"):
+        totals[sev] = sum(m["findings"][sev] for m in missions)
+    totals["total"] = sum(m["findings"]["total"] for m in missions)
 
     return {"missions": missions, "totals": totals, "count": len(missions), "total": total, "skip": skip, "limit": limit}
 

@@ -15,7 +15,7 @@ pytestmark = [pytest.mark.e2e, pytest.mark.ui]
 
 
 def _wait_for_sidebar_hydration(page: Page) -> None:
-    expect(page.locator("#sidebar")).to_be_visible(timeout=20_000)
+    expect(page.get_by_test_id("sidebar")).to_be_visible(timeout=20_000)
     # /api/v1/auth/me must complete before [data-entitlement-gate] is processed
     page.wait_for_function(
         """() => {

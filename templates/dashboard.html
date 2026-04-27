@@ -1,4 +1,11 @@
 {% extends "base.html" %}
+{% from "partials/modal.html" import modal %}
+
+{% block breadcrumbs %}
+<nav aria-label="Breadcrumb" class="text-sm text-slate-400 mb-4">
+  <a href="/dashboard" class="hover:text-white">Home</a> / <span class="text-white">Dashboard</span>
+</nav>
+{% endblock %}
 
 {% block extra_css %}
 {{ super() }}
@@ -20,12 +27,12 @@
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i data-lucide="crosshair" class="w-4 h-4 inline-block text-slate-500"></i>
                 </div>
-                <input type="text" id="mission-target"
+                <input type="text" id="mission-target" data-testid="mission-target"
                     class="block w-full pl-9 pr-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono"
                     placeholder="Target IP / domain">
             </div>
             <div class="flex-1 relative">
-                <input type="text" id="mission-directive"
+                <input type="text" id="mission-directive" data-testid="mission-directive"
                     class="block w-full px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all"
                     placeholder="Directive (e.g., Full security assessment)">
             </div>
@@ -45,7 +52,7 @@
                 data-tooltip="Adversary simulation profile" data-tooltip-pos="bottom">
                 <option value="">Standard</option>
             </select>
-            <button data-action="launchFromForm" id="launch-btn" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-all flex items-center gap-2 shadow-lg shadow-violet-500/20">
+            <button data-action="launchFromForm" id="launch-btn" data-testid="launch-btn" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-all flex items-center gap-2 shadow-lg shadow-violet-500/20">
                 <i data-lucide="rocket" class="w-4 h-4 inline-block"></i> Launch
             </button>
         </div>
@@ -112,7 +119,7 @@
 </div>
 
 <!-- Getting Started Card - shown when no missions exist -->
-<div id="getting-started" class="glass-panel rounded-xl p-6 mb-6 border border-violet-500/20 animate-fade-in-up">
+<div id="getting-started" data-testid="getting-started" class="glass-panel rounded-xl p-6 mb-6 border border-violet-500/20 animate-fade-in-up">
     <div class="flex items-start gap-4">
         <div class="w-12 h-12 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0">
             <i data-lucide="rocket" class="w-5 h-5 inline-block text-violet-400"></i>
@@ -336,30 +343,25 @@
     </div>
 </div>
 
-<!-- Playbook Detail Modal -->
-<div id="playbook-detail-modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="pb-detail-title">
-    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" data-action="closePlaybookDetail"></div>
-    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md glass-panel rounded-xl p-6 border border-white/10 shadow-2xl">
-        <h2 class="text-lg font-semibold text-white mb-1" id="pb-detail-title">Playbook</h2>
-        <p class="text-xs text-slate-400 mb-4" id="pb-detail-desc"></p>
-        <div class="space-y-3">
-            <div>
-                <span class="text-xs font-mono text-slate-500 uppercase tracking-wider">Phases</span>
-                <div id="pb-detail-phases" class="mt-2 space-y-1.5"></div>
-            </div>
-            <div class="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
-                <div><span class="text-xs text-slate-500">Stealth</span><p class="text-sm text-white" id="pb-detail-stealth">N/A</p></div>
-                <div><span class="text-xs text-slate-500">Auto-exploit</span><p class="text-sm text-white" id="pb-detail-autoexploit">N/A</p></div>
-            </div>
-        </div>
-        <div class="flex justify-end space-x-3 mt-6">
-            <button data-action="closePlaybookDetail" class="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors">Close</button>
-            <button data-action="launchPlaybook" id="pb-launch-btn" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
-                <i data-lucide="rocket" class="w-4 h-4 inline-block mr-2"></i>Launch
-            </button>
-        </div>
+{% call modal(id='playbook-detail-modal', title='Playbook', size='md', backdrop_close_action='closePlaybookDetail', title_id='pb-detail-title') %}
+<p class="text-xs text-slate-400 mb-4" id="pb-detail-desc"></p>
+<div class="space-y-3">
+    <div>
+        <span class="text-xs font-mono text-slate-500 uppercase tracking-wider">Phases</span>
+        <div id="pb-detail-phases" class="mt-2 space-y-1.5"></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
+        <div><span class="text-xs text-slate-500">Stealth</span><p class="text-sm text-white" id="pb-detail-stealth">N/A</p></div>
+        <div><span class="text-xs text-slate-500">Auto-exploit</span><p class="text-sm text-white" id="pb-detail-autoexploit">N/A</p></div>
     </div>
 </div>
+<div class="flex justify-end space-x-3 mt-6">
+    <button data-action="closePlaybookDetail" class="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors">Close</button>
+    <button data-action="launchPlaybook" id="pb-launch-btn" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
+        <i data-lucide="rocket" class="w-4 h-4 inline-block mr-2"></i>Launch
+    </button>
+</div>
+{% endcall %}
 
 <!-- Finding Detail Modal -->
 <div id="finding-detail-modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="fd-title">

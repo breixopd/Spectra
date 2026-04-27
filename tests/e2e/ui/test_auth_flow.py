@@ -14,10 +14,14 @@ def test_login_page_renders(login_page: Page):
 
 def test_login_no_connecting_message(login_page: Page):
     """Login page should NOT show 'connecting to server' status bar."""
-    # Wait a moment for any status polling to fire
-    login_page.wait_for_timeout(2000)
     status_bar = login_page.locator("#global-status-bar")
-    # Should be hidden or not have connecting text
+    login_page.wait_for_function(
+        """() => {
+            const bar = document.getElementById('global-status-bar');
+            return !bar || bar.classList.contains('hidden') || !bar.innerText.includes('Connecting to server');
+        }""",
+        timeout=2_000,
+    )
     if status_bar.is_visible():
         expect(status_bar).not_to_contain_text("Connecting to server")
 
