@@ -49,12 +49,17 @@ RUN mkdir -p /opt/spectra_tools
 # Only copy modules needed by the worker (not templates/static/API routers)
 COPY app/__init__.py ./app/
 COPY app/_meta/ ./app/_meta/
+COPY app/auth/ ./app/auth/
 COPY app/core/ ./app/core/
+COPY app/di/ ./app/di/
+COPY app/infrastructure/ ./app/infrastructure/
+COPY app/mission/ ./app/mission/
 COPY app/models/ ./app/models/
-COPY app/services/ ./app/services/
-COPY app/worker/ ./app/worker/
-COPY app/utils/ ./app/utils/
 COPY app/repositories/ ./app/repositories/
+COPY app/services/ ./app/services/
+COPY app/telemetry/ ./app/telemetry/
+COPY app/utils/ ./app/utils/
+COPY app/worker/ ./app/worker/
 COPY plugins/ ./plugins/
 COPY keys/ ./keys/
 
