@@ -103,14 +103,14 @@
 
 ## Loop 8: CI/CD & Security Hardening
 
-- [ ] **CI-1**: Make pip-audit a hard gate (remove `|| true`)
-- [ ] **CI-2**: Add Pyright type checking to CI
-- [ ] **CI-3**: Add pre-commit hooks for ruff and import boundary checks
-- [ ] **CI-4**: Add image scanning (Trivy) to CI pipeline
-- [ ] **CI-5**: Run Playwright UI tests on every PR (with time budget)
-- [ ] **CI-6**: Add secret scanning (GitHub Advanced Security)
-- [ ] **CI-7**: Add SBOM generation to release pipeline
-- [ ] **CI-8**: Add performance smoke tests to CI
+- [x] **CI-1**: Make pip-audit a hard gate (remove `|| true`)
+- [x] **CI-2**: Add Pyright type checking to CI
+- [x] **CI-3**: Add pre-commit hooks for ruff and import boundary checks
+- [x] **CI-4**: Add image scanning (Trivy) to CI pipeline
+- [x] **CI-5**: Run Playwright UI tests on every PR (with time budget)
+- [x] **CI-6**: Add secret scanning (GitHub Advanced Security)
+- [x] **CI-7**: Add SBOM generation to release pipeline
+- [x] **CI-8**: Add performance smoke tests to CI
 
 ---
 

@@ -23,6 +23,14 @@ COPY requirements/app.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r app.txt
 
+# Build Tailwind CSS with PostCSS pipeline in builder stage
+RUN apt-get update && apt-get install -y --no-install-recommends nodejs npm && \
+    rm -rf /var/lib/apt/lists/*
+COPY config/package.json config/postcss.config.js config/tailwind.config.js ./config/
+COPY static/css/input.css ./static/css/input.css
+RUN npm install && \
+    NODE_ENV=production npx postcss static/css/input.css -o static/css/output.css --config config/postcss.config.js
+
 # ── Runtime stage ──
 FROM ${PYTHON_BASE_IMAGE}
 
@@ -83,14 +91,11 @@ COPY --chown=spectra:spectra config/alembic.ini ./config/alembic.ini
 COPY --chown=spectra:spectra plugins/ ./plugins/
 COPY --chown=spectra:spectra keys/ ./keys/
 COPY --chown=spectra:spectra config/tailwind.config.js ./config/tailwind.config.js
+COPY --chown=spectra:spectra config/postcss.config.js ./config/postcss.config.js
 RUN chmod +x /app/scripts/start.sh
 
-# Build Tailwind CSS
-ARG TAILWIND_VERSION=3.4.17
-RUN curl -fsSLo tailwindcss-linux-x64 https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWIND_VERSION}/tailwindcss-linux-x64 && \
-    chmod +x tailwindcss-linux-x64 && \
-    ./tailwindcss-linux-x64 -i static/css/input.css -o static/css/output.css --minify -c config/tailwind.config.js && \
-    rm tailwindcss-linux-x64
+# Copy pre-built CSS from builder stage
+COPY --from=builder --chown=spectra:spectra /build/static/css/output.css ./static/css/output.css
 
 ENV SERVICE_MODE=api
 

@@ -1,6 +1,12 @@
 # Spectra Worker — Security tools worker (Kali Linux)
 # Purpose-built image for the pentesting tools worker service.
 # Security tools auto-install on demand from plugin configs; nothing is baked in.
+#
+# SECURITY: This image runs as non-root (USER spectra) with selective sudo
+# privileges for tools that require root capabilities (nmap, iptables, wg-quick,
+# openvpn, apt-get for on-demand plugin installs). Root is not used as the
+# default runtime user because the worker handles untrusted plugin code and
+# network-facing tool output; defence in depth demands least privilege.
 
 # NOTE: kalilinux/kali-rolling only publishes latest + arch tags.
 # Rebuild periodically to pick up security updates.

@@ -25,6 +25,21 @@ jobs:
       - name: Check import boundaries in Docker
         run: docker run --rm spectra-test-ci python scripts/check_import_boundaries.py
 
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install pyright
+      - run: sudo apt-get update && sudo apt-get install -y libcairo2-dev pkg-config python3-dev
+      - run: pip install -r requirements/app.txt
+      - run: pyright
+
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -37,7 +52,8 @@ jobs:
       - name: Build Docker unit runner
         run: docker compose -f docker/docker-compose.test.yml build unit-test-runner
       - name: Validate TensorZero config
-        run: docker compose -f docker/docker-compose.test.yml run --rm --no-deps unit-test-runner "python -c \"import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')\""
+        run: |
+          docker compose -f docker/docker-compose.test.yml run --rm --no-deps unit-test-runner "python -c \"import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')\""
       - name: Run unit tests with coverage in Docker
         run: |
           set +e
@@ -198,9 +214,8 @@ jobs:
       - run: pip install pip-audit
       - run: sudo apt-get update && sudo apt-get install -y libcairo2-dev pkg-config python3-dev
       - run: pip install -r requirements/app.txt
-      # pip-audit: keep || true because transitive dependency vulns in pinned
-      # packages shouldn't block CI; ignore known disputed advisories.
-      - run: pip-audit --fix --dry-run -l --ignore-vuln PYSEC-2024-65 --ignore-vuln PYSEC-2024-66 || true
+      # pip-audit: hard gate — vulnerabilities block CI; ignore known disputed advisories.
+      - run: pip-audit --fix --dry-run -l --ignore-vuln PYSEC-2024-65 --ignore-vuln PYSEC-2024-66
 
   version-check:
     name: Version file check
@@ -213,3 +228,22 @@ jobs:
       - name: Verify app/version.py exists and has __version__
         run: |
           python3 -c "exec(open('app/version.py').read()); print('Version:', __version__)"
+
+  performance-smoke:
+    name: Performance Smoke Tests
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
+    continue-on-error: true
+    env:
+      ENCRYPTION_KEY: test-encryption-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: sudo apt-get update && sudo apt-get install -y libcairo2-dev pkg-config python3-dev
+      - run: pip install -r requirements/app.txt
+      - run: pip install -r requirements/dev.txt
+      - run: pytest tests/performance/test_api_latency.py -v --tb=short
