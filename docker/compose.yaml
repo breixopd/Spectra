@@ -214,11 +214,8 @@ services:
 
   caddy:
     image: ${REGISTRY:-}spectra-caddy:${VERSION:-dev}
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.caddy
     container_name: spectra-caddy
-    profiles: [app]
+    profiles: [app, test]
     labels:
       spectra.managed: "true"
       spectra.role: "proxy"
@@ -261,7 +258,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.api
     container_name: spectra-app
-    profiles: [app]
+    profiles: [app, test]
     labels:
       spectra.managed: "true"
       spectra.role: "api"
@@ -325,7 +322,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.ai
     container_name: spectra-ai
-    profiles: [app]
+    profiles: [app, test]
     labels:
       spectra.managed: "true"
       spectra.role: "ai"
@@ -527,11 +524,12 @@ services:
     <<: *security-stateful
 
   tools:
+    image: ${REGISTRY:-}spectra-tools:${VERSION:-dev}
     build:
       context: ..
       dockerfile: docker/Dockerfile.worker
     container_name: spectra-tools
-    profiles: [dev]
+    profiles: [dev, test]
     labels:
       spectra.managed: "true"
       spectra.role: "tools"
