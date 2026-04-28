@@ -26,7 +26,7 @@ x-security: &security-defaults
 
 x-security-stateful: &security-stateful
   cap_drop: [ALL]
-  cap_add: [SETUID, SETGID]
+  cap_add: [SETUID, SETGID, CHOWN, DAC_OVERRIDE]
   security_opt: ["no-new-privileges:true"]
 
 x-common-env: &common-env
