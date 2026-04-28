@@ -39,11 +39,9 @@ def test_settings_template_exposes_sandbox_pool_controls():
     assert 'name="sandbox_network_isolation"' in content
     assert 'name="sandbox_oom_escalation_enabled"' in content
     assert 'name="sandbox_resource_tiers"' in content
-    assert 'name="sandbox_warm_pool_size"' in content
+    assert "sandbox_worker" in content
     assert 'name="sandbox_idle_timeout"' in content
     assert 'name="sandbox_heartbeat_interval"' in content
-    assert 'name="sandbox_auto_build_image"' in content
-    assert 'name="sandbox_image_scan_enabled"' in content
     assert 'name="sandbox_image_scan_block_critical"' in content
     assert 'name="sandbox_per_user_limit"' in content
     assert 'name="sandbox_default_priority"' in content

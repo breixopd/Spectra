@@ -103,10 +103,8 @@ GENERAL_RUNTIME_FIELD_MAP: dict[str, tuple[str, str]] = {
     "DATABASE_ECHO": ("DATABASE_ECHO", "bool"),
     "DATABASE_POOL_SIZE": ("DATABASE_POOL_SIZE", "int"),
     "DATABASE_MAX_OVERFLOW": ("DATABASE_MAX_OVERFLOW", "int"),
-    # Sandbox Docker-specific (DB-managed)
-    "SANDBOX_IMAGE": ("SANDBOX_IMAGE", "str"),
-    "SANDBOX_NETWORK": ("SANDBOX_NETWORK", "str"),
-    "SANDBOX_PLUGINS_VOLUME": ("SANDBOX_PLUGINS_VOLUME", "str"),
+    # Sandbox runtime limits/policies (DB-managed). Image/network/volume names
+    # stay deployment-owned env/config so admins do not mutate platform plumbing.
     "SANDBOX_MAX_CONTAINERS": ("SANDBOX_MAX_CONTAINERS", "int"),
     "SANDBOX_MEMORY_LIMIT": ("SANDBOX_MEMORY_LIMIT", "str"),
     "SANDBOX_CPU_SHARES": ("SANDBOX_CPU_SHARES", "int"),
@@ -118,9 +116,6 @@ GENERAL_RUNTIME_FIELD_MAP: dict[str, tuple[str, str]] = {
     "SANDBOX_PER_USER_LIMIT": ("SANDBOX_PER_USER_LIMIT", "int"),
     "SANDBOX_DEFAULT_PRIORITY": ("SANDBOX_DEFAULT_PRIORITY", "int"),
     "SANDBOX_OOM_ESCALATION_ENABLED": ("SANDBOX_OOM_ESCALATION_ENABLED", "bool"),
-    "SANDBOX_WARM_POOL_SIZE": ("SANDBOX_WARM_POOL_SIZE", "int"),
-    "SANDBOX_AUTO_BUILD_IMAGE": ("SANDBOX_AUTO_BUILD_IMAGE", "bool"),
-    "SANDBOX_IMAGE_SCAN_ENABLED": ("SANDBOX_IMAGE_SCAN_ENABLED", "bool"),
     "SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL": ("SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL", "bool"),
     # External Service Endpoints
     "SANDBOX_ORCHESTRATOR_URL": ("SANDBOX_ORCHESTRATOR_URL", "nullable_str"),

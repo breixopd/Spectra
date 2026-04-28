@@ -145,19 +145,17 @@ Default tiers:
 | heavy | 4g | 1024 |
 | extreme | 8g | 2048 |
 
-### Warm Pool
+### Warm pool
+
+Target warm idle containers follow **active `sandbox_worker`** entries in `server_nodes` (capped at 10). With **no** worker hosts registered, a small fallback applies for single-host development.
+
+### Image management
+
+Golden images rebuild when plugins change (`PLUGIN_UPDATED`); this is not configurable via env/DB. **Grype** scans run after each successful build when Grype is installed.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `SANDBOX_WARM_POOL_SIZE` | int | `2` | Number of pre-warmed containers to maintain |
-
-### Image Management
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `SANDBOX_AUTO_BUILD_IMAGE` | bool | `true` | Auto-rebuild golden image when plugins change |
-| `SANDBOX_IMAGE_SCAN_ENABLED` | bool | `true` | Scan golden image for CVEs after each build |
-| `SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL` | bool | `false` | Block deployment if critical CVEs found |
+| `SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL` | bool | `false` | Block promoting the image if critical CVEs are found |
 
 ---
 

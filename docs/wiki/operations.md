@@ -81,7 +81,7 @@ The scheduler service handles most recurring maintenance automatically. These ta
 | Task | Interval | What It Does |
 |------|----------|--------------|
 | Sandbox watchdog | 60s | Detects and cleans up stale sandbox containers |
-| Warm pool maintenance | Continuous | Maintains `SANDBOX_WARM_POOL_SIZE` pre-warmed containers |
+| Warm pool maintenance | Continuous | Maintains pre-warmed containers sized from sandbox_worker nodes |
 | Quota reset | Daily at midnight UTC | Resets daily API usage counters |
 | Metrics collection | 30s | Collects and aggregates system metrics |
 | Backup scheduler | `BACKUP_SCHEDULE_HOURS` | Creates S3-native database backups |
@@ -106,7 +106,7 @@ To monitor auto-scaling activity:
 
 ```bash
 # Check scheduler logs for scaling events
-docker compose -f docker/docker-compose.yml logs scheduler | grep -i "scale"
+docker compose -f docker/compose.yaml logs scheduler | grep -i "scale"
 ```
 
 Capacity alerts (80% warning, 100% critical) are sent via `NOTIFICATION_WEBHOOK` regardless of whether auto-scaling is enabled.

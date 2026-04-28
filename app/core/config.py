@@ -239,10 +239,7 @@ class Settings(BaseSettings):
 
     SANDBOX_DEFAULT_PRIORITY: int = 5  # Default job priority (1=highest, 10=lowest)
     SANDBOX_OOM_ESCALATION_ENABLED: bool = True  # Auto-escalate resource tier on OOM (exit 137)
-    SANDBOX_WARM_POOL_SIZE: int = 2  # Number of pre-warmed idle containers to maintain
-    SANDBOX_AUTO_BUILD_IMAGE: bool = True  # Auto-rebuild golden image when plugins change
-    SANDBOX_IMAGE_SCAN_ENABLED: bool = True  # Scan golden image after each build for CVEs
-    SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL: bool = False  # Block deployment if critical CVEs found
+    SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL: bool = False  # Block golden-image promotion if critical CVEs found (Grype)
     TOOL_QUEUE_NAME: str = "default"  # Queue used for shared plugin/tool execution workers
 
     # --- Inter-Service Auth ---
