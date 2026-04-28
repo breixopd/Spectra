@@ -29,8 +29,21 @@ RUN grep -v -E 'pytest-asyncio|pytest==' requirements/base.txt > /tmp/base-filte
 
 # Copy source
 COPY app/ app/
+COPY services/api/src/spectra_api/ spectra_api/
+COPY services/ai/src/spectra_ai/ spectra_ai/
+COPY services/scheduler/src/spectra_scheduler/ spectra_scheduler/
 COPY services/worker/src/spectra_worker/ spectra_worker/
+# Repo-relative trees for scripts/check_import_boundaries.py (SERVICE_BOUNDARIES + lazy imports).
+COPY services/api/src/ services/api/src/
+COPY services/ai/src/ services/ai/src/
+COPY services/scheduler/src/ services/scheduler/src/
+COPY services/worker/src/ services/worker/src/
 COPY packages/tools-core/src/spectra_tools_core/ spectra_tools_core/
+COPY packages/common/src/spectra_common/ spectra_common/
+COPY packages/domain/src/spectra_domain/ spectra_domain/
+COPY packages/common/src/ packages/common/src/
+COPY packages/domain/src/ packages/domain/src/
+COPY packages/tools-core/src/ packages/tools-core/src/
 COPY tests/ tests/
 COPY scripts/ scripts/
 COPY plugins/ plugins/
