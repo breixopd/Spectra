@@ -8,7 +8,7 @@ from typing import Any
 
 import aiohttp
 
-from app.core.constants import HTTP_CLIENT_MAX_RETRIES, HTTP_CLIENT_RETRY_BACKOFF
+from spectra_common.constants import HTTP_CLIENT_MAX_RETRIES, HTTP_CLIENT_RETRY_BACKOFF
 
 logger = logging.getLogger(__name__)
 

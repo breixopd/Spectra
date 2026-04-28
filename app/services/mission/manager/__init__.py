@@ -7,7 +7,7 @@ import logging
 from collections.abc import Coroutine
 from typing import Any
 
-from app.core.constants import MAX_CONCURRENT_MISSIONS
+from spectra_common.constants import MAX_CONCURRENT_MISSIONS
 from app.services.mission.mission import Mission
 
 from . import execution, lifecycle, steering
@@ -75,6 +75,10 @@ class MissionManager:
         vpn_config: str | None = None,
         user_id: str | None = None,
         requires_approval: bool = False,
+        *,
+        record_demo: bool = False,
+        playbook_id: str | None = None,
+        scan_mode: str = "autonomous",
     ) -> str:
         """
         Start a new security assessment mission.
@@ -98,6 +102,9 @@ class MissionManager:
             vpn_config=vpn_config,
             user_id=user_id,
             requires_approval=requires_approval,
+            record_demo=record_demo,
+            playbook_id=playbook_id,
+            scan_mode=scan_mode,
         )
 
         # Create per-mission LLM semaphore (max 1 concurrent LLM call)

@@ -15,7 +15,7 @@ from typing import Any, Literal
 import httpx
 from pydantic import BaseModel, Field
 
-from app.core.constants import (
+from spectra_common.constants import (
     CISA_KEV_URL,
     CVE_CACHE_TTL,
     EPSS_API_URL,

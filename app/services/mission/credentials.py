@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
-from app.core.constants import MAX_CREDENTIALS_PER_MISSION
+from spectra_common.constants import MAX_CREDENTIALS_PER_MISSION
 
 # Patterns to extract credentials from tool output
 _HYDRA_PATTERN = re.compile(r"\[(\d+)\]\[(\w+)\]\s+host:\s*(\S+)\s+login:\s*(\S+)\s+password:\s*(\S+)")

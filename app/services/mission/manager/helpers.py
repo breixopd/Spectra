@@ -7,7 +7,7 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any
 
-from app.core.constants import (
+from spectra_common.constants import (
     DEBRIEF_MAX_FINDINGS,
     DEBRIEF_MAX_LOGS,
     DEBRIEF_SUMMARY_LOG_CHARS,

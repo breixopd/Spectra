@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from app.core.constants import MAX_HOSTS_DEFAULT
+from spectra_common.constants import MAX_HOSTS_DEFAULT
 from app.services.tools.models import (
     ToolExecutionRequest,
     ToolExecutionResult,

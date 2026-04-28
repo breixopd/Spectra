@@ -7,7 +7,7 @@ import logging
 import time
 from typing import Any, cast
 
-from app.core.constants import (
+from spectra_common.constants import (
     MAX_HOSTS_DEFAULT,
 )
 from app.infrastructure.events import events
@@ -75,6 +75,7 @@ class MissionExecutionManager:
         await self._create_sandbox(mission)
 
         try:
+            self._bind_mission_to_consensus_agents(mission)
             await self._run_mission_phases(mission, context, cost_tracker, recorder)
         except asyncio.CancelledError:
             mission.set_status("cancelled")
@@ -182,6 +183,32 @@ class MissionExecutionManager:
         mission.log("[INFO] Using shared tools worker for execution")
         logger.info("Mission %s using shared tools worker (no sandbox pool)", mission.id)
         return None
+
+    def _bind_mission_to_consensus_agents(self, mission: Mission) -> None:
+        """Attach in-memory mission to voting surfaces and propagate approval flags to agents."""
+        instances = []
+        if self.consensus:
+            instances.append(self.consensus)
+        if self.executor:
+            instances.append(self.executor.consensus)
+            instances.append(self.executor.exploitation_manager.consensus)
+        for vs in instances:
+            vs.mission = mission
+
+        mr = getattr(mission, "requires_approval", False)
+
+        def stamp(agent_obj: Any) -> None:
+            if agent_obj is None:
+                return
+            agent_obj._mission_requires_approval = mr  # noqa: SLF001
+
+        if self.executor:
+            for agent in self.executor.agents.values():
+                stamp(agent)
+            ec = getattr(self.executor.exploitation_manager, "exploit_crafter", None)
+            stamp(ec)
+        stamp(self.mission_controller)
+        stamp(self.scope_agent)
 
     async def _run_mission_phases(
         self,

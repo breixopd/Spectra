@@ -54,7 +54,7 @@ from app.bootstrap.lifespan import lifespan
 from app.bootstrap.logging_config import CorrelationIdMiddleware, configure_logging
 from app.bootstrap.middleware import AdminIPAllowlistMiddleware, SecurityHeadersMiddleware
 from app.core.config import settings
-from app.core.constants import SECONDS_PER_DAY
+from spectra_common.constants import SECONDS_PER_DAY
 from app.mission.core.websocket import manager
 from app.telemetry.telemetry_middleware import TelemetryMiddleware
 
@@ -458,7 +458,7 @@ if settings.SERVICE_MODE in ("", "all", "api"):
         logger.debug("WebSocket connected for user: %s", user.username)
 
         # Rate limiting state
-        from app.core.constants import WS_MAX_MESSAGE_SIZE, WS_MAX_MESSAGES_PER_SECOND
+        from spectra_common.constants import WS_MAX_MESSAGE_SIZE, WS_MAX_MESSAGES_PER_SECOND
 
         message_count = 0
         last_reset = time.time()

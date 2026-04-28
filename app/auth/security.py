@@ -21,7 +21,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from jwt.exceptions import InvalidTokenError as JWTError
 
 from app.core.config import settings
-from app.core.constants import JWT_BLACKLIST_MAX_SIZE
+from spectra_common.constants import JWT_BLACKLIST_MAX_SIZE
 
 __all__ = [
     "JWTError",

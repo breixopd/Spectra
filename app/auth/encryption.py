@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from sqlalchemy import Text
 from sqlalchemy.types import TypeDecorator
 
-from app.core.constants import PBKDF2_SALT_LENGTH
+from spectra_common.constants import PBKDF2_SALT_LENGTH
 
 logger = logging.getLogger(__name__)
 

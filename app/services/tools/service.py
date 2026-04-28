@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 # Keep these imports in *this* module's namespace so that existing tests
 # (which ``patch("app.services.tools.service.<Name>")`` ) keep working.
-from app.core.constants import (
+from spectra_common.constants import (
     TOOL_DEFAULT_TIMEOUT,
     TOOL_INSTALL_TIMEOUT,
     TOOL_JOB_BUFFER_TIMEOUT,
@@ -86,7 +86,7 @@ class ToolExecutionService:
     by delegating to focused helper modules.
     """
 
-    # --- Tuneable constants (defined in app.core.constants) ------------------
+    # --- Tuneable constants (defined in spectra_common.constants) ------------------
     DEFAULT_TIMEOUT = TOOL_DEFAULT_TIMEOUT
     JOB_BUFFER_TIMEOUT = TOOL_JOB_BUFFER_TIMEOUT
     MAX_STDOUT_CHARS = TOOL_MAX_STDOUT_CHARS
