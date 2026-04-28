@@ -82,7 +82,7 @@ class MissionExecutionManager:
             logger.info("Mission %s cancelled", mission.id)
             self._broadcast_state("mission_controller", "cancelled")
             await self.lifecycle.update_db_status(mission)
-        except (OSError, RuntimeError, ValueError) as e:
+        except Exception as e:
             mission.set_status("failed")
             mission.log(f"Mission failed: {e}")
             logger.error("Mission %s failed: %s", mission.id, e, exc_info=True)
@@ -175,8 +175,8 @@ class MissionExecutionManager:
                     f"[SANDBOX] Created sandbox: {sandbox_info.container_name} (queue={sandbox_info.queue_name})"
                 )
                 return sandbox_info
-            except (OSError, RuntimeError) as e:
-                logger.warning("Sandbox creation failed for mission %s: %s", mission.id, e)
+            except Exception as e:
+                logger.warning("Sandbox creation failed for mission %s: %s", mission.id, e, exc_info=True)
 
         # Containerized deployment: tools run via shared worker queue
         mission.log("[INFO] Using shared tools worker for execution")
