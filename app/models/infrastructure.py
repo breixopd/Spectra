@@ -107,7 +107,7 @@ class Sandbox(InfrastructureBase):
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     mission_id: Mapped[str] = mapped_column(
-        String, ForeignKey("missions.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+        UUID(as_uuid=False), ForeignKey("missions.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
     )
     container_id: Mapped[str] = mapped_column(String, nullable=False)
     container_name: Mapped[str] = mapped_column(String, nullable=False)
