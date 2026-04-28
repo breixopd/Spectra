@@ -1,17 +1,10 @@
 # Spectra Worker — Security tools worker (Kali Linux)
-# Purpose-built image for the pentesting tools worker service.
-# Security tools auto-install on demand from plugin configs; nothing is baked in.
+# Plugin installs happen at golden-image build time; runtime matches promoted worker images.
 #
-# SECURITY: This image runs as non-root (USER spectra) with selective sudo
-# privileges for tools that require root capabilities (nmap, iptables, wg-quick,
-# openvpn, apt-get for on-demand plugin installs). Root is not used as the
-# default runtime user because the worker handles untrusted plugin code and
-# network-facing tool output; defence in depth demands least privilege.
-
-# SECURITY: kalilinux/kali-rolling only publishes latest + arch tags.
-# For reproducible builds, pin to a specific digest in production:
+# SECURITY: non-root USER spectra with selective sudo for tools that need caps.
+# Pin base for reproducibility in production:
 #   ARG KALI_BASE_IMAGE=kalilinux/kali-rolling@sha256:...
-# Rebuild periodically to pick up security updates.
+
 ARG KALI_BASE_IMAGE=kalilinux/kali-rolling:latest
 FROM ${KALI_BASE_IMAGE}
 
@@ -19,13 +12,19 @@ ARG BUILD_VERSION=dev
 LABEL org.opencontainers.image.title="Spectra Worker" \
       org.opencontainers.image.description="Security tools worker (Kali Linux)" \
       org.opencontainers.image.source="https://github.com/breixopd14/spectra" \
-      org.opencontainers.image.vendor="breixopd14" \
+      org.opencontainers.image.vendor="breixopd14/spectra" \
       org.opencontainers.image.version="${BUILD_VERSION}"
-ENV SPECTRA_BUILD_VERSION="${BUILD_VERSION}"
+ENV SPECTRA_BUILD_VERSION="${BUILD_VERSION}" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    SERVICE_MODE=worker
 
 WORKDIR /app
 
-RUN apt-get update && \
+RUN sed -i 's|http://http.kali.org/kali|http://kali.download/kali|g' /etc/apt/sources.list && \
+    apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     python3 python3-pip python3-venv python3-dev \
     gcc libpq-dev libffi-dev pkg-config libpcap-dev \
@@ -33,9 +32,17 @@ RUN apt-get update && \
     curl wget git jq unzip \
     iputils-ping iproute2 netcat-openbsd iptables \
     wireguard-tools openvpn \
+    nmap whatweb gobuster seclists nikto exploitdb hydra sqlmap ffuf feroxbuster \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && rm -rf /usr/share/doc /usr/share/man
+
+RUN mkdir -p /opt/spectra_tools && \
+    curl -sL -o /tmp/nuclei.zip https://github.com/projectdiscovery/nuclei/releases/download/v3.3.7/nuclei_3.3.7_linux_amd64.zip && \
+    unzip -qo /tmp/nuclei.zip -d /opt/spectra_tools && \
+    rm -f /tmp/nuclei.zip && \
+    chmod +x /opt/spectra_tools/nuclei && \
+    ln -sf /opt/spectra_tools/nuclei /usr/local/bin/nuclei
 
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:/opt/spectra_tools:$PATH"
@@ -44,9 +51,9 @@ COPY requirements/worker.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r worker.txt
 
-RUN mkdir -p /opt/spectra_tools
-
-# Only copy modules needed by the worker (not templates/static/API routers)
+# Application code (minimal surface — no API templates/static)
+COPY services/worker/src/spectra_worker/ ./spectra_worker/
+COPY packages/tools-core/src/spectra_tools_core/ ./spectra_tools_core/
 COPY app/__init__.py ./app/
 COPY app/_meta/ ./app/_meta/
 COPY app/auth/ ./app/auth/
@@ -59,23 +66,17 @@ COPY app/repositories/ ./app/repositories/
 COPY app/services/ ./app/services/
 COPY app/telemetry/ ./app/telemetry/
 COPY app/utils/ ./app/utils/
-COPY app/worker/ ./app/worker/
 COPY plugins/ ./plugins/
 
-# Run as non-root for security
 RUN useradd --create-home --shell /bin/bash spectra && \
     mkdir -p /etc/sudoers.d && \
     printf 'spectra ALL=(root) NOPASSWD: /usr/bin/apt-get, /usr/bin/apt, /usr/bin/dpkg, /usr/sbin/service, /usr/bin/nmap, /usr/sbin/openvpn, /usr/bin/wg-quick\nDefaults:spectra !requiretty\n' > /etc/sudoers.d/spectra-tools && \
     chmod 0440 /etc/sudoers.d/spectra-tools && \
-    chown -R spectra:spectra /app /opt/venv /opt/spectra_tools
+    chown -R spectra:spectra /app /opt/spectra_tools
 
 USER spectra
-
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV SERVICE_MODE=worker
 
 EXPOSE 5012
 HEALTHCHECK --interval=60s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:5012/health || exit 1
-CMD ["uvicorn", "app.worker.__main__:app", "--host", "0.0.0.0", "--port", "5012"]
+CMD ["uvicorn", "spectra_worker.main:app", "--host", "0.0.0.0", "--port", "5012"]

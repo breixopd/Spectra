@@ -7,6 +7,7 @@ ARG PYTHON_BASE_IMAGE=python:3.11.13-slim-bookworm
 FROM ${PYTHON_BASE_IMAGE} AS builder
 
 WORKDIR /build
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     gcc \
@@ -51,6 +52,8 @@ RUN useradd --create-home --shell /bin/bash spectra && \
     chown -R spectra:spectra /app
 
 COPY --chown=spectra:spectra scripts/ ./scripts/
+COPY --chown=spectra:spectra services/ai/src/spectra_ai/ ./spectra_ai/
+COPY --chown=spectra:spectra packages/tools-core/src/spectra_tools_core/ ./spectra_tools_core/
 COPY --chown=spectra:spectra app/__init__.py ./app/
 COPY --chown=spectra:spectra app/_meta/ ./app/_meta/
 COPY --chown=spectra:spectra app/auth/ ./app/auth/
@@ -76,4 +79,4 @@ ENTRYPOINT ["/app/scripts/start.sh"]
 EXPOSE 5010
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:5010/health || exit 1
-CMD ["uvicorn", "app.services.ai.__main__:app", "--host", "0.0.0.0", "--port", "5010"]
+CMD ["uvicorn", "spectra_ai.main:app", "--host", "0.0.0.0", "--port", "5010"]

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-COMPOSE_TEST = Path(__file__).resolve().parents[2] / "docker" / "docker-compose.test.yml"
+COMPOSE_TEST = Path(__file__).resolve().parents[2] / "docker" / "compose.yaml"
 
 
 def _service_block(text: str, service: str) -> str:

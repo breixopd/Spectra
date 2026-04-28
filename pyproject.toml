@@ -4,6 +4,26 @@ version = "0.1.0"
 description = "AI-powered penetration testing platform"
 requires-python = ">=3.11"
 
+[tool.uv.workspace]
+members = [
+    "packages/common",
+    "packages/domain",
+    "packages/tools-core",
+    "services/api",
+    "services/ai",
+    "services/scheduler",
+    "services/worker",
+]
+
+[tool.uv.sources]
+spectra-common = { workspace = true }
+spectra-domain = { workspace = true }
+spectra-tools-core = { workspace = true }
+spectra-api = { workspace = true }
+spectra-ai = { workspace = true }
+spectra-scheduler = { workspace = true }
+spectra-worker = { workspace = true }
+
 [tool.bandit]
 exclude_dirs = ["tests", "alembic"]
 skips = ["B101"]  # assert is fine in non-production code
@@ -90,6 +110,7 @@ addopts = [
     "--tb=short",
     "--strict-markers",
     "--cov=app",
+    "--cov=spectra_worker",
     "--cov-report=term-missing",
     "--cov-fail-under=70",
 ]
@@ -102,7 +123,7 @@ asyncio_default_fixture_loop_scope = "function"
 # coverage configuration (merged from .coveragerc)
 # =============================================================================
 [tool.coverage.run]
-source = ["app"]
+source = ["app", "spectra_worker"]
 data_file = "/tmp/spectra-coverage/.coverage"
 omit = [
     "app/*/migrations/*",

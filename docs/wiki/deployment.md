@@ -23,7 +23,7 @@ docker build --target scheduler -f docker/Dockerfile.app -t spectra-scheduler .
 docker build --target api -f docker/Dockerfile.app -t spectra-app .
 
 # Or via docker compose (builds all services)
-docker compose -f docker/docker-compose.yml build
+docker compose -f docker/compose.yaml build
 ```
 
 ### Image Sizes
@@ -40,7 +40,7 @@ docker compose -f docker/docker-compose.yml build
 Each container sets `SERVICE_MODE` in its environment to control which routers and background loops are activated:
 
 ```yaml
-# docker-compose.yml (simplified)
+# compose.yaml (simplified)
 services:
   app:
     environment:
@@ -67,7 +67,7 @@ Services can be scaled independently. The most common scaling target is the work
 
 ```bash
 # Scale workers horizontally
-docker compose -f docker/docker-compose.yml up -d --scale worker=3
+docker compose -f docker/compose.yaml up -d --scale worker=3
 
 # Workers use SELECT ... FOR UPDATE SKIP LOCKED, so multiple instances
 # naturally distribute jobs without conflicts.
@@ -169,14 +169,14 @@ APP_BASE_URL=https://spectra.example.com ./scripts/test.sh live-smoke
 
 ```bash
 # 1. Start services
-docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/compose.yaml up -d
 
 # 2. Bootstrap S3 storage
 bash docker/garage-init.sh
 
 # 3. Copy the printed S3 credentials to your .env file
 # 4. Restart to pick up new env vars
-docker compose -f docker/docker-compose.yml restart
+docker compose -f docker/compose.yaml restart
 
 # 5. Open /setup in your browser to create the admin account
 ```
@@ -403,8 +403,8 @@ Use this section for rollback mechanics. For the broader operator workflow aroun
 ```bash
 cd /opt/spectra
 export VERSION=2026.03.06
-docker compose -f docker/docker-compose.yml pull
-docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/compose.yaml pull
+docker compose -f docker/compose.yaml up -d
 curl -f https://spectra.example.com/api/health
 ```
 

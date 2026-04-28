@@ -119,9 +119,12 @@ class TestMissionLoop:
         execution_manager._run_debrief = AsyncMock()
         execution_manager._generate_html_report = AsyncMock()
         execution_manager._broadcast_state = MagicMock()
+        execution_manager._llm_provider_healthy = AsyncMock(return_value=True)
 
         with patch("app.services.mission.manager.execution.shell_manager"):
-            await execution_manager.run_mission_loop(mission)
+            with patch("app.services.notifications.notify_mission_started", new_callable=AsyncMock, create=True):
+                with patch("app.services.mission.manager.execution.index_to_rag", new_callable=AsyncMock):
+                    await execution_manager.run_mission_loop(mission)
 
         mission.set_status.assert_called_with("completed")
 

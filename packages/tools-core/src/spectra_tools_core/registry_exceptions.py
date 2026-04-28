@@ -1,3 +1,6 @@
+"""Shared plugin registry exceptions."""
+
+
 class PluginValidationError(Exception):
     """Raised when plugin validation fails."""
 

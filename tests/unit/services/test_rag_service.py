@@ -1,6 +1,6 @@
 """Tests for the RAG service."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -114,7 +114,14 @@ class TestRAGIndexDocument:
         rag_service._table_ready = True
         rag_service.embeddings.embed = AsyncMock(side_effect=RuntimeError("embed fail"))
 
-        result = await rag_service.index_document(sample_doc)
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=AsyncMock(scalar=MagicMock(return_value=None)))
+        mock_cm = AsyncMock()
+        mock_cm.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_cm.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("app.services.ai.rag.async_session_maker", return_value=mock_cm):
+            result = await rag_service.index_document(sample_doc)
         assert result is False
 
 

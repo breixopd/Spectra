@@ -532,7 +532,22 @@ async def get_scaling_metrics(
     _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Return full cluster metrics: per-service CPU/memory, system resources, queue stats, and node health."""
+    import httpx
+
+    from app.core.config import get_settings as _gs
     from app.services.scaling.metrics_collector import MetricsCollector
+
+    settings = _gs()
+    url = f"{settings.SCHEDULER_SERVICE_URL}/internal/scaling/metrics"
+    secret = settings.SERVICE_AUTH_SECRET.get_secret_value()
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(url, headers={"X-Service-Auth": secret})
+            if resp.status_code == 200:
+                return resp.json()
+            logger.warning("Scheduler metrics returned %d: %s", resp.status_code, resp.text[:200])
+    except Exception as exc:
+        logger.warning("Failed to fetch scaling metrics from scheduler: %s", exc)
 
     collector = MetricsCollector()
     cluster = await collector.collect_all()

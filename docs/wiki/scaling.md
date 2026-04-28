@@ -29,7 +29,7 @@ When auto-scaling is enabled (`AUTOSCALE_ENABLED=true`), worker replicas are adj
 
 ```bash
 # Docker Compose
-docker compose -f docker/docker-compose.yml up -d --scale worker=3
+docker compose -f docker/compose.yaml up -d --scale worker=3
 ```
 
 ```yaml
@@ -45,7 +45,7 @@ services:
 For high LLM throughput, scale the AI service:
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d --scale ai-svc=2
+docker compose -f docker/compose.yaml up -d --scale ai-svc=2
 ```
 
 The app service routes AI requests to `AI_SERVICE_URL`. With multiple replicas behind Docker's internal DNS round-robin, requests are distributed automatically.
@@ -61,7 +61,7 @@ Individual tasks (backups, DB maintenance, stale job recovery, exploit DB refres
 Scale the API service for more web/API capacity:
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d --scale app=2
+docker compose -f docker/compose.yaml up -d --scale app=2
 ```
 
 When scaling the API, ensure Caddy (or your reverse proxy) load-balances across all API instances.

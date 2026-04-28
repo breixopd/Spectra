@@ -23,15 +23,13 @@ from app.services.tools.models import (
     ToolConfig,
     ToolStatus,
 )
-
-# Re-export exceptions for cleaner imports
-from app.services.tools.registry.exceptions import (
-    PluginInstallationError,
-    PluginValidationError,
-)
 from app.services.tools.registry.installer import PluginInstaller
 from app.services.tools.registry.loader import PluginLoader
 from app.services.tools.registry.validator import PluginValidator
+from spectra_tools_core.registry_exceptions import (
+    PluginInstallationError,
+    PluginValidationError,
+)
 
 __all__ = [
     "PluginInstallationError",
@@ -159,12 +157,9 @@ class ToolRegistry:
         Returns:
             Number of tools updated.
         """
-        from app.infrastructure.cache import get_cache
+        from app.infrastructure.cache import CacheService, get_cache
 
-        cache = get_cache()
-        if not cache:
-            logger.warning("Cache not available for status sync")
-            return 0
+        cache = get_cache() or CacheService()
 
         updated = 0
         for tool_id, tool in self._tools.items():

@@ -1,19 +1,18 @@
-"""Tool validation: name checks, registry resolution, auto-install."""
+"""Tool validation: name checks, registry resolution, golden-image readiness."""
 
 from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING, Any
 
-from app.services.tools.execution import ensure_tool_installed
 from app.services.tools.models import RegisteredTool, ToolExecutionResult
 from app.services.tools.output import create_error_result, validate_tool_name
 from app.services.tools.registry import get_registry
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from app.services.mission.mission import Mission
-
-logger = logging.getLogger(__name__)
 
 try:
     import jsonschema
@@ -31,7 +30,12 @@ async def validate_and_resolve_tool(
     args: dict[str, Any] | None,
     install_timeout: int,
 ) -> tuple[RegisteredTool | None, ToolExecutionResult | None]:
-    """Validate tool name, resolve from registry, auto-install if needed."""
+    """Validate tool name and resolve from registry.
+
+    Runtime execution workers must use prebuilt, verified golden images. Missing
+    tools are deployment/build failures, not mission-time installation work.
+    """
+    _ = install_timeout  # Compatibility with existing call sites; installs no longer happen here.
     if not validate_tool_name(tool_name):
         mission.log(f"Invalid tool name format: {tool_name}")
         return None, create_error_result(tool_name, target, "Invalid tool name")
@@ -45,15 +49,12 @@ async def validate_and_resolve_tool(
         return None, create_error_result(tool_name, target, "Tool not available")
 
     if not tool.is_available:
-        mission.log(f"Tool {tool_name} not installed, installing...")
-        install_success = await ensure_tool_installed(tool_name, install_timeout)
-        if not install_success:
-            mission.log(f"Failed to install {tool_name}")
-            return None, create_error_result(tool_name, target, "Tool installation failed")
-        mission.log(f"Tool {tool_name} installed successfully")
-        tool = registry.get_tool(tool_name)
-        if not tool:
-            return None, create_error_result(tool_name, target, "Tool not found after install")
+        mission.log(f"Tool {tool_name} is not available in the current verified worker image")
+        return None, create_error_result(
+            tool_name,
+            target,
+            "Tool unavailable in verified worker image; rebuild and promote the golden image",
+        )
 
     if tool.config.execution.args_schema:
         if HAS_JSONSCHEMA:

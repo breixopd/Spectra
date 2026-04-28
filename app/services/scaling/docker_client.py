@@ -36,6 +36,7 @@ class ContainerStats:
     cpu_percent: float
     memory_mb: float
     memory_limit_mb: float
+    labels: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -51,6 +52,15 @@ class NodeInfo:
 def _get_client() -> docker.DockerClient:
     """Get a Docker client connected to the local socket."""
     return docker.from_env(timeout=15)
+
+
+def _is_swarm_manager(client: docker.DockerClient) -> bool:
+    """Return True only when this Docker socket can manage Swarm services."""
+    try:
+        swarm = client.info().get("Swarm", {})
+    except (DockerException, APIError):
+        return False
+    return bool(swarm.get("ControlAvailable"))
 
 
 async def _run_sync(func, *args, **kwargs) -> Any:
@@ -108,6 +118,8 @@ async def list_services() -> list[ServiceInfo]:
     try:
         client = _get_client()
         try:
+            if not _is_swarm_manager(client):
+                return []
             svcs = await _run_sync(client.services.list)
             return [_parse_service(s) for s in svcs]
         finally:
@@ -122,6 +134,8 @@ async def get_service(name: str) -> ServiceInfo | None:
     try:
         client = _get_client()
         try:
+            if not _is_swarm_manager(client):
+                return None
             svc = await _run_sync(client.services.get, name)
             return _parse_service(svc)
         finally:
@@ -138,6 +152,8 @@ async def scale_service(name: str, replicas: int, detach: bool = True) -> bool:
     try:
         client = _get_client()
         try:
+            if not _is_swarm_manager(client):
+                return False
             svc = await _run_sync(client.services.get, name)
             await _run_sync(svc.scale, replicas)
             return True
@@ -153,6 +169,8 @@ async def restart_service(name: str, detach: bool = True) -> bool:
     try:
         client = _get_client()
         try:
+            if not _is_swarm_manager(client):
+                return False
             svc = await _run_sync(client.services.get, name)
             # force_update increments the ForceUpdate counter triggering a re-deploy
             spec = svc.attrs.get("Spec", {})
@@ -172,6 +190,8 @@ async def update_service_image(name: str, image: str, registry_auth: bool = True
     try:
         client = _get_client()
         try:
+            if not _is_swarm_manager(client):
+                return False
             svc = await _run_sync(client.services.get, name)
             spec = svc.attrs.get("Spec", {})
             task_template = spec.get("TaskTemplate", {})
@@ -199,6 +219,8 @@ async def rollback_service(name: str) -> bool:
     try:
         client = _get_client()
         try:
+            if not _is_swarm_manager(client):
+                return False
             svc = await _run_sync(client.services.get, name)
             version = svc.attrs["Version"]["Index"]
             # Use the low-level API endpoint with rollback=True.
@@ -279,6 +301,7 @@ async def get_container_stats() -> list[ContainerStats]:
                         cpu_percent=_calc_cpu_percent(stats),
                         memory_mb=mem_usage / (1024 * 1024),
                         memory_limit_mb=mem_limit / (1024 * 1024),
+                        labels=dict(container.labels or {}),
                     ))
                 except Exception as exc:
                     logger.debug("Stats failed for container %s: %s", container.name, exc)
@@ -289,11 +312,36 @@ async def get_container_stats() -> list[ContainerStats]:
     return results
 
 
+async def list_running_containers() -> list[ContainerStats]:
+    """List running containers without expensive Docker stats collection."""
+    results: list[ContainerStats] = []
+    try:
+        client = _get_client()
+        try:
+            containers = await _run_sync(client.containers.list)
+            for container in containers:
+                results.append(ContainerStats(
+                    container_id=container.short_id,
+                    name=container.name,
+                    cpu_percent=0.0,
+                    memory_mb=0.0,
+                    memory_limit_mb=0.0,
+                    labels=dict(container.labels or {}),
+                ))
+        finally:
+            client.close()
+    except (DockerException, APIError) as exc:
+        logger.warning("Failed to list running containers: %s", exc)
+    return results
+
+
 async def get_service_task_nodes(name: str) -> list[str]:
     """Get hostnames of nodes where a service's tasks are running."""
     try:
         client = _get_client()
         try:
+            if not _is_swarm_manager(client):
+                return []
             svc = await _run_sync(client.services.get, name)
             tasks = await _run_sync(svc.tasks, filters={"desired-state": "running"})
             node_ids = {t.get("NodeID", "") for t in tasks if t.get("Status", {}).get("State") == "running"}
@@ -338,6 +386,8 @@ async def list_nodes() -> list[NodeInfo]:
     try:
         client = _get_client()
         try:
+            if not _is_swarm_manager(client):
+                return []
             nodes = await _run_sync(client.nodes.list)
             result: list[NodeInfo] = []
             for node in nodes:
@@ -368,6 +418,8 @@ async def update_node_labels(
     try:
         client = _get_client()
         try:
+            if not _is_swarm_manager(client):
+                return False
             node = await _run_sync(client.nodes.get, node_id)
             spec = node.attrs.get("Spec", {})
             current_labels = dict(spec.get("Labels", {}))

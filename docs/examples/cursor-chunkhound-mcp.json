@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "chunkhound": {
+      "command": "ssh",
+      "args": [
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=10",
+        "USER@YOUR_VPS_HOST",
+        "cd /path/to/Spectra && CHUNKHOUND_CONFIG_FILE=/path/to/chunkhound/config.json /path/to/chunkhound-venv/bin/chunkhound mcp --db .chunkhound/chunks.duckdb"
+      ]
+    }
+  }
+}

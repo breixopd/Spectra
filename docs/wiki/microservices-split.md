@@ -30,7 +30,7 @@ Each mode maps to a specific set of router modules via `SERVICE_ROUTERS` in `app
 | **App (Core API)** | `scripts/start.sh` | 5000 | ~1.34 GB | Web UI, REST API, mission orchestration | **Done** |
 | **AI Service** | `app.services.ai.__main__:app` | 5010 | ~1.13 GB | LLM routing, embeddings, RAG queries | **Done** |
 | **Scheduler** | `app.services.scheduler.__main__:app` | 5011 | ~558 MB | Background tasks, backups, sandbox watchdog, metrics | **Done** |
-| **Worker** | `app.worker.__main__:app` | 5012 | ~4.13 GB | Tool execution from PG job queue | **Done** |
+| **Worker** | `spectra_worker.main:app` | 5012 | ~4.13 GB | Tool execution from PG job queue | **Done** |
 
 Supporting infrastructure:
 
@@ -87,10 +87,10 @@ python3 scripts/check_import_boundaries.py
 
 Forbidden top-level imports in shared packages:
 - `app.api.*`
-- `app.worker.*`
+- `spectra_worker.*`
 - `app.services.ai.__main__`
 - `app.services.scheduler.__main__`
-- `app.worker.__main__`
+- `spectra_worker.__main__`
 
 Lazy imports inside functions are allowed. This keeps the dependency direction clean: services depend on shared code, never the reverse.
 
@@ -99,7 +99,7 @@ Lazy imports inside functions are allowed. This keeps the dependency direction c
 All services run as microservices by default:
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/compose.yaml up -d
 ```
 
 The main compose file includes `app`, `ai-svc`, `scheduler`, and `worker` as separate containers, each with `SERVICE_MODE` set in their environment.
@@ -159,7 +159,7 @@ Executes tool jobs from the PostgreSQL job queue.
 
 | Attribute | Value |
 |-----------|-------|
-| **Source** | `app/worker/__main__.py` |
+| **Source** | `services/worker/src/spectra_worker/` |
 | **Dockerfile Target** | Uses `api` target with `SERVICE_MODE=worker` override |
 | **Requirements** | `requirements/worker.txt` |
 | **Port** | 5012 (health endpoint only) |
@@ -291,7 +291,7 @@ Docker Compose health checks poll these endpoints to determine container readine
 
 ```bash
 # All services (microservices by default):
-docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/compose.yaml up -d
 ```
 
 ### Multi-Server (Docker Swarm)

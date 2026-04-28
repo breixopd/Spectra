@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.worker.helpers import with_retry
+from spectra_worker.helpers import with_retry
 from tests.helpers import make_module
 
 
@@ -32,7 +32,7 @@ class TestWithRetry:
                 raise ConnectionError("fail")
             return "ok"
 
-        with patch("app.worker.helpers.asyncio.sleep", new_callable=AsyncMock):
+        with patch("spectra_worker.helpers.asyncio.sleep", new_callable=AsyncMock):
             result = await job()
         assert result == "ok"
         assert call_count == 3
@@ -43,7 +43,7 @@ class TestWithRetry:
         async def job():
             raise ValueError("always fails")
 
-        with patch("app.worker.helpers.asyncio.sleep", new_callable=AsyncMock):
+        with patch("spectra_worker.helpers.asyncio.sleep", new_callable=AsyncMock):
             with pytest.raises(ValueError, match="always fails"):
                 await job()
 
@@ -72,7 +72,7 @@ class TestWithRetry:
         async def mock_sleep(seconds):
             sleep_calls.append(seconds)
 
-        with patch("app.worker.helpers.asyncio.sleep", side_effect=mock_sleep), pytest.raises(RuntimeError):
+        with patch("spectra_worker.helpers.asyncio.sleep", side_effect=mock_sleep), pytest.raises(RuntimeError):
             await job()
         assert len(sleep_calls) == 3  # 3 retries before final failure
         # Base delays are 2^1, 2^2, 2^3 plus jitter in [0, 1)
@@ -84,7 +84,7 @@ class TestWithRetry:
 class TestToolStatusHelpers:
     @pytest.mark.asyncio
     async def test_sync_tool_status_preserves_existing_fields_and_appends_log(self):
-        from app.worker.helpers import _sync_tool_status
+        from spectra_worker.helpers import _sync_tool_status
 
         cache = SimpleNamespace(
             get=AsyncMock(

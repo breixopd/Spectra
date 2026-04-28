@@ -31,7 +31,7 @@ def _tool(tool_id: str, *, available: bool = True, args_template: str = "", time
 
 @pytest.mark.asyncio
 async def test_execute_tool_job_returns_not_found_error():
-    from app.worker import tool_jobs
+    from spectra_worker import tool_jobs
 
     registry = SimpleNamespace(get_tool=MagicMock(return_value=None))
 
@@ -48,11 +48,10 @@ async def test_execute_tool_job_returns_not_found_error():
 
 
 @pytest.mark.asyncio
-async def test_execute_tool_job_returns_install_failure_when_auto_install_fails():
-    from app.worker import tool_jobs
+async def test_execute_tool_job_fails_fast_when_tool_missing_from_image():
+    from spectra_worker import tool_jobs
 
     registry = SimpleNamespace(get_tool=MagicMock(return_value=_tool("nmap", available=False)))
-    install_tool = AsyncMock(return_value={"success": False, "error": "apt failed"})
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
@@ -60,37 +59,15 @@ async def test_execute_tool_job_returns_install_failure_when_auto_install_fails(
             "app.services.tools.registry",
             make_module("app.services.tools.registry", get_registry=lambda: registry),
         )
-        mp.setattr(tool_jobs, "install_tool_job", install_tool)
         result = await tool_jobs.execute_tool_job("nmap", "example.com")
 
     assert result["success"] is False
-    assert result["stderr"] == "Tool installation failed: apt failed"
-
-
-@pytest.mark.asyncio
-async def test_execute_tool_job_returns_error_when_tool_stays_unavailable_after_install():
-    from app.worker import tool_jobs
-
-    initial_tool = _tool("nmap", available=False)
-    registry = SimpleNamespace(get_tool=MagicMock(side_effect=[initial_tool, initial_tool]))
-    install_tool = AsyncMock(return_value={"success": True, "status": "ready"})
-
-    with pytest.MonkeyPatch.context() as mp:
-        mp.setitem(
-            sys.modules,
-            "app.services.tools.registry",
-            make_module("app.services.tools.registry", get_registry=lambda: registry),
-        )
-        mp.setattr(tool_jobs, "install_tool_job", install_tool)
-        result = await tool_jobs.execute_tool_job("nmap", "example.com")
-
-    assert result["success"] is False
-    assert result["stderr"] == "Tool still not installed after install"
+    assert "verified worker image" in result["stderr"]
 
 
 @pytest.mark.asyncio
 async def test_execute_tool_job_handles_command_build_failure():
-    from app.worker import tool_jobs
+    from spectra_worker import tool_jobs
 
     tool = _tool("nmap")
     registry = SimpleNamespace(get_tool=MagicMock(return_value=tool))
@@ -131,7 +108,7 @@ async def test_execute_tool_job_handles_command_build_failure():
 
 @pytest.mark.asyncio
 async def test_execute_tool_job_adjusts_cidr_timeout_and_marks_timeout_with_parse_warning(tmp_path):
-    from app.worker import tool_jobs
+    from spectra_worker import tool_jobs
 
     tool = _tool("nmap", args_template="--out {output_file}")
     registry = SimpleNamespace(get_tool=MagicMock(return_value=tool))
@@ -191,7 +168,7 @@ async def test_execute_tool_job_adjusts_cidr_timeout_and_marks_timeout_with_pars
 
 @pytest.mark.asyncio
 async def test_execute_tool_job_flags_oom_results_and_returns_parsed_findings(tmp_path):
-    from app.worker import tool_jobs
+    from spectra_worker import tool_jobs
 
     tool = _tool("httpx")
     registry = SimpleNamespace(get_tool=MagicMock(return_value=tool))
@@ -241,34 +218,33 @@ async def test_execute_tool_job_flags_oom_results_and_returns_parsed_findings(tm
 
 
 @pytest.mark.asyncio
-async def test_install_tool_job_syncs_progress_and_final_status():
-    from app.worker import tool_jobs
+async def test_install_tool_job_rebuilds_golden_image_and_syncs_status():
+    from spectra_worker import tool_jobs
 
     sync_status = AsyncMock()
-
-    async def install(tool_id, progress_callback):
-        await progress_callback({"status": "installing", "phase": "download"})
-        return {"success": True, "status": "ready"}
-
-    installer = SimpleNamespace(install=AsyncMock(side_effect=install))
+    build = AsyncMock(return_value={"status": "success", "image_id": "sha256:abc"})
+    registry = SimpleNamespace(get_tool=MagicMock(return_value=_tool("nmap")))
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.tools.installer",
-            make_module("app.services.tools.installer", ToolInstaller=lambda: installer),
+            "app.services.tools.registry",
+            make_module("app.services.tools.registry", get_registry=lambda: registry),
         )
+        mp.setattr(tool_jobs, "build_golden_image_job", build)
+        mp.setattr(tool_jobs, "_is_tool_installed", MagicMock(return_value=True))
         mp.setattr(tool_jobs, "_sync_tool_status", sync_status)
         result = await tool_jobs.install_tool_job("nmap")
 
-    assert result == {"success": True, "status": "ready"}
-    assert has_async_update(sync_status, "nmap", status="installing", phase="download")
+    assert result == {"status": "success", "image_id": "sha256:abc"}
+    build.assert_awaited_once()
+    assert has_async_update(sync_status, "nmap", status="installing", phase="golden_image_build")
     assert has_async_update(sync_status, "nmap", status="ready", success=True)
 
 
 @pytest.mark.asyncio
 async def test_uninstall_tool_job_syncs_progress_and_pending_status_on_success():
-    from app.worker import tool_jobs
+    from spectra_worker import tool_jobs
 
     sync_status = AsyncMock()
 
@@ -284,22 +260,25 @@ async def test_uninstall_tool_job_syncs_progress_and_pending_status_on_success()
             "app.services.tools.installer",
             make_module("app.services.tools.installer", ToolInstaller=lambda: installer),
         )
+        mp.setattr(tool_jobs, "build_golden_image_job", AsyncMock(return_value={"status": "success"}))
         mp.setattr(tool_jobs, "_sync_tool_status", sync_status)
         result = await tool_jobs.uninstall_tool_job("nmap")
 
-    assert result == {"success": True}
+    assert result == {"success": True, "golden_image": {"status": "success"}}
     assert has_async_update(sync_status, "nmap", status="uninstalling")
     assert has_async_update(sync_status, "nmap", status="pending", success=True)
 
 
 @pytest.mark.asyncio
-async def test_install_all_tools_job_tracks_installed_failed_and_skipped_tools():
-    from app.worker import tool_jobs
+async def test_install_all_tools_job_rebuilds_golden_image_for_all_tools():
+    from spectra_worker import tool_jobs
 
     ready_tool = _tool("ready")
     install_tool = _tool("install")
     fail_tool = _tool("fail")
     registry = SimpleNamespace(list_tools=MagicMock(return_value=[ready_tool, install_tool, fail_tool]))
+    sync_status = AsyncMock()
+    build = AsyncMock(return_value={"status": "success", "image_id": "sha256:abc"})
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
@@ -307,24 +286,19 @@ async def test_install_all_tools_job_tracks_installed_failed_and_skipped_tools()
             "app.services.tools.registry",
             make_module("app.services.tools.registry", get_registry=lambda: registry),
         )
-        mp.setattr(tool_jobs, "_is_tool_installed", MagicMock(side_effect=[True, False, False]))
-        mp.setattr(
-            tool_jobs,
-            "install_tool_job",
-            AsyncMock(side_effect=[{"success": True}, {"success": False, "error": "boom"}]),
-        )
-        result = await tool_jobs.install_all_tools_job()
+        mp.setattr(tool_jobs, "_sync_tool_status", sync_status)
+        mp.setattr(tool_jobs, "build_golden_image_job", build)
+        mp.setattr(tool_jobs, "_is_tool_installed", MagicMock(return_value=True))
+        result = await tool_jobs.install_all_tools_job(force=True)
 
-    assert result == {
-        "installed": ["install"],
-        "failed": [{"tool_id": "fail", "error": "boom"}],
-        "skipped": ["ready"],
-    }
+    assert result == {"tools": 3, "golden_image": {"status": "success", "image_id": "sha256:abc"}, "force": True}
+    build.assert_awaited_once()
+    assert has_async_update(sync_status, "ready", status="ready", success=True)
 
 
 @pytest.mark.asyncio
-async def test_reload_plugins_job_syncs_status_and_installs_new_tools():
-    from app.worker import tool_jobs
+async def test_reload_plugins_job_syncs_status_and_rebuilds_for_new_tools():
+    from spectra_worker import tool_jobs
 
     old_tool = _tool("old")
     new_tool = _tool("new")
@@ -333,7 +307,7 @@ async def test_reload_plugins_job_syncs_status_and_installs_new_tools():
         load_plugins=AsyncMock(),
     )
     sync_all = AsyncMock(return_value={"synced": 2, "total": 2})
-    install_tool = AsyncMock(return_value={"success": True})
+    build = AsyncMock(return_value={"status": "success"})
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
@@ -342,16 +316,17 @@ async def test_reload_plugins_job_syncs_status_and_installs_new_tools():
             make_module("app.services.tools.registry", get_registry=lambda: registry),
         )
         mp.setattr(tool_jobs, "sync_all_status_job", sync_all)
-        mp.setattr(tool_jobs, "install_tool_job", install_tool)
+        mp.setattr(tool_jobs, "build_golden_image_job", build)
         result = await tool_jobs.reload_plugins_job()
 
-    assert result == {"reloaded": 2, "added": ["new"], "installed": ["new"]}
+    assert result == {"reloaded": 2, "added": ["new"], "golden_image": {"status": "success"}}
     sync_all.assert_awaited_once()
+    build.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 async def test_get_tool_status_job_reports_missing_and_installed_tools():
-    from app.worker import tool_jobs
+    from spectra_worker import tool_jobs
 
     tool = _tool("nmap")
     registry = SimpleNamespace(get_tool=MagicMock(side_effect=[None, tool]))
@@ -379,7 +354,7 @@ async def test_get_tool_status_job_reports_missing_and_installed_tools():
 
 @pytest.mark.asyncio
 async def test_sync_all_status_job_updates_every_registered_tool():
-    from app.worker import tool_jobs
+    from spectra_worker import tool_jobs
 
     ready_tool = _tool("ready")
     pending_tool = _tool("pending", available=False)

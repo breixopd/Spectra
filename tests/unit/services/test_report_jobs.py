@@ -26,7 +26,7 @@ def _mock_mission(mission_id="m-1", target="10.0.0.1", directive="Full scan", su
 
 @pytest.mark.asyncio
 async def test_generate_mission_report_returns_path():
-    from app.worker.report_jobs import generate_mission_report
+    from spectra_worker.report_jobs import generate_mission_report
 
     mission = _mock_mission(
         summary={
@@ -83,7 +83,7 @@ async def test_generate_mission_report_returns_path():
 
 @pytest.mark.asyncio
 async def test_generate_mission_report_handles_missing_mission():
-    from app.worker.report_jobs import generate_mission_report
+    from spectra_worker.report_jobs import generate_mission_report
 
     mission_result = MagicMock()
     mission_result.scalar_one_or_none.return_value = None
@@ -103,7 +103,7 @@ async def test_generate_mission_report_handles_missing_mission():
 
 @pytest.mark.asyncio
 async def test_generate_executive_summary_returns_text():
-    from app.worker.report_jobs import generate_executive_summary
+    from spectra_worker.report_jobs import generate_executive_summary
 
     mission = _mock_mission(
         summary={
@@ -145,7 +145,7 @@ async def test_generate_executive_summary_returns_text():
 
 @pytest.mark.asyncio
 async def test_generate_executive_summary_missing_mission():
-    from app.worker.report_jobs import generate_executive_summary
+    from spectra_worker.report_jobs import generate_executive_summary
 
     mission_result = MagicMock()
     mission_result.scalar_one_or_none.return_value = None

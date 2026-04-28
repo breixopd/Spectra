@@ -23,7 +23,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-IMAGE="${SPECTRA_TEST_IMAGE:-spectra-app}"
+# Use the lightweight test image (includes app + spectra_worker + tools-core for unit tests).
+IMAGE="${SPECTRA_TEST_IMAGE:-spectra-test-runner}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -72,7 +73,7 @@ usage() {
 build_image() {
     if [[ "${REBUILD:-0}" == "1" ]] || ! docker image inspect "$IMAGE" &>/dev/null; then
         echo -e "${YELLOW}Building test image...${NC}"
-        docker build -f "$PROJECT_ROOT/docker/Dockerfile.api" -t "$IMAGE" "$PROJECT_ROOT"
+        docker build -f "$PROJECT_ROOT/docker/Dockerfile.test" -t "$IMAGE" "$PROJECT_ROOT"
     fi
 }
 
@@ -91,12 +92,12 @@ run_in_docker() {
         -e DATABASE_URL=sqlite+aiosqlite:///tmp/test.db \
         -e AI_PROVIDER=litellm \
         -e JWT_SECRET_KEY=test-secret-key \
-        -e FULLY_AUTOMATED=true \
         -e COVERAGE_FILE=/tmp/spectra-coverage/.coverage \
         --tmpfs /tmp:rw,nosuid,nodev,size=512m \
         --tmpfs /app/data:rw,nosuid,nodev,size=256m \
         -v "$PROJECT_ROOT/app:/app/app:ro" \
         -v "$PROJECT_ROOT/tests:/app/tests:ro" \
+        -v "$PROJECT_ROOT/docker:/app/docker:ro" \
         -v "$PROJECT_ROOT/pyproject.toml:/app/pyproject.toml:ro" \
         -v "$PROJECT_ROOT/.env.test:/app/.env.test:ro" \
         -v "$PROJECT_ROOT/alembic:/app/alembic:ro" \

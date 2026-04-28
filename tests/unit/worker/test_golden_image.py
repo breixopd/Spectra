@@ -4,17 +4,6 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-from pydantic import SecretStr
-
-
-class TestGoldenImageConfig:
-    """Auto-build image config setting."""
-
-    def test_auto_build_default_true(self):
-        from app.core.config import Settings
-
-        s = Settings(DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"))
-        assert s.SANDBOX_AUTO_BUILD_IMAGE is True
 
 
 class TestGoldenImageBuilder:

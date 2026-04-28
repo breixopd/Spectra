@@ -58,7 +58,7 @@ jobs:
         run: |
           set +e
           docker compose -f docker/compose.yaml --profile test run --name spectra-unit-coverage unit-test-runner \
-            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=app --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=70"
+            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=app --cov=spectra_worker --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=70"
           status=$?
           docker cp spectra-unit-coverage:/tmp/coverage.xml coverage.xml 2>/dev/null || true
           docker rm -f spectra-unit-coverage >/dev/null 2>&1 || true
@@ -97,12 +97,21 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ENCRYPTION_KEY: test-encryption-key
+      ENV_FILE: ../.env.test
     steps:
       - uses: actions/checkout@v4
       - name: Ensure .env.test for Docker Compose
         run: test -f .env.test || cp .env.test.example .env.test
       - name: Build Docker integration runner
         run: docker compose -f docker/compose.yaml --profile app --profile test build test-runner
+      - name: Bootstrap Garage for integration tests
+        run: |
+          ENV_FILE=../.env.test docker compose -f docker/compose.yaml --profile app --profile test up -d garage
+          GARAGE_CONTAINER="$(docker compose -f docker/compose.yaml ps -q garage)" \
+          GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}" \
+          GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}" \
+          GARAGE_PRINT_CREDENTIALS=0 \
+            bash docker/garage-init.sh
       - name: Run integration tests in Docker
         run: |
           docker compose -f docker/compose.yaml --profile app --profile test run --rm test-runner \
@@ -166,7 +175,7 @@ jobs:
           push: false
           load: false
       - name: Validate Compose config
-        run: docker compose --env-file .env.example -f docker/compose.yaml --profile app --profile test --profile targets config --quiet
+        run: ENV_FILE=../.env.example docker compose --env-file .env.example -f docker/compose.yaml --profile app --profile test --profile targets config --quiet
       - name: Validate Swarm compose
         run: docker compose --env-file .env.example -f docker/docker-compose.swarm.yml config --quiet
       - name: Scan API image for critical CVEs
@@ -214,11 +223,13 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+      - run: python -m pip install --upgrade pip
       - run: pip install pip-audit
       - run: sudo apt-get update && sudo apt-get install -y libcairo2-dev pkg-config python3-dev
       - run: pip install -r requirements/app.txt
-      # pip-audit: hard gate — vulnerabilities block CI; ignore known disputed advisories.
-      - run: pip-audit --fix --dry-run -l --ignore-vuln PYSEC-2024-65 --ignore-vuln PYSEC-2024-66
+      # pip-audit: hard gate for project dependencies; ignore known disputed advisories
+      # and the runner's transient pip advisory when no fixed pip release is available.
+      - run: pip-audit --fix --dry-run -l --ignore-vuln PYSEC-2024-65 --ignore-vuln PYSEC-2024-66 --ignore-vuln CVE-2026-3219
 
   version-check:
     name: Version file check
@@ -240,6 +251,7 @@ jobs:
     continue-on-error: false
     env:
       ENCRYPTION_KEY: test-encryption-key
+      ENV_FILE: ../.env.test
     steps:
       - uses: actions/checkout@v4
       - name: Ensure .env.test for Docker Compose
@@ -247,6 +259,13 @@ jobs:
       - name: Start test stack
         run: |
           docker compose -f docker/compose.yaml --profile app --profile targets --profile test up -d --build
+      - name: Bootstrap Garage buckets
+        run: |
+          GARAGE_CONTAINER="$(docker compose -f docker/compose.yaml ps -q garage)" \
+          GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}" \
+          GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}" \
+          GARAGE_PRINT_CREDENTIALS=0 \
+            bash docker/garage-init.sh
       - name: Wait for services to be healthy
         run: |
           echo "Waiting for services to become healthy..."

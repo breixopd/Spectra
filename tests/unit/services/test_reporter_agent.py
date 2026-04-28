@@ -4,6 +4,7 @@ import pytest
 
 from app.services.ai.agents.base import ActionRisk, AgentContext
 from app.services.ai.agents.reporter import ReporterAgent, ReporterInput, ReportOutput
+from app.services.ai.llm import LLMResponse
 
 
 @pytest.fixture
@@ -38,7 +39,11 @@ async def test_reporter_execution(reporter_agent, context):
     )
 
     with (
-        patch.object(reporter_agent, "_llm_generate", new=AsyncMock(return_value="Executive Summary Content")),
+        patch.object(
+            reporter_agent,
+            "_llm_generate",
+            new=AsyncMock(return_value=LLMResponse(content="Executive Summary Content", model="test", provider="test")),
+        ),
         patch.object(reporter_agent, "_save_report", new=AsyncMock(return_value="/tmp/report.md")),
     ):
         result = await reporter_agent.execute(context, input_data)

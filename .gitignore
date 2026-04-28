@@ -16,6 +16,7 @@
 *.swp
 *~
 .coverage
+.deploy/
 .env
 .env.test
 .env.test.local
@@ -44,3 +45,6 @@ reports/
 reports/coverage/
 screenshots/
 test.db
+.audit/
+.chunkhound/
+.cursor/

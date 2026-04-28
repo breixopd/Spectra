@@ -20,13 +20,17 @@ _ADMIN_PASSWORD = os.environ.get("APP_PASSWORD", os.environ.get("APP_ADMIN_PASSW
 # ---------------------------------------------------------------------------
 
 
-def _get_admin_bearer_token(app_url: str) -> str:
+def _get_admin_bearer_token(app_url: str, admin_cookies: list[dict] | None = None) -> str:
     """Authenticate as admin via the token endpoint and return a fresh Bearer token.
 
-    A fresh login ensures last_activity is updated (avoiding idle-timeout 401s)
-    and provides a token suitable for direct API calls with an Authorization header
-    (bypassing CSRF cookie requirements).
+    Reuse fixture cookies when available so broad UI suites do not exhaust the
+    login endpoint rate limit, falling back to a fresh token for standalone use.
     """
+    if admin_cookies:
+        token = next((cookie.get("value") for cookie in admin_cookies if cookie.get("name") == "access_token"), None)
+        if token:
+            return str(token)
+
     with httpx.Client(base_url=app_url, timeout=30) as client:
         resp = client.post(
             "/api/v1/auth/token",
@@ -48,7 +52,7 @@ def _create_user_via_admin_api(
     role: str = "user",
 ) -> dict:
     """Create a test user via the admin API and return the response payload."""
-    token = _get_admin_bearer_token(app_url)
+    token = _get_admin_bearer_token(app_url, admin_cookies)
     with httpx.Client(base_url=app_url, timeout=30) as client:
         resp = client.post(
             "/api/admin/users",

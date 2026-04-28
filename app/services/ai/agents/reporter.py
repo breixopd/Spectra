@@ -205,7 +205,7 @@ class ReporterAgent(Agent[ReporterInput, ReportOutput]):
                 system_prompt=system_prompt,
                 temperature=0.3,
             )
-            return response.strip()
+            return response.content.strip()
         except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.warning("LLM summary generation failed, using fallback: %s", e)
             # Fallback to template

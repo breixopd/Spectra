@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import logging
 from typing import Any
@@ -136,10 +137,15 @@ class StorageService:
 
         try:
             async with httpx.AsyncClient(base_url=admin_url, headers=headers, timeout=10) as http:
-                # 1. Check cluster status
-                resp = await http.get("/v2/GetClusterStatus")
-                if resp.status_code != 200:
-                    logger.debug("Garage admin API not reachable (status %s), skipping bootstrap", resp.status_code)
+                resp = None
+                for attempt in range(1, 4):
+                    resp = await http.get("/v2/GetClusterStatus")
+                    if resp.status_code == 200:
+                        break
+                    logger.debug("Garage admin API not ready (status %s, attempt %d/3)", resp.status_code, attempt)
+                    await asyncio.sleep(1.0)
+                if resp is None or resp.status_code != 200:
+                    logger.debug("Garage admin API not reachable after retries (status %s), skipping bootstrap", resp.status_code if resp else "no response")
                     return
                 status_data = resp.json()
                 layout_version = status_data.get("layoutVersion", 0)

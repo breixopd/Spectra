@@ -22,7 +22,7 @@ LOCK_FILE="/tmp/spectra-deploy.lock"
 LOG_DIR="$PROJECT_DIR/logs"
 LOG_FILE="$LOG_DIR/deploy.log"
 BACKUP_DIR="$PROJECT_DIR/data/backups"
-COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_DIR/docker/docker-compose.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_DIR/docker/compose.yaml}"
 HEALTH_URL="${HEALTH_URL:-http://localhost:80/api/v1/health?scope=public}"
 VERSION="${1:-latest}"
 DEPLOY_WEBHOOK_URL="${DEPLOY_WEBHOOK_URL:-}"
@@ -40,7 +40,7 @@ Arguments:
   version   Docker image version tag to deploy (default: latest)
 
 Environment variables:
-  COMPOSE_FILE        Docker compose file (default: docker/docker-compose.yml)
+  COMPOSE_FILE        Docker compose file (default: docker/compose.yaml)
   DEPLOY_WEBHOOK_URL  Webhook URL for deploy notifications (optional)
   HEALTH_URL          Health check URL (default: http://localhost:80/api/v1/health?scope=public)
   DATABASE_URL        PostgreSQL connection URL (for pg_dump)

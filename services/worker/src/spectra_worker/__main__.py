@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 def _latency_ms(start: float) -> float:
     return round((time.monotonic() - start) * 1000, 1)
 
+
 _worker_task: asyncio.Task | None = None
 _heartbeat_task: asyncio.Task | None = None
 
@@ -215,7 +216,7 @@ async def internal_stop_shell_listener(session_id: str) -> None:
 
 async def _run_heartbeat():
     """Run the heartbeat loop so the scheduler can detect stale workers."""
-    from app.worker.lifecycle import heartbeat_loop
+    from spectra_worker.lifecycle import heartbeat_loop
 
     queue_name = os.environ.get("QUEUE_NAME", "default")
     await heartbeat_loop(queue_name)
@@ -224,8 +225,8 @@ async def _run_heartbeat():
 async def work_loop():
     """Pull and execute tool jobs from the PG queue using the existing worker infrastructure."""
     from app.infrastructure.queue import worker_loop
-    from app.worker import _WORKER_FUNCTIONS
-    from app.worker.lifecycle import shutdown, startup
+    from spectra_worker import _WORKER_FUNCTIONS
+    from spectra_worker.lifecycle import shutdown, startup
 
     queue_name = os.environ.get("QUEUE_NAME", "default")
 

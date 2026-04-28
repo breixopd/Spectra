@@ -159,7 +159,8 @@ class TestEngineConfig:
         from app.core.database import engine
 
         url_str = str(engine.url)
-        assert "asyncpg" in url_str
+        # CI / compose may use Postgres; scripts/test.sh uses sqlite for isolated runs.
+        assert "asyncpg" in url_str or "aiosqlite" in url_str
 
     def test_session_maker_produces_async_sessions(self):
         from app.core.database import async_session_maker

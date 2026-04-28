@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock
 
 import pytest
 from sqlalchemy import delete
-from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings

@@ -51,32 +51,10 @@ async def test_validate_and_resolve_tool_not_installed():
     mock_registry.get_tool.return_value = mock_tool
 
     with patch("app.services.tools.validation.get_registry", return_value=mock_registry):
-        with patch("app.services.tools.validation.ensure_tool_installed", new_callable=AsyncMock, return_value=False):
-            tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {}, 300)
+        tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {}, 300)
 
     assert tool is None
-    assert "installation failed" in error.stderr
-
-
-@pytest.mark.asyncio
-async def test_validate_and_resolve_tool_install_success():
-    mission = MagicMock()
-    mission.log = MagicMock()
-
-    mock_tool = MagicMock()
-    mock_tool.is_available = False
-    mock_tool.config.execution.args_schema = None
-
-    mock_registry = MagicMock()
-    mock_registry.sync_status_from_cache = AsyncMock()
-    mock_registry.get_tool.side_effect = [mock_tool, mock_tool]
-
-    with patch("app.services.tools.validation.get_registry", return_value=mock_registry):
-        with patch("app.services.tools.validation.ensure_tool_installed", new_callable=AsyncMock, return_value=True):
-            tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {}, 300)
-
-    assert tool == mock_tool
-    assert error is None
+    assert "verified worker image" in error.stderr
 
 
 @pytest.mark.asyncio

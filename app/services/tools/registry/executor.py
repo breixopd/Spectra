@@ -14,7 +14,7 @@ import os
 import signal
 from typing import TYPE_CHECKING
 
-from app.services.tools.registry.constants import MAX_OUTPUT_SIZE
+from spectra_tools_core.registry_constants import MAX_OUTPUT_SIZE
 
 if TYPE_CHECKING:
     from asyncio import StreamReader

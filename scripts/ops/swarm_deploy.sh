@@ -18,6 +18,7 @@ HEALTH_CHECK_SCRIPT="${SCRIPT_DIR}/../health_check.sh"
 HEALTH_URL="${HEALTH_URL:-http://localhost:80/api/v1/health?scope=public}"
 BACKUP_DIR="${PROJECT_ROOT}/data/backups"
 STATE_DIR="${PROJECT_ROOT}/.deploy/swarm"
+GENERATED_SECRETS_FILE="${STATE_DIR}/generated-secrets.env"
 CURRENT_VERSION_FILE="${STATE_DIR}/current-version"
 PREVIOUS_VERSION_FILE="${STATE_DIR}/previous-version"
 TARGET_VERSION_FILE="${STATE_DIR}/target-version"
@@ -30,6 +31,45 @@ DOCKER_APT_REPO_SIGNING_FINGERPRINT="9DC858229FC7DD38854AE2D88D81803C0EBFCD88"
 log()  { echo "${LOG_PREFIX} $(date +%H:%M:%S) $*"; }
 warn() { echo "${LOG_PREFIX} $(date +%H:%M:%S) [WARN] $*" >&2; }
 die()  { echo "${LOG_PREFIX} $(date +%H:%M:%S) [FATAL] $*" >&2; exit 1; }
+
+load_deploy_env() {
+  if [[ -f "${PROJECT_ROOT}/.env" ]]; then
+    set -a; source "${PROJECT_ROOT}/.env"; set +a
+  fi
+  if [[ -f "${GENERATED_SECRETS_FILE}" ]]; then
+    set -a; source "${GENERATED_SECRETS_FILE}"; set +a
+  fi
+}
+
+persist_generated_secret() {
+  local var_name="${1:?var name required}"
+  local value="${2:?value required}"
+
+  mkdir -p "${STATE_DIR}"
+  touch "${GENERATED_SECRETS_FILE}"
+  chmod 600 "${GENERATED_SECRETS_FILE}"
+  if grep -q "^${var_name}=" "${GENERATED_SECRETS_FILE}"; then
+    return 0
+  fi
+  printf '%s=%q\n' "${var_name}" "${value}" >> "${GENERATED_SECRETS_FILE}"
+}
+
+ensure_secret_var() {
+  local var_name="${1:?var name required}"
+  local default_value="${2:-}"
+  local current_value="${!var_name:-}"
+
+  if [[ -n "${current_value}" ]]; then
+    return 0
+  fi
+  if [[ -n "${default_value}" ]]; then
+    export "${var_name}=${default_value}"
+  else
+    export "${var_name}=$(openssl rand -hex 32)"
+  fi
+  persist_generated_secret "${var_name}" "${!var_name}"
+  log "Generated ${var_name} in ${GENERATED_SECRETS_FILE}"
+}
 
 check_swarm() {
   docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null | grep -q "active" \
@@ -315,9 +355,21 @@ cmd_secrets() {
 
   log "Creating Docker Swarm secrets..."
 
-  if [[ -f "${PROJECT_ROOT}/.env" ]]; then
-    set -a; source "${PROJECT_ROOT}/.env"; set +a
-  fi
+  load_deploy_env
+
+  ensure_secret_var "POSTGRES_PASSWORD"
+  ensure_secret_var "SERVICE_AUTH_SECRET"
+  ensure_secret_var "JWT_SECRET_KEY"
+  ensure_secret_var "SECRET_KEY"
+  ensure_secret_var "ENCRYPTION_KEY"
+  ensure_secret_var "REDIS_PASSWORD"
+  ensure_secret_var "GARAGE_ACCESS_KEY" "GK$(openssl rand -hex 12)"
+  ensure_secret_var "GARAGE_SECRET_KEY"
+  ensure_secret_var "GARAGE_RPC_SECRET"
+  ensure_secret_var "GARAGE_ADMIN_TOKEN"
+  ensure_secret_var "CLICKHOUSE_PASSWORD"
+  ensure_secret_var "OPENAI_API_KEY" "not-configured"
+  ensure_secret_var "ANTHROPIC_API_KEY" "not-configured"
 
   create_secret() {
     local name="$1"
@@ -342,6 +394,7 @@ cmd_secrets() {
   create_secret "garage_access_key"   "${GARAGE_ACCESS_KEY:?GARAGE_ACCESS_KEY not set}"
   create_secret "garage_secret_key"   "${GARAGE_SECRET_KEY:?GARAGE_SECRET_KEY not set}"
   create_secret "garage_rpc_secret"   "${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET not set}"
+  create_secret "garage_admin_token"  "${GARAGE_ADMIN_TOKEN:?GARAGE_ADMIN_TOKEN not set}"
   create_secret "clickhouse_password" "${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD not set}"
   create_secret "openai_api_key"      "${OPENAI_API_KEY:-}"
   create_secret "anthropic_api_key"   "${ANTHROPIC_API_KEY:-}"
@@ -375,8 +428,8 @@ cmd_preflight() {
   check_manager
 
   [[ -f "${COMPOSE_FILE}" ]] || die "Swarm compose file not found: ${COMPOSE_FILE}"
-  [[ -f "${PROJECT_ROOT}/.env" ]] || die ".env file not found"
-  set -a; source "${PROJECT_ROOT}/.env"; set +a
+  [[ -f "${PROJECT_ROOT}/.env" || -f "${GENERATED_SECRETS_FILE}" ]] || die ".env or generated secrets file not found"
+  load_deploy_env
   VERSION="${VERSION:?VERSION must be set in ${PROJECT_ROOT}/.env for swarm deploys}" docker compose -f "${COMPOSE_FILE}" config >/dev/null
 
   log "Checking required node labels..."
@@ -409,12 +462,12 @@ cmd_deploy() {
   check_manager
 
   [[ -f "${COMPOSE_FILE}" ]] || die "Swarm compose file not found: ${COMPOSE_FILE}"
-  [[ -f "${PROJECT_ROOT}/.env" ]] || die ".env file not found"
+  [[ -f "${PROJECT_ROOT}/.env" || -f "${GENERATED_SECRETS_FILE}" ]] || die ".env or generated secrets file not found"
   [[ -x "${HEALTH_CHECK_SCRIPT}" ]] || die "Health check script not found or not executable: ${HEALTH_CHECK_SCRIPT}"
 
   mkdir -p "${BACKUP_DIR}" "${STATE_DIR}"
 
-  set -a; source "${PROJECT_ROOT}/.env"; set +a
+  load_deploy_env
   : "${VERSION:?VERSION must be set in ${PROJECT_ROOT}/.env for swarm deploys}"
   target_version="${VERSION}"
   VERSION="${target_version}" docker compose -f "${COMPOSE_FILE}" config >/dev/null

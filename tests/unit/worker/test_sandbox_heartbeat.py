@@ -40,14 +40,14 @@ class TestHeartbeatLoop:
     @pytest.mark.asyncio
     async def test_heartbeat_loop_exists(self):
         """heartbeat_loop is importable from worker module."""
-        from app.worker import heartbeat_loop
+        from spectra_worker import heartbeat_loop
 
         assert callable(heartbeat_loop)
 
     @pytest.mark.asyncio
     async def test_heartbeat_loop_updates_db(self):
         """heartbeat_loop issues UPDATE to sandboxes table."""
-        from app.worker import heartbeat_loop
+        from spectra_worker import heartbeat_loop
 
         mock_session = AsyncMock()
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)

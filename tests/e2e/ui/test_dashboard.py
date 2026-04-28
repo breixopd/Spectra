@@ -19,6 +19,7 @@ def test_getting_started_links_to_settings(authenticated_page: Page, app_url: st
 
 def test_buttons_have_visible_content(authenticated_page: Page):
     """All buttons should have visible text or icon content."""
+    expect(authenticated_page.get_by_test_id("launch-btn")).to_be_visible()
     buttons = authenticated_page.locator("button:visible")
     count = buttons.count()
     for i in range(count):

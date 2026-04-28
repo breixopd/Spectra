@@ -398,12 +398,13 @@ echo "Docker Compose: $(docker compose version)"
 mkdir -p /opt/spectra
 cd /opt/spectra
 
-if [ -f docker-compose.yml ]; then
-    docker compose pull --ignore-pull-failures 2>/dev/null || true
-    docker compose up -d --remove-orphans {svc_list}
+COMPOSE_FILE="docker/compose.yaml"
+if [ -f "$COMPOSE_FILE" ]; then
+    docker compose -f "$COMPOSE_FILE" --profile app pull --ignore-pull-failures 2>/dev/null || true
+    docker compose -f "$COMPOSE_FILE" --profile app up -d --remove-orphans {svc_list}
     echo "Services deployed: {", ".join(services)}"
 else
-    echo "ERROR: No docker-compose.yml found at /opt/spectra. Upload config first." >&2
+    echo "ERROR: No docker/compose.yaml found at /opt/spectra. Upload config first." >&2
     exit 1
 fi
 """
@@ -415,12 +416,13 @@ fi
         verify_script = f"""set -e
 cd /opt/spectra
 
-if [ ! -f docker-compose.yml ]; then
-    echo "ERROR: Missing /opt/spectra/docker-compose.yml during verification." >&2
+COMPOSE_FILE="docker/compose.yaml"
+if [ ! -f "$COMPOSE_FILE" ]; then
+    echo "ERROR: Missing /opt/spectra/docker/compose.yaml during verification." >&2
     exit 1
 fi
 
-running_services="$(docker compose ps --services --status running)"
+running_services="$(docker compose -f "$COMPOSE_FILE" --profile app ps --services --status running)"
 if [ -n "$running_services" ]; then
     echo "Running compose services:"
     printf '%s\n' "$running_services"

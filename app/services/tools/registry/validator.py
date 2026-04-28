@@ -5,8 +5,8 @@ import re
 from typing import TYPE_CHECKING, Any
 
 from app.services.tools.models import ToolConfig
-from app.services.tools.registry.constants import DANGEROUS_PATTERNS
-from app.services.tools.registry.exceptions import PluginValidationError
+from spectra_tools_core.registry_constants import DANGEROUS_PATTERNS
+from spectra_tools_core.registry_exceptions import PluginValidationError
 
 if TYPE_CHECKING:
     pass

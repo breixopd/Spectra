@@ -59,6 +59,7 @@ class MissionInput(BaseModel):
     """Input for the MissionController."""
 
     directive: str = Field(..., description="User's high-level directive")
+    requirements: str | None = Field(None, description="Additional mission constraints")
     is_steering: bool = Field(False, description="Is this a mid-mission steering command?")
     force_phase: AssessmentPhase | None = Field(None, description="Force transition to phase")
 
@@ -235,10 +236,12 @@ class MissionController(Agent[MissionInput, MissionPlan | PhaseTransition | Stee
         from app.services.ai.sanitizer import sanitize_for_prompt
 
         sanitized_directive = sanitize_for_prompt(input_data.directive, field_name="directive")
+        sanitized_requirements = sanitize_for_prompt(input_data.requirements or "None", field_name="requirements")
 
         plan_prompt_text = MISSION_PLAN_PROMPT.format(
             directive=sanitized_directive,
             target=context.target or "Not specified",
+            requirements=sanitized_requirements,
             methodology="",
             tools_context="",
             rag_context="",
@@ -287,7 +290,7 @@ IMPORTANT OPERATIONAL GUIDELINES:
                         temperature=0.4,
                         max_tokens=4096,
                     )
-                    return plan
+                    return self._enforce_directive_constraints(plan, input_data)
                 except (OSError, RuntimeError, ValueError, TimeoutError) as e:
                     logger.warning("Plan generation attempt %d failed: %s", attempt + 1, e)
                     if attempt == max_retries - 1:
@@ -300,6 +303,35 @@ IMPORTANT OPERATIONAL GUIDELINES:
         except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.error("Plan generation failed after %d attempts: %s", max_retries, e)
             raise
+
+    def _enforce_directive_constraints(self, plan: MissionPlan, input_data: MissionInput) -> MissionPlan:
+        """Apply deterministic safety/runtime constraints after LLM planning."""
+        constraints = f"{input_data.directive}\n{input_data.requirements or ''}".lower()
+        quick_markers = ("quick", "validation", "smoke", "basic", "short")
+        safe_markers = ("safe", "recon", "reconnaissance", "non-destructive", "avoid destructive")
+
+        if any(marker in constraints for marker in safe_markers):
+            blocked_phases = {AssessmentPhase.EXPLOITATION, AssessmentPhase.POST_EXPLOITATION}
+            allowed_task_ids = {
+                task.task_id for task in plan.tasks if task.phase not in blocked_phases and task.agent_type != "exploit_crafter"
+            }
+            plan.tasks = [
+                task.model_copy(update={"dependencies": [dep for dep in task.dependencies if dep in allowed_task_ids]})
+                for task in plan.tasks
+                if task.task_id in allowed_task_ids
+            ]
+            if plan.mission_type == MissionType.EXPLOIT:
+                plan.mission_type = MissionType.VULN_SCAN
+
+        if any(marker in constraints for marker in quick_markers) and len(plan.tasks) > 6:
+            kept_ids = {task.task_id for task in plan.tasks[:6]}
+            plan.tasks = [
+                task.model_copy(update={"dependencies": [dep for dep in task.dependencies if dep in kept_ids]})
+                for task in plan.tasks[:6]
+            ]
+            plan.estimated_duration_minutes = min(plan.estimated_duration_minutes, 15)
+
+        return plan
 
     async def _handle_steering(
         self,
