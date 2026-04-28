@@ -6,6 +6,7 @@ Create Date: 2026-04-13
 """
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision = "e5f6g7h8i9j0"
@@ -49,9 +50,6 @@ _DEFAULTS = [
     ("SANDBOX_PER_USER_LIMIT", "3", False, "Max concurrent sandboxes per user"),
     ("SANDBOX_DEFAULT_PRIORITY", "5", False, "Default sandbox job priority (1=highest)"),
     ("SANDBOX_OOM_ESCALATION_ENABLED", "true", False, "Auto-escalate resource tier on OOM"),
-    ("SANDBOX_WARM_POOL_SIZE", "2", False, "Pre-warmed idle containers to maintain"),
-    ("SANDBOX_AUTO_BUILD_IMAGE", "true", False, "Auto-rebuild golden image on plugin change"),
-    ("SANDBOX_IMAGE_SCAN_ENABLED", "true", False, "Scan golden image after build"),
     ("SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL", "false", False, "Block deployment if critical CVEs found"),
     ("MCP_API_KEY", "", True, "MCP server API key"),
     ("AI_SERVICE_URL", "", False, "AI microservice URL"),
@@ -140,10 +138,6 @@ _DEFAULTS = [
     ("DATABASE_ECHO", "false", False, "Enable SQL query logging"),
     ("DATABASE_POOL_SIZE", "20", False, "Database connection pool size"),
     ("DATABASE_MAX_OVERFLOW", "10", False, "Database pool max overflow connections"),
-    # Sandbox Docker-specific (DB-managed)
-    ("SANDBOX_IMAGE", "spectra-tools", False, "Sandbox Docker image name"),
-    ("SANDBOX_NETWORK", "spectra-network", False, "Sandbox Docker network name"),
-    ("SANDBOX_PLUGINS_VOLUME", "spectra_plugins", False, "Sandbox plugins Docker volume"),
 ]
 
 
@@ -165,7 +159,7 @@ def downgrade():
     """Remove seeded config rows. Only deletes rows with default values to avoid
     destroying user-modified configuration."""
     conn = op.get_bind()
-    for key, value, is_secret, description in _DEFAULTS:
+    for key, value, _is_secret, _description in _DEFAULTS:
         conn.execute(
             sa.text("DELETE FROM system_config WHERE key = :key AND value = :value"),
             {"key": key, "value": value},

@@ -3,17 +3,34 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from pydantic import SecretStr
 
 
-class TestWarmPoolConfig:
-    """Warm pool config settings."""
+@pytest.mark.asyncio
+async def test_resolve_target_warm_pool_size_fallback_when_no_nodes():
+    from app.services.tools.sandbox import warm_pool as wp
 
-    def test_warm_pool_size_default(self):
-        from app.core.config import Settings
+    mock_session = AsyncMock()
+    mock_row = MagicMock()
+    mock_row.scalar_one.return_value = 0
+    mock_session.execute = AsyncMock(return_value=mock_row)
 
-        s = Settings(DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"))
-        assert s.SANDBOX_WARM_POOL_SIZE == 2
+    with patch.object(wp, "async_session_maker", return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False))):
+        n = await wp.resolve_target_warm_pool_size()
+    assert n == wp.WARM_POOL_SINGLE_NODE_FALLBACK
+
+
+@pytest.mark.asyncio
+async def test_resolve_target_warm_pool_size_caps_at_ten():
+    from app.services.tools.sandbox import warm_pool as wp
+
+    mock_session = AsyncMock()
+    mock_row = MagicMock()
+    mock_row.scalar_one.return_value = 15
+    mock_session.execute = AsyncMock(return_value=mock_row)
+
+    with patch.object(wp, "async_session_maker", return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False))):
+        n = await wp.resolve_target_warm_pool_size()
+    assert n == wp.MAX_WARM_POOL_CONTAINERS
 
 
 class TestWarmPoolManager:
@@ -57,13 +74,13 @@ class TestWarmPoolManager:
 
     @pytest.mark.asyncio
     async def test_maintain_skips_when_pool_unavailable(self):
+        from app.services.tools.sandbox import warm_pool as wp
         from app.services.tools.sandbox.warm_pool import WarmPoolManager
 
         mock_pool = MagicMock(available=False)
         wm = WarmPoolManager(mock_pool)
         wm._spawn_warm_container = AsyncMock()
-        with patch("app.services.tools.sandbox.warm_pool.get_settings") as mock_settings:
-            mock_settings.return_value = MagicMock(SANDBOX_WARM_POOL_SIZE=2)
+        with patch.object(wp, "resolve_target_warm_pool_size", AsyncMock(return_value=2)):
             await wm.maintain()
             wm._spawn_warm_container.assert_not_awaited()
 

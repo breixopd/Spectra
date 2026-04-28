@@ -60,6 +60,8 @@ async def test_hydrate_runtime_settings_applies_rows_and_resets_caches(monkeypat
     result.scalars.return_value.all.return_value = rows
     session.execute.return_value = result
     monkeypatch.delenv("TENSORZERO_GATEWAY_URL", raising=False)
+    monkeypatch.delenv("EMBEDDING_MODEL", raising=False)
+    monkeypatch.delenv("SANDBOX_MAX_CONTAINERS", raising=False)
 
     with (
         patch("app.services.system.runtime_settings.settings") as mock_settings,
@@ -235,6 +237,8 @@ def test_sandbox_settings_in_general_runtime_field_map():
     assert GENERAL_RUNTIME_FIELD_MAP["SANDBOX_MEMORY_LIMIT"][1] == "str"
     assert GENERAL_RUNTIME_FIELD_MAP["SANDBOX_CPU_SHARES"][1] == "int"
     assert GENERAL_RUNTIME_FIELD_MAP["SANDBOX_MAX_LIFETIME"][1] == "int"
+    for internal_key in ("SANDBOX_IMAGE", "SANDBOX_NETWORK", "SANDBOX_PLUGINS_VOLUME"):
+        assert internal_key not in GENERAL_RUNTIME_FIELD_MAP
 
 
 class TestGeneralRuntimeFieldMapIncludes:
@@ -247,9 +251,6 @@ class TestGeneralRuntimeFieldMapIncludes:
             "SANDBOX_PER_USER_LIMIT",
             "SANDBOX_DEFAULT_PRIORITY",
             "SANDBOX_OOM_ESCALATION_ENABLED",
-            "SANDBOX_WARM_POOL_SIZE",
-            "SANDBOX_AUTO_BUILD_IMAGE",
-            "SANDBOX_IMAGE_SCAN_ENABLED",
             "SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL",
         ]
         for key in new_keys:
@@ -259,14 +260,11 @@ class TestGeneralRuntimeFieldMapIncludes:
         type_checks = {
             "SANDBOX_NETWORK_ISOLATION": "bool",
             "SANDBOX_OOM_ESCALATION_ENABLED": "bool",
-            "SANDBOX_AUTO_BUILD_IMAGE": "bool",
-            "SANDBOX_IMAGE_SCAN_ENABLED": "bool",
             "SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL": "bool",
             "SANDBOX_IDLE_TIMEOUT": "int",
             "SANDBOX_HEARTBEAT_INTERVAL": "int",
             "SANDBOX_PER_USER_LIMIT": "int",
             "SANDBOX_DEFAULT_PRIORITY": "int",
-            "SANDBOX_WARM_POOL_SIZE": "int",
             "SANDBOX_RESOURCE_TIERS": "str",
         }
         for key, expected_type in type_checks.items():

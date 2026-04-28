@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hashlib
 import json
 import logging
 import shlex
@@ -67,6 +68,7 @@ class GoldenImageBuilder:
                     {
                         "id": data.get("id", json_file.stem),
                         "name": data.get("name", json_file.stem),
+                        "version": data.get("version", ""),
                         "install_method": installation.get("method", ""),
                         "install_commands": installation.get("commands", []),
                         "verification_command": installation.get("verification_command", ""),
@@ -76,6 +78,24 @@ class GoldenImageBuilder:
                 logger.warning("Skipping malformed plugin %s: %s", json_file.name, exc)
 
         return plugins
+
+    def _plugin_manifest(self, plugins: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], str]:
+        """Return deterministic plugin provenance manifest and SHA-256 digest."""
+        manifest = [
+            {
+                "id": plugin.get("id", ""),
+                "name": plugin.get("name", ""),
+                "version": plugin.get("version", ""),
+                "install_method": plugin.get("install_method", ""),
+                "verification_command": plugin.get("verification_command", ""),
+                "install_commands_sha256": hashlib.sha256(
+                    json.dumps(plugin.get("install_commands", []), sort_keys=True).encode("utf-8")
+                ).hexdigest(),
+            }
+            for plugin in sorted(plugins, key=lambda item: str(item.get("id", "")))
+        ]
+        digest = hashlib.sha256(json.dumps(manifest, sort_keys=True).encode("utf-8")).hexdigest()
+        return manifest, digest
 
     def generate_dockerfile(self, plugins: list[dict[str, Any]]) -> str:
         """Generate a Dockerfile that installs all plugin tools.
@@ -120,11 +140,16 @@ class GoldenImageBuilder:
             elif method == "script":
                 custom_commands.extend(commands)
 
+        manifest, manifest_sha = self._plugin_manifest(plugins)
+        tool_ids = ",".join(item["id"] for item in manifest)
+
         lines = [
             f"FROM {SANDBOX_BASE_IMAGE}",
             "",
             'LABEL org.opencontainers.image.title="Spectra Tools (Golden)"',
             'LABEL org.opencontainers.image.description="Auto-built security tools image"',
+            f'LABEL io.spectra.golden-image.manifest-sha256="{manifest_sha}"',
+            f'LABEL io.spectra.golden-image.plugins="{tool_ids}"',
             "",
             "WORKDIR /app",
             "",
@@ -183,15 +208,35 @@ class GoldenImageBuilder:
         lines.extend(
             [
                 "# Worker code",
+                "COPY packages/tools-core/src/spectra_tools_core/ ./spectra_tools_core/",
                 "COPY app/ ./app/",
                 "COPY plugins/ ./plugins/",
                 "",
                 "# Entrypoint",
-                'CMD ["python", "-m", "app.worker"]',
+                'CMD ["python", "-m", "spectra_worker"]',
             ]
         )
 
         return "\n".join(lines)
+
+    async def _store_build_status(self, result: dict[str, Any]) -> None:
+        """Persist latest golden-image build metadata for audit/compliance views."""
+        try:
+            from sqlalchemy import select as _select
+
+            from app.core.database import async_session_maker as _asm
+            from app.models.infrastructure import SystemStatus
+
+            async with _asm() as session:
+                existing = await session.execute(_select(SystemStatus).where(SystemStatus.key == "golden_image_build"))
+                row = existing.scalar_one_or_none()
+                if row:
+                    row.value = result
+                else:
+                    session.add(SystemStatus(key="golden_image_build", value=result))
+                await session.commit()
+        except (OSError, RuntimeError) as exc:
+            logger.warning("Failed to store build status: %s", exc)
 
     async def validate_image(
         self, image_tag: str, plugins_dir: str = "plugins"
@@ -298,9 +343,18 @@ class GoldenImageBuilder:
             if not plugins:
                 return {"status": "error", "message": "No plugins found"}
 
+            manifest, manifest_sha = self._plugin_manifest(plugins)
             dockerfile_content = self.generate_dockerfile(plugins)
             result["plugins_count"] = len(plugins)
+            result["plugin_manifest_sha256"] = manifest_sha
+            result["plugin_manifest"] = manifest
             result["dockerfile_lines"] = len(dockerfile_content.splitlines())
+            result["provenance"] = {
+                "builder": "spectra-golden-image",
+                "source": str(Path(plugins_dir).resolve()),
+                "target_tag": target_tag,
+                "base_image": SANDBOX_BASE_IMAGE,
+            }
 
             logger.info("Building golden image %s from %d plugins...", temp_tag, len(plugins))
 
@@ -357,6 +411,7 @@ class GoldenImageBuilder:
                 except OSError:
                     logger.warning("Failed to clean up temp image %s", temp_tag)
 
+                await self._store_build_status(result)
                 return result
 
             # Atomic swap: tag as target
@@ -371,50 +426,30 @@ class GoldenImageBuilder:
 
             logger.info("Golden image built successfully: %s (%d plugins)", target_tag, len(plugins))
 
-            # Store build status in system status
-            try:
-                from sqlalchemy import select as _select
-
-                from app.core.database import async_session_maker as _asm
-                from app.models.infrastructure import SystemStatus
-
-                async with _asm() as session:
-                    existing = await session.execute(
-                        _select(SystemStatus).where(SystemStatus.key == "golden_image_build")
-                    )
-                    row = existing.scalar_one_or_none()
-                    if row:
-                        row.value = result
-                    else:
-                        session.add(SystemStatus(key="golden_image_build", value=result))
-                    await session.commit()
-            except (OSError, RuntimeError) as exc:
-                logger.warning("Failed to store build status: %s", exc)
-
             # Scan the image if scanning is enabled
             from app.core.config import get_settings as _get_settings
 
             _build_settings = _get_settings()
-            if _build_settings.SANDBOX_IMAGE_SCAN_ENABLED:
-                from app.services.tools.sandbox.image_scanner import ImageScanner
+            from app.services.tools.sandbox.image_scanner import ImageScanner
 
-                scanner = ImageScanner()
-                if scanner.available:
-                    scan_result = await scanner.scan(
-                        target_tag,
-                        block_critical=_build_settings.SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL,
-                    )
-                    result["scan"] = scan_result.to_dict()
-                    if scan_result.blocked:
-                        # Untag the image to prevent it from being used
-                        try:
-                            await asyncio.to_thread(self._client.images.remove, target_tag, noprune=True)
-                            result["status"] = "blocked"
-                            result["message"] = f"Image blocked: {scan_result.critical} critical CVEs"
-                            logger.warning("Golden image blocked due to %d critical CVEs", scan_result.critical)
-                        except OSError as untag_exc:
-                            logger.error("Failed to untag blocked image: %s", untag_exc)
+            scanner = ImageScanner()
+            if scanner.available:
+                scan_result = await scanner.scan(
+                    target_tag,
+                    block_critical=_build_settings.SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL,
+                )
+                result["scan"] = scan_result.to_dict()
+                if scan_result.blocked:
+                    # Untag the image to prevent it from being used
+                    try:
+                        await asyncio.to_thread(self._client.images.remove, target_tag, noprune=True)
+                        result["status"] = "blocked"
+                        result["message"] = f"Image blocked: {scan_result.critical} critical CVEs"
+                        logger.warning("Golden image blocked due to %d critical CVEs", scan_result.critical)
+                    except OSError as untag_exc:
+                        logger.error("Failed to untag blocked image: %s", untag_exc)
 
+            await self._store_build_status(result)
             return result
 
         except (OSError, RuntimeError) as exc:
@@ -429,6 +464,7 @@ class GoldenImageBuilder:
             except OSError:
                 logger.warning("Failed to clean up temp image %s", temp_tag)
 
+            await self._store_build_status(result)
             return result
         finally:
             self._building = False

@@ -283,21 +283,25 @@ async def _initialize_sandbox() -> None:
 
             create_safe_task(warm_pool_maintain_loop(), name="warm_pool_maintain")
             create_safe_task(warm_manager.maintain(), name="warm_pool_initial")
-            logger.info("[OK] Warm pool manager initialized (size=%d)", settings.SANDBOX_WARM_POOL_SIZE)
+            from app.services.tools.sandbox.warm_pool import WARM_POOL_SINGLE_NODE_FALLBACK
 
-            # Initialize golden image builder
-            if settings.SANDBOX_AUTO_BUILD_IMAGE:
-                from app.services.tools.sandbox import GoldenImageBuilder, set_image_builder
+            logger.info(
+                "[OK] Warm pool manager initialized (target = active sandbox_worker nodes, max 10, fallback=%d)",
+                WARM_POOL_SINGLE_NODE_FALLBACK,
+            )
 
-                builder = GoldenImageBuilder()
-                set_image_builder(builder)
+            # Golden image rebuild on plugin changes — platform behaviour (not optional).
+            from app.services.tools.sandbox import GoldenImageBuilder, set_image_builder
 
-                async def on_plugin_change(**kwargs: Any) -> None:
-                    """Trigger golden image rebuild when plugins change."""
-                    create_safe_task(builder.build(), name="golden_image_build")
+            builder = GoldenImageBuilder()
+            set_image_builder(builder)
 
-                events.subscribe(EventType.PLUGIN_UPDATED, on_plugin_change)
-                logger.info("[OK] Golden image builder initialized (auto-build on plugin changes)")
+            async def on_plugin_change(**kwargs: Any) -> None:
+                """Trigger golden image rebuild when plugins change."""
+                create_safe_task(builder.build(), name="golden_image_build")
+
+            events.subscribe(EventType.PLUGIN_UPDATED, on_plugin_change)
+            logger.info("[OK] Golden image builder initialized (rebuild on PLUGIN_UPDATED)")
         else:
             logger.warning("[WARN] Sandbox pool unavailable — Docker not accessible")
     except (DockerException, OSError) as e:

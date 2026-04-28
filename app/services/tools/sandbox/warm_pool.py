@@ -8,15 +8,33 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 
 from app.core.config import get_settings
 from app.core.database import async_session_maker
 from app.models.infrastructure import Sandbox
+from app.models.server_node import ServerNode
 from app.services.tools.sandbox._utils import sandbox_database_url as _sandbox_database_url
 from app.services.tools.sandbox.models import SandboxInfo
 
 logger = logging.getLogger(__name__)
+
+# Cap warm idle containers; target count follows registered sandbox_worker hosts.
+MAX_WARM_POOL_CONTAINERS = 10
+WARM_POOL_SINGLE_NODE_FALLBACK = 2
+
+
+async def resolve_target_warm_pool_size() -> int:
+    """Derive warm pool size from active sandbox_worker nodes; fallback for single-host dev."""
+    async with async_session_maker() as session:
+        q = select(func.count()).select_from(ServerNode).where(
+            ServerNode.service_type == "sandbox_worker",
+            ServerNode.is_active.is_(True),
+        )
+        n = int((await session.execute(q)).scalar_one() or 0)
+    if n > 0:
+        return min(MAX_WARM_POOL_CONTAINERS, max(1, n))
+    return WARM_POOL_SINGLE_NODE_FALLBACK
 
 
 class WarmPoolManager:
@@ -91,19 +109,22 @@ class WarmPoolManager:
 
         Called periodically by a background task.
         """
-        settings = get_settings()
         if not self._pool.available:
             return
 
         async with self._maintain_lock:
             current_warm = await self._count_warm()
-            needed = settings.SANDBOX_WARM_POOL_SIZE - current_warm
+            target = await resolve_target_warm_pool_size()
+            needed = target - current_warm
 
             if needed <= 0:
                 return
 
             logger.info(
-                "Warm pool: %d/%d containers, spawning %d", current_warm, settings.SANDBOX_WARM_POOL_SIZE, needed
+                "Warm pool: %d/%d containers (target), spawning %d",
+                current_warm,
+                target,
+                needed,
             )
 
             for _ in range(needed):

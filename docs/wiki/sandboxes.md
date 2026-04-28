@@ -21,7 +21,7 @@ Each mission runs in its own ephemeral Docker container with a dedicated worker.
 
 The base image is intentionally minimal (~1.1 GB). Security tools (nmap, nuclei, sqlmap, etc.) are **not** baked in — they are installed on demand at runtime from plugin definitions in `plugins/*.json`. This keeps images small, avoids stale tool versions, and lets operators control exactly which tools are available.
 
-**Rebuild trigger**: When plugins change (upload/remove via the API or `PLUGIN_UPDATED` event), the golden image is automatically rebuilt (`SANDBOX_AUTO_BUILD_IMAGE=true`).
+**Rebuild trigger**: When plugins change (upload/remove via the API or `PLUGIN_UPDATED` event), the golden image is rebuilt automatically — required for ephemeral workers to pull consistent tool images.
 
 **Build process**:
 
@@ -31,7 +31,7 @@ The base image is intentionally minimal (~1.1 GB). Security tools (nmap, nuclei,
 4. Docker layer caching keeps unchanged layers fast
 5. Background task — sandboxes use existing `:latest` until new build completes
 
-**Image scanning**: Golden images are scanned for CVEs after each build (`SANDBOX_IMAGE_SCAN_ENABLED=true`).
+**Image scanning**: Golden images are scanned for CVEs after each successful build when Grype is available.
 
 ---
 
@@ -45,7 +45,7 @@ Network: spectra-network
 Capabilities: NET_ADMIN, NET_RAW (all others dropped)
 Devices: /dev/net/tun
 Volumes: reports/missions/{id}/ (rw)
-Entrypoint: python -m app.worker --queue=mission_{id}
+Entrypoint: `uvicorn spectra_worker.main:app` (queue via `QUEUE_NAME`); ephemeral sandboxes use images produced from the golden-image pipeline.
 Resource limits: memory (2GB default), CPU (512 shares default)
 Name: spectra-sandbox-{mission_id[:8]}
 ```
@@ -188,10 +188,10 @@ Sandboxes are destroyed if no heartbeat is received within `SANDBOX_IDLE_TIMEOUT
 
 Pre-warmed idle containers for instant mission start (always active):
 
-- Maintains `SANDBOX_WARM_POOL_SIZE` idle containers ready for assignment
+- Maintains an automatically sized idle warm pool (from registered sandbox_worker nodes)
 - When a mission requests a sandbox, assign a pre-warmed one
 - Spin up a replacement in the background
-- Control pool size with `SANDBOX_WARM_POOL_SIZE` (set to 0 to effectively disable)
+- Pool size follows registered **sandbox_worker** hosts (see configuration wiki)
 
 ---
 
