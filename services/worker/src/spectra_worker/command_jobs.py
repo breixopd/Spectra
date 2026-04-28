@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from app.core.constants import GO_COMPILE_TIMEOUT
+from spectra_common.constants import GO_COMPILE_TIMEOUT
 
 from .helpers import _run_command
 

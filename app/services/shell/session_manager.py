@@ -20,7 +20,7 @@ from typing import Any
 
 from fastapi import WebSocket
 
-from app.core.constants import SHELL_SOCKET_RECV_BYTES
+from spectra_common.constants import SHELL_SOCKET_RECV_BYTES
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +136,7 @@ class ShellSessionManager:
         self.listener_records: dict[str, dict[str, Any]] = {}
 
         # Range for dynamic port allocation
-        from app.core.constants import SHELL_CALLBACK_PORT_END, SHELL_CALLBACK_PORT_START
+        from spectra_common.constants import SHELL_CALLBACK_PORT_END, SHELL_CALLBACK_PORT_START
 
         self.port_range_start = SHELL_CALLBACK_PORT_START
         self.port_range_end = SHELL_CALLBACK_PORT_END

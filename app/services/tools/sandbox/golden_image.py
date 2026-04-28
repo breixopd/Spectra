@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from app.core.constants import SANDBOX_BASE_IMAGE
+from spectra_common.constants import SANDBOX_BASE_IMAGE
 
 logger = logging.getLogger(__name__)
 

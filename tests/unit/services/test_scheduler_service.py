@@ -39,7 +39,7 @@ class _HealthTask:
 
 @pytest.mark.asyncio
 async def test_start_schedules_expected_background_tasks():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     tasks: list[MagicMock] = []
@@ -70,7 +70,7 @@ async def test_start_schedules_expected_background_tasks():
 
 @pytest.mark.asyncio
 async def test_stop_cancels_all_running_tasks():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     service.running = True
@@ -85,7 +85,7 @@ async def test_stop_cancels_all_running_tasks():
 
 @pytest.mark.asyncio
 async def test_sandbox_watchdog_loop_runs_single_iteration():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     service.running = True
@@ -110,7 +110,7 @@ async def test_sandbox_watchdog_loop_runs_single_iteration():
 
 @pytest.mark.asyncio
 async def test_sandbox_watchdog_loop_handles_errors_and_continues():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     service.running = True
@@ -138,7 +138,7 @@ async def test_sandbox_watchdog_loop_handles_errors_and_continues():
 
 @pytest.mark.asyncio
 async def test_sandbox_watchdog_skips_work_when_lock_not_acquired():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     service.running = True
@@ -166,7 +166,7 @@ async def test_sandbox_watchdog_skips_work_when_lock_not_acquired():
 
 @pytest.mark.asyncio
 async def test_quota_reset_runs_single_iteration():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     service.running = True
@@ -197,7 +197,7 @@ async def test_quota_reset_runs_single_iteration():
 
 @pytest.mark.asyncio
 async def test_quota_reset_handles_reset_errors():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     service.running = True
@@ -233,7 +233,7 @@ async def test_quota_reset_handles_reset_errors():
 
 @pytest.mark.asyncio
 async def test_metrics_collector_runs_single_iteration():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     service.running = True
@@ -258,7 +258,7 @@ async def test_metrics_collector_runs_single_iteration():
 
 @pytest.mark.asyncio
 async def test_metrics_collector_handles_collection_errors():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     service.running = True
@@ -288,7 +288,7 @@ async def test_metrics_collector_handles_collection_errors():
 
 @pytest.mark.asyncio
 async def test_health_reporter_runs_single_iteration():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     service.running = True
@@ -313,7 +313,7 @@ async def test_health_reporter_runs_single_iteration():
 
 @pytest.mark.asyncio
 async def test_health_reporter_swallows_cache_errors():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     service.running = True
@@ -341,7 +341,7 @@ async def test_health_reporter_swallows_cache_errors():
 
 @pytest.mark.asyncio
 async def test_backup_scheduler_runs_single_iteration():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     service.running = True
@@ -374,7 +374,7 @@ async def test_backup_scheduler_runs_single_iteration():
 
 @pytest.mark.asyncio
 async def test_backup_scheduler_skips_work_when_backups_disabled():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     service.running = True
@@ -399,7 +399,7 @@ async def test_backup_scheduler_skips_work_when_backups_disabled():
 
 @pytest.mark.asyncio
 async def test_backup_scheduler_handles_backup_errors():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     service.running = True
@@ -435,7 +435,7 @@ async def test_backup_scheduler_handles_backup_errors():
 
 @pytest.mark.asyncio
 async def test_image_update_check_skips_registry_when_auto_update_disabled():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     service.running = True
@@ -469,7 +469,7 @@ async def test_image_update_check_skips_registry_when_auto_update_disabled():
 
 @pytest.mark.asyncio
 async def test_image_update_check_runs_when_auto_update_enabled():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     service.running = True
@@ -502,7 +502,7 @@ async def test_image_update_check_runs_when_auto_update_enabled():
 
 @pytest.mark.asyncio
 async def test_health_reports_scheduler_running_state():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     scheduler_service._scheduler_instance = SimpleNamespace(
         running=True, health=lambda: {"status": "healthy", "tasks": {}, "running": True}
@@ -524,7 +524,7 @@ async def test_health_reports_scheduler_running_state():
 
 @pytest.mark.asyncio
 async def test_health_route_returns_503_when_scheduler_is_degraded():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     scheduler_service._scheduler_instance = SimpleNamespace(
         running=True,
@@ -546,7 +546,7 @@ async def test_health_route_returns_503_when_scheduler_is_degraded():
 
 @pytest.mark.asyncio
 async def test_health_route_keeps_standby_at_http_200():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     scheduler_service._scheduler_instance = SimpleNamespace(
         running=False,
@@ -567,7 +567,7 @@ async def test_health_route_keeps_standby_at_http_200():
 
 
 def test_service_health_reports_task_states_when_healthy():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     service.running = True
@@ -584,7 +584,7 @@ def test_service_health_reports_task_states_when_healthy():
 
 
 def test_service_health_degrades_when_any_task_is_dead_or_missing():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
     service.running = True
@@ -603,7 +603,7 @@ def test_service_health_degrades_when_any_task_is_dead_or_missing():
 
 
 def test_service_health_is_standby_when_not_running():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = scheduler_service.SchedulerService()
 
@@ -616,7 +616,7 @@ def test_service_health_is_standby_when_not_running():
 
 @pytest.mark.asyncio
 async def test_lifespan_starts_and_stops_scheduler_service():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = SimpleNamespace(start=AsyncMock(), stop=AsyncMock(), running=True)
     task = _AwaitableTask(exc=asyncio.CancelledError())
@@ -637,7 +637,7 @@ async def test_lifespan_starts_and_stops_scheduler_service():
 
 @pytest.mark.asyncio
 async def test_main_registers_signal_handlers_and_starts_scheduler():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     service = SimpleNamespace(start=AsyncMock(), stop=AsyncMock())
     loop = SimpleNamespace(add_signal_handler=MagicMock())
@@ -653,7 +653,7 @@ async def test_main_registers_signal_handlers_and_starts_scheduler():
 
 @pytest.mark.asyncio
 async def test_leader_election_runs_scheduler_inside_lock_context():
-    from app.services.scheduler import __main__ as scheduler_service
+    import spectra_scheduler.main as scheduler_service
 
     events: list[str] = []
 

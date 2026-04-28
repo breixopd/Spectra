@@ -19,13 +19,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import check_feature_allowed, get_current_active_user
 from app.auth.rate_limit import RateLimits, limiter
-from app.core.constants import (
+from spectra_common.constants import (
     SECLISTS_COMMON_PASSWORDS_URL,
     SECLISTS_COMMON_WEB_URL,
     SECLISTS_SUBDOMAINS_TOP5000_URL,
     SECLISTS_TOP_USERNAMES_URL,
-)
-from app.core.constants import (
     WORDLISTS_DIR as WORDLISTS_DIR_STR,
 )
 from app.core.database import get_async_session

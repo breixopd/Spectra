@@ -11,7 +11,7 @@ import logging
 import aiohttp
 from typing_extensions import TypedDict
 
-from app.core.constants import GEOIP_API_URL, GEOIP_TIMEOUT
+from spectra_common.constants import GEOIP_API_URL, GEOIP_TIMEOUT
 
 logger = logging.getLogger(__name__)
 

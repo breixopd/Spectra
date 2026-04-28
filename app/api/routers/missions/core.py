@@ -3,6 +3,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import (
@@ -12,6 +13,7 @@ from app.api.dependencies import (
     check_storage_limit,
     get_current_active_user,
     validate_uuid_param,
+    verify_api_quota_for_user,
 )
 from app.api.schemas import (
     MissionFindingSummary,
@@ -21,11 +23,12 @@ from app.api.schemas import (
 )
 from app.auth.rate_limit import RateLimits, limiter
 from app.auth.rbac import Permission, require_permission
-from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
-from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
+from spectra_common.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
+from spectra_common.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from app.core.database import get_async_session
 from app.models.audit_log import AuditEventType
 from app.models.user import User
+from app.models.user_preferences import UserPreferences
 from app.repositories.mission import MissionRepository
 from app.services.compliance.mission_abuse import evaluate_mission_abuse
 from app.services.mission.manager import mission_manager
@@ -40,6 +43,24 @@ from app.services.system.audit import log_event as audit_log_event
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+async def _resolved_launch_prefs(
+    session: AsyncSession,
+    user_id: str,
+    body: StartMissionRequest,
+) -> tuple[bool, str]:
+    """Merge API body with stored user defaults for approval and scan mode."""
+    result = await session.execute(select(UserPreferences).where(UserPreferences.user_id == user_id))
+    prefs = result.scalar_one_or_none()
+    pref_approval = bool(prefs.prefer_mission_approval) if prefs else False
+    scan = (prefs.default_scan_mode if prefs else None) or "autonomous"
+    if scan not in ("autonomous", "guided", "manual"):
+        scan = "autonomous"
+
+    effective_approval = body.requires_approval if body.requires_approval is not None else pref_approval
+    effective_scan = body.scan_mode or scan
+    return effective_approval, effective_scan
 
 
 @router.post(
@@ -61,6 +82,10 @@ async def start_mission(
 
     Rate limited to 5 missions per minute per user.
     """
+    await verify_api_quota_for_user(_current_user)
+
+    eff_requires, eff_scan = await _resolved_launch_prefs(db, str(_current_user.id), mission_request)
+
     if not mission_request.authorization_confirmed:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -72,7 +97,7 @@ async def start_mission(
         directive=mission_request.directive,
         requirements=mission_request.requirements,
         authorization_confirmed=mission_request.authorization_confirmed,
-        requires_approval=mission_request.requires_approval,
+        requires_approval=eff_requires,
     )
     if not abuse_decision.allowed:
         await audit_log_event(
@@ -98,7 +123,10 @@ async def start_mission(
         requirements=mission_request.requirements,
         vpn_config=mission_request.vpn_config,
         user_id=str(_current_user.id),
-        requires_approval=mission_request.requires_approval,
+        requires_approval=eff_requires,
+        record_demo=mission_request.record_demo,
+        playbook_id=mission_request.playbook_id,
+        scan_mode=eff_scan,
     )
     mission = await mission_manager.get_mission(mission_id)
 

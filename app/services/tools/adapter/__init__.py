@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from app.core.constants import MAX_HOSTS_DEFAULT
+from spectra_common.constants import MAX_HOSTS_DEFAULT
 from app.services.tools.adapter.base import ToolAdapter, ToolExecutionError
 from app.services.tools.adapter.builder import CommandBuilder
 from app.services.tools.adapter.parser import OutputParser

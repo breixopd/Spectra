@@ -14,7 +14,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Any
 
-from app.core.constants import SECONDS_PER_HOUR, SECONDS_PER_WEEK
+from spectra_common.constants import SECONDS_PER_HOUR, SECONDS_PER_WEEK
 
 logger = logging.getLogger(__name__)
 TOOLS_PATH_PREFIX = "/opt/spectra_tools"

@@ -18,7 +18,7 @@ from typing import Any
 
 import httpx
 
-from app.core.constants import CVE_CACHE_TTL, EXTERNAL_HTTP_TIMEOUT, NVD_API_BASE_URL, NVD_RATE_LIMIT_DELAY
+from spectra_common.constants import CVE_CACHE_TTL, EXTERNAL_HTTP_TIMEOUT, NVD_API_BASE_URL, NVD_RATE_LIMIT_DELAY
 from app.services.exploit_db import get_exploit_db
 
 logger = logging.getLogger(__name__)

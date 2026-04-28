@@ -13,7 +13,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import WEBHOOK_MAX_RETRIES
+from spectra_common.constants import WEBHOOK_MAX_RETRIES
 from app.services.webhooks.models import Webhook
 from app.utils.url_validation import is_safe_url
 

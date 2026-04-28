@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.core.constants import MISSION_TIMEOUT_SECONDS
+from spectra_common.constants import MISSION_TIMEOUT_SECONDS
 from app.services.ai.context import truncate_for_llm
 
 # ---------------------------------------------------------------------------

@@ -41,6 +41,12 @@ from app.utils.geoip import GeoLocation
 
 logger = logging.getLogger(__name__)
 
+_SCAN_MODE_AUTOMATION: dict[str, str] = {
+    "autonomous": "full_auto",
+    "guided": "semi_auto",
+    "manual": "manual",
+}
+
 
 class Mission:
     """
@@ -65,6 +71,10 @@ class Mission:
         vpn_config: str | None = None,
         user_id: str | None = None,
         requires_approval: bool = False,
+        *,
+        record_demo: bool = False,
+        playbook_id: str | None = None,
+        scan_mode: str = "autonomous",
     ):
         self.id = str(uuid.uuid4())
         self.target = target
@@ -73,6 +83,10 @@ class Mission:
         self.vpn_config = vpn_config
         self.user_id = user_id
         self.requires_approval = requires_approval
+        self.record_demo = record_demo
+        self.playbook_id = playbook_id
+        self.scan_mode = scan_mode if scan_mode in {"autonomous", "guided", "manual"} else "autonomous"
+        self.automation_level = _SCAN_MODE_AUTOMATION.get(self.scan_mode, "full_auto")
         self.status = "created"
         self.start_time = datetime.now(UTC)
         self.plan: MissionPlan | None = None
@@ -161,7 +175,7 @@ class Mission:
 
         Returns True if replanning was applied, False if limit reached.
         """
-        from app.core.constants import MAX_REPLANS_PER_MISSION
+        from spectra_common.constants import MAX_REPLANS_PER_MISSION
 
         if self.replan_count >= MAX_REPLANS_PER_MISSION:
             self.log(f"[REPLAN] Denied: max replans ({MAX_REPLANS_PER_MISSION}) reached")
