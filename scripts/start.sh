@@ -82,11 +82,26 @@ if [ -n "${DATABASE_URL:-}" ]; then
 fi
 if [ -n "${DB_NAME:-}" ]; then
     echo "Ensuring database '$DB_NAME' exists..."
-    MAINT_URL=$(echo "$DATABASE_URL" | sed -E 's|(/[^/]+\?)|/postgres\?|; s|(/[^/]+)$|/postgres|')
-    MAINT_URL_PSQL=$(echo "$MAINT_URL" | sed 's|postgresql+asyncpg|postgresql|')
-    if ! PGPASSWORD="${POSTGRES_PASSWORD:-spectra_test}" psql "$MAINT_URL_PSQL" -tc "SELECT 1 FROM pg_database WHERE datname = '$DB_NAME'" 2>/dev/null | grep -q 1; then
-        PGPASSWORD="${POSTGRES_PASSWORD:-spectra_test}" psql "$MAINT_URL_PSQL" -c "CREATE DATABASE \"$DB_NAME\";" 2>/dev/null || true
-    fi
+    /opt/venv/bin/python -c "
+import asyncio, asyncpg, urllib.parse
+u = urllib.parse.urlparse('${DATABASE_URL//+asyncpg/}')
+host = u.hostname or 'db'
+port = u.port or 5432
+user = u.username or 'spectra'
+password = u.password or '${POSTGRES_PASSWORD:-spectra_test}'
+async def ensure():
+    conn = await asyncpg.connect(host=host, port=port, user=user, password=password, database='postgres')
+    try:
+        exists = await conn.fetchval(\"SELECT 1 FROM pg_database WHERE datname = '\$DB_NAME'\")
+        if not exists:
+            await conn.execute(f\"CREATE DATABASE \\\"{DB_NAME}\\\"\")
+            print(f\"Created database {DB_NAME}\")
+        else:
+            print(f\"Database {DB_NAME} already exists\")
+    finally:
+        await conn.close()
+asyncio.run(ensure())
+" 2>/dev/null || true
 fi
 
 # Run migrations as spectra user (skip for non-app microservices)
