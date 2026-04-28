@@ -59,13 +59,13 @@ jobs:
           set +e
           docker compose -f docker/compose.yaml --profile test run --name spectra-unit-coverage unit-test-runner \
             "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=app --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=70"
-      - name: Run settings tests in Docker
-        run: |
-          docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner
           status=$?
           docker cp spectra-unit-coverage:/tmp/coverage.xml coverage.xml 2>/dev/null || true
           docker rm -f spectra-unit-coverage >/dev/null 2>&1 || true
           exit "$status"
+      - name: Run settings tests in Docker
+        run: |
+          docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner
       - name: Coverage summary
         if: always()
         run: |
@@ -165,9 +165,7 @@ jobs:
           file: docker/Dockerfile.test
           push: false
           load: false
-      - name: Validate Docker Compose
-        run: docker compose --env-file .env.example -f docker/docker-compose.yml config --quiet
-      - name: Validate new Compose config
+      - name: Validate Compose config
         run: docker compose --env-file .env.example -f docker/compose.yaml --profile app --profile test --profile targets config --quiet
       - name: Validate Swarm compose
         run: docker compose --env-file .env.example -f docker/docker-compose.swarm.yml config --quiet
@@ -289,7 +287,7 @@ jobs:
       - name: Run performance smoke tests
         run: |
           docker compose -f docker/compose.yaml --profile app --profile targets --profile test run --rm \
-            -e APP_BASE_URL=http://app:5000 \
+            -e LOAD_TEST_APP_URL=http://app:5000 \
             test-runner \
             "python -m pytest tests/performance/test_api_latency.py -v --tb=short --timeout=120"
       - name: Collect logs on failure
