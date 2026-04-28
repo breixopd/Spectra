@@ -76,6 +76,19 @@ while ! nc -z db 5432 2>/dev/null; do
 done
 echo "Database is ready!"
 
+DB_NAME=""
+if [ -n "${DATABASE_URL:-}" ]; then
+    DB_NAME=$(echo "$DATABASE_URL" | sed -E 's|.*://[^/]+/||; s|\?.*||')
+fi
+if [ -n "${DB_NAME:-}" ]; then
+    echo "Ensuring database '$DB_NAME' exists..."
+    MAINT_URL=$(echo "$DATABASE_URL" | sed -E 's|(/[^/]+\?)|/postgres\?|; s|(/[^/]+)$|/postgres|')
+    MAINT_URL_PSQL=$(echo "$MAINT_URL" | sed 's|postgresql+asyncpg|postgresql|')
+    if ! PGPASSWORD="${POSTGRES_PASSWORD:-spectra_test}" psql "$MAINT_URL_PSQL" -tc "SELECT 1 FROM pg_database WHERE datname = '$DB_NAME'" 2>/dev/null | grep -q 1; then
+        PGPASSWORD="${POSTGRES_PASSWORD:-spectra_test}" psql "$MAINT_URL_PSQL" -c "CREATE DATABASE \"$DB_NAME\";" 2>/dev/null || true
+    fi
+fi
+
 # Run migrations as spectra user (skip for non-app microservices)
 # Alembic handles concurrent migrations via SELECT FOR UPDATE on the version table.
 # Retry loop covers the race where two replicas start simultaneously.
