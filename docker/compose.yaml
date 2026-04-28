@@ -599,7 +599,7 @@ services:
       - WEB_TARGET_URL=http://testphp.vulnweb.com
       - SAFE_MODE=true
       - PERMISSION_BOUNDARY=172.21.0.0/24
-      - APP_BASE_URL=http://caddy
+      - APP_BASE_URL=http://app:5000
       - APP_USERNAME=admin
       - APP_PASSWORD=${ADMIN_PASSWORD:-Admin123!}
       - AI_SERVICE_URL=http://ai-svc:5010
