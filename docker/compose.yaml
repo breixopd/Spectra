@@ -214,6 +214,9 @@ services:
 
   caddy:
     image: ${REGISTRY:-}spectra-caddy:${VERSION:-dev}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.caddy
     container_name: spectra-caddy
     profiles: [app, test]
     labels:
