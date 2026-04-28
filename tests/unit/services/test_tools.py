@@ -29,7 +29,7 @@ from app.services.tools.registry import (
     PluginValidationError,
     ToolRegistry,
 )
-from app.services.tools.registry.constants import DANGEROUS_PATTERNS
+from spectra_tools_core.registry_constants import DANGEROUS_PATTERNS
 
 # --- Test Data ---
 

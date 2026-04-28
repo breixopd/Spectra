@@ -73,6 +73,7 @@ Plan a penetration test following PTES methodology.
 
 **Directive:** "{directive}"
 **Target:** {target}
+**Additional requirements / constraints:** {requirements}
 
 Think through the assessment strategy step by step before responding:
 1. What do I know about this target from reconnaissance?
@@ -89,6 +90,7 @@ If reconnaissance returns no results or tool execution fails, explicitly state w
 {rag_context}
 
 **IMPORTANT OPERATIONAL GUIDELINES:**
+- Treat the directive and additional requirements as hard constraints. If they ask for a quick, safe, validation, reconnaissance-only, or non-destructive run, keep the plan short and do not include exploitation or post-exploitation tasks.
 - Prefer exploit-based attacks (CVEs, known backdoors, default credentials) over brute force
 - If brute force is necessary, use short targeted wordlists (top 20 passwords) not exhaustive lists
 - Use the tool's built-in default credential checks first
@@ -139,6 +141,7 @@ PHASE 7 - REPORTING: Generate findings report.
 - Set task priority 1-5 (1=highest)
 - Set requires_approval=False for all tasks (fully autonomous)
 - Do NOT create more than 12 tasks total. Be efficient.
+- For quick or validation missions, create no more than 6 tasks total.
 - Do NOT run the same category of tool twice (e.g., don't run both nmap AND naabu)
 - NEVER plan brute-force attacks with large wordlists (hydra with rockyou, etc.)
 - Only attempt default/common credentials (admin/admin, root/toor, etc.)

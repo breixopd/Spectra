@@ -17,7 +17,7 @@ from app.services.tools.models import (
     ToolStatus,
 )
 from app.services.tools.registry import ToolRegistry
-from app.services.tools.registry.exceptions import PluginValidationError
+from spectra_tools_core.registry_exceptions import PluginValidationError
 
 # --- Helpers ---
 
@@ -67,6 +67,25 @@ def registry(tmp_path):
     reg._tools["builtin"] = _make_tool("builtin", ToolStatus.READY, is_system=True)
 
     return reg
+
+
+@pytest.mark.asyncio
+async def test_sync_status_from_cache_uses_direct_cache_when_global_missing(registry):
+    cache = MagicMock()
+    cache.get = AsyncMock(
+        side_effect=lambda key: {"status": "ready", "error": ""}
+        if key == "spectra:tool_status:nikto"
+        else None
+    )
+
+    with (
+        patch("app.infrastructure.cache.get_cache", return_value=None),
+        patch("app.infrastructure.cache.CacheService", return_value=cache),
+    ):
+        updated = await registry.sync_status_from_cache()
+
+    assert updated == 1
+    assert registry.get_tool("nikto").status == ToolStatus.READY
 
 
 # ===========================

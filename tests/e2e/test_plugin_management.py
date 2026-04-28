@@ -112,7 +112,7 @@ class TestPluginLifecycle:
         assert plugin_path.exists()
 
         from app.infrastructure.queue import PostgresJobQueue, worker_loop
-        from app.worker import _WORKER_FUNCTIONS
+        from spectra_worker import _WORKER_FUNCTIONS
 
         pool = PostgresJobQueue()
         job_id = await pool.enqueue_job("install_tool_job", tool_id="test-plugin")
@@ -135,7 +135,7 @@ class TestPluginLifecycle:
         assert tool.status == ToolStatus.PENDING
 
         from app.infrastructure.queue import PostgresJobQueue, worker_loop
-        from app.worker import _WORKER_FUNCTIONS
+        from spectra_worker import _WORKER_FUNCTIONS
 
         pool = PostgresJobQueue()
         job_id = await pool.enqueue_job("install_tool_job", tool_id="broken-plugin")

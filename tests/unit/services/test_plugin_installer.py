@@ -9,8 +9,8 @@ from app.services.tools.models import (
     ToolConfig,
     ToolStatus,
 )
-from app.services.tools.registry.exceptions import PluginInstallationError
 from app.services.tools.registry.installer import PluginInstaller
+from spectra_tools_core.registry_exceptions import PluginInstallationError
 
 
 @pytest.fixture

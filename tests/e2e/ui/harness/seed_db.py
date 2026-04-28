@@ -49,6 +49,7 @@ async def seed() -> None:
             """
             INSERT INTO plans (
                 id, name, display_name, features, is_active,
+                is_default,
                 max_concurrent_missions, max_api_requests_per_hour,
                 max_api_requests_per_day, sandbox_max_containers,
                 max_storage_mb, sort_order
@@ -56,6 +57,7 @@ async def seed() -> None:
             VALUES (
                 gen_random_uuid(), 'default', 'Default Plan',
                 '{"manual_mode": true, "ai_assist": true, "reporting": true, "api_access": true, "sandbox_creation": true}'::jsonb, true,
+                true,
                 5, 1000, 10000, 5, 5000, 0
             )
             ON CONFLICT (name) DO NOTHING

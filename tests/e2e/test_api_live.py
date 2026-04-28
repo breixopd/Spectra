@@ -70,12 +70,16 @@ async def test_system_settings_api(auth_client):
     resp = await auth_client.get("/api/settings")
     assert resp.status_code == 200
     data = resp.json()
-    assert "ai_provider" in data
+    assert "tensorzero_gateway_url" in data
+    assert "maintenance_mode" in data
 
 
 async def test_service_topology(auth_client):
-    resp = await auth_client.get("/api/admin/system/services")
+    resp = await auth_client.get("/api/v1/system/services/topology")
     assert resp.status_code == 200
+    data = resp.json()
+    assert "database" in data
+    assert "storage" in data
 
 
 async def test_server_pool_crud(auth_client):

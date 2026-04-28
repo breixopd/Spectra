@@ -117,7 +117,7 @@ async def test_ensure_tool_installed_success():
     mock_queue.enqueue_job = AsyncMock(return_value="job-1")
 
     mock_job = MagicMock()
-    mock_job.result = AsyncMock(return_value={"success": True})
+    mock_job.result = AsyncMock(return_value={"status": "success"})
 
     mock_tool = MagicMock()
     mock_registry = MagicMock()
@@ -129,7 +129,7 @@ async def test_ensure_tool_installed_success():
                 result = await ensure_tool_installed("nmap", 300)
 
     assert result is True
-    assert mock_tool.status.value == "ready"
+    assert mock_tool.status.value == "pending"
 
 
 @pytest.mark.asyncio
@@ -138,7 +138,7 @@ async def test_ensure_tool_installed_failure():
     mock_queue.enqueue_job = AsyncMock(return_value="job-1")
 
     mock_job = MagicMock()
-    mock_job.result = AsyncMock(return_value={"success": False})
+    mock_job.result = AsyncMock(return_value={"status": "validation_failed"})
 
     with patch("app.infrastructure.queue.PostgresJobQueue", return_value=mock_queue):
         with patch("app.infrastructure.queue.Job", return_value=mock_job):

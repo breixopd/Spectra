@@ -17,7 +17,7 @@ On startup, the worker:
 3. Starts a heartbeat loop (for sandbox workers)
 4. Enters the main `worker_loop` — polling for and executing jobs
 
-This on-demand approach keeps the base image small and ensures tools are always the latest version defined in plugin configurations. When plugins are updated via the API, a `PLUGIN_UPDATED` event triggers an image rebuild (`SANDBOX_AUTO_BUILD_IMAGE=true`).
+This on-demand approach keeps the base image small and ensures tools match plugin configurations. When plugins are updated via the API, a `PLUGIN_UPDATED` event triggers a golden image rebuild (always-on platform behaviour).
 
 The queue is implemented in `app/core/queue.py` using the `job_queue` database table. Jobs are claimed via `SELECT ... FOR UPDATE SKIP LOCKED` for safe concurrent processing.
 
@@ -44,7 +44,7 @@ Each job has:
 
 ### Worker Entry Point
 
-The worker runs as `python -m app.worker` inside the tools container. See "Tools Container" above for the startup sequence.
+The worker runs `uvicorn spectra_worker.main:app` inside the tools container. See "Tools Container" above for the startup sequence.
 
 ---
 

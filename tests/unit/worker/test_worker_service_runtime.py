@@ -32,7 +32,7 @@ class _AwaitableTask:
 
 @pytest.mark.asyncio
 async def test_lifespan_starts_and_cancels_worker_task():
-    from app.worker import __main__ as worker_service
+    from spectra_worker import __main__ as worker_service
 
     task = _AwaitableTask(exc=asyncio.CancelledError())
 
@@ -54,7 +54,7 @@ async def test_lifespan_starts_and_cancels_worker_task():
 async def test_health_reports_worker_task_state():
     from unittest.mock import AsyncMock, patch
 
-    from app.worker import __main__ as worker_service
+    from spectra_worker import __main__ as worker_service
 
     task = MagicMock()
     task.done.return_value = False
@@ -81,7 +81,7 @@ async def test_health_reports_worker_task_state():
 
 @pytest.mark.asyncio
 async def test_work_loop_calls_startup_worker_loop_and_shutdown_in_finally():
-    from app.worker import __main__ as worker_service
+    from spectra_worker import __main__ as worker_service
 
     order: list[str] = []
     startup = AsyncMock(side_effect=lambda: order.append("startup"))
@@ -104,16 +104,11 @@ async def test_work_loop_calls_startup_worker_loop_and_shutdown_in_finally():
             "app.infrastructure.queue",
             make_module("app.infrastructure.queue", worker_loop=fake_worker_loop),
         )
-        mp.setitem(
-            sys.modules,
-            "app.worker",
-            make_module("app.worker", _WORKER_FUNCTIONS={"alpha": object()}),
-        )
-        mp.setitem(
-            sys.modules,
-            "app.worker.lifecycle",
-            make_module("app.worker.lifecycle", startup=startup, shutdown=shutdown),
-        )
+        import spectra_worker as _sw
+
+        mp.setattr(_sw, "_WORKER_FUNCTIONS", ["alpha"])
+        mp.setattr("spectra_worker.lifecycle.startup", startup)
+        mp.setattr("spectra_worker.lifecycle.shutdown", shutdown)
         mp.setenv("QUEUE_NAME", "priority")
         # Patch asyncio.sleep to avoid real delay
         mp.setattr(asyncio, "sleep", AsyncMock())
@@ -132,7 +127,7 @@ async def test_work_loop_calls_startup_worker_loop_and_shutdown_in_finally():
 async def test_health_reports_db_failure():
     from unittest.mock import patch
 
-    from app.worker import __main__ as worker_service
+    from spectra_worker import __main__ as worker_service
 
     task = MagicMock()
     task.done.return_value = False
@@ -150,9 +145,9 @@ async def test_health_reports_db_failure():
 
 @pytest.mark.asyncio
 async def test_internal_shell_listener_start():
-    from app.worker import __main__ as worker_service
+    from spectra_worker import __main__ as worker_service
 
-    with patch("app.worker.__main__.shell_manager") as mock_shell:
+    with patch("spectra_worker.__main__.shell_manager") as mock_shell:
         mock_shell.start_listener.return_value = 4444
         result = await worker_service.internal_start_shell_listener(
             MagicMock(session_id="s1", target="1.2.3.4", mission_id="m1", port=0, ttl_seconds=900)
@@ -164,9 +159,9 @@ async def test_internal_shell_listener_start():
 async def test_internal_shell_listener_start_failure():
     from fastapi import HTTPException
 
-    from app.worker import __main__ as worker_service
+    from spectra_worker import __main__ as worker_service
 
-    with patch("app.worker.__main__.shell_manager") as mock_shell:
+    with patch("spectra_worker.__main__.shell_manager") as mock_shell:
         mock_shell.start_listener.side_effect = RuntimeError("no ports")
         with pytest.raises(HTTPException):
             await worker_service.internal_start_shell_listener(
@@ -176,9 +171,9 @@ async def test_internal_shell_listener_start_failure():
 
 @pytest.mark.asyncio
 async def test_internal_shell_listener_list():
-    from app.worker import __main__ as worker_service
+    from spectra_worker import __main__ as worker_service
 
-    with patch("app.worker.__main__.shell_manager") as mock_shell:
+    with patch("spectra_worker.__main__.shell_manager") as mock_shell:
         mock_shell.list_listeners.return_value = [{"session_id": "s1"}]
         result = await worker_service.internal_list_shell_listeners()
         assert len(result) == 1
@@ -186,9 +181,9 @@ async def test_internal_shell_listener_list():
 
 @pytest.mark.asyncio
 async def test_internal_shell_listener_stop():
-    from app.worker import __main__ as worker_service
+    from spectra_worker import __main__ as worker_service
 
-    with patch("app.worker.__main__.shell_manager") as mock_shell:
+    with patch("spectra_worker.__main__.shell_manager") as mock_shell:
         mock_shell.stop_listener.return_value = True
         await worker_service.internal_stop_shell_listener("s1")
         mock_shell.stop_listener.assert_called_once_with(session_id="s1")
@@ -198,9 +193,9 @@ async def test_internal_shell_listener_stop():
 async def test_internal_shell_listener_stop_not_found():
     from fastapi import HTTPException
 
-    from app.worker import __main__ as worker_service
+    from spectra_worker import __main__ as worker_service
 
-    with patch("app.worker.__main__.shell_manager") as mock_shell:
+    with patch("spectra_worker.__main__.shell_manager") as mock_shell:
         mock_shell.stop_listener.return_value = False
         with pytest.raises(HTTPException):
             await worker_service.internal_stop_shell_listener("s1")
@@ -208,9 +203,9 @@ async def test_internal_shell_listener_stop_not_found():
 
 @pytest.mark.asyncio
 async def test_run_heartbeat():
-    from app.worker import __main__ as worker_service
+    from spectra_worker import __main__ as worker_service
 
-    with patch("app.worker.lifecycle.heartbeat_loop", new_callable=AsyncMock) as mock_heartbeat:
+    with patch("spectra_worker.lifecycle.heartbeat_loop", new_callable=AsyncMock) as mock_heartbeat:
         with patch.dict("os.environ", {"QUEUE_NAME": "test_queue"}):
             await worker_service._run_heartbeat()
 

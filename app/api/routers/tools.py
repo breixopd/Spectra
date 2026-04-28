@@ -4,7 +4,7 @@ Tool Management API Router.
 Provides endpoints for:
 - Listing available tools
 - Uploading new tool plugins
-- Installing tools
+- Rebuilding and verifying the golden worker image after plugin changes
 - Getting tool status
 """
 
@@ -466,7 +466,7 @@ async def upload_plugin(
     Upload a new tool plugin.
 
     The file should be a JSON configuration following the plugin schema.
-    After upload, the tool will be installed in the background via the tools container.
+    After upload, the golden worker image is rebuilt and verified in the background.
     """
     if not file.filename or not file.filename.endswith(".json"):
         raise HTTPException(status_code=400, detail="File must be a JSON file")
@@ -489,8 +489,8 @@ async def upload_plugin(
         _queue_background_job(
             background_tasks,
             "install_tool_job",
-            success_log=f"Queued background install for {tool.config.id}",
-            failure_log=f"Failed to queue install for {tool.config.id}",
+            success_log=f"Queued golden image rebuild for {tool.config.id}",
+            failure_log=f"Failed to queue golden image rebuild for {tool.config.id}",
             tool_id=tool.config.id,
         )
 
@@ -499,7 +499,7 @@ async def upload_plugin(
         return PluginUploadResponse(
             success=True,
             tool_id=tool.config.id,
-            message=f"Plugin '{tool.config.name}' uploaded successfully. Installation queued in background.",
+            message=f"Plugin '{tool.config.name}' uploaded successfully. Golden image rebuild queued.",
         )
     except PluginValidationError as e:
         logger.warning("Plugin validation failed: %s", e)
@@ -516,25 +516,24 @@ async def install_all_tools(
     _current_user: User = Depends(get_current_superuser),
 ):
     """
-    Queue installation of all tools via the tools container.
+    Queue rebuild/verification of the golden worker image.
 
-    This is useful for initial setup or reinstalling all tools.
+    This is useful after bulk plugin changes or to refresh image provenance.
     """
     await _queue_tool_job_with_audit(
         background_tasks,
-        "install_all_tools_job",
-        success_log="Queued install_all_tools job",
-        failure_log="Failed to queue install_all_tools",
+        "build_golden_image_job",
+        success_log="Queued golden image build job",
+        failure_log="Failed to queue golden image build",
         event_type=AuditEventType.TOOL_INSTALLED,
         user_id=str(_current_user.id),
         request=request,
-        audit_details={"action": "install_all"},
-        force=force,
+        audit_details={"action": "golden_image_build", "force": force},
     )
 
     return ToolQueueResponse(
         success=True,
-        message="Tool installation queued. Check /api/system/status for progress.",
+        message="Golden image rebuild queued. Check /api/system/status for progress.",
     )
 
 
@@ -549,9 +548,9 @@ async def install_tool(
     _current_user: User = Depends(get_current_superuser),
 ):
     """
-    Install a tool via the tools container worker.
+    Rebuild the golden image for a tool/plugin change.
 
-    This queues the installation in the tools container and returns immediately.
+    This queues build, verification, and scan of the worker image and returns immediately.
     Check the tool's status via GET /tools/{tool_id} for progress.
     """
     tool = _get_tool_or_404(registry, tool_id)
@@ -562,8 +561,8 @@ async def install_tool(
     await _queue_tool_job_with_audit(
         background_tasks,
         "install_tool_job",
-        success_log=f"Queued install job for {tool_id}",
-        failure_log=f"Failed to queue install for {tool_id}",
+        success_log=f"Queued golden image rebuild for {tool_id}",
+        failure_log=f"Failed to queue golden image rebuild for {tool_id}",
         event_type=AuditEventType.TOOL_INSTALLED,
         user_id=str(_current_user.id),
         request=request,
@@ -571,7 +570,7 @@ async def install_tool(
         tool_id=tool_id,
     )
 
-    return _build_install_response(tool_id, ToolStatus.INSTALLING, "Installation queued in tools container")
+    return _build_install_response(tool_id, ToolStatus.INSTALLING, "Golden image rebuild queued")
 
 
 @router.post("/{tool_id}/enable", response_model=InstallToolResponse)

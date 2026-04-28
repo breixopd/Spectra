@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.worker.helpers import (
+from spectra_worker.helpers import (
     _build_process_env,
     _build_tool_status_payload,
     _decode_process_output,
@@ -120,7 +120,7 @@ async def test_run_command_timeout():
 
 @pytest.mark.asyncio
 async def test_run_command_start_failure():
-    with patch("app.worker.helpers._start_process", side_effect=OSError("cannot start")):
+    with patch("spectra_worker.helpers._start_process", side_effect=OSError("cannot start")):
         result = await _run_command("false", timeout=5)
     assert result[0] == -1
     assert "cannot start" in result[2]

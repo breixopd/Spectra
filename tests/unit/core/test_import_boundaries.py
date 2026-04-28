@@ -18,28 +18,34 @@ def test_import_boundaries():
 
 def test_service_boundary_rules_exist():
     """Verify the boundary checker defines cross-service rules."""
-    from scripts.check_import_boundaries import SERVICE_BOUNDARIES
+    from scripts.check_import_boundaries import FORBIDDEN_IMPORTS, SERVICE_BOUNDARIES
 
     assert "app/services/scheduler/__main__.py" in SERVICE_BOUNDARIES
-    assert "app/worker/__main__.py" in SERVICE_BOUNDARIES
+    assert "services/worker/src/spectra_worker/__main__.py" in SERVICE_BOUNDARIES
     assert "app/services/ai/__main__.py" in SERVICE_BOUNDARIES
-    assert "app/worker" in SERVICE_BOUNDARIES
+    assert "app.services.ai" in FORBIDDEN_IMPORTS
+    assert "services/api/src" in SERVICE_BOUNDARIES
+    assert "services/ai/src" in SERVICE_BOUNDARIES
+    assert "services/scheduler/src" in SERVICE_BOUNDARIES
+    assert "services/worker/src" in SERVICE_BOUNDARIES
 
-    # scheduler must not import api or worker
+    # scheduler must not import api or worker package
     assert "app.api" in SERVICE_BOUNDARIES["app/services/scheduler/__main__.py"]
-    assert "app.worker" in SERVICE_BOUNDARIES["app/services/scheduler/__main__.py"]
+    assert "spectra_worker" in SERVICE_BOUNDARIES["app/services/scheduler/__main__.py"]
 
-    # worker_service must not import api, scheduler, or ai_service
-    assert "app.api" in SERVICE_BOUNDARIES["app/worker/__main__.py"]
-    assert "app.services.scheduler.__main__" in SERVICE_BOUNDARIES["app/worker/__main__.py"]
-    assert "app.services.ai.__main__" in SERVICE_BOUNDARIES["app/worker/__main__.py"]
+    # worker_service must not import api, scheduler, or ai_service entrypoints
+    assert "app.api" in SERVICE_BOUNDARIES["services/worker/src/spectra_worker/__main__.py"]
+    assert "app.services.scheduler.__main__" in SERVICE_BOUNDARIES["services/worker/src/spectra_worker/__main__.py"]
+    assert "app.services.ai.__main__" in SERVICE_BOUNDARIES["services/worker/src/spectra_worker/__main__.py"]
 
     # ai_service must not import api, worker, or scheduler
     assert "app.api" in SERVICE_BOUNDARIES["app/services/ai/__main__.py"]
-    assert "app.worker" in SERVICE_BOUNDARIES["app/services/ai/__main__.py"]
+    assert "spectra_worker" in SERVICE_BOUNDARIES["app/services/ai/__main__.py"]
     assert "app.services.scheduler.__main__" in SERVICE_BOUNDARIES["app/services/ai/__main__.py"]
 
-    # worker modules must not import api, scheduler, or ai_service
-    assert "app.api" in SERVICE_BOUNDARIES["app/worker"]
-    assert "app.services.scheduler.__main__" in SERVICE_BOUNDARIES["app/worker"]
-    assert "app.services.ai.__main__" in SERVICE_BOUNDARIES["app/worker"]
+    # workspace service entrypoints must not import sibling service packages
+    assert "spectra_ai" in SERVICE_BOUNDARIES["services/api/src"]
+    assert "spectra_worker" in SERVICE_BOUNDARIES["services/api/src"]
+    assert "spectra_api" in SERVICE_BOUNDARIES["services/ai/src"]
+    assert "spectra_worker" in SERVICE_BOUNDARIES["services/scheduler/src"]
+    assert "spectra_scheduler" in SERVICE_BOUNDARIES["services/worker/src"]

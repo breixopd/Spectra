@@ -3,17 +3,17 @@
 
 Shared packages must not depend on:
 - app.api.*
-- app.worker.*
+- spectra_worker.* (worker implementation package)
 - app.services.ai.* (except via lazy imports inside functions)
 - app.services.ai.__main__
 - app.services.scheduler.__main__
-- app.worker.__main__
+- spectra_worker.__main__
 
 Microservice entry points must not import from other services:
-- app/services/scheduler/__main__.py must not import from app.api, app.worker
-- app/worker/__main__.py must not import from app.api, app.services.scheduler.__main__, app.services.ai.__main__
-- app/services/ai/__main__.py must not import from app.api, app.worker, app.services.scheduler.__main__
-- app/worker/** must not import from app.api, app.services.scheduler.__main__, app.services.ai.__main__
+- app/services/scheduler/__main__.py must not import from app.api, spectra_worker
+- services/worker/src/spectra_worker/__main__.py must not import from app.api, app.services.scheduler.__main__, app.services.ai.__main__
+- app/services/ai/__main__.py must not import from app.api, spectra_worker, app.services.scheduler.__main__
+- services/worker/src/** must not import from app.api, app.services.scheduler.__main__, app.services.ai.__main__
 
 This keeps the shared → service dependency direction clean for future extraction.
 """
@@ -22,24 +22,27 @@ import ast
 import sys
 from pathlib import Path
 
-SHARED_PACKAGES = ["app/core", "app/models"]
+SHARED_PACKAGES = ["app/core", "app/models", "packages/common/src", "packages/domain/src", "packages/tools-core/src"]
 FORBIDDEN_IMPORTS = [
     "app.api",
-    "app.worker",
-    "app.services.ai.__main__",
+    "spectra_worker",
+    "app.services.ai",
     "app.services.scheduler.__main__",
-    "app.worker.__main__",
+    "spectra_worker.__main__",
 ]
 
 # Cross-service boundary rules: {file_or_dir: [forbidden_import_prefixes]}
 SERVICE_BOUNDARIES: dict[str, list[str]] = {
-    "app/services/scheduler/__main__.py": ["app.api", "app.worker"],
-    "app/worker/__main__.py": ["app.api", "app.services.scheduler.__main__", "app.services.ai.__main__"],
-    "app/services/ai/__main__.py": ["app.api", "app.worker", "app.services.scheduler.__main__"],
-    "app/worker": ["app.api", "app.services.scheduler.__main__", "app.services.ai.__main__"],
+    "app/services/scheduler/__main__.py": ["app.api", "spectra_worker"],
+    "services/worker/src/spectra_worker/__main__.py": ["app.api", "app.services.scheduler.__main__", "app.services.ai.__main__"],
+    "app/services/ai/__main__.py": ["app.api", "spectra_worker", "app.services.scheduler.__main__"],
     # API layer must not import AI inference modules at top level.
     # Pure-data submodules (cost_tracker, cve_intel, etc.) use lazy imports only.
     "app/api": ["app.services.ai"],
+    "services/api/src": ["spectra_ai", "spectra_scheduler", "spectra_worker"],
+    "services/ai/src": ["app.api", "spectra_api", "spectra_scheduler", "spectra_worker"],
+    "services/scheduler/src": ["app.api", "spectra_api", "spectra_ai", "spectra_worker"],
+    "services/worker/src": ["app.api", "app.services.scheduler.__main__", "app.services.ai.__main__", "spectra_api", "spectra_ai", "spectra_scheduler"],
 }
 
 # Known cross-service couplings (lazy imports) — emitted as warnings, not failures.
@@ -47,7 +50,7 @@ SERVICE_BOUNDARIES: dict[str, list[str]] = {
 # api → app.services.ai: pure-data submodules (cost_tracker, cve_intel, memory, etc.)
 #   accessed via lazy imports for read-only data that doesn't need LLM inference.
 WARN_LAZY_IMPORTS: dict[str, list[str]] = {
-    "app/worker": ["app.services.ai"],
+    "services/worker/src": ["app.services.ai"],
     "app/api": ["app.services.ai"],
 }
 

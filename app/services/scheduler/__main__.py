@@ -843,6 +843,56 @@ async def internal_node_metrics(request: Request):
     return metrics.to_dict()
 
 
+async def _scaling_metrics_payload() -> dict:
+    """Return cluster metrics in the admin API response shape."""
+    from app.services.scaling.metrics_collector import MetricsCollector
+
+    collector = MetricsCollector()
+    cluster = await collector.collect_all()
+    return {
+        "timestamp": cluster.timestamp.isoformat(),
+        "services": {
+            name: {
+                "replicas": svc.replicas,
+                "desired_replicas": svc.desired_replicas,
+                "cpu_percent": round(svc.cpu_percent, 2),
+                "memory_mb": round(svc.memory_mb, 1),
+                "healthy": svc.healthy,
+                "failed_tasks": svc.failed_tasks,
+                "running_tasks": svc.running_tasks,
+            }
+            for name, svc in cluster.services.items()
+        },
+        "system": {
+            "cpu_percent": round(cluster.system.cpu_percent, 1),
+            "memory_percent": round(cluster.system.memory_percent, 1),
+            "memory_available_mb": round(cluster.system.memory_available_mb, 0),
+            "disk_percent": round(cluster.system.disk_percent, 1),
+            "disk_free_gb": round(cluster.system.disk_free_gb, 1),
+            "load_avg_1m": round(cluster.system.load_avg_1m, 2),
+            "load_avg_5m": round(cluster.system.load_avg_5m, 2),
+        },
+        "queue": {
+            "depth": cluster.queue.depth,
+            "in_progress": cluster.queue.in_progress,
+            "completed": cluster.queue.completed,
+            "avg_wait_secs": round(cluster.queue.avg_wait_secs, 1),
+            "oldest_job_secs": round(cluster.queue.oldest_job_secs, 1),
+        },
+        "nodes": {
+            "total": cluster.nodes_total,
+            "healthy": cluster.nodes_healthy,
+            "unhealthy": cluster.nodes_unhealthy,
+        },
+    }
+
+
+@app.get("/internal/scaling/metrics")
+async def internal_scaling_metrics():
+    """Cluster metrics collected by scheduler, which owns Docker access."""
+    return await _scaling_metrics_payload()
+
+
 @app.get("/internal/scaling/dashboard")
 async def internal_scaling_dashboard():
     """Comprehensive scaling dashboard data — cluster, services, nodes, autoscaler, alerts."""

@@ -115,7 +115,7 @@ Use the real commands already present in this repo.
 | Security scan | `bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high` |
 | Dependency audit | See the dependency-audit note below. |
 | TensorZero config validation | `python3 -c "import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')"` |
-| Dev compose validation | `docker compose --env-file .env.example -f docker/docker-compose.yml config --quiet` |
+| Dev compose validation | `docker compose --env-file .env.example -f docker/compose.yaml config --quiet` |
 | Swarm compose validation | `docker compose --env-file .env.example -f docker/docker-compose.swarm.yml config --quiet` |
 | Production-safe health check | `./scripts/health_check.sh http://localhost:5000/api/health` |
 | Deep health check | `HEALTH_CHECK_FULL=1 ./scripts/health_check.sh http://localhost:5000/api/health` |

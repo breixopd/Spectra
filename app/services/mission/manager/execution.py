@@ -348,6 +348,7 @@ class MissionExecutionManager:
             context,
             MissionInput(
                 directive=mission.directive,
+                requirements=mission.requirements,
                 is_steering=False,
                 force_phase=None,
             ),

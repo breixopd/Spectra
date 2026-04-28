@@ -40,20 +40,13 @@ async def _ensure_available_tool(registry: Any, tool_id: str, target: str) -> tu
     if tool.is_available and _is_tool_installed(tool):
         return tool, None
 
-    logger.info("Tool %s not installed, attempting install...", tool_id)
-    install_result = await install_tool_job(tool_id)
-    if not install_result.get("success"):
-        return None, _error_result(
-            tool_id,
-            target,
-            f"Tool installation failed: {install_result.get('error', 'Unknown error')}",
-        )
-
-    tool = registry.get_tool(tool_id)
-    if not tool or not tool.is_available or not _is_tool_installed(tool):
-        return None, _error_result(tool_id, target, "Tool still not installed after install")
-
-    return tool, None
+    status = tool.status.value if hasattr(tool.status, "value") else str(tool.status)
+    logger.warning("Tool %s unavailable in verified worker image (registry_status=%s)", tool_id, status)
+    return None, _error_result(
+        tool_id,
+        target,
+        "Tool unavailable in verified worker image; rebuild/promote the golden image before mission execution",
+    )
 
 
 def _resolve_output_dir(tool_id: str, output_dir: str | None) -> str:
@@ -231,18 +224,54 @@ async def execute_tool_job(
 
 
 @with_retry()
+async def build_golden_image_job(
+    target_tag: str | None = None,
+) -> dict[str, Any]:
+    """Build, verify, scan, and promote the golden worker image from plugins."""
+    from app.core.config import get_settings
+    from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+
+    settings = get_settings()
+    image_tag = target_tag or settings.SANDBOX_IMAGE
+    builder = GoldenImageBuilder()
+    result = await builder.build(target_tag=image_tag)
+    await sync_all_status_job()
+    return result
+
+
+@with_retry()
 async def install_tool_job(
     tool_id: str,
 ) -> dict[str, Any]:
-    """Install a tool in the tools container."""
-    from app.services.tools.installer import ToolInstaller
+    """Rebuild golden image after a tool/plugin change.
 
-    logger.info("Installing tool: %s", tool_id)
-    installer = ToolInstaller()
+    Kept for API/job compatibility: enterprise workers do not install tools
+    during missions. Plugin install means rebuild/verify/promote the golden
+    image used by worker and sandbox containers.
+    """
+    logger.info("Rebuilding golden image for tool/plugin: %s", tool_id)
+    await _sync_tool_status(tool_id, {"status": ToolStatus.INSTALLING.value, "phase": "golden_image_build"})
+    result = await build_golden_image_job()
+    from app.services.tools.registry import get_registry
 
-    result = await installer.install(tool_id, progress_callback=_status_sync_callback(tool_id))
+    tool = get_registry().get_tool(tool_id)
+    available_here = bool(tool and _is_tool_installed(tool))
 
-    await _sync_tool_status(tool_id, result)
+    await _sync_tool_status(
+        tool_id,
+        {
+            "success": result.get("status") == "success",
+            "status": ToolStatus.READY.value
+            if result.get("status") == "success" and available_here
+            else ToolStatus.FAILED.value
+            if result.get("status") not in {"success", "blocked"}
+            else ToolStatus.PENDING.value,
+            "phase": "golden_image_build" if available_here else "golden_image_rollout_required",
+            "message": result.get("message")
+            or f"Golden image build {result.get('status')}; worker rollout required before mission use",
+            "last_output": str(result)[:1000],
+        },
+    )
     return result
 
 
@@ -250,13 +279,15 @@ async def install_tool_job(
 async def uninstall_tool_job(
     tool_id: str,
 ) -> dict[str, Any]:
-    """Uninstall a tool from the tools container."""
+    """Disable/remove plugin from image through registry, then rebuild golden image."""
     from app.services.tools.installer import ToolInstaller
 
-    logger.info("Uninstalling tool: %s", tool_id)
+    logger.info("Removing tool plugin and rebuilding golden image: %s", tool_id)
     installer = ToolInstaller()
-
     result = await installer.uninstall(tool_id, progress_callback=_status_sync_callback(tool_id))
+    if result.get("success"):
+        build_result = await build_golden_image_job()
+        result["golden_image"] = build_result
 
     await _sync_tool_status(
         tool_id,
@@ -271,34 +302,40 @@ async def uninstall_tool_job(
 async def install_all_tools_job(
     force: bool = False,
 ) -> dict[str, Any]:
-    """Install all registered tools that aren't already installed."""
+    """Rebuild/verify the golden image that contains all registered tools."""
     from app.services.tools.registry import get_registry
 
     registry = get_registry()
     tools = registry.list_tools()
-
-    results: dict[str, Any] = {"installed": [], "failed": [], "skipped": []}
-
     for tool in tools:
-        tool_id = tool.config.id
+        await _sync_tool_status(tool.config.id, {"status": ToolStatus.INSTALLING.value, "phase": "golden_image_build"})
 
-        if not force and _is_tool_installed(tool):
-            results["skipped"].append(tool_id)
-            continue
+    result = await build_golden_image_job()
+    success = result.get("status") == "success"
+    for tool in tools:
+        available_here = _is_tool_installed(tool)
+        await _sync_tool_status(
+            tool.config.id,
+            {
+                "success": success,
+                "status": ToolStatus.READY.value
+                if success and available_here
+                else ToolStatus.FAILED.value
+                if not success
+                else ToolStatus.PENDING.value,
+                "phase": "golden_image_build" if available_here else "golden_image_rollout_required",
+                "message": result.get("message")
+                or f"Golden image build {result.get('status')}; worker rollout required before mission use",
+            },
+        )
 
-        result = await install_tool_job(tool_id)
-        if result.get("success"):
-            results["installed"].append(tool_id)
-        else:
-            results["failed"].append({"tool_id": tool_id, "error": result.get("error", "Unknown error")})
-
-    return results
+    return {"tools": len(tools), "golden_image": result, "force": force}
 
 
 async def reload_plugins_job(
     install_new: bool = True,
 ) -> dict[str, Any]:
-    """Reload plugins from disk and optionally install new ones."""
+    """Reload plugins from disk and optionally rebuild the golden image."""
     from app.services.tools.registry import get_registry
 
     logger.info("Reloading plugins from disk...")
@@ -311,18 +348,15 @@ async def reload_plugins_job(
 
     await sync_all_status_job()
 
-    installed = []
+    build_result: dict[str, Any] | None = None
     if install_new and added:
-        logger.info("Installing %d new plugins: %s", len(added), list(added))
-        for tool_id in added:
-            result = await install_tool_job(tool_id)
-            if result.get("success"):
-                installed.append(tool_id)
+        logger.info("Rebuilding golden image for %d new plugins: %s", len(added), list(added))
+        build_result = await build_golden_image_job()
 
     return {
         "reloaded": len(new_tool_ids),
         "added": list(added),
-        "installed": installed,
+        "golden_image": build_result,
     }
 
 

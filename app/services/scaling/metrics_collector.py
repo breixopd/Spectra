@@ -124,7 +124,7 @@ class MetricsCollector:
 
     async def _collect_service_metrics(self) -> dict[str, ServiceMetrics]:
         """Collect per-service CPU/memory from Docker stats."""
-        from app.services.scaling.docker_client import get_container_stats, list_services
+        from app.services.scaling.docker_client import get_container_stats, list_running_containers, list_services
 
         services: dict[str, ServiceMetrics] = {}
         try:
@@ -140,30 +140,68 @@ class MetricsCollector:
                     failed_tasks=max(0, svc.desired_replicas - svc.running_tasks),
                 )
 
-            # Get container-level stats for CPU/memory
-            container_stats = await get_container_stats()
+            if not services:
+                container_stats = await list_running_containers()
+                services = self._compose_service_metrics(container_stats)
+                try:
+                    resource_stats = await asyncio.wait_for(get_container_stats(), timeout=5)
+                    if resource_stats:
+                        container_stats = resource_stats
+                except TimeoutError:
+                    logger.debug("Docker stats timed out; returning replica metrics only")
+            else:
+                # Get container-level stats for CPU/memory
+                container_stats = await get_container_stats()
+
             for cs in container_stats:
                 # Extract service name from container name
                 # e.g. spectra_app.1.xxx -> spectra_app
-                container_name = cs.name
-                service_name = (
-                    container_name.rsplit(".", 2)[0]
-                    if "." in container_name
-                    else container_name
-                )
+                service_name = self._service_name_for_container(cs)
                 if service_name in services:
                     services[service_name].cpu_percent += cs.cpu_percent
                     services[service_name].memory_mb += cs.memory_mb
+                    services[service_name].memory_limit_mb += cs.memory_limit_mb
 
             # Average CPU across replicas
             for svc in services.values():
                 if svc.replicas > 0:
                     svc.cpu_percent /= svc.replicas
+                    svc.memory_limit_mb /= svc.replicas
+                    svc.memory_percent = (
+                        (svc.memory_mb / (svc.memory_limit_mb * svc.replicas)) * 100
+                        if svc.memory_limit_mb > 0
+                        else 0.0
+                    )
 
         except Exception as exc:
             logger.warning("Failed to collect service metrics: %s", exc)
 
         return services
+
+    def _compose_service_metrics(self, container_stats) -> dict[str, ServiceMetrics]:
+        """Build service metrics from Compose labels when Swarm services are unavailable."""
+        services: dict[str, ServiceMetrics] = {}
+        for cs in container_stats:
+            service_name = self._service_name_for_container(cs)
+            if not service_name:
+                continue
+            metrics = services.setdefault(
+                service_name,
+                ServiceMetrics(name=service_name, healthy=True),
+            )
+            metrics.replicas += 1
+            metrics.desired_replicas += 1
+            metrics.running_tasks += 1
+        return services
+
+    @staticmethod
+    def _service_name_for_container(container_stats) -> str:
+        compose_service = container_stats.labels.get("com.docker.compose.service")
+        if compose_service:
+            return f"spectra_{compose_service}"
+
+        container_name = container_stats.name
+        return container_name.rsplit(".", 2)[0] if "." in container_name else container_name
 
     async def _collect_system_metrics(self) -> SystemMetrics:
         """Collect host-level system metrics using psutil."""

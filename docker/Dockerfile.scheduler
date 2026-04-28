@@ -7,6 +7,7 @@ ARG PYTHON_BASE_IMAGE=python:3.11.13-slim-bookworm
 FROM ${PYTHON_BASE_IMAGE} AS builder
 
 WORKDIR /build
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     gcc \
@@ -36,11 +37,17 @@ ENV SPECTRA_BUILD_VERSION="${BUILD_VERSION}"
 WORKDIR /app
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
-    libpq5 \
-    curl \
-    netcat-openbsd \
     ca-certificates \
+    curl \
+    gnupg \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /etc/apt/trusted.gpg.d/postgresql.asc \
+    && echo "deb http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    postgresql-client-16 \
+    netcat-openbsd \
     gosu \
+    && apt-get purge -y --auto-remove gnupg \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/venv /opt/venv
@@ -52,6 +59,8 @@ RUN useradd --create-home --shell /bin/bash spectra && \
     chown -R spectra:spectra /app
 
 COPY --chown=spectra:spectra scripts/ ./scripts/
+COPY --chown=spectra:spectra services/scheduler/src/spectra_scheduler/ ./spectra_scheduler/
+COPY --chown=spectra:spectra packages/tools-core/src/spectra_tools_core/ ./spectra_tools_core/
 COPY --chown=spectra:spectra app/__init__.py ./app/
 COPY --chown=spectra:spectra app/_meta/ ./app/_meta/
 COPY --chown=spectra:spectra app/auth/ ./app/auth/
@@ -77,4 +86,4 @@ ENTRYPOINT ["/app/scripts/start.sh"]
 EXPOSE 5011
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:5011/health || exit 1
-CMD ["uvicorn", "app.services.scheduler.__main__:app", "--host", "0.0.0.0", "--port", "5011"]
+CMD ["uvicorn", "spectra_scheduler.main:app", "--host", "0.0.0.0", "--port", "5011"]

@@ -9,7 +9,7 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_send_webhook_makes_http_post():
-    from app.worker.notification_jobs import send_webhook_notification
+    from spectra_worker.notification_jobs import send_webhook_notification
 
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -31,7 +31,7 @@ async def test_send_webhook_makes_http_post():
 
 @pytest.mark.asyncio
 async def test_send_webhook_handles_http_error_gracefully():
-    from app.worker.notification_jobs import send_webhook_notification
+    from spectra_worker.notification_jobs import send_webhook_notification
 
     mock_resp = MagicMock()
     mock_resp.status_code = 500
@@ -52,7 +52,7 @@ async def test_send_webhook_handles_http_error_gracefully():
 
 @pytest.mark.asyncio
 async def test_send_webhook_handles_network_exception():
-    from app.worker.notification_jobs import send_webhook_notification
+    from spectra_worker.notification_jobs import send_webhook_notification
 
     mock_client = AsyncMock()
     mock_client.post = AsyncMock(side_effect=ConnectionError("connection refused"))
@@ -70,7 +70,7 @@ async def test_send_webhook_handles_network_exception():
 
 @pytest.mark.asyncio
 async def test_send_webhook_blocks_unsafe_url():
-    from app.worker.notification_jobs import send_webhook_notification
+    from spectra_worker.notification_jobs import send_webhook_notification
 
     with patch("app.utils.url_validation.is_safe_url", return_value=False):
         result = await send_webhook_notification({"event": "bad"}, "http://169.254.169.254/metadata")
@@ -83,7 +83,7 @@ async def test_send_webhook_blocks_unsafe_url():
 
 @pytest.mark.asyncio
 async def test_send_mission_completion_notification_finds_and_notifies():
-    from app.worker.notification_jobs import send_mission_completion_notification
+    from spectra_worker.notification_jobs import send_mission_completion_notification
 
     mock_mission = MagicMock()
     mock_mission.id = "mission-1"
@@ -108,7 +108,7 @@ async def test_send_mission_completion_notification_finds_and_notifies():
 
 @pytest.mark.asyncio
 async def test_send_mission_completion_notification_normalizes_severity_counts():
-    from app.worker.notification_jobs import send_mission_completion_notification
+    from spectra_worker.notification_jobs import send_mission_completion_notification
 
     mock_mission = MagicMock()
     mock_mission.id = "mission-2"
@@ -135,7 +135,7 @@ async def test_send_mission_completion_notification_normalizes_severity_counts()
 
 @pytest.mark.asyncio
 async def test_send_mission_completion_notification_missing_mission():
-    from app.worker.notification_jobs import send_mission_completion_notification
+    from spectra_worker.notification_jobs import send_mission_completion_notification
 
     mission_result = MagicMock()
     mission_result.scalar_one_or_none.return_value = None
@@ -152,7 +152,7 @@ async def test_send_mission_completion_notification_missing_mission():
 
 @pytest.mark.asyncio
 async def test_send_critical_finding_alert_sends_for_critical():
-    from app.worker.notification_jobs import send_critical_finding_alert
+    from spectra_worker.notification_jobs import send_critical_finding_alert
 
     mock_finding = MagicMock()
     mock_finding.severity = "critical"
@@ -175,7 +175,7 @@ async def test_send_critical_finding_alert_sends_for_critical():
 
 @pytest.mark.asyncio
 async def test_send_critical_finding_alert_skips_low_severity():
-    from app.worker.notification_jobs import send_critical_finding_alert
+    from spectra_worker.notification_jobs import send_critical_finding_alert
 
     mock_finding = MagicMock()
     mock_finding.severity = "low"

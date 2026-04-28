@@ -1,4 +1,4 @@
-"""Worker lifecycle: startup, shutdown, auto-install, heartbeat."""
+"""Worker lifecycle: startup, shutdown, golden-image status sync, heartbeat."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def _should_skip_startup_auto_install() -> bool:
+    """Deprecated compatibility switch; startup installs are no longer supported."""
     value = os.environ.get("WORKER_SKIP_STARTUP_AUTO_INSTALL", "true")
     return value.strip().lower() not in {"0", "false", "no", "off"}
 
@@ -81,11 +82,7 @@ async def startup() -> None:
 
 
 async def _auto_install_pending() -> None:
-    """Auto-install pending tools on startup."""
-    if _should_skip_startup_auto_install():
-        logger.info("Skipping startup tool preflight because WORKER_SKIP_STARTUP_AUTO_INSTALL is enabled")
-        return
-
+    """Sync tool availability on startup without mutating the container image."""
     from app.services.tools.registry import get_registry
 
     registry = get_registry()
@@ -94,24 +91,12 @@ async def _auto_install_pending() -> None:
         if not await _sync_detected_tool_status(tool):
             pending.append(tool.config.id)
 
-    if not pending:
-        return
-
-    from app.services.tools.installer import ToolInstaller
-
-    logger.info("Auto-installing %d tools: %s", len(pending), pending)
-    installer = ToolInstaller()
-    for tool_id in pending:
-        try:
-            result = await installer.install(
-                tool_id,
-                progress_callback=_install_progress_callback(tool_id),
-            )
-            await _sync_install_result(tool_id, result)
-        except (OSError, RuntimeError, ValueError) as e:
-            await _sync_install_failure(tool_id, e)
-        except Exception as e:
-            await _sync_install_failure(tool_id, e, unexpected=True)
+    if pending:
+        logger.warning(
+            "Golden worker image is missing %d registered tools: %s. Rebuild/promote image before missions.",
+            len(pending),
+            pending,
+        )
 
 
 async def shutdown() -> None:

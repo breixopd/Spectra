@@ -256,8 +256,8 @@ async def test_server_deployer_verify_deployment_checks_running_compose_services
 
     assert result is True
     command = mock_run.await_args.args[1]
-    assert "docker compose ps --services --status running" in command
-    assert "ERROR: Missing /opt/spectra/docker-compose.yml during verification." in command
+    assert 'docker compose -f "$COMPOSE_FILE" --profile app ps --services --status running' in command
+    assert "ERROR: Missing /opt/spectra/docker/compose.yaml during verification." in command
     assert "ERROR: Requested services not running:${missing_services}" in command
     assert "for service in app ai-svc; do" in command
 
@@ -273,5 +273,5 @@ async def test_server_deployer_deploy_services_fails_closed_without_compose_file
 
     assert result == 1
     command = mock_run.await_args.args[1]
-    assert "ERROR: No docker-compose.yml found at /opt/spectra. Upload config first." in command
+    assert "ERROR: No docker/compose.yaml found at /opt/spectra. Upload config first." in command
     assert "exit 1" in command

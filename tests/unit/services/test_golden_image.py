@@ -76,6 +76,29 @@ def test_generate_dockerfile_with_plugins():
     assert "sqlmap" in df
     assert "echo hello" in df
     assert "go install" in df
+    assert "io.spectra.golden-image.manifest-sha256" in df
+
+
+def test_plugin_manifest_is_deterministic_and_hides_install_commands():
+    plugins = [
+        {
+            "id": "nmap",
+            "name": "Nmap",
+            "version": "7.95",
+            "install_method": "apt",
+            "install_commands": ["apt-get install -y nmap"],
+            "verification_command": "nmap --version",
+        }
+    ]
+
+    with patch("docker.from_env", side_effect=ImportError("no docker")):
+        builder = GoldenImageBuilder()
+        manifest, digest = builder._plugin_manifest(plugins)
+
+    assert manifest[0]["id"] == "nmap"
+    assert manifest[0]["install_commands_sha256"]
+    assert "apt-get install" not in json.dumps(manifest)
+    assert len(digest) == 64
 
 
 @pytest.mark.asyncio

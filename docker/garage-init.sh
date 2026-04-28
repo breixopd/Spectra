@@ -81,10 +81,12 @@ if [ -n "${GARAGE_ACCESS_KEY:-}" ] && [ -n "${GARAGE_SECRET_KEY:-}" ]; then
         KEY_OUTPUT="$(key_info "${KEY_NAME}")"
         if [ -n "${KEY_OUTPUT}" ]; then
             if [ "$(key_field "${KEY_OUTPUT}" "Key ID")" != "${ACCESS_KEY}" ] || [ "$(key_field "${KEY_OUTPUT}" "Secret key")" != "${SECRET_KEY}" ]; then
-                echo "ERROR: Key ${KEY_NAME} already exists with different credentials" >&2
-                exit 1
+                IMPORT_NAME="${KEY_NAME}-${ACCESS_KEY:0:8}"
+                garage_exec key import --yes -n "${IMPORT_NAME}" "${ACCESS_KEY}" "${SECRET_KEY}" >/dev/null 2>&1 || true
+                echo "  Imported configured access key with alternate name ${IMPORT_NAME}"
+            else
+                echo "  Key ${KEY_NAME} already matches configured credentials"
             fi
-            echo "  Key ${KEY_NAME} already matches configured credentials"
         else
             garage_exec key import --yes -n "${KEY_NAME}" "${ACCESS_KEY}" "${SECRET_KEY}" >/dev/null
             if [ "${GARAGE_PRINT_CREDENTIALS:-1}" = "1" ]; then

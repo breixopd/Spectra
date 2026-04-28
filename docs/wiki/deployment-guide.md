@@ -94,8 +94,8 @@ PLATFORM_DOMAIN=spectra.example.com
 # --- AI Provider (TensorZero) ---
 TENSORZERO_GATEWAY_URL=http://tensorzero:3000
 
-# --- Security ---
-FULLY_AUTOMATED=false
+# --- Security (optional; default is autonomous) ---
+# REQUIRE_APPROVAL=true
 
 # --- Required S3/Garage ---
 GARAGE_ACCESS_KEY=spectra
@@ -112,7 +112,7 @@ See [Configuration](configuration.md) for all available settings.
 
 ```bash
 # All services (microservices mode by default)
-docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/compose.yaml up -d
 ```
 
 This starts all services as separate containers with health checks:
@@ -135,7 +135,7 @@ First visit redirects to `/setup` → create the admin account.
 
 ```bash
 # Check all containers are healthy
-docker compose -f docker/docker-compose.yml ps
+docker compose -f docker/compose.yaml ps
 
 # Lightweight liveness/readiness-safe health
 curl -f 'http://localhost:5000/api/health'
@@ -148,7 +148,7 @@ curl -f -H "X-Service-Auth: ${SERVICE_AUTH_SECRET}" \
   'http://localhost:5000/api/v1/health?detail=full&include=services,nodes' | python3 -m json.tool
 
 # Tail logs
-docker compose -f docker/docker-compose.yml logs -f app
+docker compose -f docker/compose.yaml logs -f app
 ```
 
 ---
@@ -284,7 +284,7 @@ Caddy automatically provisions a Let's Encrypt certificate. Cloudflare proxies t
 
 ## Production: Docker Compose
 
-The main Compose file (`docker/docker-compose.yml`) is pre-configured with:
+The main Compose file (`docker/compose.yaml`) is pre-configured with:
 
 - Resource limits on all containers
 - Garage for S3 storage (internal only, no exposed ports)
@@ -294,7 +294,7 @@ The main Compose file (`docker/docker-compose.yml`) is pre-configured with:
 For production, create a `.env.prod` with required secrets and use:
 
 ```bash
-docker compose -f docker/docker-compose.yml --env-file .env.prod up -d
+docker compose -f docker/compose.yaml --env-file .env.prod up -d
 ```
 
 ### Required Environment Variables
@@ -562,7 +562,7 @@ In the Portainer UI: **Environments → Add environment → Docker (Agent)** →
 ### Deploy Spectra as a Portainer Stack
 
 1. In Portainer, go to **Stacks → Add stack**
-2. Paste the contents of `docker/docker-compose.yml` (or the swarm file for multi-host)
+2. Paste the contents of `docker/compose.yaml` (or the swarm file for multi-host)
 3. Under **Environment variables**, add `POSTGRES_PASSWORD`, `JWT_SECRET_KEY`, `SERVICE_AUTH_SECRET`, `PLATFORM_DOMAIN`, etc.
 4. Click **Deploy the stack**
 
@@ -703,7 +703,7 @@ S3/MinIO support is **built-in** — set the environment variables and it works.
 For multi-server deployments, use S3/MinIO so all nodes access the same data:
 
 ```bash
-# Self-hosted MinIO (included in docker-compose.yml):
+# Self-hosted MinIO (included in compose.yaml):
 S3_ENDPOINT_URL=http://minio:9000
 S3_ACCESS_KEY=spectra
 S3_SECRET_KEY=your-minio-password
@@ -745,12 +745,12 @@ The admin panel (Settings → Services) shows real-time service status with heal
 
 ---
 
-## FULLY_AUTOMATED Warning
+## Human-in-the-loop (`REQUIRE_APPROVAL`)
 
-> **Never set `FULLY_AUTOMATED=true` in production.** This mode bypasses all human approval gates — missions execute without operator confirmation. Use only in isolated lab/testing environments.
+> By default, missions run autonomously (`REQUIRE_APPROVAL=false`). For stricter control, set **`REQUIRE_APPROVAL=true`** in environment or Admin → Settings so high-risk actions wait for operator approval.
 
 ```bash
-FULLY_AUTOMATED=false
+REQUIRE_APPROVAL=true
 ```
 
 ---

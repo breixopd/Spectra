@@ -30,7 +30,7 @@ x-security-stateful: &security-stateful
   security_opt: ["no-new-privileges:true"]
 
 x-common-env: &common-env
-  DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_test}@db:5432/${POSTGRES_DB:-spectra}}
+  DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_test}@db:5432/${POSTGRES_DB:-spectra_test}}
   S3_ENDPOINT_URL: http://garage:3900
   S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
   S3_SECRET_KEY: ${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
@@ -38,6 +38,7 @@ x-common-env: &common-env
   GARAGE_ADMIN_URL: http://garage:3903
   SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:-test-service-secret-key}
   TENSORZERO_GATEWAY_URL: http://tensorzero:3000
+  TOOL_QUEUE_NAME: ${TOOL_QUEUE_NAME:-tools}
 
 services:
   # ── Infrastructure (no profile) ──────────────────────────────
@@ -168,7 +169,7 @@ services:
       resources:
         limits:
           cpus: '1'
-          memory: 512M
+          memory: 1G
     networks:
       - frontend
       - backend
@@ -432,7 +433,6 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.worker
-    container_name: spectra-worker
     profiles: [app, test]
     labels:
       spectra.managed: "true"
@@ -604,6 +604,7 @@ services:
       - APP_PASSWORD=${ADMIN_PASSWORD:-Admin123!}
       - AI_SERVICE_URL=http://ai-svc:5010
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
+      - TOOL_QUEUE_NAME=${TOOL_QUEUE_NAME:-tools}
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-test-service-secret-key}
       - SERVICE_MODE=all
       - COVERAGE_FILE=/tmp/spectra-coverage/.coverage
@@ -691,6 +692,7 @@ services:
       - backend
 
   settings-test-runner:
+    image: spectra-test-runner:${VERSION:-dev}
     build:
       context: ..
       dockerfile: docker/Dockerfile.test
@@ -704,11 +706,11 @@ services:
     command:
       - >-
         python -m pytest
-        tests/unit/test_runtime_settings.py
+        tests/unit/services/test_runtime_settings.py
         tests/unit/test_system_setup.py
-        tests/unit/test_smart_router.py
-        tests/unit/test_settings_runtime_api.py
-        tests/unit/test_settings_templates.py
+        tests/unit/services/test_smart_router.py
+        tests/unit/api/test_settings_runtime_api.py
+        tests/unit/services/test_settings_templates.py
         -q --override-ini=addopts=
     env_file:
       - ../.env.test
@@ -734,6 +736,7 @@ services:
       - backend
 
   unit-test-runner:
+    image: spectra-test-runner:${VERSION:-dev}
     build:
       context: ..
       dockerfile: docker/Dockerfile.test

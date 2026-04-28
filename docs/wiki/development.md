@@ -70,6 +70,10 @@ pre-commit run check-import-boundaries --all-files
 
 For local admin and troubleshooting work, use [Operations](operations.md) as the canonical runbook owner and [scripts/ops/README.md](../../scripts/ops/README.md) for the script-by-script index. The helper scripts default to the standard `spectra-*` container names, which matches the local Docker Compose setup.
 
+### Cursor / Chunkhound MCP
+
+Cursor loads MCP servers from **user-level** `~/.cursor/mcp.json` (the repo’s `.cursor/` directory is gitignored). To run Chunkhound against an index on a remote host (so indexing does not run on your laptop), use SSH stdio in that file. A template with placeholders is committed at [`docs/examples/cursor-chunkhound-mcp.json`](../examples/cursor-chunkhound-mcp.json): copy it to `~/.cursor/mcp.json`, set `USER@YOUR_VPS_HOST`, paths to Python venv and `chunkhound`, and the project directory on the server.
+
 ---
 
 ## Testing
@@ -184,7 +188,7 @@ templates/              # Jinja2 HTML templates (project root)
 └── ...                 # Page templates
 
 docker/
-├── docker-compose.yml       # Dev stack (app, db, tools)
+├── compose.yaml       # Dev stack (app, db, tools)
 ├── docker-compose.swarm.yml # Multi-host production (Docker Swarm)
 ├── docker-compose.test.yml  # Test runner
 ├── Caddyfile.prod           # Production Caddy config
@@ -223,7 +227,7 @@ config/                      # Build configs (tailwind, postcss)
 - Tool plugins auto-install in sandbox containers on first boot
 - `xhtml2pdf` requires system packages `libcairo2-dev`, `pkg-config`, `python3-dev`
 - Adding a new `.json` file to `plugins/` is all that is needed for a new tool
-- `FULLY_AUTOMATED=true` in tests — monkeypatch to `False` for human approval tests
+- Human-in-the-loop tests: mock or set `REQUIRE_APPROVAL=True` on settings where applicable
 
 ---
 

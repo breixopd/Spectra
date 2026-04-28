@@ -7,9 +7,9 @@ from app.services.tools.models import (
     ToolConfig,
     ToolStatus,
 )
-from app.services.tools.registry.constants import MAX_OUTPUT_SIZE, MAX_REGEX_LENGTH
-from app.services.tools.registry.exceptions import PluginInstallationError
 from app.services.tools.registry.executor import run_command_safe
+from spectra_tools_core.registry_constants import MAX_OUTPUT_SIZE, MAX_REGEX_LENGTH
+from spectra_tools_core.registry_exceptions import PluginInstallationError
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable

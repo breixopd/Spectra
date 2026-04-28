@@ -24,7 +24,7 @@ def _tool(tool_id: str) -> SimpleNamespace:
 
 @pytest.mark.asyncio
 async def test_worker_startup_initializes_registry_and_auto_install():
-    from app.worker import lifecycle
+    from spectra_worker import lifecycle
 
     registry = SimpleNamespace(list_tools=MagicMock(return_value=[_tool("demo")]))
     auto_install = AsyncMock()
@@ -43,7 +43,7 @@ async def test_worker_startup_initializes_registry_and_auto_install():
 
 @pytest.mark.asyncio
 async def test_worker_startup_returns_when_registry_init_fails():
-    from app.worker import lifecycle
+    from spectra_worker import lifecycle
 
     auto_install = AsyncMock()
 
@@ -60,29 +60,15 @@ async def test_worker_startup_returns_when_registry_init_fails():
 
 
 @pytest.mark.asyncio
-async def test_auto_install_pending_handles_ready_success_failed_and_exception_paths():
-    from app.worker import lifecycle
+async def test_auto_install_pending_syncs_detected_status_without_installing():
+    from spectra_worker import lifecycle
 
     ready_tool = _tool("ready-tool")
-    success_tool = _tool("success-tool")
-    failed_tool = _tool("failed-tool")
-    error_tool = _tool("error-tool")
-    unexpected_tool = _tool("unexpected-tool")
-    tools = [ready_tool, success_tool, failed_tool, error_tool, unexpected_tool]
+    missing_tool = _tool("missing-tool")
+    tools = [ready_tool, missing_tool]
     registry = SimpleNamespace(list_tools=MagicMock(return_value=tools))
     sync_status = AsyncMock()
-
-    async def install(tool_id, progress_callback):
-        await progress_callback({"status": "installing", "phase": tool_id})
-        if tool_id == "success-tool":
-            return {"success": True, "status": "ready"}
-        if tool_id == "failed-tool":
-            return {"success": False, "status": "failed", "error": "no package"}
-        if tool_id == "error-tool":
-            raise RuntimeError("install blew up")
-        raise Exception("unexpected plugin failure")
-
-    installer = SimpleNamespace(install=AsyncMock(side_effect=install))
+    installer_factory = MagicMock()
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setenv("WORKER_SKIP_STARTUP_AUTO_INSTALL", "false")
@@ -94,41 +80,51 @@ async def test_auto_install_pending_handles_ready_success_failed_and_exception_p
         mp.setitem(
             sys.modules,
             "app.services.tools.installer",
-            make_module("app.services.tools.installer", ToolInstaller=lambda: installer),
+            make_module("app.services.tools.installer", ToolInstaller=installer_factory),
         )
-        mp.setattr(lifecycle, "_is_tool_installed", MagicMock(side_effect=[True, False, False, False, False]))
+        mp.setattr(lifecycle, "_is_tool_installed", MagicMock(side_effect=[True, False]))
         mp.setattr(lifecycle, "_sync_tool_status", sync_status)
         await lifecycle._auto_install_pending()
 
-    assert installer.install.await_count == 4
     assert has_async_update(sync_status, "ready-tool", status="ready")
-    assert has_async_update(sync_status, "success-tool", status="ready", success=True)
-    assert has_async_update(sync_status, "failed-tool", status="failed", success=False)
-    assert has_async_update(sync_status, "error-tool", status="failed", error="install blew up")
-    assert has_async_update(sync_status, "unexpected-tool", status="failed", error="unexpected plugin failure")
+    assert has_async_update(sync_status, "missing-tool", status="pending")
+    installer_factory.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_auto_install_pending_skips_installs_when_env_requests_it():
-    from app.worker import lifecycle
+    from spectra_worker import lifecycle
 
+    ready_tool = _tool("ready-tool")
+    missing_tool = _tool("missing-tool")
+    registry = SimpleNamespace(list_tools=MagicMock(return_value=[ready_tool, missing_tool]))
+    sync_status = AsyncMock()
     installer_factory = MagicMock()
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setenv("WORKER_SKIP_STARTUP_AUTO_INSTALL", "true")
         mp.setitem(
             sys.modules,
+            "app.services.tools.registry",
+            make_module("app.services.tools.registry", get_registry=lambda: registry),
+        )
+        mp.setitem(
+            sys.modules,
             "app.services.tools.installer",
             make_module("app.services.tools.installer", ToolInstaller=installer_factory),
         )
+        mp.setattr(lifecycle, "_is_tool_installed", MagicMock(side_effect=[True, False]))
+        mp.setattr(lifecycle, "_sync_tool_status", sync_status)
         await lifecycle._auto_install_pending()
 
+    assert has_async_update(sync_status, "ready-tool", status="ready")
+    assert has_async_update(sync_status, "missing-tool", status="pending")
     installer_factory.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_worker_shutdown_disposes_database_engine():
-    from app.worker import lifecycle
+    from spectra_worker import lifecycle
 
     engine = SimpleNamespace(dispose=AsyncMock())
 
@@ -141,7 +137,7 @@ async def test_worker_shutdown_disposes_database_engine():
 
 @pytest.mark.asyncio
 async def test_worker_shutdown_ignores_dispose_errors():
-    from app.worker import lifecycle
+    from spectra_worker import lifecycle
 
     engine = SimpleNamespace(dispose=AsyncMock(side_effect=OSError("db busy")))
 
@@ -154,7 +150,7 @@ async def test_worker_shutdown_ignores_dispose_errors():
 
 @pytest.mark.asyncio
 async def test_heartbeat_loop_updates_db_before_cancellation():
-    from app.worker import lifecycle
+    from spectra_worker import lifecycle
 
     session = AsyncMock()
     session.commit = AsyncMock()
@@ -192,7 +188,7 @@ async def test_heartbeat_loop_updates_db_before_cancellation():
 
 @pytest.mark.asyncio
 async def test_heartbeat_loop_logs_and_retries_after_db_error():
-    from app.worker import lifecycle
+    from spectra_worker import lifecycle
 
     session = AsyncMock()
     session.execute = AsyncMock(side_effect=RuntimeError("db down"))
@@ -230,7 +226,7 @@ async def test_heartbeat_loop_logs_and_retries_after_db_error():
 
 @pytest.mark.asyncio
 async def test_run_command_job_blocks_unsafe_commands():
-    from app.worker import command_jobs
+    from spectra_worker import command_jobs
 
     class _SafetySupervisorAgent:
         @staticmethod
@@ -258,7 +254,7 @@ async def test_run_command_job_blocks_unsafe_commands():
 
 @pytest.mark.asyncio
 async def test_run_command_job_wraps_command_with_timeout():
-    from app.worker import command_jobs
+    from spectra_worker import command_jobs
 
     class _SafetySupervisorAgent:
         @staticmethod
@@ -286,7 +282,7 @@ async def test_run_command_job_wraps_command_with_timeout():
 
 @pytest.mark.asyncio
 async def test_execute_script_job_runs_python_script_successfully():
-    from app.worker import command_jobs
+    from spectra_worker import command_jobs
 
     run_command = AsyncMock(return_value=(0, "python ok", ""))
 
@@ -308,7 +304,7 @@ async def test_execute_script_job_runs_python_script_successfully():
 
 @pytest.mark.asyncio
 async def test_execute_script_job_reports_go_compilation_failure():
-    from app.worker import command_jobs
+    from spectra_worker import command_jobs
 
     run_command = AsyncMock(return_value=(1, "", "compile failed"))
 
@@ -326,7 +322,7 @@ async def test_execute_script_job_reports_go_compilation_failure():
 
 @pytest.mark.asyncio
 async def test_execute_script_job_runs_bash_script_successfully():
-    from app.worker import command_jobs
+    from spectra_worker import command_jobs
 
     run_command = AsyncMock(side_effect=[(0, "", ""), (0, "bash ok", "")])
 
@@ -344,7 +340,7 @@ async def test_execute_script_job_runs_bash_script_successfully():
 
 @pytest.mark.asyncio
 async def test_execute_script_job_rejects_unsupported_language():
-    from app.worker import command_jobs
+    from spectra_worker import command_jobs
 
     result = await command_jobs.execute_script_job("puts 'hi'", "ruby", "127.0.0.1")
 
@@ -358,7 +354,7 @@ async def test_execute_script_job_rejects_unsupported_language():
 
 @pytest.mark.asyncio
 async def test_execute_script_job_returns_runtime_error_details():
-    from app.worker import command_jobs
+    from spectra_worker import command_jobs
 
     run_command = AsyncMock(side_effect=OSError("interpreter missing"))
 
@@ -372,7 +368,7 @@ async def test_execute_script_job_returns_runtime_error_details():
 
 @pytest.mark.asyncio
 async def test_execute_script_job_ignores_cleanup_failures():
-    from app.worker import command_jobs
+    from spectra_worker import command_jobs
 
     run_command = AsyncMock(return_value=(0, "ok", ""))
 
@@ -386,7 +382,7 @@ async def test_execute_script_job_ignores_cleanup_failures():
 
 @pytest.mark.asyncio
 async def test_vpn_connect_job_handles_supported_unknown_and_error_cases():
-    from app.worker import vpn_jobs
+    from spectra_worker import vpn_jobs
 
     run_command = AsyncMock(side_effect=[(0, "wg up", ""), (0, "ovpn up", ""), OSError("broken")])
 
@@ -406,7 +402,7 @@ async def test_vpn_connect_job_handles_supported_unknown_and_error_cases():
 
 @pytest.mark.asyncio
 async def test_vpn_disconnect_job_handles_supported_unknown_and_error_cases():
-    from app.worker import vpn_jobs
+    from spectra_worker import vpn_jobs
 
     run_command = AsyncMock(side_effect=[(0, "wg down", ""), OSError("broken")])
 
@@ -434,7 +430,7 @@ async def test_vpn_disconnect_job_handles_supported_unknown_and_error_cases():
 
 @pytest.mark.asyncio
 async def test_vpn_status_job_covers_wireguard_openvpn_absent_and_error_paths():
-    from app.worker import vpn_jobs
+    from spectra_worker import vpn_jobs
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(
@@ -487,7 +483,7 @@ async def test_vpn_status_job_covers_wireguard_openvpn_absent_and_error_paths():
 
 @pytest.mark.asyncio
 async def test_vpn_test_job_reports_success_failure_and_error():
-    from app.worker import vpn_jobs
+    from spectra_worker import vpn_jobs
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(vpn_jobs, "_run_command", AsyncMock(return_value=(0, "9.9.9.9", "")))

@@ -119,7 +119,7 @@ class TestReadStreamLimit:
 
     @pytest.mark.asyncio
     async def test_truncates_large_output(self):
-        from app.services.tools.registry.constants import MAX_OUTPUT_SIZE
+        from spectra_tools_core.registry_constants import MAX_OUTPUT_SIZE
 
         # Simulate reading in 4096-byte chunks exceeding the limit
         chunk_count = (MAX_OUTPUT_SIZE // 4096) + 2

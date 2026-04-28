@@ -175,8 +175,7 @@ When gateway URLs are empty, services run in-process (default monolith mode). Se
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `REQUIRE_APPROVAL` | bool | `false` | Require human approval for high-risk actions |
-| `FULLY_AUTOMATED` | bool | `true` | Skip all human approval — fully autonomous operation |
+| `REQUIRE_APPROVAL` | bool | `false` | Require human approval for high-risk actions (admin UI can override via runtime settings) |
 
 See [Security](security.md) for full security model.
 
@@ -234,10 +233,20 @@ Custom PoC execution and managed callback listeners are controlled by mission ca
 
 Some settings can be changed at runtime through the web UI (Admin panel → Settings). These are persisted to the database and override environment variables. The database is the source of truth after initial setup; environment variables serve only as initial defaults.
 
+**What belongs where**
+
+| Layer | Examples | Rationale |
+| ----- | ---------- | --------- |
+| **End users** | Notification prefs, default scan mode, BYOK keys | User-owned preferences (`user_preferences`) |
+| **Platform admin** | Domains, webhooks, sandbox limits, scaling thresholds, `REQUIRE_APPROVAL` | Capacity, integrations, compliance posture |
+| **Deployment only** | Internal image names, queue wiring, DB URLs, Swarm secrets | Never duplicated as “fake” toggles in the UI — set via env / secrets |
+
+Platform behavior that is always on (exploit DB initialization when the service starts, golden-image verification, image vulnerability scans when tooling is present) is **not** exposed as a switch — operators tune timeouts and policies, not “enable the product.”
+
 Admin-UI-manageable settings include:
 
 - `LOG_LEVEL`, `CONNECT_BACK_HOST`
-- `REQUIRE_APPROVAL`, `FULLY_AUTOMATED`
+- `REQUIRE_APPROVAL`
 - `NOTIFICATION_WEBHOOK`
 - `PLATFORM_DOMAIN`, `PLATFORM_BASE_URL`, `PLATFORM_EXPOSED`
 - All `AUTOSCALE_*` and `INFRA_MONITOR_*` settings (via Scaling tab)

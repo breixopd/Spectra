@@ -8,8 +8,8 @@ from app.services.tools.models import (
     RegisteredTool,
     ToolStatus,
 )
-from app.services.tools.registry.exceptions import PluginValidationError
 from app.services.tools.registry.validator import PluginValidator
+from spectra_tools_core.registry_exceptions import PluginValidationError
 
 logger = logging.getLogger(__name__)
 

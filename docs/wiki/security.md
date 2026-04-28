@@ -194,9 +194,7 @@ Key configuration for security hardening:
 | --------- | --------- | ---------------- |
 | `JWT_SECRET_KEY` | Auto-generated | Set a strong random value in production |
 | `ENCRYPTION_KEY` | `''` (falls back to JWT key) | Set explicitly to separate signing and encryption key domains |
-| `ENCRYPTION_KEY` | `''` (falls back to JWT key) | Set explicitly to separate signing and encryption key domains |
-| `FULLY_AUTOMATED` | `true` | Set `false` for human-in-the-loop |
-| `REQUIRE_APPROVAL` | `false` | Enable for high-security environments |
+| `REQUIRE_APPROVAL` | `false` | Set `true` (env or Admin Settings) for human-in-the-loop on high-risk actions |
 | `SANDBOX_NETWORK_ISOLATION` | `true` | Keep enabled |
 | `DEBUG` | `false` | Never enable in production |
 

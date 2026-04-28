@@ -91,7 +91,7 @@ pre-commit run --all-files
 
 ```bash
 # Start all services
-docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/compose.yaml up -d
 
 # The app is at http://localhost:5000
 # First run redirects to /setup for admin account creation
@@ -168,10 +168,10 @@ Spectra runs as four microservices controlled by `SERVICE_MODE`. Import boundari
 
 **Service-specific packages** (only loaded by their respective service):
 - `app/api/` — routers, schemas, UI (API service)
-- `app/worker/` — job queue consumer (Worker service)
+- `services/worker/src/spectra_worker/` — job queue consumer (Worker package; image CMD `uvicorn spectra_worker.main:app`)
 - `app/services/ai/__main__.py` — AI service entry point
 - `app/services/scheduler/__main__.py` — Scheduler entry point
-- `app/worker/__main__.py` — Worker entry point
+- `services/worker/src/spectra_worker/__main__.py` — Worker HTTP + queue loops
 
 **Verify boundaries before submitting a PR:**
 
@@ -179,7 +179,7 @@ Spectra runs as four microservices controlled by `SERVICE_MODE`. Import boundari
 python3 scripts/check_import_boundaries.py
 ```
 
-This checks that `app/core/` and `app/models/` have no top-level imports of service-specific modules (`app.api`, `app.worker`, `app.services.ai.__main__`, etc.). Lazy imports inside functions are allowed.
+This checks that `app/core/` and `app/models/` have no top-level imports of service-specific modules (`app.api`, `spectra_worker`, `app.services.ai.__main__`, etc.). Lazy imports inside functions are allowed.
 
 The pre-commit hook also runs this check automatically on every commit (see [Pre-commit Hooks](#pre-commit-hooks)).
 
@@ -311,7 +311,7 @@ make test-coverage
 ### Test guidelines
 
 - **pytest-asyncio**: Mode is `strict` — all async tests need `@pytest.mark.asyncio`
-- **Environment**: Create `.env.test` with `cp .env.test.example .env.test` (add optional API keys locally). The file is **gitignored**; CI copies the example when needed. Tests load the same file for `DATABASE_URL`, `TENSORZERO_GATEWAY_URL`, and `FULLY_AUTOMATED=true` where applicable.
+- **Environment**: Create `.env.test` with `cp .env.test.example .env.test` (add optional API keys locally). The file is **gitignored**; CI copies the example when needed. Tests load the same file for `DATABASE_URL`, `TENSORZERO_GATEWAY_URL`, etc. Approval gating is controlled by `REQUIRE_APPROVAL` (defaults to off in tests unless a test mocks it).
 - Write tests for behavior, not implementation details
 - Don't test what the type system already guarantees
 - Unit tests should not require Docker, databases, or network access
@@ -327,7 +327,6 @@ Key variables in `.env.test`:
 | ------------------------ | ----------------------------------------------------------------------- | --------------------------------- |
 | `DATABASE_URL`           | `postgresql+asyncpg://spectra:spectra_test@localhost:5433/spectra_test` | Shared PostgreSQL test database   |
 | `TENSORZERO_GATEWAY_URL` | `http://tensorzero:3000`                                                | TensorZero gateway for AI routing |
-| `FULLY_AUTOMATED`        | `true`                                                                  | Skips human approval prompts      |
 | `JWT_SECRET_KEY`         | `test-secret-key`                                                       | Deterministic JWT signing         |
 | `OPENAI_API_KEY`         | *(empty or your key)*                                                   | Live LLM tests (e.g. OpenRouter)  |
 | `EMBEDDING_API_KEY`      | *(empty for local fastembed)*                                           | RAG/embedding tests               |

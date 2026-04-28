@@ -125,12 +125,14 @@ def grant_user_plan_features(user_id: str, features: dict[str, bool]) -> None:
                 """
                 INSERT INTO plans (
                     id, name, display_name, features, is_active,
+                    is_default,
                     max_concurrent_missions, max_api_requests_per_hour,
                     max_api_requests_per_day, sandbox_max_containers,
                     max_storage_mb, sort_order
                 )
                 VALUES (
                     gen_random_uuid(), $1, $1, $2::jsonb, true,
+                    false,
                     1, 100, 1000, 1, 500, 0
                 )
                 RETURNING id

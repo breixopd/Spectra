@@ -59,13 +59,13 @@ clean: ## Clean caches and build artifacts
 	@echo "Cleaned."
 
 docker-build: ## Build Docker images
-	@docker compose -f docker/docker-compose.yml build
+	@docker compose -f docker/compose.yaml build
 
 docker-up: ## Start Docker Compose services
-	@docker compose -f docker/docker-compose.yml up -d
+	@docker compose -f docker/compose.yaml up -d
 
 docker-down: ## Stop Docker Compose services
-	@docker compose -f docker/docker-compose.yml down
+	@docker compose -f docker/compose.yaml down
 
 deploy: ## Deploy to production (usage: make deploy VERSION=2026.03.12)
 	@./scripts/deploy.sh $(VERSION)
@@ -76,7 +76,7 @@ rollback: ## Rollback to previous version (usage: make rollback VERSION=2026.03.
 deploy-check: ## Run pre-deploy checks without deploying
 	@echo "Running pre-deploy checks..."
 	@docker info > /dev/null 2>&1 || { echo "ERROR: Docker not running"; exit 1; }
-	@test -f docker/docker-compose.yml || { echo "ERROR: Compose file missing"; exit 1; }
+	@test -f docker/compose.yaml || { echo "ERROR: Compose file missing"; exit 1; }
 	@test -x scripts/deploy.sh || { echo "ERROR: deploy.sh not executable"; exit 1; }
 	@test -x scripts/health_check.sh || { echo "ERROR: health_check.sh not executable"; exit 1; }
 	@echo "All pre-deploy checks passed."

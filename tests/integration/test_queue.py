@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 from sqlalchemy import delete, select, text
-from sqlalchemy.exc import InterfaceError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 import app.infrastructure.queue

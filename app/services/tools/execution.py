@@ -103,7 +103,7 @@ async def execute_via_worker(
 
 
 async def ensure_tool_installed(tool_id: str, install_timeout: int) -> bool:
-    """Ensure a tool is installed via the worker."""
+    """Compatibility helper: queue golden image rebuild for a tool/plugin."""
     from app.core.config import settings
     from app.infrastructure.queue import Job, PostgresJobQueue
 
@@ -115,14 +115,14 @@ async def ensure_tool_installed(tool_id: str, install_timeout: int) -> bool:
 
         result = await job.result(timeout=install_timeout)
 
-        if result and result.get("success"):
+        if result and result.get("status") == "success":
             from app.services.tools.models import ToolStatus
             from app.services.tools.registry import get_registry
 
             registry = get_registry()
             tool = registry.get_tool(tool_id)
             if tool:
-                tool.status = ToolStatus.READY
+                tool.status = ToolStatus.PENDING
             return True
         return False
 

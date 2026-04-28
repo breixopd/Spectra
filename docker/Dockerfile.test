@@ -5,6 +5,7 @@ ARG PYTHON_BASE_IMAGE=python:3.11.13-slim-bookworm
 FROM ${PYTHON_BASE_IMAGE} AS test-runner
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
     PIP_ROOT_USER_ACTION=ignore
 
 WORKDIR /app
@@ -28,6 +29,8 @@ RUN grep -v -E 'pytest-asyncio|pytest==' requirements/base.txt > /tmp/base-filte
 
 # Copy source
 COPY app/ app/
+COPY services/worker/src/spectra_worker/ spectra_worker/
+COPY packages/tools-core/src/spectra_tools_core/ spectra_tools_core/
 COPY tests/ tests/
 COPY scripts/ scripts/
 COPY plugins/ plugins/
