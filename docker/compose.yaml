@@ -403,6 +403,7 @@ services:
       - SETUID
       - SETGID
       - CHOWN
+      - DAC_OVERRIDE
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5011/health"]
       interval: 10s
