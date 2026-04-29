@@ -114,4 +114,7 @@ class TestTrainingRouter:
             resp = await ac.get("/api/v1/admin/training/providers")
         assert resp.status_code == 200
         data = resp.json()
-        assert len(data["providers"]) >= 3
+        provider_ids = {provider["id"] for provider in data["providers"]}
+        assert {"local", "custom", "runpod", "vast", "lambda", "modal"}.issubset(provider_ids)
+        runpod = next(provider for provider in data["providers"] if provider["id"] == "runpod")
+        assert "output_storage_uri" in runpod["config_fields"]
