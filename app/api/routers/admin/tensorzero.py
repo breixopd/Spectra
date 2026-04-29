@@ -18,10 +18,10 @@ except ModuleNotFoundError:  # Python 3.10 test runner
 import httpx
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
+from spectra_common.constants import API_DEFAULT_PAGE_SIZE, API_MAX_PAGE_SIZE
 
 from app.auth.rbac import Permission, require_permission
 from app.core.config import settings
-from spectra_common.constants import API_DEFAULT_PAGE_SIZE, API_MAX_PAGE_SIZE
 from app.models.user import User
 
 logger = logging.getLogger(__name__)

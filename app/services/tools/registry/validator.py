@@ -4,9 +4,10 @@ import logging
 import re
 from typing import TYPE_CHECKING, Any
 
-from app.services.tools.models import ToolConfig
 from spectra_tools_core.registry_constants import DANGEROUS_PATTERNS
 from spectra_tools_core.registry_exceptions import PluginValidationError
+
+from app.services.tools.models import ToolConfig
 
 if TYPE_CHECKING:
     pass

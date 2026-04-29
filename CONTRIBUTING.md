@@ -169,8 +169,8 @@ Spectra runs as four microservices controlled by `SERVICE_MODE`. Import boundari
 **Service-specific packages** (only loaded by their respective service):
 - `app/api/` — routers, schemas, UI (API service)
 - `services/worker/src/spectra_worker/` — job queue consumer (Worker package; image CMD `uvicorn spectra_worker.main:app`)
-- `app/services/ai/__main__.py` — AI service entry point
-- `app/services/scheduler/__main__.py` — Scheduler entry point
+- `services/ai/src/spectra_ai/main.py` — AI service entry point (image: `uvicorn spectra_ai.main:app`)
+- `services/scheduler/src/spectra_scheduler/main.py` — Scheduler entry point (image: `uvicorn spectra_scheduler.main:app`)
 - `services/worker/src/spectra_worker/__main__.py` — Worker HTTP + queue loops
 
 **Verify boundaries before submitting a PR:**
@@ -179,7 +179,7 @@ Spectra runs as four microservices controlled by `SERVICE_MODE`. Import boundari
 python3 scripts/check_import_boundaries.py
 ```
 
-This checks that `app/core/` and `app/models/` have no top-level imports of service-specific modules (`app.api`, `spectra_worker`, `app.services.ai.__main__`, etc.). Lazy imports inside functions are allowed.
+This checks that `app/core/` and `app/models/` have no top-level imports of service-specific modules (`app.api`, `spectra_worker`, `spectra_ai`, `spectra_scheduler`, etc.). Lazy imports inside functions are allowed.
 
 The pre-commit hook also runs this check automatically on every commit (see [Pre-commit Hooks](#pre-commit-hooks)).
 
@@ -299,7 +299,7 @@ make test                            # Runs unit tests in Docker
 ./tests/run_live_tests.sh
 
 # --- Containerized test runner via docker-compose ---
-docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner
+docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner
 
 # --- UI tests (requires Playwright) ---
 ./tests/run_ui_tests.sh
@@ -311,7 +311,7 @@ make test-coverage
 ### Test guidelines
 
 - **pytest-asyncio**: Mode is `strict` — all async tests need `@pytest.mark.asyncio`
-- **Environment**: Create `.env.test` with `cp .env.test.example .env.test` (add optional API keys locally). The file is **gitignored**; CI copies the example when needed. Tests load the same file for `DATABASE_URL`, `TENSORZERO_GATEWAY_URL`, etc. Approval gating is controlled by `REQUIRE_APPROVAL` (defaults to off in tests unless a test mocks it).
+- **Environment**: Create `.env.test` with `cp .env.test.example .env.test` (add optional API keys locally). The file is **gitignored**; CI copies the example when needed. Tests load the same file for `DATABASE_URL`, `TENSORZERO_GATEWAY_URL`, etc. Mission approval behavior uses per-user defaults and per-launch payloads; integration tests rarely need this. Unit tests patch `settings.REQUIRE_APPROVAL` only when exercising the env kill-switch path.
 - Write tests for behavior, not implementation details
 - Don't test what the type system already guarantees
 - Unit tests should not require Docker, databases, or network access

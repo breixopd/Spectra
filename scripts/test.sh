@@ -16,7 +16,7 @@
 # Environment:
 #   SPECTRA_TEST_IMAGE  Override the Docker image (default: spectra-app)
 #   REBUILD=1           Force rebuild the test image before running
-#   START_STACK=1       Start docker/docker-compose.test.yml before live-smoke
+#   START_STACK=1       Bring up docker/compose.yaml (app + test profiles) before live-smoke
 #   SPECTRA_KEEP_TEST_ARTIFACTS=1  Export coverage/smoke diagnostics to ./reports
 
 set -euo pipefail
@@ -121,8 +121,8 @@ collect_compose_logs() {
         out_dir="$PROJECT_ROOT/reports/live-smoke"
     fi
     mkdir -p "$out_dir"
-    docker compose -f "$PROJECT_ROOT/docker/docker-compose.test.yml" ps > "$out_dir/compose-ps.txt" 2>&1 || true
-    docker compose -f "$PROJECT_ROOT/docker/docker-compose.test.yml" logs --no-color --tail=300 \
+    docker compose -f "$PROJECT_ROOT/docker/compose.yaml" --profile app --profile test ps > "$out_dir/compose-ps.txt" 2>&1 || true
+    docker compose -f "$PROJECT_ROOT/docker/compose.yaml" --profile app --profile test logs --no-color --tail=300 \
         > "$out_dir/compose-logs.txt" 2>&1 || true
     echo -e "${YELLOW}Compose diagnostics written to ${out_dir}${NC}"
 }
@@ -139,7 +139,7 @@ bootstrap_test_garage() {
 run_live_smoke() {
     if [[ "${START_STACK:-0}" == "1" ]]; then
         echo -e "${CYAN}Starting test stack for live smoke...${NC}"
-        docker compose --env-file "$PROJECT_ROOT/.env.test" -f "$PROJECT_ROOT/docker/docker-compose.test.yml" up -d
+        docker compose --env-file "$PROJECT_ROOT/.env.test" -f "$PROJECT_ROOT/docker/compose.yaml" --profile app --profile test up -d
         export APP_BASE_URL="${APP_BASE_URL:-http://localhost:15080}"
         bootstrap_test_garage
     fi
@@ -199,8 +199,9 @@ case "$CMD" in
         run_in_docker "$2" -v --override-ini=addopts=
         ;;
     compose)
-        echo -e "${CYAN}Running full test stack via docker-compose...${NC}"
-        docker compose -f "$PROJECT_ROOT/docker/docker-compose.test.yml" \
+        echo -e "${CYAN}Running integration test-runner via Compose (profiles app + test)...${NC}"
+        docker compose --env-file "$PROJECT_ROOT/.env.test" \
+            -f "$PROJECT_ROOT/docker/compose.yaml" --profile app --profile test \
             run --rm test-runner
         ;;
     -h|--help)

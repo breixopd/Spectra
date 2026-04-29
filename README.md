@@ -142,7 +142,7 @@ Spectra is configured via environment variables in `.env`. Key settings:
 | `DATABASE_URL`           | PostgreSQL connection string        | `postgresql+asyncpg://spectra:spectra_dev@db:5432/spectra` |
 | `TENSORZERO_GATEWAY_URL` | TensorZero gateway URL              | `""`                                                       |
 | `LLM_TIMEOUT`            | LLM request timeout (seconds)       | `600`                                                      |
-| `REQUIRE_APPROVAL`       | Require human approval for high-risk actions | `false`                                             |
+| `REQUIRE_APPROVAL`       | Operator emergency: force approval for high-risk actions (env only, not Admin UI) | `false`                                |
 | `JWT_SECRET_KEY`         | Secret key for JWT tokens           | (auto-generated)                                           |
 | `EMBEDDING_MODEL`        | Embedding model for RAG             | `local/BAAI/bge-small-en-v1.5`                             |
 
@@ -198,7 +198,7 @@ cp .env.test.example .env.test
 ./scripts/test.sh unit
 
 # Targeted settings/router/setup validation
-docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner
+docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner
 
 # Integration tests in Docker (may require live services)
 ./scripts/test.sh integration

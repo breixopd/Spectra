@@ -272,6 +272,8 @@ services:
       - "5000:5000"
     env_file:
       - ${ENV_FILE:-../.env}
+    # Scheduler + worker are required for /api/health (critical deps); including them here
+    # ensures `compose run test-runner` pulls them up, not only `compose up`.
     depends_on:
       db:
         condition: service_healthy
@@ -282,6 +284,10 @@ services:
       ai-svc:
         condition: service_healthy
       tensorzero:
+        condition: service_healthy
+      scheduler:
+        condition: service_healthy
+      worker:
         condition: service_healthy
     environment:
       <<: *common-env

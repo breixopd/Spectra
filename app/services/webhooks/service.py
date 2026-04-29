@@ -10,10 +10,10 @@ import time
 from typing import Any
 
 import httpx
+from spectra_common.constants import WEBHOOK_MAX_RETRIES
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from spectra_common.constants import WEBHOOK_MAX_RETRIES
 from app.services.webhooks.models import Webhook
 from app.utils.url_validation import is_safe_url
 

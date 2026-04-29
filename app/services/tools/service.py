@@ -26,6 +26,7 @@ from spectra_common.constants import (
     TOOL_MAX_STDERR_CHARS,
     TOOL_MAX_STDOUT_CHARS,
 )
+
 from app.services.ai.agents.base import AgentContext, ToolAction
 from app.services.ai.agents.safety import SafetySupervisorAgent
 from app.services.ai.consensus import VotingSystem

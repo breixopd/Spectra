@@ -21,7 +21,7 @@ pytestmark = [
 
 
 
-# Targets from docker-compose.test.yml
+# Targets from docker/compose.yaml (profiles app + targets) when stack is running
 TARGET_SERVER = os.getenv("TARGET_SERVER", "172.21.0.50")  # Metasploitable
 TARGET_WEB = os.getenv("TARGET_WEB", "172.21.0.51")  # DVWA
 

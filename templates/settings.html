@@ -110,16 +110,11 @@
                                     <input type="text" name="notification_webhook" id="notification_webhook" placeholder="https://ntfy.sh/your-topic or Slack/Discord webhook URL" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
                                 </div>
                             </div>
-                            <div class="flex items-center justify-between py-2 mt-4">
-                                <div>
-                                    <p class="text-sm font-medium text-white">Require Approval</p>
-                                    <p class="text-xs text-slate-500">Wait for human review on high-risk actions.</p>
-                                </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" name="require_approval" class="sr-only peer">
-                                    <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
-                                </label>
-                            </div>
+                            <p class="text-xs text-slate-500 mt-4">
+                                Human approval for risky steps is configured per-user under Profile &rarr; Mission Defaults,
+                                plus an optional launch override on the Dashboard. Operators can enforce approval platform-wide via
+                                the <code class="text-violet-400">REQUIRE_APPROVAL</code> environment variable only (not exposed here).
+                            </p>
                         </div>
                     </div>
 

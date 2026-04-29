@@ -23,6 +23,7 @@ class UserSettingsResponse(BaseModel):
     notify_on_mission_complete: bool = True
     notify_on_critical_finding: bool = True
     # Mission defaults
+    prefer_mission_approval: bool = False
     default_scan_mode: str = "autonomous"
     default_report_format: str = "pdf"
     # UI
@@ -47,6 +48,7 @@ class UserSettingsUpdate(BaseModel):
     notify_on_mission_complete: bool | None = None
     notify_on_critical_finding: bool | None = None
     # Mission defaults
+    prefer_mission_approval: bool | None = None
     default_scan_mode: Literal["autonomous", "guided", "manual"] | None = None
     default_report_format: Literal["pdf", "html", "json"] | None = None
     # UI

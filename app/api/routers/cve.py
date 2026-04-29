@@ -8,6 +8,7 @@ import re
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from spectra_common.constants import CVE_RESULTS_LIMIT
 
 from app.api.dependencies import get_current_active_user
 from app.api.schemas.cve import (
@@ -17,7 +18,6 @@ from app.api.schemas.cve import (
     SearchExploitResponse,
 )
 from app.auth.rate_limit import RateLimits, limiter
-from spectra_common.constants import CVE_RESULTS_LIMIT
 from app.models.user import User
 
 _CVE_PATTERN = re.compile(r"^CVE-\d{4}-\d{4,}$")

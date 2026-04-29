@@ -94,6 +94,17 @@ function startMission(target, directive, playbookId) {
     const vpnConfig = document.getElementById('vpn-config')?.value || null;
     if (vpnConfig) payload.vpn_config = vpnConfig;
 
+    const scanOverride = document.getElementById('mission-scan-mode')?.value || '';
+    if (scanOverride) payload.scan_mode = scanOverride;
+
+    if (document.getElementById('mission-requires-approval')?.checked) {
+        payload.requires_approval = true;
+    }
+
+    if (document.getElementById('mission-record-demo')?.checked) {
+        payload.record_demo = true;
+    }
+
     // Remove empty state from activity log
     const emptyEl = document.getElementById('activity-empty');
     if (emptyEl) emptyEl.remove();

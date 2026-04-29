@@ -40,7 +40,7 @@ Covered subsystems include:
 | Layer | What it verifies | Current path | Status |
 | --- | --- | --- | --- |
 | Unit tests | Local logic, validation, rate-limit behavior, service helpers, model/repository logic | `./scripts/test.sh unit` | Implemented |
-| Router/API contract tests | Endpoint behavior, request validation, response shape, auth/rate-limit decorators | `docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner` and targeted unit/integration tests | Implemented, but no standalone OpenAPI diff gate |
+| Router/API contract tests | Endpoint behavior, request validation, response shape, auth/rate-limit decorators | `docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner` and targeted unit/integration tests | Implemented, but no standalone OpenAPI diff gate |
 | Service integration tests | App-to-DB, settings, service wiring, async flows, non-live integrations | `./scripts/test.sh integration` | Implemented |
 | Live integration tests | Real services, vulnerable targets, tool execution, live ops smoke | `./tests/run_live_tests.sh` and `./tests/run_live_tests.sh --targets` | Implemented |
 | Browser/UI tests | Rendered pages, login/setup flows, interactive user behavior | `./tests/run_ui_tests.sh` | Implemented |
@@ -106,7 +106,7 @@ Use the real commands already present in this repo.
 | Load and burst harness | `./tests/run_load_tests.sh load` |
 | Performance smoke harness | `./tests/run_load_tests.sh performance` |
 | Soak and stability harness | `./tests/run_load_tests.sh soak` |
-| Targeted settings/router/setup validation | `docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner` |
+| Targeted settings/router/setup validation | `docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner` |
 | Live integration tests | `./tests/run_live_tests.sh` |
 | Live target-only tests | `./tests/run_live_tests.sh --targets` |
 | Browser/UI tests | `./tests/run_ui_tests.sh` |

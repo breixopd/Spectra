@@ -43,6 +43,7 @@ def _make_prefs(**overrides):
         "webhook_url": None,
         "notify_on_mission_complete": True,
         "notify_on_critical_finding": True,
+        "prefer_mission_approval": False,
         "default_scan_mode": "autonomous",
         "default_report_format": "pdf",
         "timezone": "UTC",

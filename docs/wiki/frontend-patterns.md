@@ -237,7 +237,7 @@ When a feature is gated, the macro renders:
 <div class="glass-panel rounded-xl p-6 text-center border border-white/5 opacity-60">
     <i data-lucide="lock" class="w-6 h-6 inline-block text-slate-500 mb-3"></i>
     <p class="text-sm text-slate-400">This feature requires the <strong class="text-white">Professional</strong> plan.</p>
-    <a href="/settings#billing" class="mt-4 inline-block px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">Upgrade Plan</a>
+    <a href="/profile#plan" class="mt-4 inline-block px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">Upgrade Plan</a>
 </div>
 ```
 

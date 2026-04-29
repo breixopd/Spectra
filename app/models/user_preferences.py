@@ -42,6 +42,7 @@ class UserPreferences(Base):
     notify_on_critical_finding: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
     # --- Default mission preferences ---
+    prefer_mission_approval: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     default_scan_mode: Mapped[str] = mapped_column(String(20), default="autonomous", server_default="autonomous")
     default_report_format: Mapped[str] = mapped_column(String(10), default="pdf", server_default="pdf")
 

@@ -15,6 +15,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from spectra_tools_core.registry_constants import DANGEROUS_PATTERNS
 
 from app.services.tools.adapter import CommandToolAdapter
 from app.services.tools.models import (
@@ -29,7 +30,6 @@ from app.services.tools.registry import (
     PluginValidationError,
     ToolRegistry,
 )
-from spectra_tools_core.registry_constants import DANGEROUS_PATTERNS
 
 # --- Test Data ---
 

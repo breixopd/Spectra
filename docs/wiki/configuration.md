@@ -175,7 +175,7 @@ When gateway URLs are empty, services run in-process (default monolith mode). Se
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `REQUIRE_APPROVAL` | bool | `false` | Require human approval for high-risk actions (admin UI can override via runtime settings) |
+| `REQUIRE_APPROVAL` | bool | `false` | **Operator-only emergency:** When `true`, high/critical actions always escalate for human approval. Not persisted in Admin UI or DB; set via environment / Swarm. End users configure defaults under Profile → Mission Defaults; per-launch overrides are on the dashboard. |
 
 See [Security](security.md) for full security model.
 
@@ -238,7 +238,8 @@ Some settings can be changed at runtime through the web UI (Admin panel → Sett
 | Layer | Examples | Rationale |
 | ----- | ---------- | --------- |
 | **End users** | Notification prefs, default scan mode, BYOK keys | User-owned preferences (`user_preferences`) |
-| **Platform admin** | Domains, webhooks, sandbox limits, scaling thresholds, `REQUIRE_APPROVAL` | Capacity, integrations, compliance posture |
+| **Platform admin** | Domains, webhooks, sandbox limits, scaling thresholds | Capacity, integrations, compliance posture |
+| **Emergency (env)** | `REQUIRE_APPROVAL` kill-switch only | Overrides UI — requires deployment access |
 | **Deployment only** | Internal image names, queue wiring, DB URLs, Swarm secrets | Never duplicated as “fake” toggles in the UI — set via env / secrets |
 
 Platform behavior that is always on (exploit DB initialization when the service starts, golden-image verification, image vulnerability scans when tooling is present) is **not** exposed as a switch — operators tune timeouts and policies, not “enable the product.”
@@ -246,7 +247,6 @@ Platform behavior that is always on (exploit DB initialization when the service 
 Admin-UI-manageable settings include:
 
 - `LOG_LEVEL`, `CONNECT_BACK_HOST`
-- `REQUIRE_APPROVAL`
 - `NOTIFICATION_WEBHOOK`
 - `PLATFORM_DOMAIN`, `PLATFORM_BASE_URL`, `PLATFORM_EXPOSED`
 - All `AUTOSCALE_*` and `INFRA_MONITOR_*` settings (via Scaling tab)

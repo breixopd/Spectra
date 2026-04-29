@@ -374,16 +374,11 @@ def require_feature(feature: str):
     return _check_feature_dependency
 
 
-async def enforce_api_rate_limit(
-    user: User = Depends(get_current_active_user),
-) -> User:
-    """Check and record API usage against the user's plan quota.
+async def verify_api_quota_for_user(user: User) -> None:
+    """Block with 429 when the hourly API request quota is exceeded; records each allowed call."""
 
-    Raises 429 with Retry-After header if the hourly API request limit is exceeded.
-    Returns the authenticated user on success.
-    """
     if _is_admin_user(user):
-        return user
+        return
 
     from app.services.billing.quota_enforcer import QuotaEnforcer
     from app.services.billing.usage_tracker import UsageTracker
@@ -406,6 +401,18 @@ async def enforce_api_rate_limit(
             )
 
         await tracker.record_api_request(str(user.id), session=session)
+
+
+async def enforce_api_rate_limit(
+    user: User = Depends(get_current_active_user),
+) -> User:
+    """Check and record API usage against the user's plan quota.
+
+    Raises 429 with Retry-After header if the hourly API request limit is exceeded.
+    Returns the authenticated user on success.
+    """
+
+    await verify_api_quota_for_user(user)
 
     return user
 

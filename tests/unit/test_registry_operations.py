@@ -9,6 +9,7 @@ list_tools_for_ai, get_tool_for_ai.
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from spectra_tools_core.registry_exceptions import PluginValidationError
 
 from app.services.tools.models import (
     ExecutionConfig,
@@ -17,7 +18,6 @@ from app.services.tools.models import (
     ToolStatus,
 )
 from app.services.tools.registry import ToolRegistry
-from spectra_tools_core.registry_exceptions import PluginValidationError
 
 # --- Helpers ---
 
