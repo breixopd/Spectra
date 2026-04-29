@@ -40,7 +40,7 @@ aiofiles==25.1.0
 
 # Transitive deps (via app.services.tools imported by AI agents)
 jsonschema==4.26.0
-docker==7.0.0
+docker==7.1.0
 defusedxml==0.7.1
 
 # Transitively needed by shared app code imports

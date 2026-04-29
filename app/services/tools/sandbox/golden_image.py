@@ -113,6 +113,28 @@ class GoldenImageBuilder:
         custom_commands: list[str] = []
         go_packages: list[str] = []
 
+        def _extract_install_args(cmd: str, executables: set[str]) -> list[str]:
+            """Extract package names from shell install commands without fallback branches."""
+            try:
+                parts = shlex.split(cmd)
+            except ValueError:
+                return []
+
+            for index, part in enumerate(parts[:-1]):
+                if part not in executables or parts[index + 1] != "install":
+                    continue
+
+                packages: list[str] = []
+                for token in parts[index + 2 :]:
+                    if token in {"&&", "||", ";", "|"} or token.startswith("("):
+                        break
+                    if token.startswith("-"):
+                        continue
+                    packages.append(token)
+                return packages
+
+            return []
+
         for plugin in plugins:
             method = plugin["install_method"]
             commands = plugin["install_commands"]
@@ -120,19 +142,14 @@ class GoldenImageBuilder:
             if method == "apt":
                 # Extract package names from apt commands
                 for cmd in commands:
-                    if "apt-get install" in cmd:
-                        # Parse: "apt-get install -y pkg1 pkg2"
-                        parts = cmd.split("install")[-1].strip().split()
-                        for p in parts:
-                            if not p.startswith("-") and p not in apt_packages:
-                                apt_packages.append(p)
+                    for package in _extract_install_args(cmd, {"apt", "apt-get"}):
+                        if package not in apt_packages:
+                            apt_packages.append(package)
             elif method == "pip":
                 for cmd in commands:
-                    if "pip install" in cmd or "pip3 install" in cmd:
-                        parts = cmd.split("install")[-1].strip().split()
-                        for p in parts:
-                            if not p.startswith("-") and p not in pip_packages:
-                                pip_packages.append(p)
+                    for package in _extract_install_args(cmd, {"pip", "pip3"}):
+                        if package not in pip_packages:
+                            pip_packages.append(package)
             elif method == "go":
                 for cmd in commands:
                     if "go install" in cmd:

@@ -54,7 +54,7 @@ defusedxml==0.7.1
 aioboto3==15.5.0
 
 # Docker SDK (API only — sandbox container management)
-docker==7.0.0
+docker==7.1.0
 
 # PDF report generation (API only)
 xhtml2pdf==0.2.17
