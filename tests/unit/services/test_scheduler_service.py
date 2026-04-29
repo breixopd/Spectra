@@ -63,9 +63,60 @@ async def test_start_schedules_expected_background_tasks():
         "_quota_reset",
         "_metrics_collector",
         "_health_reporter",
+        "_infrastructure_monitor",
         "_backup_scheduler",
     }
     assert service.tasks == tasks
+
+
+@pytest.mark.asyncio
+async def test_postgres_pool_pressure_alerts_when_threshold_exceeded():
+    import app.core.database as database
+    import spectra_scheduler.main as scheduler_service
+
+    class FakePool:
+        _max_overflow = 0
+
+        def checkedout(self):
+            return 9
+
+        def size(self):
+            return 10
+
+    fake_engine = SimpleNamespace(sync_engine=SimpleNamespace(pool=FakePool()))
+    settings = SimpleNamespace(INFRA_MONITOR_PG_THRESHOLD=80)
+    service = scheduler_service.SchedulerService()
+    service._send_infra_alert = AsyncMock()
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(database, "engine", fake_engine)
+        await service._check_postgres_pool_pressure(settings)
+
+    service._send_infra_alert.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_redis_memory_pressure_alerts_when_threshold_exceeded():
+    import redis.asyncio as aioredis
+    import spectra_scheduler.main as scheduler_service
+
+    client = SimpleNamespace(
+        info=AsyncMock(return_value={"used_memory": 90, "maxmemory": 100}),
+        aclose=AsyncMock(),
+    )
+    settings = SimpleNamespace(
+        REDIS_URL="redis://redis:6379/0",
+        RATE_LIMIT_STORAGE="",
+        INFRA_MONITOR_REDIS_THRESHOLD=85,
+    )
+    service = scheduler_service.SchedulerService()
+    service._send_infra_alert = AsyncMock()
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(aioredis, "from_url", MagicMock(return_value=client))
+        await service._check_redis_memory_pressure(settings)
+
+    service._send_infra_alert.assert_awaited_once()
 
 
 @pytest.mark.asyncio
