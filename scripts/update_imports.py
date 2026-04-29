@@ -3,7 +3,7 @@
 import re
 from pathlib import Path
 
-REPO = Path("/home/breixopd14/Code/Spectra")
+REPO = Path(__file__).resolve().parents[1]
 
 MOVE_MAP = {
     "cache": "app.infrastructure.cache",

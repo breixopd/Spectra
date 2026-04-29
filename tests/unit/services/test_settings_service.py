@@ -117,6 +117,22 @@ class TestCollectGeneralDbSettings:
         result = self._fn()(data, {"s3_secret_key"})
         assert result["S3_SECRET_KEY"][1] is True
 
+    def test_maps_billing_fields(self):
+        data = self._make_data(
+            payment_provider="stripe",
+            stripe_publishable_key="pk_test_123",
+            stripe_secret_key="sk_test_123",
+            stripe_webhook_secret="whsec_123",
+        )
+        result = self._fn()(
+            data,
+            {"payment_provider", "stripe_publishable_key", "stripe_secret_key", "stripe_webhook_secret"},
+        )
+        assert result["PAYMENT_PROVIDER"] == ("stripe", False)
+        assert result["STRIPE_PUBLISHABLE_KEY"] == ("pk_test_123", False)
+        assert result["STRIPE_SECRET_KEY"] == ("sk_test_123", True)
+        assert result["STRIPE_WEBHOOK_SECRET"] == ("whsec_123", True)
+
 
 class TestApplySettingsUpdate:
     """Tests for apply_settings_update async function."""
@@ -165,6 +181,12 @@ class TestGetCurrentSettings:
             PLATFORM_DOMAIN="spectra.local",
             PLATFORM_BASE_URL="https://spectra.local",
             PLATFORM_EXPOSED=True,
+            PAYMENT_PROVIDER="stripe",
+            STRIPE_PUBLISHABLE_KEY="pk_test_123",
+            STRIPE_SECRET_KEY="sk_test_123",
+            STRIPE_WEBHOOK_SECRET="whsec_123",
+            CRYPTO_PAYMENT_URL="",
+            CRYPTO_PAYMENT_API_KEY="",
             SANDBOX_MAX_CONTAINERS=10,
             SANDBOX_MEMORY_LIMIT="2g",
             SANDBOX_CPU_SHARES=512,
@@ -196,3 +218,7 @@ class TestGetCurrentSettings:
         assert result["sandbox_available"] == {"available": True, "message": "Docker connected"}
         assert result["s3_configured"] is False
         assert result["embedding_api_base_url"] is None
+        assert result["payment_provider"] == "stripe"
+        assert result["stripe_publishable_key"] == "pk_test_123"
+        assert result["stripe_secret_key_configured"] is True
+        assert result["stripe_webhook_secret_configured"] is True
