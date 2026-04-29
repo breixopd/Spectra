@@ -15,17 +15,19 @@ from typing import Any
 
 import aiofiles
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.api.dependencies import check_feature_allowed, get_current_active_user
-from app.auth.rate_limit import RateLimits, limiter
 from spectra_common.constants import (
     SECLISTS_COMMON_PASSWORDS_URL,
     SECLISTS_COMMON_WEB_URL,
     SECLISTS_SUBDOMAINS_TOP5000_URL,
     SECLISTS_TOP_USERNAMES_URL,
+)
+from spectra_common.constants import (
     WORDLISTS_DIR as WORDLISTS_DIR_STR,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.dependencies import check_feature_allowed, get_current_active_user
+from app.auth.rate_limit import RateLimits, limiter
 from app.core.database import get_async_session
 from app.models.user import User
 

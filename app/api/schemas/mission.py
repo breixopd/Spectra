@@ -1,5 +1,7 @@
 """Mission and target schemas."""
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.target import TargetStatus
@@ -68,9 +70,18 @@ class StartMissionRequest(BaseModel):
         default=False,
         description="Record a video walkthrough of the exploit workflow if exploitation succeeds",
     )
-    requires_approval: bool = Field(
-        default=False,
-        description="Require human approval for high-risk actions (default: fully autonomous)",
+    requires_approval: bool | None = Field(
+        default=None,
+        description="If set, require human approval for high-risk actions; if omitted, uses account default",
+    )
+    scan_mode: Literal["autonomous", "guided", "manual"] | None = Field(
+        default=None,
+        description="Steering intensity; if omitted, uses Profile default_scan_mode",
+    )
+    playbook_id: str | None = Field(
+        default=None,
+        max_length=128,
+        description="Optional adversary simulation playbook id from the catalog",
     )
     authorization_confirmed: bool = Field(
         default=False,

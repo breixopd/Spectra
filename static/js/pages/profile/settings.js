@@ -25,6 +25,7 @@ async function loadUserSettings() {
         document.getElementById('settings-webhook-url').value = s.webhook_url || '';
         document.getElementById('settings-scan-mode').value = s.default_scan_mode || 'autonomous';
         document.getElementById('settings-report-format').value = s.default_report_format || 'pdf';
+        document.getElementById('settings-prefer-approval').checked = s.prefer_mission_approval === true;
         document.getElementById('settings-timezone').value = s.timezone || 'UTC';
     } catch (e) { console.error('Failed to load settings', e); }
 }
@@ -67,6 +68,7 @@ async function saveSettings() {
         notify_on_critical_finding: document.getElementById('settings-notif-critical').checked,
         webhook_url: document.getElementById('settings-webhook-url').value || null,
         default_scan_mode: document.getElementById('settings-scan-mode').value,
+        prefer_mission_approval: document.getElementById('settings-prefer-approval').checked,
         default_report_format: document.getElementById('settings-report-format').value,
         timezone: document.getElementById('settings-timezone').value,
     };

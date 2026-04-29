@@ -6,8 +6,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from spectra_worker.helpers import with_retry
+
 from tests.helpers import make_module
 
 

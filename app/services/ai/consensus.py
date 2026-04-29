@@ -312,10 +312,10 @@ class VotingSystem:
     def requires_human_approval(self, action: AgentAction) -> bool:
         """Check if an action always requires human approval.
 
-        Uses the per-mission requires_approval flag when available.
+        Uses ``REQUIRE_APPROVAL`` env kill-switch; otherwise the per-mission
+        ``requires_approval`` flag when the mission is fully autonomous.
         """
-        if self.mission and getattr(self.mission, "requires_approval", None) is not None and not self.mission.requires_approval:
-            return False  # Mission is fully autonomous
+        from app.core.config import settings
 
         risk_levels = [
             ActionRisk.LOW,
@@ -325,6 +325,10 @@ class VotingSystem:
         ]
         action_idx = risk_levels.index(action.risk_level)
         threshold_idx = risk_levels.index(self.config.human_approval_risk)
+        if settings.REQUIRE_APPROVAL:
+            return action_idx >= threshold_idx
+        if self.mission and getattr(self.mission, "requires_approval", None) is not None and not self.mission.requires_approval:
+            return False  # Mission is fully autonomous
         return action_idx >= threshold_idx
 
     async def _collect_votes(

@@ -10,6 +10,7 @@ from typing import Any, cast
 from spectra_common.constants import (
     MAX_HOSTS_DEFAULT,
 )
+
 from app.infrastructure.events import events
 from app.services.ai.agents.base import AgentContext
 from app.services.ai.agents.mission_controller import (
@@ -200,7 +201,7 @@ class MissionExecutionManager:
         def stamp(agent_obj: Any) -> None:
             if agent_obj is None:
                 return
-            agent_obj._mission_requires_approval = mr  # noqa: SLF001
+            agent_obj._mission_requires_approval = mr
 
         if self.executor:
             for agent in self.executor.agents.values():

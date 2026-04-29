@@ -432,13 +432,19 @@ class Agent(ABC, Generic[InputT, OutputT]):
         return True, None
 
     def requires_approval(self, action: OutputT) -> bool:
-        """Check if an action requires human approval."""
+        """Check if an action requires human approval.
+
+        - If ``REQUIRE_APPROVAL`` is set in environment (operator kill-switch), high/critical
+          actions always require approval.
+        - Otherwise, only when the mission was started with ``requires_approval=True``.
+        """
         from app.core.config import settings
 
-        if not settings.REQUIRE_APPROVAL:
+        if action.risk_level not in (ActionRisk.HIGH, ActionRisk.CRITICAL):
             return False
-
-        return action.risk_level in (ActionRisk.HIGH, ActionRisk.CRITICAL)
+        if settings.REQUIRE_APPROVAL:
+            return True
+        return bool(getattr(self, "_mission_requires_approval", False))
 
     def requires_consensus(self, action: OutputT) -> bool:
         """Check if an action requires consensus voting."""

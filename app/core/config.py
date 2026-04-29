@@ -178,7 +178,8 @@ class Settings(BaseSettings):
     )
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 4  # 4 hours
     SESSION_IDLE_TIMEOUT_MINUTES: int = 60  # 0 = disabled
-    REQUIRE_APPROVAL: bool = False  # Require human approval for high-risk actions
+    #: Operator emergency kill-switch only — not persisted in Admin settings or DB.
+    REQUIRE_APPROVAL: bool = False
 
     # Rate limiting storage backend.
     # PostgreSQL remains the persistent state store, PostgreSQL-backed app

@@ -26,6 +26,18 @@ from app.utils.geoip import resolve_ip
 logger = logging.getLogger(__name__)
 
 
+def _directive_with_playbook(playbook_id: str | None, directive: str) -> str:
+    """Prefix directive when an adversary playbook is selected (catalog id)."""
+    if not playbook_id or not directive:
+        return directive
+    from app.services.ai.adversary_playbooks import get_adversary_playbook
+
+    pb = get_adversary_playbook(playbook_id)
+    if pb is None:
+        return directive
+    return f"[Adversary playbook: {pb.name} — {pb.threat_actor}] {directive}"
+
+
 async def _load_capability_context(user_id: str | None) -> tuple[str | None, dict[str, Any], dict[str, Any]]:
     if not user_id:
         return None, {}, {}
@@ -67,15 +79,23 @@ class MissionLifecycleManager:
         vpn_config: str | None = None,
         user_id: str | None = None,
         requires_approval: bool = False,
+        *,
+        record_demo: bool = False,
+        playbook_id: str | None = None,
+        scan_mode: str = "autonomous",
     ) -> Mission:
         """Create and start a new mission."""
+        effective_directive = _directive_with_playbook(playbook_id, directive)
         mission = Mission(
             target,
-            directive,
+            effective_directive,
             requirements=requirements,
             vpn_config=vpn_config,
             user_id=user_id,
             requires_approval=requires_approval,
+            record_demo=record_demo,
+            playbook_id=playbook_id,
+            scan_mode=scan_mode,
         )
 
         # Persist to DB — quota check + row creation run inside one
@@ -99,13 +119,16 @@ class MissionLifecycleManager:
                 await repo.create(
                     id=mission.id,
                     target=target,
-                    directive=directive,
+                    directive=effective_directive,
                     status="created",
                     logs=[],
                     summary={},
                     vpn_config=vpn_config,
                     user_id=user_id,
                     requires_approval=requires_approval,
+                    playbook_id=playbook_id,
+                    record_demo=record_demo,
+                    scan_mode=scan_mode,
                 )
                 if user_id:
                     await self.usage_tracker.record_mission_start(user_id, session=session)
@@ -126,7 +149,7 @@ class MissionLifecycleManager:
             {
                 "id": mission.id,
                 "target": target,
-                "directive": directive,
+                "directive": effective_directive,
                 "status": "created",
                 "user_id": user_id,
                 "started_at": mission.start_time.isoformat(),

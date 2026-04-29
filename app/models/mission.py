@@ -6,7 +6,7 @@ Tracks security assessment missions, their status, logs, and results.
 
 from __future__ import annotations
 
-from sqlalchemy import JSON, Boolean, CheckConstraint, ForeignKey, Index, String, Text
+from sqlalchemy import JSON, Boolean, CheckConstraint, ForeignKey, Index, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -53,6 +53,11 @@ class Mission(Base):
     resume: Mapped[bool] = mapped_column(default=False, nullable=False)
     vpn_config: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
     requires_approval: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
+    playbook_id: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None)
+    record_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
+    scan_mode: Mapped[str] = mapped_column(
+        String(20), default="autonomous", nullable=False, server_default=text("'autonomous'")
+    )
     feedback_rating: Mapped[int | None] = mapped_column(nullable=True, default=None)  # 1-5 stars
     feedback_comment: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
 

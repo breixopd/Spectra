@@ -60,6 +60,7 @@ Spectra uses a **Dynamic Plugin System** to integrate security tools. Each tool 
 | `stealth` | object | `{}` | Stealth mode configuration |
 | `ui` | object | `{}` | UI display configuration |
 | `is_system` | boolean | `false` | Whether this is a built-in system tool |
+| `enabled` | boolean | `true` | When `false`, the registry marks the tool disabled and skips availability checks |
 
 ---
 

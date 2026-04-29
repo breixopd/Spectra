@@ -14,7 +14,6 @@ from typing import Any, Literal
 
 import httpx
 from pydantic import BaseModel, Field
-
 from spectra_common.constants import (
     CISA_KEV_URL,
     CVE_CACHE_TTL,
@@ -24,6 +23,7 @@ from spectra_common.constants import (
     NVD_RATE_LIMIT_DELAY,
     NVD_RATE_LIMIT_DELAY_WITH_KEY,
 )
+
 from app.services.ai.agents.base import (
     ActionRisk,
     Agent,

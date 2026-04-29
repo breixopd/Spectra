@@ -65,7 +65,6 @@ class SettingsUpdate(BaseModel):
     tensorzero_api_key: str | None = None
     log_level: str | None = Field(None, pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
     connect_back_host: str | None = None
-    require_approval: bool | None = None
     notification_webhook: str | None = None
     embedding_model: str | None = None
     embedding_api_key: str | None = None

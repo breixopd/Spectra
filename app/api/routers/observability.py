@@ -8,12 +8,12 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from spectra_common.constants import API_MAX_PAGE_SIZE, OBSERVABILITY_MAX_RESULTS
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing_extensions import TypedDict
 
 from app.auth.rate_limit import RateLimits, limiter
 from app.auth.rbac import Permission, require_permission
-from spectra_common.constants import API_MAX_PAGE_SIZE, OBSERVABILITY_MAX_RESULTS
 from app.core.database import get_async_session
 from app.infrastructure.cache import get_cache
 from app.infrastructure.circuit_breaker import circuit_breakers

@@ -319,7 +319,23 @@ class TestApprovalConsensus:
         )
         with patch("app.core.config.settings") as mock_settings:
             mock_settings.REQUIRE_APPROVAL = False
+            agent._mission_requires_approval = False
             assert agent.requires_approval(action) is False
+
+    def test_requires_approval_when_mission_requires_without_env_kill_switch(self):
+        from app.services.ai.agents.scope import ScopeAgent
+
+        agent = ScopeAgent(MockLLMClient())
+        action = AgentAction(
+            action_type="test",
+            confidence=0.9,
+            reasoning="dangerous",
+            risk_level=ActionRisk.CRITICAL,
+        )
+        with patch("app.core.config.settings") as mock_settings:
+            mock_settings.REQUIRE_APPROVAL = False
+            agent._mission_requires_approval = True
+            assert agent.requires_approval(action) is True
 
     def test_requires_consensus_high_risk(self):
         from app.services.ai.agents.scope import ScopeAgent

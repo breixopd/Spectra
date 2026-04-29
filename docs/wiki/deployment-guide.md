@@ -747,7 +747,7 @@ The admin panel (Settings → Services) shows real-time service status with heal
 
 ## Human-in-the-loop (`REQUIRE_APPROVAL`)
 
-> By default, missions run autonomously (`REQUIRE_APPROVAL=false`). For stricter control, set **`REQUIRE_APPROVAL=true`** in environment or Admin → Settings so high-risk actions wait for operator approval.
+> By default, missions run autonomously. End users choose whether to pause for approval on risky steps via **Profile → Mission Defaults** and optional launch checkboxes on the dashboard. For a **platform-wide emergency**, operators set **`REQUIRE_APPROVAL=true`** in the service environment (or Swarm) so every high/critical action escalates — this is **not** stored in `system_config` or the Admin UI.
 
 ```bash
 REQUIRE_APPROVAL=true

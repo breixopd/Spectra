@@ -82,8 +82,9 @@ def get_user_identifier(request: Request) -> str:
 # Use "memory://" mainly for tests or intentionally ephemeral local runs.
 # Use Caddy's rate_limit module only if you intentionally want rate limiting
 # to live entirely at the reverse proxy edge.
-from app.core.config import settings as _rl_settings
 from spectra_common.constants import API_RATE_LIMIT
+
+from app.core.config import settings as _rl_settings
 
 # Paths exempt from rate limiting (static assets, health probes, lightweight status)
 _RATE_LIMIT_EXEMPT_PREFIXES = ("/static/", "/api/health", "/api/v1/health", "/api/v1/system/status/quick")

@@ -81,7 +81,7 @@ Cursor loads MCP servers from **user-level** `~/.cursor/mcp.json` (the repo’s 
 The primary CI test command is:
 
 ```bash
-docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner
+docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner
 ```
 
 For local iteration, run unit tests through Docker:
@@ -188,9 +188,8 @@ templates/              # Jinja2 HTML templates (project root)
 └── ...                 # Page templates
 
 docker/
-├── compose.yaml       # Dev stack (app, db, tools)
-├── docker-compose.swarm.yml # Multi-host production (Docker Swarm)
-├── docker-compose.test.yml  # Test runner
+├── compose.yaml             # Dev / test / targets via `--profile` (`app`, `test`, `targets`, …)
+├── docker-compose.swarm.yml # Docker Swarm production stack
 ├── Caddyfile.prod           # Production Caddy config
 ├── targets/                 # Vulnerable test containers
 ├── Dockerfile.app           # FastAPI app image
@@ -227,7 +226,7 @@ config/                      # Build configs (tailwind, postcss)
 - Tool plugins auto-install in sandbox containers on first boot
 - `xhtml2pdf` requires system packages `libcairo2-dev`, `pkg-config`, `python3-dev`
 - Adding a new `.json` file to `plugins/` is all that is needed for a new tool
-- Human-in-the-loop tests: mock or set `REQUIRE_APPROVAL=True` on settings where applicable
+- Human-in-the-loop tests: patch `settings.REQUIRE_APPROVAL` only when covering the env kill-switch branch
 
 ---
 
@@ -239,5 +238,5 @@ config/                      # Build configs (tailwind, postcss)
 4. Add tests for new functionality
 5. Run `make check` (lint + import boundaries + unit tests)
 6. If you changed templates or CSS, run `make css-build-prod`
-7. Ensure `docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner` passes
+7. Ensure `docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner` passes (see CI)
 8. Submit a PR to `main`

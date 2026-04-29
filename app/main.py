@@ -17,6 +17,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from spectra_common.constants import SECONDS_PER_DAY
 from starlette.responses import Response as StarletteResponse
 
 from app._meta.version import __version__
@@ -54,7 +55,6 @@ from app.bootstrap.lifespan import lifespan
 from app.bootstrap.logging_config import CorrelationIdMiddleware, configure_logging
 from app.bootstrap.middleware import AdminIPAllowlistMiddleware, SecurityHeadersMiddleware
 from app.core.config import settings
-from spectra_common.constants import SECONDS_PER_DAY
 from app.mission.core.websocket import manager
 from app.telemetry.telemetry_middleware import TelemetryMiddleware
 

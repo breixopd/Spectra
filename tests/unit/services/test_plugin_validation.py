@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import pytest
+from spectra_tools_core.registry_exceptions import PluginValidationError
 
 from app.services.tools.registry.validator import PluginValidator
-from spectra_tools_core.registry_exceptions import PluginValidationError
 
 
 def _minimal_valid_plugin() -> dict:

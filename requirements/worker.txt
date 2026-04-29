@@ -1,7 +1,8 @@
 # =============================================================================
 # Spectra Tools Container Dependencies (worker only)
 # =============================================================================
-# Minimal set for the ARQ worker. No ML, no web framework, no LLM.
+# Minimal worker image: tools runtime and shared app imports. Jobs are dequeued via
+# Postgres (`app/infrastructure/queue.py`); no ARQ/redis queue in this path.
 
 # Config (shared with app)
 pydantic==2.12.5

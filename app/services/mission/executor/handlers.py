@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from app.services.ai.agents.tool_selector import ToolSelectorInput
 
 from spectra_common.constants import MAX_HOSTS_DEFAULT
+
 from app.infrastructure.events import events
 from app.services.ai.agents.base import AgentContext, ParallelToolAction, ToolAction
 from app.services.ai.agents.mission_controller import AssessmentPhase, Task

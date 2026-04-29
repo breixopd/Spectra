@@ -9,6 +9,8 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
+from spectra_common.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
+from spectra_common.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -16,8 +18,6 @@ from app.api.dependencies import check_resource_owner, check_target_limit, get_c
 from app.api.schemas import FindingResponse, PaginatedResponse, TargetCreate, TargetResponse, TargetUpdate
 from app.auth.rate_limit import RateLimits, limiter
 from app.auth.rbac import Permission, require_permission
-from spectra_common.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
-from spectra_common.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from app.core.database import get_async_session
 from app.models.audit_log import AuditEventType
 from app.models.user import User

@@ -13,6 +13,7 @@ from spectra_common.constants import (
     DEBRIEF_SUMMARY_LOG_CHARS,
     MISSION_TIMEOUT_SECONDS,
 )
+
 from app.services.ai.agents.base import AgentContext, SteeringAction
 from app.services.ai.agents.mission_controller import (
     MissionInput,

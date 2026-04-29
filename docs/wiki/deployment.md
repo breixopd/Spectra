@@ -317,7 +317,7 @@ Triggered on every push/PR to `main` or `develop`.
 | Job | Purpose |
 |-----|---------|
 | **lint** | `ruff check` on app code |
-| **test** | Containerized validation (`docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner`) |
+| **test** | Containerized validation (`docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner`) |
 | **security** | Bandit security scan (HIGH severity gate) |
 | **docker-build** | Builds runtime images and validates both Compose and Swarm config with `.env.example` |
 | **deps** | Dependency audit |
