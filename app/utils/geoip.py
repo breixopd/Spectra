@@ -25,6 +25,14 @@ def _get_session() -> aiohttp.ClientSession:
     return _session
 
 
+async def close_geoip_session() -> None:
+    """Close the shared GeoIP HTTP session."""
+    global _session
+    if _session is not None and not _session.closed:
+        await _session.close()
+    _session = None
+
+
 class GeoLocation(TypedDict):
     """Geographic location data."""
 

@@ -137,3 +137,11 @@ def get_ai_gateway() -> AIGateway:
     if _instance is None:
         _instance = AIGateway()
     return _instance
+
+
+async def close_ai_gateway() -> None:
+    """Close the singleton AI gateway HTTP client."""
+    global _instance
+    if _instance is not None:
+        await _instance.close()
+        _instance = None

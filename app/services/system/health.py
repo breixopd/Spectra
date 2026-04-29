@@ -37,6 +37,20 @@ _CONTROL_PLANE_HEALTH_HOSTS = {"app", "spectra-app", "scheduler", "worker", "ai-
 _CONTROL_PLANE_SERVICE_TYPES = {"app", "api", "scheduler", "worker", "ai", "ai-svc"}
 
 
+async def close_health_clients() -> None:
+    """Close reusable clients owned by health checks."""
+    global _redis_client
+    if _redis_client is None:
+        return
+    client = _redis_client
+    _redis_client = None
+    close = getattr(client, "aclose", None) or getattr(client, "close", None)
+    if close is not None:
+        result = close()
+        if asyncio.iscoroutine(result):
+            await result
+
+
 def _now() -> str:
     return datetime.now(UTC).isoformat()
 
