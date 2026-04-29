@@ -16,6 +16,7 @@ from app.auth.rbac import Permission, require_permission
 from app.core.database import get_async_session
 from app.models.training import FineTuningJob, TrainingSample
 from app.models.user import User
+from app.services.training.backends import get_training_backend, list_training_backends
 from app.services.training.dataset import export_dataset, get_dataset_stats
 
 logger = logging.getLogger(__name__)
@@ -214,6 +215,11 @@ async def create_job(
         count_query = count_query.where(TrainingSample.sample_type.in_(sample_types))
 
     sample_count = (await session.execute(count_query)).scalar() or 0
+    provider = body.get("provider", "local")
+    try:
+        get_training_backend(provider)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Unknown training provider")
 
     job = FineTuningJob(
         name=body.get("name", f"fine-tune-{sample_count}-samples"),
@@ -222,7 +228,7 @@ async def create_job(
         sample_count=sample_count,
         sample_types=sample_types or None,
         config=body.get("config"),
-        provider=body.get("provider", "local"),
+        provider=provider,
         created_by=_user.id,
     )
     session.add(job)
@@ -263,34 +269,4 @@ async def list_providers(
     _user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> dict[str, Any]:
     """List available fine-tuning compute providers."""
-    return {
-        "providers": [
-            {
-                "id": "local",
-                "name": "Local GPU",
-                "description": "Train on local GPU if available",
-                "status": "available",
-            },
-            {
-                "id": "colab",
-                "name": "Google Colab",
-                "description": "Connect to Google Colab for free GPU training",
-                "status": "configurable",
-                "config_fields": ["notebook_url", "api_token"],
-            },
-            {
-                "id": "runpod",
-                "name": "RunPod",
-                "description": "Cloud GPU via RunPod API",
-                "status": "configurable",
-                "config_fields": ["api_key", "gpu_type"],
-            },
-            {
-                "id": "vast",
-                "name": "Vast.ai",
-                "description": "Marketplace GPU via Vast.ai",
-                "status": "configurable",
-                "config_fields": ["api_key"],
-            },
-        ]
-    }
+    return {"providers": list_training_backends()}

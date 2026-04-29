@@ -3,6 +3,12 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.services.training.dataset import create_training_sample, export_dataset, get_dataset_stats
+from app.services.training.backends import (
+    TrainingBackendDefinition,
+    get_training_backend,
+    list_training_backends,
+    register_training_backend,
+)
 
 
 @pytest.mark.asyncio
@@ -64,3 +70,40 @@ async def test_export_dataset():
     assert len(data) == 1
     assert data[0]["type"] == "tool_output"
     assert data[0]["quality"] == 0.9
+
+
+def test_training_backend_registry_includes_cloud_and_custom_backends():
+    provider_ids = {provider["id"] for provider in list_training_backends()}
+
+    assert {"custom", "runpod", "vast", "lambda", "modal"}.issubset(provider_ids)
+    assert get_training_backend("RUNPOD").id == "runpod"
+
+
+def test_training_backend_registry_allows_new_backend_registration():
+    definition = TrainingBackendDefinition(
+        id="demo_backend",
+        name="Demo Backend",
+        description="Test backend",
+        status="configurable",
+        config_fields=("api_key",),
+    )
+    register_training_backend(definition)
+
+    try:
+        assert get_training_backend("demo_backend") == definition
+    finally:
+        from app.services.training import backends
+
+        backends._BACKENDS.pop("demo_backend", None)
+
+
+def test_training_backend_registry_rejects_duplicate_backend():
+    definition = TrainingBackendDefinition(
+        id="runpod",
+        name="RunPod duplicate",
+        description="Duplicate",
+        status="configurable",
+    )
+
+    with pytest.raises(ValueError, match="already registered"):
+        register_training_backend(definition)
