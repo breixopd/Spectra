@@ -324,7 +324,7 @@ async def test_main_api_429_handler_delegates_rate_limit_exceeded():
     from app.main import _make_error_handler
 
     request = MagicMock()
-    request.url.path = "/api/auth/token"
+    request.url.path = "/api/v1/auth/token"
     request.client.host = "127.0.0.1"
     request.headers.get.return_value = None
 

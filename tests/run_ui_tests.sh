@@ -48,7 +48,7 @@ done
 
 # Run setup if needed
 echo "Setting up test user..."
-docker compose -f "$COMPOSE_FILE" exec -T app python3 -c "import json, sys, urllib.error, urllib.request; req = urllib.request.Request('http://127.0.0.1:5000/api/auth/setup', data=json.dumps({'user': {'username': 'admin', 'email': 'admin@test.com', 'password': 'TestPassword123!'}, 'provider_profiles': {'default': {'provider': 'mock', 'model': 'mock'}}, 'provider_routing': {'default': 'default'}, 'provider_fallbacks': {'default': []}}).encode(), headers={'Content-Type': 'application/json'}); 
+docker compose -f "$COMPOSE_FILE" exec -T app python3 -c "import json, sys, urllib.error, urllib.request; req = urllib.request.Request('http://127.0.0.1:5000/api/v1/auth/setup', data=json.dumps({'user': {'username': 'admin', 'email': 'admin@test.com', 'password': 'TestPassword123!'}, 'provider_profiles': {'default': {'provider': 'mock', 'model': 'mock'}}, 'provider_routing': {'default': 'default'}, 'provider_fallbacks': {'default': []}}).encode(), headers={'Content-Type': 'application/json'}); 
 try:
     urllib.request.urlopen(req, timeout=10)
     print('Setup completed.')

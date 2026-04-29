@@ -39,7 +39,7 @@ async def test_direct_app_login_limit_recovers_after_window() -> None:
         for _ in range(expected_limit + 1):
             responses.append(
                 await client.post(
-                    "/api/auth/token",
+                    "/api/v1/auth/token",
                     data={"username": username, "password": "WrongPass123!"},
                 )
             )
@@ -57,7 +57,7 @@ async def test_direct_app_login_limit_recovers_after_window() -> None:
         )
 
         recovered = await client.post(
-            "/api/auth/token",
+            "/api/v1/auth/token",
             data={"username": username, "password": "WrongPass123!"},
         )
 

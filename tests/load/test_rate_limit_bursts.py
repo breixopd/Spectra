@@ -27,7 +27,7 @@ async def test_direct_app_login_burst_returns_structured_429() -> None:
         for _ in range(expected_limit + 1):
             responses.append(
                 await client.post(
-                    "/api/auth/token",
+                    "/api/v1/auth/token",
                     data={"username": "missing-user", "password": "WrongPass123!"},
                 )
             )
@@ -85,11 +85,11 @@ async def test_caddy_edge_burst_triggers_before_direct_app_limit() -> None:
 
         proxied_responses = []
         for _ in range(request_count):
-            proxied_responses.append(await caddy_client.get("/api/auth/setup/status"))
+            proxied_responses.append(await caddy_client.get("/api/v1/auth/setup/status"))
 
         direct_responses = []
         for _ in range(request_count):
-            direct_responses.append(await app_client.get("/api/auth/setup/status"))
+            direct_responses.append(await app_client.get("/api/v1/auth/setup/status"))
 
     assert any(response.status_code == 429 for response in proxied_responses)
     assert proxied_responses[-1].status_code == 429
@@ -100,6 +100,6 @@ async def test_caddy_edge_burst_triggers_before_direct_app_limit() -> None:
         await asyncio.sleep(wait_seconds + recovery_grace_seconds)
 
         async with httpx.AsyncClient(base_url=get_caddy_base_url(), timeout=15.0) as caddy_client:
-            recovered = await caddy_client.get("/api/auth/setup/status")
+            recovered = await caddy_client.get("/api/v1/auth/setup/status")
 
         assert recovered.status_code == 200, recovered.text

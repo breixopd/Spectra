@@ -158,14 +158,14 @@ def percentile(values: list[float], pct: float) -> float:
 
 
 async def ensure_admin_setup(client: httpx.AsyncClient) -> None:
-    status_response = await client.get("/api/auth/setup/status")
+    status_response = await client.get("/api/v1/auth/setup/status")
     assert status_response.status_code == 200, status_response.text
 
     if status_response.json().get("is_setup"):
         return
 
     setup_response = await client.post(
-        "/api/auth/setup",
+        "/api/v1/auth/setup",
         json={
             "user": {
                 "username": get_admin_username(),
@@ -206,7 +206,7 @@ async def get_access_token_for_credentials(
     password: str,
 ) -> str:
     response = await client.post(
-        "/api/auth/token",
+        "/api/v1/auth/token",
         data={"username": username, "password": password},
     )
     if response.status_code == 403 and "verify your email" in response.text.lower():
@@ -230,7 +230,7 @@ async def get_current_profile(
     *,
     headers: dict[str, str],
 ) -> dict[str, object]:
-    response = await client.get("/api/auth/me", headers=headers)
+    response = await client.get("/api/v1/auth/me", headers=headers)
     assert response.status_code == 200, response.text
     return response.json()
 
