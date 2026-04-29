@@ -64,6 +64,7 @@ from app.services.tools.registry import (
     ToolRegistry,
     get_registry,
 )
+from spectra_domain.jobs import WorkerJobName
 
 logger = logging.getLogger(__name__)
 
@@ -488,7 +489,7 @@ async def upload_plugin(
         tool = await registry.add_plugin(data)
         _queue_background_job(
             background_tasks,
-            "install_tool_job",
+            WorkerJobName.INSTALL_TOOL,
             success_log=f"Queued golden image rebuild for {tool.config.id}",
             failure_log=f"Failed to queue golden image rebuild for {tool.config.id}",
             tool_id=tool.config.id,
@@ -522,7 +523,7 @@ async def install_all_tools(
     """
     await _queue_tool_job_with_audit(
         background_tasks,
-        "build_golden_image_job",
+        WorkerJobName.BUILD_GOLDEN_IMAGE,
         success_log="Queued golden image build job",
         failure_log="Failed to queue golden image build",
         event_type=AuditEventType.TOOL_INSTALLED,
@@ -560,7 +561,7 @@ async def install_tool(
 
     await _queue_tool_job_with_audit(
         background_tasks,
-        "install_tool_job",
+        WorkerJobName.INSTALL_TOOL,
         success_log=f"Queued golden image rebuild for {tool_id}",
         failure_log=f"Failed to queue golden image rebuild for {tool_id}",
         event_type=AuditEventType.TOOL_INSTALLED,
@@ -678,7 +679,7 @@ async def test_tool(
 
         # Execute via job queue worker
         job_id = await queue.enqueue_job(
-            "execute_tool_job",
+            WorkerJobName.EXECUTE_TOOL,
             tool_id=tool_id,
             target=target,
             args=args or {},

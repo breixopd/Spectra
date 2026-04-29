@@ -7,6 +7,7 @@ from typing import Any
 
 from app.services.tools.models import ToolExecutionResult
 from app.services.tools.output import create_error_result
+from spectra_domain.jobs import WorkerJobName
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ async def execute_via_worker(
 
     try:
         job_id = await queue.enqueue_job(
-            "execute_tool_job",
+            WorkerJobName.EXECUTE_TOOL,
             tool_id=tool_id,
             target=target,
             args=args,
@@ -110,7 +111,7 @@ async def ensure_tool_installed(tool_id: str, install_timeout: int) -> bool:
     queue = PostgresJobQueue(settings.TOOL_QUEUE_NAME)
 
     try:
-        job_id = await queue.enqueue_job("install_tool_job", tool_id=tool_id)
+        job_id = await queue.enqueue_job(WorkerJobName.INSTALL_TOOL, tool_id=tool_id)
         job = Job(job_id)
 
         result = await job.result(timeout=install_timeout)
