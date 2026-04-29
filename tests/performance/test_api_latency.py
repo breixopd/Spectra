@@ -37,8 +37,8 @@ def _route_concurrency(prefix: str) -> int:
     ("prefix", "path", "requires_auth"),
     [
         ("HEALTH", "/api/health", False),
-        ("SETUP_STATUS", "/api/auth/setup/status", False),
-        ("AUTH_ME", "/api/auth/me", True),
+        ("SETUP_STATUS", "/api/v1/auth/setup/status", False),
+        ("AUTH_ME", "/api/v1/auth/me", True),
     ],
 )
 async def test_core_routes_meet_lenient_latency_thresholds(prefix: str, path: str, requires_auth: bool) -> None:

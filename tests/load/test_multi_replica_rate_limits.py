@@ -40,21 +40,21 @@ async def test_login_rate_limit_state_is_shared_across_app_replicas() -> None:
         for _ in range(primary_burst_count):
             primary_responses.append(
                 await app_client.post(
-                    "/api/auth/token",
+                    "/api/v1/auth/token",
                     data={"username": username, "password": "WrongPass123!"},
                 )
             )
 
         replica_allowed = await replica_client.post(
-            "/api/auth/token",
+            "/api/v1/auth/token",
             data={"username": username, "password": "WrongPass123!"},
         )
         replica_throttled = await replica_client.post(
-            "/api/auth/token",
+            "/api/v1/auth/token",
             data={"username": username, "password": "WrongPass123!"},
         )
         app_throttled = await app_client.post(
-            "/api/auth/token",
+            "/api/v1/auth/token",
             data={"username": username, "password": "WrongPass123!"},
         )
 

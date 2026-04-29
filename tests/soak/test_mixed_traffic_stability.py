@@ -73,11 +73,11 @@ async def test_mixed_traffic_soak_stays_within_error_budget() -> None:
             _record_http_failure(failures, label="caddy-health", response=health_response, allowed_statuses={200})
 
             total_operations += 1
-            setup_response = await app_client.get("/api/auth/setup/status")
+            setup_response = await app_client.get("/api/v1/auth/setup/status")
             _record_http_failure(failures, label="app-setup-status", response=setup_response, allowed_statuses={200})
 
             total_operations += 1
-            auth_me_response = await app_client.get("/api/auth/me", headers=auth_headers)
+            auth_me_response = await app_client.get("/api/v1/auth/me", headers=auth_headers)
             _record_http_failure(failures, label="app-auth-me", response=auth_me_response, allowed_statuses={200})
 
             total_operations += 1

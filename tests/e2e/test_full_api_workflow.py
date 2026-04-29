@@ -70,7 +70,7 @@ async def auth_token(api_client: httpx.AsyncClient):
     }
 
     response = await api_client.post(
-        f"{API_BASE_URL}/api/auth/token",
+        f"{API_BASE_URL}/api/v1/auth/token",
         data=login_data,  # OAuth2 form data
     )
 

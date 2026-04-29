@@ -116,7 +116,7 @@ class TestForgotPasswordEndpoint:
 
 
 class TestResetPasswordEndpoint:
-    """POST /api/auth/reset-password."""
+    """POST /api/v1/auth/reset-password."""
 
     def test_valid_token_resets_password(self):
         from app.auth.security import create_password_reset_token
