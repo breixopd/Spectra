@@ -73,6 +73,14 @@ class SettingsUpdate(BaseModel):
     platform_base_url: str | None = None
     platform_exposed: bool | None = None
 
+    # Billing / payment provider configuration
+    payment_provider: str | None = Field(None, pattern="^(manual|stripe|crypto|noop)$")
+    stripe_publishable_key: str | None = None
+    stripe_secret_key: str | None = None
+    stripe_webhook_secret: str | None = None
+    crypto_payment_url: str | None = None
+    crypto_payment_api_key: str | None = None
+
     # Sandbox Pool
     sandbox_max_containers: int | None = Field(None, ge=1, le=50)
     sandbox_memory_limit: str | None = Field(None, pattern=r"^\d+[gGmM]$")

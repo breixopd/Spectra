@@ -321,9 +321,30 @@ _ADAPTERS: dict[str, type[PaymentAdapter]] = {
 }
 
 
+def register_payment_adapter(provider: str, adapter_cls: type[PaymentAdapter]) -> None:
+    """Register a payment provider adapter.
+
+    Provider packages can call this during startup/import to add a new checkout
+    backend without changing PaymentService.
+    """
+    provider_id = provider.strip().lower()
+    if not provider_id:
+        raise ValueError("Payment provider id cannot be empty")
+    if provider_id in _ADAPTERS:
+        raise ValueError(f"Payment provider already registered: {provider_id!r}")
+    if not issubclass(adapter_cls, PaymentAdapter):
+        raise TypeError("adapter_cls must implement PaymentAdapter")
+    _ADAPTERS[provider_id] = adapter_cls
+
+
+def list_payment_providers() -> list[str]:
+    """Return registered payment provider ids."""
+    return sorted(_ADAPTERS)
+
+
 def get_payment_adapter(provider: str = "manual") -> PaymentAdapter:
     """Get payment adapter by provider name. Extensible for future providers."""
-    cls = _ADAPTERS.get(provider)
+    cls = _ADAPTERS.get(provider.strip().lower())
     if cls is None:
         raise ValueError(f"Unknown payment provider: {provider!r}")
     return cls()

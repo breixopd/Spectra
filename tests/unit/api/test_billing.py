@@ -11,6 +11,8 @@ from app.services.billing.payment_adapter import (
     PaymentService,
     StripePaymentAdapter,
     get_payment_adapter,
+    list_payment_providers,
+    register_payment_adapter,
 )
 
 # ---------------------------------------------------------------------------
@@ -31,6 +33,32 @@ class TestGetPaymentAdapter:
     def test_default_is_manual(self):
         adapter = get_payment_adapter()
         assert isinstance(adapter, ManualPaymentAdapter)
+
+    def test_registered_provider_can_be_resolved(self):
+        class DemoPaymentAdapter(NoopPaymentAdapter):
+            @property
+            def provider_name(self) -> str:
+                return "demo"
+
+        provider_id = "demo_test_provider"
+        register_payment_adapter(provider_id, DemoPaymentAdapter)
+
+        try:
+            adapter = get_payment_adapter(provider_id.upper())
+            assert isinstance(adapter, DemoPaymentAdapter)
+            assert provider_id in list_payment_providers()
+        finally:
+            from app.services.billing import payment_adapter
+
+            payment_adapter._ADAPTERS.pop(provider_id, None)
+
+    def test_duplicate_provider_registration_fails(self):
+        with pytest.raises(ValueError, match="already registered"):
+            register_payment_adapter("manual", ManualPaymentAdapter)
+
+    def test_adapter_registration_requires_payment_adapter_subclass(self):
+        with pytest.raises(TypeError, match="PaymentAdapter"):
+            register_payment_adapter("bad_provider", object)  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------
