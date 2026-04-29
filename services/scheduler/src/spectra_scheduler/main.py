@@ -47,6 +47,7 @@ _CACHE_CLEANUP_LOCK_ID: int = stable_lock_id("spectra_cache_cleanup")
 _PERIODIC_CLEANUP_LOCK_ID: int = stable_lock_id("spectra_periodic_cleanup")
 _CAPACITY_MONITOR_LOCK_ID: int = stable_lock_id("spectra_capacity_monitor")
 _DISK_MONITOR_LOCK_ID: int = stable_lock_id("spectra_disk_monitor")
+_INFRA_MONITOR_LOCK_ID: int = stable_lock_id("spectra_infrastructure_monitor")
 _SCHEDULER_LEADER_LOCK_ID: int = stable_lock_id("spectra_scheduler_leader")
 
 _SCHEDULER_TASK_SPECS: tuple[tuple[str, str], ...] = (
@@ -61,6 +62,7 @@ _SCHEDULER_TASK_SPECS: tuple[tuple[str, str], ...] = (
     ("stale_job_recovery", "_stale_job_recovery"),
     ("exploit_db_refresh", "_exploit_db_refresh"),
     ("capacity_monitor", "_capacity_monitor"),
+    ("infrastructure_monitor", "_infrastructure_monitor"),
     ("docker_cleanup", "_docker_cleanup"),
     ("disk_monitor", "_disk_monitor"),
     ("image_update_check", "_image_update_check"),
@@ -391,7 +393,7 @@ class SchedulerService:
                             status["total_capacity"],
                         )
             except Exception as e:
-                logger.debug("Capacity monitor: %s", e)
+                logger.warning("Capacity monitor failed: %s", e)
 
     async def _send_capacity_alert(self, status: dict) -> None:
         """Send capacity alert via configured notification channels."""
@@ -409,6 +411,108 @@ class SchedulerService:
             )
         except Exception as e:
             logger.warning("Capacity alert send failed: %s", e)
+
+    async def _send_infra_alert(self, *, event: str, message: str, priority: str = "urgent") -> None:
+        """Send infrastructure monitor alerts through the configured notifier."""
+        try:
+            from app.services.infrastructure.storage_monitor import StorageMonitor
+            from app.services.notifications import send_notification
+
+            if not StorageMonitor.should_alert(event):
+                return
+            await send_notification(
+                title="Infrastructure Alert",
+                message=message,
+                priority=priority,
+                tags=["warning", "infrastructure", event],
+            )
+        except Exception as e:
+            logger.warning("Infrastructure alert send failed: %s", e)
+
+    async def _check_postgres_pool_pressure(self, settings) -> None:
+        from app.core.database import engine
+
+        if engine is None:
+            return
+        pool = engine.sync_engine.pool
+        checked_out = getattr(pool, "checkedout", lambda: 0)()
+        base_size = getattr(pool, "size", lambda: 0)()
+        max_overflow = max(getattr(pool, "_max_overflow", 0), 0)
+        capacity = max(base_size + max_overflow, 1)
+        utilization_pct = checked_out / capacity * 100
+        threshold = settings.INFRA_MONITOR_PG_THRESHOLD
+        if utilization_pct >= threshold:
+            logger.warning(
+                "PostgreSQL pool pressure high: %.1f%% (%d/%d connections)",
+                utilization_pct,
+                checked_out,
+                capacity,
+            )
+            await self._send_infra_alert(
+                event="postgres_pool_pressure",
+                message=f"PostgreSQL pool pressure is {utilization_pct:.1f}% ({checked_out}/{capacity} connections)",
+            )
+
+    async def _check_redis_memory_pressure(self, settings) -> None:
+        redis_url = getattr(settings, "REDIS_URL", "") or settings.RATE_LIMIT_STORAGE
+        if not redis_url or not redis_url.startswith(("redis://", "rediss://")):
+            return
+
+        import redis.asyncio as aioredis
+
+        client = aioredis.from_url(redis_url, socket_timeout=2)
+        try:
+            info = await client.info("memory")
+        finally:
+            close = getattr(client, "aclose", None) or getattr(client, "close", None)
+            if close is not None:
+                result = close()
+                if hasattr(result, "__await__"):
+                    await result
+
+        used_memory = int(info.get("used_memory", 0) or 0)
+        max_memory = int(info.get("maxmemory", 0) or 0)
+        if max_memory <= 0:
+            return
+
+        utilization_pct = used_memory / max_memory * 100
+        threshold = settings.INFRA_MONITOR_REDIS_THRESHOLD
+        if utilization_pct >= threshold:
+            logger.warning(
+                "Redis memory pressure high: %.1f%% (%d/%d bytes)",
+                utilization_pct,
+                used_memory,
+                max_memory,
+            )
+            await self._send_infra_alert(
+                event="redis_memory_pressure",
+                message=f"Redis memory pressure is {utilization_pct:.1f}% ({used_memory}/{max_memory} bytes)",
+            )
+
+    async def _infrastructure_monitor(self):
+        """Monitor configured infrastructure thresholds. Runs every 5 minutes."""
+        from app.core.config import get_settings
+
+        while self.running:
+            await asyncio.sleep(300)
+            if not self.running:
+                break
+            try:
+                async with advisory_lock_owner(
+                    _INFRA_MONITOR_LOCK_ID,
+                    connection_factory=advisory_lock_connection,
+                ) as lock_owner:
+                    if lock_owner is None:
+                        continue
+
+                    settings = get_settings()
+                    if not settings.INFRA_MONITOR_ENABLED:
+                        continue
+
+                    await self._check_postgres_pool_pressure(settings)
+                    await self._check_redis_memory_pressure(settings)
+            except Exception as e:
+                logger.warning("Infrastructure monitor failed: %s", e)
 
     async def _db_maintenance(self):
         """Weekly VACUUM ANALYZE on high-traffic tables."""
@@ -622,12 +726,22 @@ class SchedulerService:
 
                     import shutil
 
+                    from app.core.config import get_settings
+
+                    settings = get_settings()
+                    if not settings.INFRA_MONITOR_ENABLED:
+                        continue
+
                     usage = shutil.disk_usage("/")
                     free_pct = usage.free / usage.total * 100
-                    if free_pct < 10:
+                    used_pct = 100 - free_pct
+                    critical_threshold = settings.INFRA_MONITOR_STORAGE_THRESHOLD
+                    warning_threshold = max(critical_threshold - 10, 0)
+                    if used_pct >= critical_threshold:
                         logger.critical(
-                            "DISK SPACE CRITICAL: %.1f%% free (%d MB remaining)",
+                            "DISK SPACE CRITICAL: %.1f%% free, %.1f%% used (%d MB remaining)",
                             free_pct,
+                            used_pct,
                             usage.free // (1024 * 1024),
                         )
                         if StorageMonitor.should_alert("disk_space_critical"):
@@ -639,10 +753,10 @@ class SchedulerService:
                                 "total_used": (usage.total - usage.free) // (1024 * 1024),
                                 "total_capacity": usage.total // (1024 * 1024),
                             })
-                    elif free_pct < 20:
-                        logger.warning("Disk space low: %.1f%% free", free_pct)
+                    elif used_pct >= warning_threshold:
+                        logger.warning("Disk space low: %.1f%% free, %.1f%% used", free_pct, used_pct)
             except Exception as e:
-                logger.debug("Disk monitor: %s", e)
+                logger.warning("Disk monitor failed: %s", e)
 
 
 async def main():
