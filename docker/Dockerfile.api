@@ -73,6 +73,7 @@ COPY --chown=spectra:spectra scripts/ ./scripts/
 COPY --chown=spectra:spectra services/api/src/spectra_api/ ./spectra_api/
 COPY --chown=spectra:spectra packages/tools-core/src/spectra_tools_core/ ./spectra_tools_core/
 COPY --chown=spectra:spectra packages/common/src/spectra_common/ ./spectra_common/
+COPY --chown=spectra:spectra packages/domain/src/spectra_domain/ ./spectra_domain/
 COPY --chown=spectra:spectra app/ ./app/
 COPY --chown=spectra:spectra static/ ./static/
 COPY --chown=spectra:spectra templates/ ./templates/

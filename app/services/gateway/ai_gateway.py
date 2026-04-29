@@ -11,6 +11,7 @@ import logging
 
 from app.core.config import settings
 from app.services.gateway.http_client import GatewayClient
+from spectra_domain.ai import ChatRequest, EmbeddingRequest, RAGRequest
 
 logger = logging.getLogger(__name__)
 
@@ -40,25 +41,28 @@ class AIGateway:
 
     async def chat(self, messages: list[dict], tier: int = 2, **kwargs) -> dict:
         client = self._require_client()
+        payload = ChatRequest(messages=messages, tier=tier, **kwargs).model_dump(exclude_none=True)
         resp = await client.post(
             "/api/v1/ai/chat",
-            json={"messages": messages, "tier": tier, **kwargs},
+            json=payload,
         )
         return resp
 
     async def embed(self, texts: list[str], **kwargs) -> list[list[float]]:
         client = self._require_client()
+        payload = EmbeddingRequest(texts=texts, **kwargs).model_dump(exclude_none=True)
         resp = await client.post(
             "/api/v1/ai/embeddings",
-            json={"texts": texts, **kwargs},
+            json=payload,
         )
         return resp.get("embeddings", [])
 
     async def rag_search(self, query: str, **kwargs) -> list[dict]:
         if self.client:
+            payload = RAGRequest(query=query, **kwargs).model_dump(exclude_none=True)
             resp = await self.client.post(
                 "/api/v1/ai/rag",
-                json={"query": query, **kwargs},
+                json=payload,
             )
             return resp.get("results", [])
         # Monolith fallback — call RAGService directly

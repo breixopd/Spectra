@@ -175,8 +175,18 @@ app/
 │   ├── gateway/        # Service registry, remote service adapters
 │   ├── provisioning/   # SSH auto-provisioning for remote servers
 │   └── shell/          # Reverse shell session management
-├── utils/              # Shared utilities
-└── worker/             # Job queue consumer, tool execution
+└── utils/              # Shared utilities
+
+packages/
+├── common/             # spectra_common shared primitives
+├── domain/             # spectra_domain integration contracts
+└── tools-core/         # spectra_tools_core registry contracts
+
+services/
+├── api/                # spectra_api entry point for app.main
+├── ai/                 # spectra_ai HTTP service entry point
+├── scheduler/          # spectra_scheduler background service entry point
+└── worker/             # spectra_worker job queue consumer
 
 static/                 # CSS, JS, vendor libs (project root)
 ├── css/                # Tailwind input.css + built output.css
@@ -192,8 +202,10 @@ docker/
 ├── docker-compose.swarm.yml # Docker Swarm production stack
 ├── Caddyfile.prod           # Production Caddy config
 ├── targets/                 # Vulnerable test containers
-├── Dockerfile.app           # FastAPI app image
-└── Dockerfile.tools         # Kali tools worker image
+├── Dockerfile.api           # API/UI image
+├── Dockerfile.ai            # AI service image
+├── Dockerfile.scheduler     # Scheduler service image
+└── Dockerfile.worker        # Kali worker image
 
 plugins/                     # Tool plugin JSON configs (25+ included)
 data/                        # Runtime data (cache, auth, missions, sessions)

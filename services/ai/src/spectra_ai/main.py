@@ -10,7 +10,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from spectra_domain.ai import ChatRequest, ChatResponse, EmbeddingRequest, EmbeddingResponse, RAGRequest, RAGResponse
 
 logger = logging.getLogger(__name__)
 
@@ -189,22 +189,6 @@ async def health_deep(response: Response):
         return {"status": "degraded", "service": "ai", "llm": {"status": "unhealthy", "error": type(exc).__name__}}
 
 
-# --- LLM Chat ---
-class ChatRequest(BaseModel):
-    messages: list[dict]
-    model: str | None = None
-    tier: int = 2  # 1=fast, 2=balanced, 3=advanced
-    temperature: float = 0.7
-    max_tokens: int | None = None
-    user_id: str | None = None  # For BYOK resolution
-
-
-class ChatResponse(BaseModel):
-    content: str
-    model: str
-    usage: dict = {}
-
-
 @app.post("/api/v1/ai/chat", response_model=ChatResponse)
 async def ai_chat(req: ChatRequest):
     """Route an LLM chat request through the smart router."""
@@ -243,19 +227,6 @@ async def ai_chat(req: ChatRequest):
         raise HTTPException(500, "Internal service error")
 
 
-# --- Embeddings ---
-class EmbeddingRequest(BaseModel):
-    texts: list[str]
-    model: str | None = None
-    user_id: str | None = None
-
-
-class EmbeddingResponse(BaseModel):
-    embeddings: list[list[float]]
-    model: str
-    dimensions: int
-
-
 @app.post("/api/v1/ai/embeddings", response_model=EmbeddingResponse)
 async def generate_embeddings(req: EmbeddingRequest):
     """Generate embeddings for a list of texts."""
@@ -273,19 +244,6 @@ async def generate_embeddings(req: EmbeddingRequest):
     except (OSError, RuntimeError, ValueError, TimeoutError):
         logger.exception("Embedding error")
         raise HTTPException(500, "Internal service error")
-
-
-# --- RAG Query ---
-class RAGRequest(BaseModel):
-    query: str
-    collection: str = "default"
-    top_k: int = 5
-    filters: dict | None = None
-
-
-class RAGResponse(BaseModel):
-    results: list[dict]
-    query: str
 
 
 @app.post("/api/v1/ai/rag", response_model=RAGResponse)

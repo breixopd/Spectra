@@ -4,11 +4,11 @@
 
 ---
 
-Spectra uses a PostgreSQL-backed job queue for background task processing. Workers run inside the tools container and handle tool execution, cleanup, notifications, and report generation.
+Spectra uses a PostgreSQL-backed job queue for background task processing. Workers run inside the `spectra-worker` service image and handle tool execution, cleanup, notifications, and report generation.
 
 ### Tools Container
 
-The tools container (`Dockerfile.tools`) is a minimal Kali Linux image (~1.1 GB) with Python, networking utilities, and VPN support. **Security tools are not preinstalled** — they are installed on demand from the plugin registry (`plugins/*.json`) when first needed.
+The worker image (`docker/Dockerfile.worker`) is a Kali Linux image with Python, networking utilities, and VPN support. **Security tools are not preinstalled** — they are installed on demand from the plugin registry (`plugins/*.json`) when first needed.
 
 On startup, the worker:
 

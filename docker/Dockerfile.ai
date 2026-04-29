@@ -55,6 +55,7 @@ COPY --chown=spectra:spectra scripts/ ./scripts/
 COPY --chown=spectra:spectra services/ai/src/spectra_ai/ ./spectra_ai/
 COPY --chown=spectra:spectra packages/tools-core/src/spectra_tools_core/ ./spectra_tools_core/
 COPY --chown=spectra:spectra packages/common/src/spectra_common/ ./spectra_common/
+COPY --chown=spectra:spectra packages/domain/src/spectra_domain/ ./spectra_domain/
 COPY --chown=spectra:spectra app/__init__.py ./app/
 COPY --chown=spectra:spectra app/_meta/ ./app/_meta/
 COPY --chown=spectra:spectra app/auth/ ./app/auth/

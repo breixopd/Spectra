@@ -130,8 +130,18 @@ app/
 │   ├── mission/      # Mission lifecycle, execution, steering
 │   ├── tools/        # Tool registry, adapters, sandboxes
 │   └── ...           # billing, email, gateway, scaling, storage, etc.
-├── utils/            # Shared utilities
-└── worker/           # Worker entry point + job queue consumer
+└── utils/            # Shared utilities
+
+packages/
+├── common/           # spectra_common shared primitives
+├── domain/           # spectra_domain integration contracts
+└── tools-core/       # spectra_tools_core registry contracts
+
+services/
+├── api/              # spectra_api entry point for app.main
+├── ai/               # spectra_ai HTTP service entry point
+├── scheduler/        # spectra_scheduler background service entry point
+└── worker/           # spectra_worker job queue consumer
 
 static/               # CSS, JS, vendor libs (project root)
 ├── css/              # Tailwind input.css + built output.css
@@ -165,6 +175,9 @@ Spectra runs as four microservices controlled by `SERVICE_MODE`. Import boundari
 - `app/core/` — config, database, security, cache, events, redis
 - `app/models/` — SQLAlchemy ORM models
 - `app/repositories/` — data access layer
+- `packages/common/src/spectra_common/` — shared primitives
+- `packages/domain/src/spectra_domain/` — integration contracts and DTOs
+- `packages/tools-core/src/spectra_tools_core/` — tool registry contracts
 
 **Service-specific packages** (only loaded by their respective service):
 - `app/api/` — routers, schemas, UI (API service)

@@ -12,15 +12,16 @@ Current runtime contract: Docker Compose and Docker Swarm use the same internal 
 
 ## Per-Service Builds
 
-The Dockerfile (`docker/Dockerfile.app`) uses multi-stage builds with per-service targets. Each target copies only the dependencies its service needs, producing optimized images:
+Each service has a dedicated Dockerfile. Each image copies only the dependencies and source package surface that service needs:
 
 ### Building Individual Services
 
 ```bash
-# Build a specific service target
-docker build --target ai -f docker/Dockerfile.app -t spectra-ai-svc .
-docker build --target scheduler -f docker/Dockerfile.app -t spectra-scheduler .
-docker build --target api -f docker/Dockerfile.app -t spectra-app .
+# Build a specific service image
+docker build -f docker/Dockerfile.api -t spectra-app .
+docker build -f docker/Dockerfile.ai -t spectra-ai-svc .
+docker build -f docker/Dockerfile.scheduler -t spectra-scheduler .
+docker build -f docker/Dockerfile.worker -t spectra-worker .
 
 # Or via docker compose (builds all services)
 docker compose -f docker/compose.yaml build
@@ -28,12 +29,12 @@ docker compose -f docker/compose.yaml build
 
 ### Image Sizes
 
-| Service | Target | Requirements File | Approx. Size |
+| Service | Dockerfile | Requirements File | Approx. Size |
 |---------|--------|-------------------|--------------|
-| **Scheduler** | `scheduler` | `requirements/scheduler.txt` | ~558 MB |
-| **AI Service** | `ai` | `requirements/ai.txt` | ~1.13 GB |
-| **API** | `api` | `requirements/app.txt` | ~1.34 GB |
-| **Worker** | `api` + override | `requirements/worker.txt` | ~4.13 GB |
+| **Scheduler** | `docker/Dockerfile.scheduler` | `requirements/scheduler.txt` | ~558 MB |
+| **AI Service** | `docker/Dockerfile.ai` | `requirements/ai.txt` | ~1.13 GB |
+| **API** | `docker/Dockerfile.api` | `requirements/app.txt` | ~1.34 GB |
+| **Worker** | `docker/Dockerfile.worker` | `requirements/worker.txt` | ~4.13 GB |
 
 ### SERVICE_MODE Configuration
 
