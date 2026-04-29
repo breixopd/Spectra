@@ -596,6 +596,21 @@ async def _shutdown_services() -> None:
         await close_service_registry()
         logger.info("[OK] Service registry closed")
 
+        from app.services.gateway.ai_gateway import close_ai_gateway
+
+        await close_ai_gateway()
+        logger.info("[OK] AI gateway closed")
+
+        from app.utils.geoip import close_geoip_session
+
+        await close_geoip_session()
+        logger.info("[OK] GeoIP session closed")
+
+        from app.services.system.health import close_health_clients
+
+        await close_health_clients()
+        logger.info("[OK] Health clients closed")
+
         # Close smart router (TensorZero httpx client)
         from app.services.ai.router import close_smart_router
 
