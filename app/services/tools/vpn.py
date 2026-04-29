@@ -16,6 +16,7 @@ from typing import Any
 from app.core.config import settings
 from app.infrastructure.queue import PostgresJobQueue
 from app.services.storage import get_storage_service
+from spectra_domain.jobs import WorkerJobName
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +168,7 @@ class VPNManager:
             raise ValueError(f"Failed to download config for '{config_name}'")
 
         config_path = str(local_path)
-        job_id = await self._queue.enqueue_job("vpn_connect_job", config_path, vpn_type, _timeout=60)
+        job_id = await self._queue.enqueue_job(WorkerJobName.VPN_CONNECT, config_path, vpn_type, _timeout=60)
         logger.info("Enqueued VPN connect job %s for %s (%s)", job_id, config_name, vpn_type)
         return {"job_id": job_id, "config": config_name, "type": vpn_type, "action": "connect"}
 
@@ -183,7 +184,7 @@ class VPNManager:
         config_path = str(local_path) if local_path else ""
 
         job_id = await self._queue.enqueue_job(
-            "vpn_disconnect_job",
+            WorkerJobName.VPN_DISCONNECT,
             config_name,
             vpn_type,
             config_path,
@@ -194,7 +195,7 @@ class VPNManager:
 
     async def status(self) -> dict[str, Any]:
         """Get VPN connection status by enqueuing a status check job."""
-        job_id = await self._queue.enqueue_job("vpn_status_job", _timeout=15)
+        job_id = await self._queue.enqueue_job(WorkerJobName.VPN_STATUS, _timeout=15)
         return {"job_id": job_id, "action": "status"}
 
     async def list_configs(self) -> list[dict[str, Any]]:
@@ -232,5 +233,5 @@ class VPNManager:
 
     async def test_connection(self) -> dict[str, Any]:
         """Test VPN connectivity by enqueuing a test job."""
-        job_id = await self._queue.enqueue_job("vpn_test_job", _timeout=30)
+        job_id = await self._queue.enqueue_job(WorkerJobName.VPN_TEST, _timeout=30)
         return {"job_id": job_id, "action": "test"}

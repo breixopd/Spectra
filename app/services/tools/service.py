@@ -43,6 +43,7 @@ from app.services.tools.safety_checks import (
     perform_safety_check_with_retry,
 )
 from app.services.tools.validation import validate_and_resolve_tool
+from spectra_domain.jobs import WorkerJobName
 
 if TYPE_CHECKING:
     from app.services.ai.llm import LLMClient
@@ -167,7 +168,7 @@ class ToolExecutionService:
             queue_name = self._get_queue_name(mission.id) if hasattr(mission, "id") and mission.id else "default"
             queue = PostgresJobQueue(queue_name)
             job_id = await queue.enqueue_job(
-                "execute_script_job",
+                WorkerJobName.EXECUTE_SCRIPT,
                 content=script_content,
                 language=language,
                 target=target,
