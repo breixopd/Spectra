@@ -112,9 +112,15 @@ async def get_ui_user(request: Request) -> dict | None:
     return await _decode_access_payload(token)
 
 
+def _no_session_dependency() -> None:
+    """Keep get_current_user's direct-test session hook out of FastAPI query parsing."""
+    return None
+
+
 async def get_current_user(
     request: Request,
     token: Annotated[str | None, Depends(oauth2_scheme)] = None,
+    session: Annotated[AsyncSession | None, Depends(_no_session_dependency)] = None,
 ) -> User:
     """
     Validate access token and get current user.
@@ -135,8 +141,8 @@ async def get_current_user(
     if payload is None:
         raise credentials_exception
 
-    async with async_session_maker() as session:
-        user = await _load_active_user_from_payload_with_session(payload, session)
+    async def _load_and_validate(active_session: AsyncSession) -> User:
+        user = await _load_active_user_from_payload_with_session(payload, active_session)
         if user is None:
             raise credentials_exception
 
@@ -160,9 +166,15 @@ async def get_current_user(
             isinstance(user.last_activity, datetime) and (now - user.last_activity).total_seconds() > 60
         ):
             user.last_activity = now
-            await session.commit()
+            await active_session.commit()
 
         return user
+
+    if session is not None:
+        return await _load_and_validate(session)
+
+    async with async_session_maker() as active_session:
+        return await _load_and_validate(active_session)
 
 
 async def get_current_active_user(
