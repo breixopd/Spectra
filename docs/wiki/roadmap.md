@@ -15,12 +15,12 @@ Future improvements plan. Items prioritized by impact and complexity.
 **Status**: Core implementation complete.
 
 - `ServiceMode` conditional routing — `api`, `ai`, `worker`, `scheduler`, `tools`, `all` modes
-- Per-service Dockerfile targets (`docker/Dockerfile.app`) — multi-stage builds with per-service builder stages
+- Per-service Dockerfiles (`docker/Dockerfile.api`, `docker/Dockerfile.ai`, `docker/Dockerfile.scheduler`, `docker/Dockerfile.worker`)
 - Per-service requirements files (`requirements/ai.txt`, `requirements/scheduler.txt`, `requirements/worker.txt`)
 - Per-service image optimization — scheduler: ~558 MB, AI: ~1.13 GB, API: ~1.34 GB, worker: ~4.13 GB
 - Import boundary enforcement (`scripts/check_import_boundaries.py`) — shared packages cannot import service-specific code
 - `SERVICE_MODE` env var controls router mounting and background loop activation per container
-- Shared library extraction: **deferred** — shared code stays in `app/core/` and `app/models/` within the monorepo; extracting to a separate package adds build complexity without clear benefit at current scale
+- Shared package extraction: **in progress** — `packages/common`, `packages/domain`, and `packages/tools-core` hold stable primitives/contracts while larger `app/` platform areas are migrated incrementally
 
 See [Microservices Architecture](microservices-split.md) for full documentation.
 

@@ -16,7 +16,7 @@ Each mission runs in its own ephemeral Docker container with a dedicated worker.
 
 | Layer | Image | Contents |
 | ------- | ------- | ---------- |
-| Base | `spectra-tools:base` | Dockerfile.tools — Kali rolling + OS essentials (curl, git, networking, VPN tools). No security tools preinstalled. |
+| Base | `spectra-tools:base` | `docker/Dockerfile.worker` base tooling — Kali rolling + OS essentials (curl, git, networking, VPN tools). No security tools preinstalled. |
 | Latest | `spectra-tools:latest` | Base + all plugin tools installed on demand |
 
 The base image is intentionally minimal (~1.1 GB). Security tools (nmap, nuclei, sqlmap, etc.) are **not** baked in — they are installed on demand at runtime from plugin definitions in `plugins/*.json`. This keeps images small, avoids stale tool versions, and lets operators control exactly which tools are available.

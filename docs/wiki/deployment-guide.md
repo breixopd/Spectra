@@ -473,11 +473,11 @@ For local/lab environments without TLS, configure each Docker daemon to allow in
 cd /path/to/spectra
 
 # Build all images
-docker build -t <registry>:5050/spectra-app:latest --target api -f docker/Dockerfile.app .
-docker build -t <registry>:5050/spectra-ai-svc:latest --target ai -f docker/Dockerfile.app .
-docker build -t <registry>:5050/spectra-scheduler:latest --target scheduler -f docker/Dockerfile.app .
+docker build -t <registry>:5050/spectra-app:latest -f docker/Dockerfile.api .
+docker build -t <registry>:5050/spectra-ai-svc:latest -f docker/Dockerfile.ai .
+docker build -t <registry>:5050/spectra-scheduler:latest -f docker/Dockerfile.scheduler .
 docker build -t <registry>:5050/spectra-caddy:latest -f docker/Dockerfile.caddy docker/
-docker build -t <registry>:5050/spectra-worker:latest -f docker/Dockerfile.tools .
+docker build -t <registry>:5050/spectra-worker:latest -f docker/Dockerfile.worker .
 
 # Push all
 for img in spectra-app spectra-ai-svc spectra-scheduler spectra-caddy spectra-worker; do

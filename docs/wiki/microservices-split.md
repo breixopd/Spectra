@@ -43,26 +43,24 @@ Supporting infrastructure:
 | **ClickHouse** | `clickhouse/clickhouse-server:24.11-alpine` | Analytics and inference storage for TensorZero |
 | **Redis** | `redis:7-alpine` | Shared distributed rate-limiting backend |
 
-### Per-Service Dockerfile Targets
+### Per-Service Dockerfiles
 
-The Dockerfile (`docker/Dockerfile.app`) uses multi-stage builds with per-service builder stages and runtime targets:
+Production services use dedicated Dockerfiles with per-service dependency files:
 
 ```text
-builder-api        → installs requirements/app.txt
-builder-ai         → installs requirements/ai.txt
-builder-scheduler  → installs requirements/scheduler.txt
-app-base           → shared runtime (Python 3.11, Docker CLI, Grype, app code)
-  ├── ai           → COPY venv from builder-ai,  SERVICE_MODE=ai
-  ├── scheduler    → COPY venv from builder-scheduler, SERVICE_MODE=scheduler
-  └── api          → COPY venv from builder-api, SERVICE_MODE=api (default target)
+docker/Dockerfile.api        → installs requirements/app.txt, runs spectra_api.main:app
+docker/Dockerfile.ai         → installs requirements/ai.txt, runs spectra_ai.main:app
+docker/Dockerfile.scheduler  → installs requirements/scheduler.txt, runs spectra_scheduler.main:app
+docker/Dockerfile.worker     → installs requirements/worker.txt, runs spectra_worker.main:app
 ```
 
-Build a specific service:
+Build a specific service image:
 
 ```bash
-docker build --target ai -f docker/Dockerfile.app .
-docker build --target scheduler -f docker/Dockerfile.app .
-docker build --target api -f docker/Dockerfile.app .
+docker build -f docker/Dockerfile.api -t spectra-api:local .
+docker build -f docker/Dockerfile.ai -t spectra-ai:local .
+docker build -f docker/Dockerfile.scheduler -t spectra-scheduler:local .
+docker build -f docker/Dockerfile.worker -t spectra-worker:local .
 ```
 
 ### Per-Service Requirements Files
@@ -115,7 +113,7 @@ The main service handling all user-facing functionality.
 | Attribute | Value |
 |-----------|-------|
 | **Source** | `app/main.py` with `SERVICE_MODE=api` |
-| **Dockerfile Target** | `api` (default) |
+| **Dockerfile** | `docker/Dockerfile.api` |
 | **Requirements** | `requirements/app.txt` |
 | **Port** | 5000 |
 | **Responsibilities** | Web UI, REST API, mission orchestration, user management, admin panel |
@@ -130,10 +128,10 @@ Dedicated LLM routing, embedding generation, and RAG queries.
 | Attribute | Value |
 |-----------|-------|
 | **Source** | `services/ai/src/spectra_ai/main.py` (implementation still under `app/services/ai/`) |
-| **Dockerfile Target** | `ai` |
+| **Dockerfile** | `docker/Dockerfile.ai` |
 | **Requirements** | `requirements/ai.txt` |
 | **Port** | 5010 |
-| **API Surface** | `POST /api/v1/ai/chat`, `POST /api/v1/ai/embed`, `GET /health` |
+| **API Surface** | `POST /api/v1/ai/chat`, `POST /api/v1/ai/embeddings`, `POST /api/v1/ai/rag`, `GET /health` |
 | **Dependencies** | PostgreSQL (pgvector for RAG), LLM provider (configurable) |
 | **Resource Limits** | 1 CPU, 1 GB RAM (configurable) |
 
@@ -146,7 +144,7 @@ Headless background task runner.
 | Attribute | Value |
 |-----------|-------|
 | **Source** | `services/scheduler/src/spectra_scheduler/main.py` (implementation still under `app/services/**`) |
-| **Dockerfile Target** | `scheduler` |
+| **Dockerfile** | `docker/Dockerfile.scheduler` |
 | **Requirements** | `requirements/scheduler.txt` |
 | **Port** | 5011 (health endpoint only) |
 | **Responsibilities** | Sandbox watchdog (cleanup stale containers), warm pool maintenance, quota resets, metrics aggregation, automated backups |
@@ -160,7 +158,7 @@ Executes tool jobs from the PostgreSQL job queue.
 | Attribute | Value |
 |-----------|-------|
 | **Source** | `services/worker/src/spectra_worker/` |
-| **Dockerfile Target** | Uses `api` target with `SERVICE_MODE=worker` override |
+| **Dockerfile** | `docker/Dockerfile.worker` |
 | **Requirements** | `requirements/worker.txt` |
 | **Port** | 5012 (health endpoint only) |
 | **Responsibilities** | Pull jobs from PG queue, execute security tools in sandbox containers, parse output, write results |

@@ -5,6 +5,7 @@ description = "Shared Spectra domain models and service contracts."
 requires-python = ">=3.11"
 dependencies = [
     "spectra-common",
+    "pydantic",
     "jsonschema",
     "aiofiles",
 ]

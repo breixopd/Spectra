@@ -55,6 +55,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY services/worker/src/spectra_worker/ ./spectra_worker/
 COPY packages/tools-core/src/spectra_tools_core/ ./spectra_tools_core/
 COPY packages/common/src/spectra_common/ ./spectra_common/
+COPY packages/domain/src/spectra_domain/ ./spectra_domain/
 COPY app/__init__.py ./app/
 COPY app/_meta/ ./app/_meta/
 COPY app/auth/ ./app/auth/
