@@ -15,10 +15,22 @@ from app.models.plan import Plan, UsageRecord
 from app.models.user import User
 from app.services.billing import PaymentService
 from app.services.billing.entitlements import get_manageable_billing_subscription, get_user_entitlement
+from app.services.billing.payment_adapter import get_payment_adapter, list_payment_providers
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/billing", tags=["Billing"])
+
+_STRIPE_RECONCILED_EVENT_TYPES = frozenset(
+    {
+        "checkout.session.completed",
+        "customer.subscription.created",
+        "customer.subscription.updated",
+        "customer.subscription.deleted",
+        "invoice.payment_failed",
+        "invoice.payment_succeeded",
+    }
+)
 
 
 def _plan_checkout_available(plan: Plan, *, payment_provider: str) -> bool:
@@ -152,21 +164,28 @@ async def get_billing_portal(
         raise HTTPException(400, detail="Failed to process billing portal request")
 
 
-@router.post("/webhook")
-async def stripe_webhook(request: Request):
-    """Handle Stripe webhook events (checkout.session.completed, etc.)."""
-    from app.core.config import get_settings
+def _signature_for_provider(request: Request, provider: str) -> str:
+    if provider == "stripe":
+        return request.headers.get("stripe-signature", "")
+    return (
+        request.headers.get(f"{provider}-signature")
+        or request.headers.get("x-webhook-signature")
+        or request.headers.get("x-signature")
+        or ""
+    )
 
-    _settings = get_settings()
-    if _settings.PAYMENT_PROVIDER != "stripe":
-        raise HTTPException(404, "Payment webhooks not enabled")
+
+async def _handle_provider_webhook(request: Request, provider: str):
+    provider_id = provider.strip().lower()
+    if provider_id not in list_payment_providers():
+        raise HTTPException(404, "Payment provider is not registered")
 
     payload = await request.body()
-    sig = request.headers.get("stripe-signature", "")
+    sig = _signature_for_provider(request, provider_id)
 
-    svc = PaymentService()
+    adapter = get_payment_adapter(provider_id)
     try:
-        event = await svc._adapter.handle_webhook(payload, sig)
+        event = await adapter.handle_webhook(payload, sig)
     except (OSError, RuntimeError, ValueError):
         logger.exception("Webhook verification failed")
         raise HTTPException(400, "Webhook verification failed")
@@ -174,14 +193,20 @@ async def stripe_webhook(request: Request):
     event_type = event.get("type", "")
     data = event.get("data", {})
 
-    if event_type in {
-        "checkout.session.completed",
-        "customer.subscription.created",
-        "customer.subscription.updated",
-        "customer.subscription.deleted",
-        "invoice.payment_failed",
-        "invoice.payment_succeeded",
-    }:
+    if provider_id == "stripe" and event_type in _STRIPE_RECONCILED_EVENT_TYPES:
+        svc = PaymentService(adapter)
         await svc.reconcile_stripe_event(event_type, data)
 
-    return {"received": True}
+    return {"received": True, "provider": provider_id}
+
+
+@router.post("/webhooks/{provider}")
+async def payment_provider_webhook(request: Request, provider: str):
+    """Handle provider-scoped payment webhooks."""
+    return await _handle_provider_webhook(request, provider)
+
+
+@router.post("/webhook")
+async def stripe_webhook(request: Request):
+    """Handle Stripe webhook events (checkout.session.completed, etc.)."""
+    return await _handle_provider_webhook(request, "stripe")

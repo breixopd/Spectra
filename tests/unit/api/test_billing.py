@@ -167,6 +167,60 @@ class TestPaymentServiceExternalCancellation:
 
 @pytest.mark.asyncio
 class TestBillingRouter:
+    async def test_provider_webhook_dispatches_registered_non_stripe_provider(self):
+        from app.api.routers.billing import _handle_provider_webhook
+
+        adapter = AsyncMock()
+        adapter.handle_webhook = AsyncMock(return_value={"type": "invoice.created", "data": {"id": "evt_1"}})
+        request = MagicMock()
+        request.headers = {"x-webhook-signature": "sig_123"}
+        request.body = AsyncMock(return_value=b"payload")
+
+        with (
+            patch("app.api.routers.billing.list_payment_providers", return_value=["demo"]),
+            patch("app.api.routers.billing.get_payment_adapter", return_value=adapter),
+        ):
+            result = await _handle_provider_webhook(request, "demo")
+
+        assert result == {"received": True, "provider": "demo"}
+        adapter.handle_webhook.assert_awaited_once_with(b"payload", "sig_123")
+
+    async def test_provider_webhook_reconciles_stripe_events(self):
+        from app.api.routers.billing import _handle_provider_webhook
+
+        adapter = AsyncMock()
+        adapter.handle_webhook = AsyncMock(
+            return_value={"type": "invoice.payment_succeeded", "data": {"id": "in_123"}}
+        )
+        service = MagicMock()
+        service.reconcile_stripe_event = AsyncMock()
+        request = MagicMock()
+        request.headers = {"stripe-signature": "stripe_sig"}
+        request.body = AsyncMock(return_value=b"payload")
+
+        with (
+            patch("app.api.routers.billing.list_payment_providers", return_value=["stripe"]),
+            patch("app.api.routers.billing.get_payment_adapter", return_value=adapter),
+            patch("app.api.routers.billing.PaymentService", return_value=service),
+        ):
+            result = await _handle_provider_webhook(request, "stripe")
+
+        assert result == {"received": True, "provider": "stripe"}
+        adapter.handle_webhook.assert_awaited_once_with(b"payload", "stripe_sig")
+        service.reconcile_stripe_event.assert_awaited_once_with("invoice.payment_succeeded", {"id": "in_123"})
+
+    async def test_provider_webhook_rejects_unregistered_provider(self):
+        from app.api.routers.billing import _handle_provider_webhook
+
+        request = MagicMock()
+        with (
+            patch("app.api.routers.billing.list_payment_providers", return_value=["stripe"]),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            await _handle_provider_webhook(request, "missing")
+
+        assert exc_info.value.status_code == 404
+
     async def test_list_available_plans_exposes_provider_agnostic_checkout_signal_for_stripe(self):
         from app.api.routers.billing import list_available_plans
 
