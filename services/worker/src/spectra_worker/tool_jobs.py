@@ -226,6 +226,7 @@ async def execute_tool_job(
 @with_retry()
 async def build_golden_image_job(
     target_tag: str | None = None,
+    plugins_dir: str = "plugins",
 ) -> dict[str, Any]:
     """Build, verify, scan, and promote the golden worker image from plugins."""
     from app.core.config import get_settings
@@ -234,7 +235,7 @@ async def build_golden_image_job(
     settings = get_settings()
     image_tag = target_tag or settings.SANDBOX_IMAGE
     builder = GoldenImageBuilder()
-    result = await builder.build(target_tag=image_tag)
+    result = await builder.build(plugins_dir=plugins_dir, target_tag=image_tag)
     await sync_all_status_job()
     return result
 
@@ -242,6 +243,7 @@ async def build_golden_image_job(
 @with_retry()
 async def install_tool_job(
     tool_id: str,
+    plugins_dir: str = "plugins",
 ) -> dict[str, Any]:
     """Rebuild golden image after a tool/plugin change.
 
@@ -251,7 +253,9 @@ async def install_tool_job(
     """
     logger.info("Rebuilding golden image for tool/plugin: %s", tool_id)
     await _sync_tool_status(tool_id, {"status": ToolStatus.INSTALLING.value, "phase": "golden_image_build"})
-    result = await build_golden_image_job()
+    result = await build_golden_image_job(plugins_dir=plugins_dir)
+    result["tool_id"] = tool_id
+    result["success"] = result.get("status") == "success"
     from app.services.tools.registry import get_registry
 
     tool = get_registry().get_tool(tool_id)

@@ -189,11 +189,11 @@ services:
         condition: service_healthy
     volumes:
       - ../config/tensorzero.toml:/app/config/tensorzero.toml:ro
+    env_file:
+      - ${ENV_FILE:-../.env}
     environment:
       TENSORZERO_CONFIG_FILE: /app/config/tensorzero.toml
       TENSORZERO_CLICKHOUSE_URL: http://default:${CLICKHOUSE_PASSWORD:-}@clickhouse:8123/tensorzero
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
       interval: 10s
@@ -619,6 +619,8 @@ services:
       - ../tests:/app/tests:ro
       - ../plugins:/app/plugins
       - ../requirements:/app/requirements:ro
+      # Live plugin e2e exercises the golden-image Docker build path.
+      - /var/run/docker.sock:/var/run/docker.sock
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
