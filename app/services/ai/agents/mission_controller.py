@@ -331,7 +331,50 @@ IMPORTANT OPERATIONAL GUIDELINES:
             ]
             plan.estimated_duration_minutes = min(plan.estimated_duration_minutes, 15)
 
+        if not plan.tasks:
+            plan.tasks = self._default_assessment_tasks(constraints)
+            plan.reasoning = "LLM returned an empty plan; using deterministic baseline assessment workflow."
+            plan.estimated_duration_minutes = min(max(plan.estimated_duration_minutes, 20), 45)
+            if plan.mission_type == MissionType.CUSTOM:
+                plan.mission_type = MissionType.FULL_ASSESSMENT
+
         return plan
+
+    def _default_assessment_tasks(self, constraints: str) -> list[Task]:
+        """Return a safe baseline plan when model output omits executable tasks."""
+        tasks = [
+            Task(
+                task_id="baseline-discovery",
+                description="Discover exposed services and versions with nmap",
+                agent_type="tool_selector",
+                phase=AssessmentPhase.DISCOVERY,
+                priority=1,
+                parameters={"tool_hint": "nmap"},
+            ),
+            Task(
+                task_id="baseline-vuln-scan",
+                description="Assess discovered services for common vulnerabilities",
+                agent_type="tool_selector",
+                phase=AssessmentPhase.VULNERABILITY,
+                priority=2,
+                dependencies=["baseline-discovery"],
+                parameters={"tool_hint": "nikto" if "web" in constraints else "nmap"},
+            ),
+        ]
+
+        if "exploit" in constraints or "demonstrate impact" in constraints:
+            tasks.append(
+                Task(
+                    task_id="baseline-exploit-review",
+                    description="Evaluate validated findings for safe exploitability",
+                    agent_type="exploit_crafter",
+                    phase=AssessmentPhase.EXPLOITATION,
+                    priority=3,
+                    dependencies=["baseline-vuln-scan"],
+                )
+            )
+
+        return tasks
 
     async def _handle_steering(
         self,

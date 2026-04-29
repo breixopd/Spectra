@@ -44,16 +44,7 @@ class TestLiveCampaign:
         registry_module._registry = None
         registry = get_registry()
         await registry.load_plugins()
-        critical_tools = ["nmap", "searchsploit", "metasploit", "curl", "nikto", "sqlmap"]
-        for tool_id in critical_tools:
-            if tool_id in registry._tools:
-                tool = registry._tools[tool_id]
-                if tool.status.name != "READY":
-                    try:
-                        os.environ["DEBIAN_FRONTEND"] = "noninteractive"
-                        await registry.install_tool(tool_id)
-                    except Exception as e:
-                        print(f"Failed to install {tool_id}: {e}")
+        await registry.sync_status_from_cache()
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
