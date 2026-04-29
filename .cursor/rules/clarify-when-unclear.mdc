@@ -1,0 +1,12 @@
+---
+description: Ask clarifying questions when requirements are unclear or blocked
+alwaysApply: true
+---
+
+# Clarify When Unclear
+
+- If a user request is ambiguous, blocked by missing details, or has multiple materially different safe implementations, ask concise clarifying questions before guessing.
+- Prefer the structured question tool when the answer can be expressed as clear choices.
+- Do not ask redundant questions when context already provides the answer; infer from current conversation, repo rules, and existing project patterns.
+- If work can safely proceed while a detail is unclear, continue on the safe portion and ask only about the blocking decision.
+- For irreversible, security-sensitive, data-destructive, payment, deployment, or production-exposure choices, pause and ask unless the user explicitly authorized the action.
