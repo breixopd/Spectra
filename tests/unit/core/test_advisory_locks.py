@@ -32,10 +32,10 @@ def test_stable_lock_id_is_deterministic_and_bigint_safe():
 
 
 def test_scheduler_lock_constants_use_stable_helper():
-    import spectra_scheduler.main as scheduler_service
+    import spectra_scheduler.locks as sched_locks
 
-    assert stable_lock_id("spectra_backup") == scheduler_service._BACKUP_LOCK_ID
-    assert stable_lock_id("spectra_scheduler_leader") == scheduler_service._SCHEDULER_LEADER_LOCK_ID
+    assert stable_lock_id("spectra_backup") == sched_locks._BACKUP_LOCK_ID
+    assert stable_lock_id("spectra_scheduler_leader") == sched_locks._SCHEDULER_LEADER_LOCK_ID
 
 
 @pytest.mark.asyncio
