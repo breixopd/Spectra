@@ -203,7 +203,7 @@ class EventBus:
         """
         try:
             asyncio.get_running_loop()
-            from app.infrastructure.tasks import create_safe_task
+            from spectra_common.tasks import create_safe_task
             create_safe_task(self.emit(event_type, source, **data), name="event_emit")
         except RuntimeError:
             # No running loop - skip async handlers

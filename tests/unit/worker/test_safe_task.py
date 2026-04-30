@@ -5,7 +5,7 @@ import logging
 
 import pytest
 
-from app.infrastructure.tasks import create_safe_task
+from spectra_common.tasks import create_safe_task
 
 
 @pytest.mark.asyncio

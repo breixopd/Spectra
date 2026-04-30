@@ -82,7 +82,7 @@ def _persist_blacklist() -> None:
     """Persist blacklist to DB."""
     try:
         asyncio.get_running_loop()
-        from app.infrastructure.tasks import create_safe_task
+        from spectra_common.tasks import create_safe_task
         create_safe_task(_persist_to_db(), name="blacklist_persist")
     except RuntimeError:
         pass
@@ -550,7 +550,7 @@ def _notify_blacklist_change(payload: str) -> None:
     """Send a PG NOTIFY so other replicas refresh their blacklist cache."""
     try:
         asyncio.get_running_loop()
-        from app.infrastructure.tasks import create_safe_task
+        from spectra_common.tasks import create_safe_task
         create_safe_task(_send_blacklist_notify(payload), name="blacklist_notify")
     except RuntimeError:
         pass

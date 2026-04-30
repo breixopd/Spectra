@@ -12,8 +12,8 @@ from fastapi import FastAPI, HTTPException, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
-from app.infrastructure.tasks import create_safe_task
 from app.services.shell.session_manager import shell_manager
+from spectra_common.tasks import create_safe_task
 
 logger = logging.getLogger(__name__)
 

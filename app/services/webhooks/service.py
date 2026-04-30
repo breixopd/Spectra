@@ -89,7 +89,7 @@ class WebhookService:
         hooks = result.scalars().all()
         for wh in hooks:
             if event in (wh.events or []):
-                from app.infrastructure.tasks import create_safe_task
+                from spectra_common.tasks import create_safe_task
 
                 create_safe_task(_deliver(wh, event, payload), name=f"webhook-{wh.id}")
 
