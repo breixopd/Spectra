@@ -1,6 +1,6 @@
 """Unit tests for GZip compression middleware.
 
-Verifies that the GZipMiddleware configured in app.main compresses
+Verifies that the GZipMiddleware configured in spectra_api.factory compresses
 responses that exceed the minimum_size threshold (1000 bytes).
 """
 
@@ -11,7 +11,7 @@ from httpx import ASGITransport, AsyncClient
 
 @pytest_asyncio.fixture
 async def client():
-    from app.main import app
+    from spectra_api.main import app
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:

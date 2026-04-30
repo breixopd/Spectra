@@ -1,6 +1,6 @@
 """Unit tests for the request body size limit middleware.
 
-Validates that the http middleware in app.main rejects oversized
+Validates that the http middleware in spectra_api.factory rejects oversized
 requests with 413 and passes normal-sized requests through.
 """
 
@@ -15,7 +15,7 @@ from httpx import ASGITransport, AsyncClient
 
 @pytest_asyncio.fixture
 async def client():
-    from app.main import app
+    from spectra_api.main import app
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
@@ -70,12 +70,13 @@ async def test_configurable_limit():
 @pytest.mark.asyncio
 async def test_api_429_handler_preserves_non_slowapi_detail_and_headers():
     """Non-SlowAPI 429 responses should keep their original detail and headers."""
-    from app.main import _make_error_handler
+    from app.bootstrap.templates import templates
+    from spectra_api.errors import make_error_handler
 
     request = MagicMock()
     request.url.path = "/api/test"
 
-    handler = _make_error_handler(429, "Too many requests", "errors/429.html")
+    handler = make_error_handler(templates, 429, "Too many requests", "errors/429.html")
     exc = HTTPException(
         status_code=429,
         detail={"detail": "Hourly API limit reached: 100/100", "error_code": "RATE_LIMITED", "status": 429},

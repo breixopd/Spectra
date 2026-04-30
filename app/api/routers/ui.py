@@ -287,7 +287,7 @@ async def api_docs_page(
         return RedirectResponse(url="/login", status_code=303)
     is_admin = _is_admin_user(current_user)
 
-    from app.main import app as fastapi_app
+    fastapi_app = request.app
 
     routes = []
     for route in fastapi_app.routes:

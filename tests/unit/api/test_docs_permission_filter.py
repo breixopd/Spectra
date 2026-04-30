@@ -47,6 +47,9 @@ class TestDocsAdminVisibility:
             _make_mock_route("/api/admin/users", "list_users"),
         ]
 
+        mock_req = MagicMock()
+        mock_req.app = _mock_app_with_routes(mock_routes)
+
         with (
             patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "admin", "sub": "admin"}),
             patch(
@@ -57,10 +60,9 @@ class TestDocsAdminVisibility:
             patch("app.api.routers.ui._is_admin_user", return_value=True),
             patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="admin", is_superuser=True)),
             patch("app.api.routers.ui.templates") as mock_tmpl,
-            patch("app.main.app", _mock_app_with_routes(mock_routes)),
         ):
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
-            await api_docs_page(MagicMock())
+            await api_docs_page(mock_req)
 
         context = _template_context(mock_tmpl)
         groups = context["route_groups"]
@@ -75,6 +77,9 @@ class TestDocsAdminVisibility:
             _make_mock_route("/api/admin/users", "list_users"),
         ]
 
+        mock_req = MagicMock()
+        mock_req.app = _mock_app_with_routes(mock_routes)
+
         with (
             patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "user", "sub": "user"}),
             patch(
@@ -85,10 +90,9 @@ class TestDocsAdminVisibility:
             patch("app.api.routers.ui._is_admin_user", return_value=False),
             patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="user", is_superuser=False)),
             patch("app.api.routers.ui.templates") as mock_tmpl,
-            patch("app.main.app", _mock_app_with_routes(mock_routes)),
         ):
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
-            await api_docs_page(MagicMock())
+            await api_docs_page(mock_req)
 
         context = _template_context(mock_tmpl)
         groups = context["route_groups"]
@@ -104,6 +108,9 @@ class TestDocsAdminVisibility:
             _make_mock_route("/api/admin/settings", "admin_settings"),
         ]
 
+        mock_req = MagicMock()
+        mock_req.app = _mock_app_with_routes(mock_routes)
+
         with (
             patch("app.api.routers.ui.get_ui_user", return_value={"id": 2, "role": "staff", "sub": "staff"}),
             patch(
@@ -114,10 +121,9 @@ class TestDocsAdminVisibility:
             patch("app.api.routers.ui._is_admin_user", return_value=False),
             patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="staff", is_superuser=False)),
             patch("app.api.routers.ui.templates") as mock_tmpl,
-            patch("app.main.app", _mock_app_with_routes(mock_routes)),
         ):
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
-            await api_docs_page(MagicMock())
+            await api_docs_page(mock_req)
 
         context = _template_context(mock_tmpl)
         groups = context["route_groups"]
@@ -135,6 +141,9 @@ class TestDocsAdminVisibility:
             _make_mock_route("/api/admin/audit-logs", "list_audit_logs"),
         ]
 
+        mock_req = MagicMock()
+        mock_req.app = _mock_app_with_routes(mock_routes)
+
         with (
             patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "admin", "sub": "admin"}),
             patch(
@@ -145,10 +154,9 @@ class TestDocsAdminVisibility:
             patch("app.api.routers.ui._is_admin_user", return_value=True),
             patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="admin", is_superuser=True)),
             patch("app.api.routers.ui.templates") as mock_tmpl,
-            patch("app.main.app", _mock_app_with_routes(mock_routes)),
         ):
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
-            await api_docs_page(MagicMock())
+            await api_docs_page(mock_req)
 
         context = _template_context(mock_tmpl)
         groups = context["route_groups"]

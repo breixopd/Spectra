@@ -31,6 +31,7 @@ class TestApiDocsRoute:
         mock_route.tags = []
         mock_route.dependant = MagicMock(path_params=[], query_params=[])
         mock_app.routes = [mock_route]
+        mock_request.app = mock_app
 
         with (
             patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "username": "admin", "sub": "admin"}),
@@ -46,8 +47,7 @@ class TestApiDocsRoute:
                 mock_response.status_code = 200
                 mock_templates.TemplateResponse.return_value = mock_response
 
-                with patch("app.main.app", mock_app):
-                    result = await api_docs_page(mock_request)
+                result = await api_docs_page(mock_request)
 
                 assert result.status_code == 200
                 mock_templates.TemplateResponse.assert_called_once()
@@ -94,6 +94,7 @@ class TestApiDocsRoute:
 
         mock_app = MagicMock()
         mock_app.routes = [mock_route1, mock_route2]
+        mock_request.app = mock_app
 
         with (
             patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "admin", "sub": "admin"}),
@@ -105,7 +106,6 @@ class TestApiDocsRoute:
             patch("app.api.routers.ui._is_admin_user", return_value=True),
             patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="admin", is_superuser=True)),
             patch("app.api.routers.ui.templates") as mock_templates,
-            patch("app.main.app", mock_app),
         ):
             mock_templates.TemplateResponse.return_value = MagicMock(status_code=200)
             await api_docs_page(mock_request)
@@ -140,6 +140,7 @@ class TestApiDocsRoute:
 
         mock_app = MagicMock()
         mock_app.routes = [mock_route1, mock_route2]
+        mock_request.app = mock_app
 
         with (
             patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "user", "sub": "user"}),
@@ -151,7 +152,6 @@ class TestApiDocsRoute:
             patch("app.api.routers.ui._is_admin_user", return_value=False),
             patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="user", is_superuser=False)),
             patch("app.api.routers.ui.templates") as mock_templates,
-            patch("app.main.app", mock_app),
         ):
             mock_templates.TemplateResponse.return_value = MagicMock(status_code=200)
             await api_docs_page(mock_request)

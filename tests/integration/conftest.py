@@ -68,7 +68,7 @@ def _mock_db_session():
     is not running.
     """
     from app.core.database import get_async_session
-    from app.main import app
+    from spectra_api.main import app
 
     mock_session = AsyncMock()
     # SELECT 1 for health check

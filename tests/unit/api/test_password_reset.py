@@ -58,7 +58,7 @@ def _build_test_client():
     from fastapi.testclient import TestClient
 
     from app.core.database import get_async_session
-    from app.main import app
+    from spectra_api.main import app
 
     mock_session = _mock_async_session()
 
@@ -92,7 +92,7 @@ class TestForgotPasswordEndpoint:
                 )
             assert resp.status_code == 204
         finally:
-            from app.main import app
+            from spectra_api.main import app
 
             app.dependency_overrides.clear()
 
@@ -110,7 +110,7 @@ class TestForgotPasswordEndpoint:
                 )
             assert resp.status_code == 204
         finally:
-            from app.main import app
+            from spectra_api.main import app
 
             app.dependency_overrides.clear()
 
@@ -140,7 +140,7 @@ class TestResetPasswordEndpoint:
             assert resp.status_code == 200
             assert "reset" in resp.json().get("message", "").lower()
         finally:
-            from app.main import app
+            from spectra_api.main import app
 
             app.dependency_overrides.clear()
 
@@ -155,7 +155,7 @@ class TestResetPasswordEndpoint:
                 )
             assert resp.status_code == 400
         finally:
-            from app.main import app
+            from spectra_api.main import app
 
             app.dependency_overrides.clear()
 
@@ -173,6 +173,6 @@ class TestResetPasswordEndpoint:
                 )
             assert resp.status_code == 400
         finally:
-            from app.main import app
+            from spectra_api.main import app
 
             app.dependency_overrides.clear()

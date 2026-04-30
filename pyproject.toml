@@ -79,6 +79,7 @@ ignore = [
 known-first-party = [
     "app",
     "scripts",
+    "spectra_api",
     "spectra_ai",
     "spectra_common",
     "spectra_domain",
@@ -129,7 +130,7 @@ addopts = [
     "--cov-fail-under=70",
 ]
 filterwarnings = []
-pythonpath = [".", "services/ai/src"]
+pythonpath = [".", "services/ai/src", "services/api/src"]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
 

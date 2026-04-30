@@ -15,7 +15,7 @@ from fastapi.routing import APIRoute
 
 
 def _registered_paths():
-    from app.main import app
+    from spectra_api.main import app
 
     return {route.path for route in app.routes if isinstance(route, APIRoute)}
 
@@ -64,7 +64,7 @@ class TestPublicStatusApi:
     def test_public_status_route_has_no_auth_dependency(self):
         """The public-status route must not require get_current_active_user."""
         from app.api.dependencies import get_current_active_user
-        from app.main import app
+        from spectra_api.main import app
 
         routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path == "/api/v1/system/public-status"]
         assert routes, "Route not found"

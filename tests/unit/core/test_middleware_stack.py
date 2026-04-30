@@ -293,12 +293,12 @@ class TestCorrelationIdMiddleware:
 
 
 class TestBodySizeLimiterMiddleware:
-    """Verify the request body size limiter from app.main."""
+    """Verify the request body size limiter defined in spectra_api.factory."""
 
     @pytest_asyncio.fixture
     async def client(self):
         """Use the real app so the inline http middleware is included."""
-        from app.main import app
+        from spectra_api.main import app
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as c:
