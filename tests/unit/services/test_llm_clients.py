@@ -259,7 +259,7 @@ class TestGetDefaultLLMClient:
         mock_settings.TENSORZERO_GATEWAY_URL = "http://tensorzero:3000"
         mock_settings.LLM_TIMEOUT = 600.0
 
-        with patch("spectra_ai.settings.get_ai_settings", return_value=mock_settings):
+        with patch("spectra_ai.llm.get_ai_settings", return_value=mock_settings):
             client = get_default_llm_client()
             from spectra_ai.router import TensorZeroRouter
 
@@ -270,7 +270,7 @@ class TestGetDefaultLLMClient:
         mock_settings.TENSORZERO_GATEWAY_URL = ""
         mock_settings.LLM_TIMEOUT = 600.0
 
-        with patch("spectra_ai.settings.get_ai_settings", return_value=mock_settings):
+        with patch("spectra_ai.llm.get_ai_settings", return_value=mock_settings):
             with pytest.raises((ValueError, RuntimeError)):
                 get_default_llm_client()
 

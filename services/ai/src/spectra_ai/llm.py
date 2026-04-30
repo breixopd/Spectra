@@ -284,15 +284,17 @@ def get_default_llm_client() -> LLMClient:
     Uses TensorZero gateway for all LLM routing.
     """
 
-    from spectra_ai.router import create_smart_router
+    settings = get_ai_settings()
+    gateway_url = settings.TENSORZERO_GATEWAY_URL
+    if not gateway_url:
+        raise ValueError(
+            "TENSORZERO_GATEWAY_URL is not configured. "
+            "Set it to the TensorZero gateway address (e.g., http://tensorzero:3000)"
+        )
 
-    try:
-        client = create_smart_router()
-        logger.info("Using TensorZero smart router (provider=tensorzero)")
-        return client
-    except (OSError, RuntimeError, ValueError) as e:
-        logger.error("Smart router init failed: %s", e)
-        raise
+    client = get_llm_client(gateway_url=gateway_url)
+    logger.info("Using TensorZero smart router (provider=tensorzero)")
+    return client
 
 
 # Global singleton

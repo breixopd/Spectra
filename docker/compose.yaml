@@ -418,7 +418,7 @@ services:
       - CHOWN
       - DAC_OVERRIDE
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5011/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5011/healthz"]
       interval: 10s
       timeout: 5s
       retries: 5
