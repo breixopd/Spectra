@@ -7,9 +7,8 @@ import logging
 from collections.abc import Coroutine
 from typing import Any
 
-from spectra_common.constants import MAX_CONCURRENT_MISSIONS
-
 from app.services.mission.mission import Mission
+from spectra_common.constants import MAX_CONCURRENT_MISSIONS
 
 from . import execution, lifecycle, steering
 from .execution import MissionExecutionManager

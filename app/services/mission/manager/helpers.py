@@ -7,19 +7,18 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any
 
-from spectra_common.constants import (
-    DEBRIEF_MAX_FINDINGS,
-    DEBRIEF_MAX_LOGS,
-    DEBRIEF_SUMMARY_LOG_CHARS,
-    MISSION_TIMEOUT_SECONDS,
-)
-
 from app.services.ai.agents.base import AgentContext, SteeringAction
 from app.services.ai.agents.mission_controller import (
     MissionInput,
     MissionPlan,
 )
 from app.services.ai.consensus import QualityGate, VotingSystem
+from spectra_common.constants import (
+    DEBRIEF_MAX_FINDINGS,
+    DEBRIEF_MAX_LOGS,
+    DEBRIEF_SUMMARY_LOG_CHARS,
+    MISSION_TIMEOUT_SECONDS,
+)
 
 if TYPE_CHECKING:
     from app.services.ai.agents.mission_controller import MissionController

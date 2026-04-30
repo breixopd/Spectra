@@ -290,7 +290,10 @@ IMPORTANT OPERATIONAL GUIDELINES:
                         temperature=0.4,
                         max_tokens=4096,
                     )
-                    return self._enforce_directive_constraints(plan, input_data)
+                    plan = self._enforce_directive_constraints(plan, input_data)
+                    if not plan.tasks:
+                        raise ValueError("LLM returned an empty mission plan")
+                    return plan
                 except (OSError, RuntimeError, ValueError, TimeoutError) as e:
                     logger.warning("Plan generation attempt %d failed: %s", attempt + 1, e)
                     if attempt == max_retries - 1:
@@ -324,42 +327,10 @@ IMPORTANT OPERATIONAL GUIDELINES:
                 plan.mission_type = MissionType.VULN_SCAN
 
         if any(marker in constraints for marker in quick_markers):
-            plan.tasks = self._default_assessment_tasks(constraints)
-            plan.reasoning = "Quick validation requested; using deterministic baseline assessment workflow."
-            plan.estimated_duration_minutes = 15
-
-        if not plan.tasks:
-            plan.tasks = self._default_assessment_tasks(constraints)
-            plan.reasoning = "LLM returned an empty plan; using deterministic baseline assessment workflow."
-            plan.estimated_duration_minutes = min(max(plan.estimated_duration_minutes, 20), 45)
-            if plan.mission_type == MissionType.CUSTOM:
-                plan.mission_type = MissionType.FULL_ASSESSMENT
+            plan.reasoning = f"{plan.reasoning} Quick validation requested; preserving LLM-authored tasks."
+            plan.estimated_duration_minutes = min(plan.estimated_duration_minutes, 15)
 
         return plan
-
-    def _default_assessment_tasks(self, constraints: str) -> list[Task]:
-        """Return a safe baseline plan when model output omits executable tasks."""
-        tasks = [
-            Task(
-                task_id="baseline-discovery",
-                description="Discover exposed services and versions with nmap",
-                agent_type="tool_selector",
-                phase=AssessmentPhase.DISCOVERY,
-                priority=1,
-                parameters={"tool_hint": "nmap"},
-            ),
-            Task(
-                task_id="baseline-vuln-scan",
-                description="Assess discovered services for common vulnerabilities",
-                agent_type="tool_selector",
-                phase=AssessmentPhase.VULNERABILITY,
-                priority=2,
-                dependencies=["baseline-discovery"],
-                parameters={"tool_hint": "nikto" if "web" in constraints else "nmap"},
-            ),
-        ]
-
-        return tasks
 
     async def _handle_steering(
         self,

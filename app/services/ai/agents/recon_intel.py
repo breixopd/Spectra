@@ -14,15 +14,6 @@ from typing import Any, Literal
 
 import httpx
 from pydantic import BaseModel, Field
-from spectra_common.constants import (
-    CISA_KEV_URL,
-    CVE_CACHE_TTL,
-    EPSS_API_URL,
-    EXTERNAL_HTTP_TIMEOUT,
-    NVD_API_BASE_URL,
-    NVD_RATE_LIMIT_DELAY,
-    NVD_RATE_LIMIT_DELAY_WITH_KEY,
-)
 
 from app.services.ai.agents.base import (
     ActionRisk,
@@ -33,6 +24,15 @@ from app.services.ai.agents.base import (
     AgentRole,
 )
 from app.services.ai.agents.registry import register_agent
+from spectra_common.constants import (
+    CISA_KEV_URL,
+    CVE_CACHE_TTL,
+    EPSS_API_URL,
+    EXTERNAL_HTTP_TIMEOUT,
+    NVD_API_BASE_URL,
+    NVD_RATE_LIMIT_DELAY,
+    NVD_RATE_LIMIT_DELAY_WITH_KEY,
+)
 
 logger = logging.getLogger(__name__)
 

@@ -3,9 +3,9 @@
 from unittest.mock import AsyncMock
 
 import pytest
-from spectra_common.constants import MISSION_TIMEOUT_SECONDS
 
 from app.services.ai.context import truncate_for_llm
+from spectra_common.constants import MISSION_TIMEOUT_SECONDS
 
 # ---------------------------------------------------------------------------
 # Fix #4: Port extraction (rsplit for IPv6 safety)

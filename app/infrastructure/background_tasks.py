@@ -10,12 +10,12 @@ import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from spectra_common.constants import CACHE_CLEANUP_INTERVAL, SYSTEM_CLEANUP_INTERVAL
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import settings
 from app.core.database import async_session_maker
+from spectra_common.constants import CACHE_CLEANUP_INTERVAL, SYSTEM_CLEANUP_INTERVAL
 
 if TYPE_CHECKING:
     pass

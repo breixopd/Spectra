@@ -9,8 +9,9 @@ import ipaddress
 import logging
 
 import aiohttp
-from spectra_common.constants import GEOIP_API_URL, GEOIP_TIMEOUT
 from typing_extensions import TypedDict
+
+from spectra_common.constants import GEOIP_API_URL, GEOIP_TIMEOUT
 
 logger = logging.getLogger(__name__)
 

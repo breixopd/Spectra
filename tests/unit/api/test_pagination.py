@@ -3,9 +3,9 @@ Tests for PaginatedResponse schema and pagination logic.
 """
 
 from fastapi import Query
-from spectra_common.constants import API_DEFAULT_PAGE_SIZE, API_MAX_PAGE_SIZE
 
 from app.api.schemas import PaginatedResponse
+from spectra_common.constants import API_DEFAULT_PAGE_SIZE, API_MAX_PAGE_SIZE
 
 
 class TestPaginatedResponse:

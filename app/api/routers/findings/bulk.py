@@ -10,7 +10,6 @@ from io import StringIO
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import Response as FastAPIResponse
 from pydantic import BaseModel, Field
-from spectra_common.constants import MAX_BULK_FINDINGS, MAX_EXPORT_ROWS
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
@@ -21,6 +20,7 @@ from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.repositories.finding import FindingRepository
 from app.services.system.audit import log_event as audit_log_event
+from spectra_common.constants import MAX_BULK_FINDINGS, MAX_EXPORT_ROWS
 
 logger = logging.getLogger(__name__)
 

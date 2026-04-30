@@ -9,8 +9,6 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
-from spectra_common.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
-from spectra_common.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -24,6 +22,8 @@ from app.models.user import User
 from app.repositories.finding import FindingRepository
 from app.repositories.target import TargetRepository
 from app.services.system.audit import log_event as audit_log_event
+from spectra_common.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
+from spectra_common.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 
 logger = logging.getLogger(__name__)
 

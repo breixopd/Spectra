@@ -19,6 +19,7 @@ import time
 from typing import Any
 
 from fastapi import WebSocket
+
 from spectra_common.constants import SHELL_SOCKET_RECV_BYTES
 
 logger = logging.getLogger(__name__)

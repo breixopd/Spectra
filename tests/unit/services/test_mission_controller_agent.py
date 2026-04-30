@@ -406,6 +406,31 @@ class TestCreateMissionPlan:
             with pytest.raises((RuntimeError, LLMParseError)):
                 await controller._create_mission_plan(context, input_data)
 
+    @pytest.mark.asyncio
+    async def test_empty_llm_plan_retries_then_fails(self, controller, context):
+        """Autonomous planning rejects empty LLM plans instead of using a hardcoded fallback."""
+        input_data = MissionInput(directive="Quick scan")
+        empty_plan = MissionPlan(reasoning="empty", tasks=[])
+        controller._llm_generate_structured = AsyncMock(return_value=empty_plan)
+
+        with (
+            patch(
+                "app.services.ai.knowledge.get_available_tools_context",
+                new_callable=AsyncMock,
+                return_value="tools",
+            ),
+            patch(
+                "app.services.ai.knowledge.get_mission_context",
+                new_callable=AsyncMock,
+                return_value="ctx",
+            ),
+            patch("app.services.ai.knowledge.get_full_methodology", return_value="method"),
+        ):
+            with pytest.raises(LLMParseError):
+                await controller._create_mission_plan(context, input_data)
+
+        assert controller._llm_generate_structured.await_count == 3
+
 
 # ---------------------------------------------------------------------------
 # _handle_phase_transition

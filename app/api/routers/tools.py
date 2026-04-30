@@ -620,24 +620,32 @@ async def disable_tool(
 async def remove_tool(
     request: Request,
     response: Response,
+    background_tasks: BackgroundTasks,
     tool_id: str,
     registry: ToolRegistry = Depends(get_tool_registry),
     _current_user: User = Depends(get_current_superuser),
 ):
-    """Remove a tool plugin from the registry."""
+    """Remove a tool plugin and queue a golden-image rebuild without the plugin."""
     success = await registry.remove_plugin(tool_id)
 
     if not success:
         raise HTTPException(status_code=404, detail=f"Tool not found: {tool_id}")
 
+    _queue_background_job(
+        background_tasks,
+        WorkerJobName.BUILD_GOLDEN_IMAGE,
+        success_log=f"Queued golden image rebuild after removing {tool_id}",
+        failure_log=f"Failed to queue golden image rebuild after removing {tool_id}",
+    )
+    await events.emit(EventType.PLUGIN_UPDATED, source="tools", tool_id=tool_id, action="removed")
     await _write_tool_audit_event(
         AuditEventType.TOOL_REMOVED,
         str(_current_user.id),
         request,
-        {"tool_id": tool_id},
+        {"tool_id": tool_id, "golden_image_rebuild": "queued"},
     )
 
-    return ToolRemoveResponse(success=True, message=f"Tool '{tool_id}' removed")
+    return ToolRemoveResponse(success=True, message=f"Tool '{tool_id}' removed; golden image rebuild queued")
 
 
 @router.get("/for-ai", response_model=list[dict])
