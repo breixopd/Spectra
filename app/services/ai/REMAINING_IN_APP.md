@@ -1,7 +1,7 @@
 # What stays under `app.services.ai`
 
 Mission agents (`agents/`), **consensus**, **context**, **memory**, **knowledge** (facade),
-**playbook**, **CVE intel**, **adaptive** flows, **blackboard**, **event_bus**, etc. remain here
+**playbook**, **CVE intel**, **blackboard**, **event_bus**, etc. remain here
 because they depend on `app` models, repositories, mission runtime, or tool dispatch.
 
 The **AI runtime** (TensorZero router, embedding + RAG engine, LLM client base, shared prompts,

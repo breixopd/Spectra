@@ -179,15 +179,22 @@ async def get_mission_context(
     directive: str,
     target: str | None = None,
     max_tokens: int = 800,
+    *,
+    user_id: str | None = None,
+    exclude_session_id: str | None = None,
 ) -> str:
-    """Get relevant past missions from knowledge base."""
+    """Get relevant past missions from knowledge base (same-user RAG rows only when user_id is set)."""
     try:
         rag = await get_rag_service()
 
         query = f"{directive} {target or ''}"
 
         context = await rag.get_context_for_prompt(
-            query=query, max_tokens=max_tokens, doc_types=["exploit_success", "finding"]
+            query=query,
+            max_tokens=max_tokens,
+            doc_types=["exploit_success", "finding", "mission_summary", "lesson"],
+            user_id=user_id,
+            exclude_session_id=exclude_session_id,
         )
 
         if context:

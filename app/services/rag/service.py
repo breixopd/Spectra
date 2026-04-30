@@ -70,6 +70,7 @@ class RAGFacade:
         output: str,
         *,
         target: str | None = None,
+        user_id: str | None = None,
     ) -> bool:
         """Index a tool's scan output for later retrieval.
 
@@ -95,7 +96,8 @@ class RAGFacade:
             doc_type="tool_output",
             target=target,
             session_id=mission_id,
-            metadata={"tool": tool_name, "mission_id": mission_id},
+            metadata={"tool": tool_name, "mission_id": mission_id}
+            | ({"user_id": user_id} if user_id else {}),
         )
         rag = await self._rag()
         return await rag.index_document(doc)
@@ -105,6 +107,7 @@ class RAGFacade:
         finding: dict[str, Any],
         *,
         mission_id: str | None = None,
+        user_id: str | None = None,
     ) -> bool:
         """Index a vulnerability finding for later retrieval.
 
@@ -137,10 +140,13 @@ class RAGFacade:
             severity=severity,
             target=host if host != "unknown" else None,
             session_id=mission_id,
-            metadata={
-                "tool": tool,
-                "template_id": finding.get("template-id"),
-            },
+            metadata=(
+                {
+                    "tool": tool,
+                    "template_id": finding.get("template-id"),
+                }
+                | ({"user_id": user_id} if user_id else {})
+            ),
         )
         rag = await self._rag()
         return await rag.index_document(doc)

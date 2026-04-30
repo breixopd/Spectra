@@ -131,13 +131,12 @@ async def export_training_data(
     format: str = Query("jsonl", pattern="^(jsonl|json)$"),
     sample_type: str | None = Query(None),
     min_quality: float = Query(0.0, ge=0.0, le=1.0),
-    approved_only: bool = Query(True),
     _user: User = require_permission(Permission.MANAGE_SETTINGS),
     session: AsyncSession = Depends(get_async_session),
 ) -> StreamingResponse:
-    """Export approved training data for fine-tuning."""
+    """Export approved-only training data for fine-tuning (unapproved rows are never exported)."""
     types = [sample_type] if sample_type else None
-    samples = await export_dataset(session, sample_types=types, min_quality=min_quality, approved_only=approved_only)
+    samples = await export_dataset(session, sample_types=types, min_quality=min_quality, approved_only=True)
 
     if format == "jsonl":
         lines = [json.dumps(s, default=str) + "\n" for s in samples]

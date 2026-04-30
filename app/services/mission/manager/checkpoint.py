@@ -75,12 +75,13 @@ async def index_to_rag(mission: Mission) -> None:
 
         facade = get_rag_facade()
         mission_id = str(mission.id)
+        uid = str(mission.user_id) if mission.user_id else None
         indexed = 0
 
         # Index findings via facade (max 20)
         for finding in mission.findings[:20]:
             finding_with_host = {**finding, "host": finding.get("host", mission.target)}
-            if await facade.index_finding(finding_with_host, mission_id=mission_id):
+            if await facade.index_finding(finding_with_host, mission_id=mission_id, user_id=uid):
                 indexed += 1
 
         # Index tool outputs via facade (max 10 tools)
@@ -90,6 +91,7 @@ async def index_to_rag(mission: Mission) -> None:
                 tool_name=tool_name,
                 output=f"Tool {tool_name} executed against {mission.target}",
                 target=mission.target,
+                user_id=uid,
             )
             indexed += 1
 
@@ -112,6 +114,7 @@ async def index_to_rag(mission: Mission) -> None:
                     metadata={
                         "target_type": vector.target_type,
                         "tool": tool,
+                        **({"user_id": uid} if uid else {}),
                     },
                 )
                 await rag.index_document(doc)
@@ -130,6 +133,7 @@ async def index_to_rag(mission: Mission) -> None:
             doc_type="mission_summary",
             target=mission.target,
             session_id=mission_id,
+            metadata={**({"user_id": uid} if uid else {})},
         )
         await rag.index_document(doc)
         indexed += 1
@@ -143,7 +147,7 @@ async def index_to_rag(mission: Mission) -> None:
                 doc_type="lesson",
                 target=mission.target,
                 session_id=mission_id,
-                metadata={"source": "debrief", "mission_id": mission_id},
+                metadata={"source": "debrief", "mission_id": mission_id, **({"user_id": uid} if uid else {})},
             )
             await rag.index_document(doc)
             indexed += 1
