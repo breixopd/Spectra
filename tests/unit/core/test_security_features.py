@@ -8,12 +8,6 @@ import pytest
 from fastapi import HTTPException
 from jwt.exceptions import InvalidTokenError as JWTError
 
-from spectra_api.api.routers.auth._helpers import (
-    LOCKOUT_THRESHOLD_1,
-    LOCKOUT_THRESHOLD_2,
-    _check_lockout,
-    _record_failure,
-)
 from app.auth.security import (
     _blacklisted_tokens,
     _user_token_blacklist,
@@ -24,6 +18,12 @@ from app.auth.security import (
     is_token_blacklisted,
 )
 from app.mission.core.websocket import ConnectionManager
+from spectra_api.api.routers.auth._helpers import (
+    LOCKOUT_THRESHOLD_1,
+    LOCKOUT_THRESHOLD_2,
+    _check_lockout,
+    _record_failure,
+)
 
 
 @pytest.fixture(autouse=True)

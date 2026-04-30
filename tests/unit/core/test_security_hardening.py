@@ -30,7 +30,6 @@ from app.auth.encryption import (
     encrypt_sensitive_fields,
     is_sensitive_key,
 )
-from spectra_api.authz import ROLE_PERMISSIONS, Permission, has_permission, require_permission
 from app.models.user import User
 from app.services.ai.agents.post_exploitation import (
     POST_EXPLOIT_TOOLS,
@@ -40,6 +39,7 @@ from app.services.ai.agents.post_exploitation import (
     _detect_os,
 )
 from app.services.mission.mission import Mission
+from spectra_api.authz import ROLE_PERMISSIONS, Permission, has_permission, require_permission
 
 # ============================================================================
 # SEC-001: RBAC Tests

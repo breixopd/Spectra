@@ -27,8 +27,8 @@ def _fake_user(role: str = "admin", user_id: str = "00000000-0000-4000-a000-0000
 
 
 def _override_deps(app: FastAPI, user, mock_session):
-    from spectra_api.api.dependencies import get_current_active_user
     from app.core.database import get_async_session
+    from spectra_api.api.dependencies import get_current_active_user
 
     app.dependency_overrides[get_current_active_user] = lambda: user
 

@@ -198,8 +198,8 @@ async def test_get_current_user_rejects_token_without_type():
     import jwt
     from fastapi import HTTPException
 
-    from spectra_api.api.dependencies import get_current_user
     from app.core.config import settings
+    from spectra_api.api.dependencies import get_current_user
 
     payload = {
         "sub": "legacyuser",

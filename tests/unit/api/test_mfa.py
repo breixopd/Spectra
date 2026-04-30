@@ -186,9 +186,9 @@ async def test_login_with_mfa_returns_token_after_verify(mock_session):
     """After MFA verify, a full access token should be returned."""
     from datetime import timedelta
 
+    from app.auth.security import create_access_token, decode_token
     from spectra_api.api.routers.auth.totp import mfa_verify_login
     from spectra_api.api.schemas.auth import MFAVerifyRequest
-    from app.auth.security import create_access_token, decode_token
 
     secret = pyotp.random_base32()
     encrypted = encrypt_mfa_secret(secret)
@@ -312,10 +312,10 @@ async def test_mfa_verify_login_rejects_replayed_code(mock_session):
 
     from fastapi import HTTPException
 
+    from app.auth.security import create_access_token
     from spectra_api.api.routers.auth._helpers import _used_totp_codes
     from spectra_api.api.routers.auth.totp import mfa_verify_login
     from spectra_api.api.schemas.auth import MFAVerifyRequest
-    from app.auth.security import create_access_token
 
     _used_totp_codes.clear()
     secret = pyotp.random_base32()

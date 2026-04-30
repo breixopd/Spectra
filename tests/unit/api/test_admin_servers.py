@@ -229,8 +229,8 @@ class TestDeployToNode:
 
     @pytest.mark.asyncio
     async def test_forwards_pinned_known_host_from_node_metadata(self):
-        from spectra_api.api.routers.admin.servers import deploy_to_node
         from app.services.infrastructure.deploy import DeploymentStatus, DeployResult
+        from spectra_api.api.routers.admin.servers import deploy_to_node
 
         node = MagicMock()
         node.id = 42
@@ -316,8 +316,8 @@ class TestProvisioningEndpointKnownHostForwarding:
 
     @pytest.mark.asyncio
     async def test_provision_forwards_pinned_known_host(self):
-        from spectra_api.api.routers.admin.servers import ProvisionRequest, provision_server
         from app.services.provisioning.provisioner import ProvisioningResult
+        from spectra_api.api.routers.admin.servers import ProvisionRequest, provision_server
 
         provisioner = MagicMock()
         provisioner.provision = AsyncMock(
@@ -362,8 +362,8 @@ class TestProvisioningEndpointKnownHostForwarding:
 
     @pytest.mark.asyncio
     async def test_deprovision_forwards_pinned_known_host(self):
-        from spectra_api.api.routers.admin.servers import DeprovisionRequest, deprovision_server
         from app.services.provisioning.provisioner import ProvisioningResult
+        from spectra_api.api.routers.admin.servers import DeprovisionRequest, deprovision_server
 
         provisioner = MagicMock()
         provisioner.deprovision = AsyncMock(
