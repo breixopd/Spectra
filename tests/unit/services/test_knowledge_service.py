@@ -298,6 +298,25 @@ class TestGetMissionContext:
         assert "10.0.0.0/24" in query
 
     @pytest.mark.asyncio
+    async def test_passes_user_and_exclude_session_to_rag(self, mock_rag_service):
+        mock_rag_service.get_context_for_prompt.return_value = ""
+
+        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+            await get_mission_context(
+                "directive",
+                target="t.example",
+                user_id="user-1",
+                exclude_session_id="mission-99",
+            )
+
+        mock_rag_service.get_context_for_prompt.assert_awaited_once()
+        kwargs = mock_rag_service.get_context_for_prompt.call_args.kwargs
+        assert kwargs["user_id"] == "user-1"
+        assert kwargs["exclude_session_id"] == "mission-99"
+        assert "mission_summary" in kwargs["doc_types"]
+        assert "lesson" in kwargs["doc_types"]
+
+    @pytest.mark.asyncio
     async def test_without_target(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = "context"
 

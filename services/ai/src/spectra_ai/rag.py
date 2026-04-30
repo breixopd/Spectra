@@ -337,7 +337,10 @@ class RAGService:
         query: str,
         top_k: int | None = None,
         doc_type: str | None = None,
+        doc_types: list[str] | None = None,
         filters: dict[str, str] | None = None,
+        user_id: str | None = None,
+        exclude_session_id: str | None = None,
     ) -> list[SearchResult]:
         """Search for similar documents using cosine similarity."""
         if not self._table_ready:
@@ -347,7 +350,9 @@ class RAGService:
             logger.warning("RAG search skipped: embedding API not configured")
             return []
 
-        top_k = top_k or self.config.default_top_k
+        want = top_k or self.config.default_top_k
+        # Oversample when min_score prunes rows so LIMIT is not applied only to globally top-k neighbors.
+        sql_limit = max(want * 6, 48) if self.config.min_score > 0 else want
 
         try:
             query_embedding = await self.embeddings.embed(query)
@@ -356,7 +361,13 @@ class RAGService:
             where_clauses: list[str] = []
             params: dict[str, Any] = {}
 
-            if doc_type:
+            effective_types = doc_types if doc_types else None
+            if effective_types:
+                placeholders = ", ".join(f":dt_{i}" for i in range(len(effective_types)))
+                where_clauses.append(f"doc_type IN ({placeholders})")
+                for i, dt in enumerate(effective_types):
+                    params[f"dt_{i}"] = dt
+            elif doc_type:
                 where_clauses.append("doc_type = :doc_type")
                 params["doc_type"] = doc_type
 
@@ -370,6 +381,14 @@ class RAGService:
                 where_clauses.append(f"{field} = :{placeholder}")
                 params[placeholder] = value
 
+            if user_id:
+                where_clauses.append("(metadata->>'user_id') = :rag_user_id")
+                params["rag_user_id"] = user_id
+
+            if exclude_session_id:
+                where_clauses.append("(session_id IS NULL OR session_id <> :rag_exclude_session)")
+                params["rag_exclude_session"] = exclude_session_id
+
             where_sql = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
 
             # Native pgvector search — O(log N) with HNSW index
@@ -382,10 +401,10 @@ class RAGService:
                 {where_sql}
                 {extra_where} embedding IS NOT NULL
                 ORDER BY embedding <=> CAST(:q_emb AS vector)
-                LIMIT :top_k
+                LIMIT :sql_limit
             """
             params["q_emb"] = embedding_str
-            params["top_k"] = top_k
+            params["sql_limit"] = sql_limit
 
             async with get_async_session_maker()() as session:
                 await session.execute(text("SET hnsw.ef_search = 60"))
@@ -411,6 +430,8 @@ class RAGService:
                         score=similarity,
                     )
                 )
+                if len(results) >= want:
+                    break
             return results
         except (OSError, RuntimeError, ValueError) as e:
             logger.error("Postgres RAG search failed: %s", e)
@@ -522,11 +543,16 @@ class RAGService:
         query: str,
         max_tokens: int = 2000,
         doc_types: list[str] | None = None,
+        user_id: str | None = None,
+        exclude_session_id: str | None = None,
     ) -> str:
-        results = await self.search(query, top_k=10)
-        if doc_types:
-            doc_types_set = set(doc_types)
-            results = [r for r in results if r.document.doc_type in doc_types_set]
+        results = await self.search(
+            query,
+            top_k=10,
+            doc_types=doc_types,
+            user_id=user_id,
+            exclude_session_id=exclude_session_id,
+        )
 
         context_parts = []
         current_length = 0

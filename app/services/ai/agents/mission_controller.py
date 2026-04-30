@@ -201,7 +201,12 @@ class MissionController(Agent[MissionInput, MissionPlan | PhaseTransition | Stee
         tools_context = await get_available_tools_context(grouped=True)
 
         # Get RAG context for similar past missions using centralized service
-        rag_context = await get_mission_context(input_data.directive, context.target)
+        rag_context = await get_mission_context(
+            input_data.directive,
+            context.target,
+            user_id=context.user_id,
+            exclude_session_id=context.mission_id,
+        )
 
         # Get full methodology using centralized service
         methodology_summary = get_full_methodology()

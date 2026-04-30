@@ -35,6 +35,10 @@ logger = logging.getLogger(__name__)
 
 MEMORY_DIR = data_path("cache")
 
+# In-memory caps before save rotation (saves already trim to last N on disk)
+_MAX_TOOL_LESSONS_RAM = 600
+_MAX_EXPLOIT_LESSONS_RAM = 250
+
 # Files containing potentially sensitive data (exploit chains, credentials)
 _ENCRYPTED_FILES: frozenset[str] = frozenset({"exploit_lessons.json"})
 
@@ -121,6 +125,14 @@ class MissionMemory:
         self._dirty: bool = False
 
         self._load()
+
+    def _cap_lesson_lists(self) -> None:
+        """Prevent unbounded RAM growth from lesson lists between saves."""
+        if len(self.tool_lessons) > _MAX_TOOL_LESSONS_RAM:
+            self.tool_lessons = self.tool_lessons[-_MAX_TOOL_LESSONS_RAM:]
+            self._rebuild_indexes()
+        if len(self.exploit_lessons) > _MAX_EXPLOIT_LESSONS_RAM:
+            self.exploit_lessons = self.exploit_lessons[-_MAX_EXPLOIT_LESSONS_RAM:]
 
     def _load(self) -> None:
         """Load all memory from disk."""
@@ -343,6 +355,7 @@ class MissionMemory:
             idx = len(self.tool_lessons)
             self.tool_lessons.append(lesson)
             self._index_tool_lesson(idx, lesson)
+        self._cap_lesson_lists()
         self._save()
 
     def record_exploit_success(
@@ -374,6 +387,7 @@ class MissionMemory:
                 timestamp=datetime.now(UTC).isoformat(),
             )
         )
+        self._cap_lesson_lists()
         self._save()
 
     def record_false_positive(self, template_id: str) -> None:
@@ -393,6 +407,7 @@ class MissionMemory:
         idx = len(self.tool_lessons)
         self.tool_lessons.append(entry)
         self._index_tool_lesson(idx, entry)
+        self._cap_lesson_lists()
         self._save()
 
     def update_target_profile(
