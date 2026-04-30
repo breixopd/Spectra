@@ -62,9 +62,8 @@ class TestGoldenImageBuilder:
         assert len(plugins) == 0
 
     def test_generate_dockerfile_contains_base_image(self, tmp_path):
-        from spectra_common.constants import SANDBOX_BASE_IMAGE as BASE_IMAGE
-
         from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+        from spectra_common.constants import SANDBOX_BASE_IMAGE as BASE_IMAGE
 
         plugins = [
             {

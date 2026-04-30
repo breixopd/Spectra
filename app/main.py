@@ -4,6 +4,7 @@ Core API service. Use app.services.ai or app.services.scheduler for dedicated se
 """
 
 import asyncio
+import hmac
 import json
 import logging
 import time
@@ -17,7 +18,6 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from spectra_common.constants import SECONDS_PER_DAY
 from starlette.responses import Response as StarletteResponse
 
 from app._meta.version import __version__
@@ -57,6 +57,7 @@ from app.bootstrap.middleware import AdminIPAllowlistMiddleware, SecurityHeaders
 from app.core.config import settings
 from app.mission.core.websocket import manager
 from app.telemetry.telemetry_middleware import TelemetryMiddleware
+from spectra_common.constants import SECONDS_PER_DAY
 
 # --- Logging Setup ---
 configure_logging(log_format=settings.LOG_FORMAT, log_level=settings.LOG_LEVEL)
@@ -349,7 +350,8 @@ async def internal_node_metrics(request: Request):
     from app.services.scaling.node_metrics import collect_node_metrics
 
     auth = request.headers.get("X-Service-Auth", "")
-    if auth != settings.SERVICE_AUTH_SECRET.get_secret_value():
+    secret = settings.SERVICE_AUTH_SECRET.get_secret_value()
+    if not auth or not secret or not hmac.compare_digest(auth, secret):
         raise HTTPException(status_code=401, detail="Unauthorized")
     mode = settings.SERVICE_MODE or "api"
     metrics = collect_node_metrics(mode)

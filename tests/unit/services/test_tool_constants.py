@@ -1,11 +1,10 @@
 """Tests for shell injection blocklist and tool output sanitization."""
 
+from app.services.tools.service import sanitize_tool_output
 from spectra_tools_core.registry_constants import (
     _DANGEROUS_PATTERN_STRINGS,
     DANGEROUS_PATTERNS,
 )
-
-from app.services.tools.service import sanitize_tool_output
 
 
 def _matches_any(text: str) -> bool:

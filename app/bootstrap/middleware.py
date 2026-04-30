@@ -36,10 +36,14 @@ class AdminIPAllowlistMiddleware(BaseHTTPMiddleware):
             try:
                 allowed_networks.append(_ipaddress.ip_network(entry, strict=False))
             except ValueError:
-                continue
+                logger.warning("Ignoring invalid ADMIN_IP_ALLOWLIST entry: %s", entry)
 
         if not allowed_networks:
-            return await call_next(request)
+            logger.error("ADMIN_IP_ALLOWLIST is set but contains no valid networks; denying admin request")
+            return JSONResponse(
+                {"detail": "Access denied: invalid admin IP allowlist"},
+                status_code=403,
+            )
 
         # Check client IP
         client_ip = request.client.host if request.client else None

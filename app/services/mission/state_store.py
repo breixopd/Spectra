@@ -6,11 +6,11 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from spectra_common.constants import MISSION_STATE_KEY_PREFIX, MISSION_STATE_TTL_MINUTES
 from sqlalchemy import delete, select
 
 from app.core.database import async_session_maker
 from app.models.infrastructure import SystemCache
+from spectra_common.constants import MISSION_STATE_KEY_PREFIX, MISSION_STATE_TTL_MINUTES
 
 logger = logging.getLogger(__name__)
 

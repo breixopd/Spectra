@@ -16,7 +16,6 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from spectra_common.constants import MAX_EXPORT_ROWS
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,6 +27,7 @@ from app.models.finding import Finding, FindingStatus
 from app.models.mission import Mission, MissionStatus
 from app.models.target import Target, TargetStatus
 from app.models.user import User
+from spectra_common.constants import MAX_EXPORT_ROWS
 
 logger = logging.getLogger(__name__)
 

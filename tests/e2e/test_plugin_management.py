@@ -120,9 +120,8 @@ class TestPluginLifecycle:
         test_plugin_path = PLUGIN_TEST_DIR / plugin_path.name
         shutil.copy2(plugin_path, test_plugin_path)
 
-        from spectra_worker import _WORKER_FUNCTIONS
-
         from app.infrastructure.queue import PostgresJobQueue, worker_loop
+        from spectra_worker import _WORKER_FUNCTIONS
 
         pool = PostgresJobQueue(PLUGIN_TEST_QUEUE)
         job_id = await pool.enqueue_job("install_tool_job", tool_id="test-plugin", plugins_dir=str(PLUGIN_TEST_DIR))
@@ -149,9 +148,8 @@ class TestPluginLifecycle:
         test_plugin_path = PLUGIN_TEST_DIR / plugin_path.name
         shutil.copy2(plugin_path, test_plugin_path)
 
-        from spectra_worker import _WORKER_FUNCTIONS
-
         from app.infrastructure.queue import PostgresJobQueue, worker_loop
+        from spectra_worker import _WORKER_FUNCTIONS
 
         pool = PostgresJobQueue(PLUGIN_TEST_QUEUE)
         job_id = await pool.enqueue_job("install_tool_job", tool_id="broken-plugin", plugins_dir=str(PLUGIN_TEST_DIR))

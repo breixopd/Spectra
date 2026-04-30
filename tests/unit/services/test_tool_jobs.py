@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -27,6 +27,34 @@ def _tool(tool_id: str, *, available: bool = True, args_template: str = "", time
         is_available=available,
         status=ToolStatus.READY if available else ToolStatus.PENDING,
     )
+
+
+@pytest.mark.asyncio
+async def test_reload_plugins_rebuilds_golden_image_when_plugins_removed():
+    from spectra_worker import tool_jobs
+
+    registry_tools = [_tool("old-tool")]
+    registry = SimpleNamespace(
+        list_tools=MagicMock(side_effect=lambda: list(registry_tools)),
+        load_plugins=AsyncMock(side_effect=registry_tools.clear),
+    )
+
+    with (
+        pytest.MonkeyPatch.context() as mp,
+        patch.object(tool_jobs, "sync_all_status_job", new=AsyncMock()),
+        patch.object(tool_jobs, "build_golden_image_job", new=AsyncMock(return_value={"status": "success"})) as build,
+    ):
+        mp.setitem(
+            sys.modules,
+            "app.services.tools.registry",
+            make_module("app.services.tools.registry", get_registry=lambda: registry),
+        )
+        result = await tool_jobs.reload_plugins_job()
+
+    assert result["added"] == []
+    assert result["removed"] == ["old-tool"]
+    assert result["golden_image"] == {"status": "success"}
+    build.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -236,7 +264,7 @@ async def test_install_tool_job_rebuilds_golden_image_and_syncs_status():
         mp.setattr(tool_jobs, "_sync_tool_status", sync_status)
         result = await tool_jobs.install_tool_job("nmap")
 
-    assert result == {"status": "success", "image_id": "sha256:abc"}
+    assert result == {"status": "success", "image_id": "sha256:abc", "tool_id": "nmap", "success": True}
     build.assert_awaited_once()
     assert has_async_update(sync_status, "nmap", status="installing", phase="golden_image_build")
     assert has_async_update(sync_status, "nmap", status="ready", success=True)
@@ -319,7 +347,7 @@ async def test_reload_plugins_job_syncs_status_and_rebuilds_for_new_tools():
         mp.setattr(tool_jobs, "build_golden_image_job", build)
         result = await tool_jobs.reload_plugins_job()
 
-    assert result == {"reloaded": 2, "added": ["new"], "golden_image": {"status": "success"}}
+    assert result == {"reloaded": 2, "added": ["new"], "removed": [], "golden_image": {"status": "success"}}
     sync_all.assert_awaited_once()
     build.assert_awaited_once()
 

@@ -4,12 +4,12 @@ import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from spectra_common.constants import MISSION_TIMEOUT_SECONDS
 
 from app.services.ai.agents.base import AgentContext
 from app.services.ai.agents.mission_controller import AssessmentPhase, MissionPlan, Task
 from app.services.mission.manager.execution import MissionExecutionManager
 from app.services.mission.manager.helpers import _execute_task, execute_mission_tasks
+from spectra_common.constants import MISSION_TIMEOUT_SECONDS
 
 
 @pytest.fixture

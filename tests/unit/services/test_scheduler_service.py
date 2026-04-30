@@ -98,6 +98,7 @@ async def test_postgres_pool_pressure_alerts_when_threshold_exceeded():
 @pytest.mark.asyncio
 async def test_redis_memory_pressure_alerts_when_threshold_exceeded():
     import redis.asyncio as aioredis
+
     import spectra_scheduler.main as scheduler_service
 
     client = SimpleNamespace(

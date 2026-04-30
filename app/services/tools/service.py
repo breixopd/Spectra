@@ -15,18 +15,6 @@ import html
 import logging
 from typing import TYPE_CHECKING, Any
 
-# Keep these imports in *this* module's namespace so that existing tests
-# (which ``patch("app.services.tools.service.<Name>")`` ) keep working.
-from spectra_common.constants import (
-    TOOL_DEFAULT_TIMEOUT,
-    TOOL_INSTALL_TIMEOUT,
-    TOOL_JOB_BUFFER_TIMEOUT,
-    TOOL_MAX_CONCURRENCY,
-    TOOL_MAX_RETRIES,
-    TOOL_MAX_STDERR_CHARS,
-    TOOL_MAX_STDOUT_CHARS,
-)
-
 from app.services.ai.agents.base import AgentContext, ToolAction
 from app.services.ai.agents.safety import SafetySupervisorAgent
 from app.services.ai.consensus import VotingSystem
@@ -43,6 +31,18 @@ from app.services.tools.safety_checks import (
     perform_safety_check_with_retry,
 )
 from app.services.tools.validation import validate_and_resolve_tool
+
+# Keep these imports in *this* module's namespace so that existing tests
+# (which ``patch("app.services.tools.service.<Name>")`` ) keep working.
+from spectra_common.constants import (
+    TOOL_DEFAULT_TIMEOUT,
+    TOOL_INSTALL_TIMEOUT,
+    TOOL_JOB_BUFFER_TIMEOUT,
+    TOOL_MAX_CONCURRENCY,
+    TOOL_MAX_RETRIES,
+    TOOL_MAX_STDERR_CHARS,
+    TOOL_MAX_STDOUT_CHARS,
+)
 from spectra_domain.jobs import WorkerJobName
 
 if TYPE_CHECKING:

@@ -8,7 +8,6 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from spectra_common.constants import API_MAX_PAGE_SIZE, OBSERVABILITY_MAX_RESULTS
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing_extensions import TypedDict
 
@@ -21,6 +20,7 @@ from app.infrastructure.events import events
 from app.models.user import User
 from app.services.system.health import collect_platform_health
 from app.telemetry.telemetry import telemetry
+from spectra_common.constants import API_MAX_PAGE_SIZE, OBSERVABILITY_MAX_RESULTS
 
 logger = logging.getLogger(__name__)
 

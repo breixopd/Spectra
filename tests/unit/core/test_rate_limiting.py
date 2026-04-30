@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
+from starlette.requests import Request
 
 
 def _make_user(is_superuser=False, role="user", plan_id="plan-1", user_id="u-1"):
@@ -26,6 +27,26 @@ def _make_transactional_session():
     transaction.__aexit__ = AsyncMock(return_value=None)
     session.begin = MagicMock(return_value=transaction)
     return session
+
+
+def _make_request(headers: list[tuple[bytes, bytes]] | None = None) -> Request:
+    return Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/api/v1/test",
+            "headers": headers or [],
+            "client": ("127.0.0.1", 12345),
+        }
+    )
+
+
+def test_rate_limit_identifier_handles_invalid_bearer_token():
+    from app.auth.rate_limit import get_user_identifier
+
+    request = _make_request(headers=[(b"authorization", b"Bearer not-a-jwt")])
+
+    assert get_user_identifier(request) == "invalid:127.0.0.1"
 
 
 # ---------------------------------------------------------------------------

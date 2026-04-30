@@ -7,10 +7,6 @@ import logging
 import time
 from typing import Any, cast
 
-from spectra_common.constants import (
-    MAX_HOSTS_DEFAULT,
-)
-
 from app.infrastructure.events import events
 from app.services.ai.agents.base import AgentContext
 from app.services.ai.agents.mission_controller import (
@@ -34,6 +30,9 @@ from app.services.mission.manager.steering import MissionSteeringManager
 from app.services.mission.mission import Mission
 from app.services.shell.session_manager import shell_manager
 from app.services.tools.output import cleanup_mission_workspace
+from spectra_common.constants import (
+    MAX_HOSTS_DEFAULT,
+)
 
 logger = logging.getLogger(__name__)
 

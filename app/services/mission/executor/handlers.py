@@ -12,8 +12,6 @@ from typing import TYPE_CHECKING, Any, cast
 if TYPE_CHECKING:
     from app.services.ai.agents.tool_selector import ToolSelectorInput
 
-from spectra_common.constants import MAX_HOSTS_DEFAULT
-
 from app.infrastructure.events import events
 from app.services.ai.agents.base import AgentContext, ParallelToolAction, ToolAction
 from app.services.ai.agents.mission_controller import AssessmentPhase, Task
@@ -23,6 +21,7 @@ from app.services.mission.executor.analysis import auto_expand_scope
 from app.services.mission.executor.utils import detect_target_type
 from app.services.mission.task_tree import TaskStatus
 from app.services.mission.tool_chain_rules import get_triggered_rules
+from spectra_common.constants import MAX_HOSTS_DEFAULT
 
 # Phase transition rules for autonomous decision making
 PHASE_TRANSITION_RULES: dict[str, dict[str, Any]] = {

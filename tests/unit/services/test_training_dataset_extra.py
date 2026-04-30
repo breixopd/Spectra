@@ -2,18 +2,18 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.services.training.backends import (
+    TrainingBackendDefinition,
+    get_training_backend,
+    list_training_backends,
+    register_training_backend,
+)
 from app.services.training.dataset import (
     create_mission_completion_sample,
     create_training_sample,
     export_dataset,
     get_dataset_stats,
     user_allows_training_data,
-)
-from app.services.training.backends import (
-    TrainingBackendDefinition,
-    get_training_backend,
-    list_training_backends,
-    register_training_backend,
 )
 
 

@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from spectra_tools_core.registry_exceptions import PluginInstallationError
 
 from app.services.tools.models import (
     InstallationConfig,
@@ -11,6 +10,7 @@ from app.services.tools.models import (
     ToolStatus,
 )
 from app.services.tools.registry.installer import PluginInstaller
+from spectra_tools_core.registry_exceptions import PluginInstallationError
 
 
 @pytest.fixture

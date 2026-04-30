@@ -11,8 +11,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.auth.advisory_locks import stable_lock_id
 from app.core.database import async_session_maker
 from app.infrastructure.events import events
-from app.models.user import User
 from app.models.mission import Mission as MissionModel
+from app.models.user import User
 from app.repositories.mission import MissionRepository
 from app.services.ai.agents.base import AgentContext
 from app.services.ai.sanitizer import sanitize_for_prompt
@@ -21,8 +21,8 @@ from app.services.billing.quota_enforcer import QuotaEnforcer
 from app.services.billing.usage_tracker import UsageTracker
 from app.services.mission.mission import Mission
 from app.services.mission.state_store import MissionStateStore
-from app.services.training.dataset import create_mission_completion_sample
 from app.services.tools.output import cleanup_mission_workspace
+from app.services.training.dataset import create_mission_completion_sample
 from app.utils.geoip import resolve_ip
 
 logger = logging.getLogger(__name__)

@@ -48,10 +48,10 @@ async def _close_global_async_clients():
     """Close singleton async HTTP clients created by ASGI-style integration tests."""
     yield
 
+    from app.core.database import engine
     from app.services.gateway.ai_gateway import close_ai_gateway
     from app.services.system.health import close_health_clients
     from app.utils.geoip import close_geoip_session
-    from app.core.database import engine
 
     await close_ai_gateway()
     await close_geoip_session()

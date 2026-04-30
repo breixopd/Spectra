@@ -5,10 +5,10 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
-from spectra_common.constants import MAX_CONCURRENT_MISSIONS, MAX_REPLANS_PER_MISSION
 
 from app.mission.core.optimizations import ToolResultCache
 from app.services.mission.mission import Mission
+from spectra_common.constants import MAX_CONCURRENT_MISSIONS, MAX_REPLANS_PER_MISSION
 
 
 def _safe_create_task(coro, **kwargs):

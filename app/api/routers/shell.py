@@ -12,7 +12,6 @@ import re
 import time
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
-from spectra_common.constants import WS_KEEPALIVE_INTERVAL, WS_MAX_MESSAGE_SIZE, WS_MAX_MESSAGES_PER_SECOND
 from sqlalchemy import select
 
 from app.api.dependencies import check_feature_allowed, get_current_active_user, validate_websocket_token
@@ -26,6 +25,7 @@ from app.models.user import User
 from app.services.shell.relay_client import shell_relay_client
 from app.services.shell.session_manager import shell_manager
 from app.services.system.audit import log_event as audit_log_event
+from spectra_common.constants import WS_KEEPALIVE_INTERVAL, WS_MAX_MESSAGE_SIZE, WS_MAX_MESSAGES_PER_SECOND
 
 router = APIRouter(prefix="/shell", tags=["Shell"])
 logger = logging.getLogger(__name__)

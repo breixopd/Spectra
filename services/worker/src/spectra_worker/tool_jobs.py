@@ -351,17 +351,23 @@ async def reload_plugins_job(
     await registry.load_plugins()
     new_tool_ids = {t.config.id for t in registry.list_tools()}
     added = new_tool_ids - old_tool_ids
+    removed = old_tool_ids - new_tool_ids
 
     await sync_all_status_job()
 
     build_result: dict[str, Any] | None = None
-    if install_new and added:
-        logger.info("Rebuilding golden image for %d new plugins: %s", len(added), list(added))
+    if install_new and (added or removed):
+        logger.info(
+            "Rebuilding golden image after plugin set change (added=%s removed=%s)",
+            list(added),
+            list(removed),
+        )
         build_result = await build_golden_image_job()
 
     return {
         "reloaded": len(new_tool_ids),
         "added": list(added),
+        "removed": list(removed),
         "golden_image": build_result,
     }
 

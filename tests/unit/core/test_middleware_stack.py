@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from httpx import ASGITransport, AsyncClient
 
 from app.bootstrap.logging_config import CorrelationIdMiddleware
-from app.bootstrap.middleware import SecurityHeadersMiddleware
+from app.bootstrap.middleware import AdminIPAllowlistMiddleware, SecurityHeadersMiddleware
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -41,6 +41,10 @@ def _make_app_with(*middlewares) -> FastAPI:
     @app.post("/api/submit")
     async def api_submit(request: Request):
         return {"received": True}
+
+    @app.get("/admin")
+    async def admin():
+        return {"admin": True}
 
     for mw in middlewares:
         if isinstance(mw, tuple):
@@ -192,6 +196,41 @@ class TestSecurityHeadersMiddleware:
         )
         assert resp.status_code == 200
         assert resp.json() == {"received": True}
+
+
+class TestAdminIPAllowlistMiddleware:
+    """Verify admin IP allowlist fails closed when configured incorrectly."""
+
+    @pytest.mark.asyncio
+    async def test_empty_allowlist_disables_middleware(self):
+        with patch("app.bootstrap.middleware.settings") as mock_settings:
+            mock_settings.ADMIN_IP_ALLOWLIST = ""
+            app = _make_app_with(AdminIPAllowlistMiddleware)
+            async with await _client(app) as c:
+                resp = await c.get("/admin")
+
+        assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_invalid_allowlist_denies_admin_routes(self):
+        with patch("app.bootstrap.middleware.settings") as mock_settings:
+            mock_settings.ADMIN_IP_ALLOWLIST = "not-a-cidr"
+            app = _make_app_with(AdminIPAllowlistMiddleware)
+            async with await _client(app) as c:
+                resp = await c.get("/admin")
+
+        assert resp.status_code == 403
+        assert resp.json()["detail"] == "Access denied: invalid admin IP allowlist"
+
+    @pytest.mark.asyncio
+    async def test_invalid_allowlist_does_not_block_non_admin_routes(self):
+        with patch("app.bootstrap.middleware.settings") as mock_settings:
+            mock_settings.ADMIN_IP_ALLOWLIST = "not-a-cidr"
+            app = _make_app_with(AdminIPAllowlistMiddleware)
+            async with await _client(app) as c:
+                resp = await c.get("/ok")
+
+        assert resp.status_code == 200
 
 
 # =========================================================================

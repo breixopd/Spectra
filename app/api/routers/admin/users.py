@@ -8,7 +8,6 @@ from typing import TypedDict
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
-from spectra_common.constants import API_DEFAULT_PAGE_SIZE, API_MAX_PAGE_SIZE
 from sqlalchemy import delete, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -46,6 +45,7 @@ from app.services.billing.entitlements import (
 )
 from app.services.system.audit import log_event as audit_log_event
 from app.services.system.rollback import create_snapshot
+from spectra_common.constants import API_DEFAULT_PAGE_SIZE, API_MAX_PAGE_SIZE
 
 logger = logging.getLogger(__name__)
 

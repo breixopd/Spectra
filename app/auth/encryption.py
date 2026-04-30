@@ -13,9 +13,10 @@ from pathlib import Path
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from spectra_common.constants import PBKDF2_SALT_LENGTH
 from sqlalchemy import Text
 from sqlalchemy.types import TypeDecorator
+
+from spectra_common.constants import PBKDF2_SALT_LENGTH
 
 logger = logging.getLogger(__name__)
 

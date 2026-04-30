@@ -3,6 +3,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, patch
 
 import pytest
+
 from app.models.training import FineTuningJob
 from spectra_domain.jobs import WorkerJobName
 from spectra_worker import _WORKER_FUNCTIONS
@@ -38,7 +39,7 @@ def _job(provider: str = "local", config: dict | None = None) -> FineTuningJob:
 def test_training_job_name_is_registered_with_worker():
     worker_names = {fn.__name__ for fn in _WORKER_FUNCTIONS}
 
-    assert WorkerJobName.RUN_FINE_TUNING == run_fine_tuning_job.__name__
+    assert run_fine_tuning_job.__name__ == WorkerJobName.RUN_FINE_TUNING
     assert run_fine_tuning_job.__name__ in worker_names
 
 

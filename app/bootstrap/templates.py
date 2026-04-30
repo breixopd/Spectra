@@ -3,10 +3,10 @@
 from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
-from spectra_common.constants import format_feature_label
 
 from app._meta.version import __version__
 from app.core.config import settings
+from spectra_common.constants import format_feature_label
 
 _APP_DIR = Path(__file__).resolve().parent.parent
 _TEMPLATES_DIR = _APP_DIR.parent / "templates"

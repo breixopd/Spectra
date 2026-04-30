@@ -1,5 +1,6 @@
 """Canonical health check router."""
 
+import hmac
 import logging
 import time
 import uuid
@@ -56,7 +57,7 @@ async def _get_health_user(request: Request, db: AsyncSession) -> Any | None:
 def _has_internal_health_access(request: Request) -> bool:
     secret = _get_settings().SERVICE_AUTH_SECRET.get_secret_value()
     provided = request.headers.get("X-Service-Auth", "")
-    return bool(secret and provided and provided == secret)
+    return bool(secret and provided and hmac.compare_digest(provided, secret))
 
 
 def _is_admin_user(user: Any | None) -> bool:
