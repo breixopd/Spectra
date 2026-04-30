@@ -81,6 +81,7 @@ function switchSection(name) {
     if (name === 'scaling') loadScalingStatus();
     if (name === 'content') loadContent();
     if (name === 'llm') loadTZConfig();
+    if (name === 'training') loadTraining();
     if (name === 'email') loadEmailConfig();
     if (name === 'backups') loadBackups();
     if (name === 'rollback') loadRollbackSnapshots();
@@ -105,7 +106,8 @@ function exposeAdminHandlers() {
         'createBackup', 'restoreBackup', 'saveEmailTemplate', 'sendTestEmail',
         'loadTZStatus', 'loadTZInferences', 'loadTZFunctionStats', 'loadRollbackSnapshots',
         'performRollback', 'loadScalingStatus', 'refreshScalingStatus', 'saveScalingConfig',
-        'scalingAction',
+        'scalingAction', 'loadTraining', 'approveTrainingSample', 'bulkApproveTrainingSamples',
+        'createTrainingJob',
     ].forEach((name) => {
         if (typeof window[name] === 'function') {
             window[name] = window[name];
