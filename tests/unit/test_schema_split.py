@@ -1,116 +1,11 @@
-"""Unit tests verifying schema split: all schemas importable and valid."""
+"""Unit tests verifying schema modules: imports and validation."""
 
 import pytest
 from pydantic import ValidationError
 
-# ---------------------------------------------------------------------------
-# Package-level re-exports (backward compat)
-# ---------------------------------------------------------------------------
-
-
-class TestPackageImports:
-    """All public schemas importable from app.api.schemas."""
-
-    def test_auth_schemas(self):
-        from app.api.schemas import Token, TokenData, UserBase, UserCreate, UserResponse
-
-        for cls in (Token, TokenData, UserBase, UserCreate, UserResponse):
-            assert cls is not None
-
-    def test_common_schemas(self):
-        from app.api.schemas import PaginatedResponse
-
-        assert PaginatedResponse is not None
-
-    def test_finding_schemas(self):
-        from app.api.schemas import FindingResponse
-
-        assert FindingResponse is not None
-
-    def test_mission_schemas(self):
-        from app.api.schemas import (
-            MissionDetailResponse,
-            MissionResponse,
-            StartMissionRequest,
-            TargetCreate,
-            TargetResponse,
-            TargetUpdate,
-        )
-
-        for cls in (
-            MissionDetailResponse,
-            MissionResponse,
-            StartMissionRequest,
-            TargetCreate,
-            TargetResponse,
-            TargetUpdate,
-        ):
-            assert cls is not None
-
-    def test_system_schemas(self):
-        from app.api.schemas import (
-            AdminUserCreate,
-            AdminUserUpdate,
-            DeleteAccountRequest,
-            HealthResponse,
-            LLMTestRequest,
-            PlanCreate,
-            PlanResponse,
-            PlanUpdate,
-            ServerProvisionRequest,
-            ServerVerifyRequest,
-            SettingsUpdate,
-            SystemSetupRequest,
-            UserAdminResponse,
-        )
-
-        for cls in (
-            AdminUserCreate,
-            AdminUserUpdate,
-            DeleteAccountRequest,
-            HealthResponse,
-            LLMTestRequest,
-            PlanCreate,
-            PlanResponse,
-            PlanUpdate,
-            ServerProvisionRequest,
-            ServerVerifyRequest,
-            SettingsUpdate,
-            SystemSetupRequest,
-            UserAdminResponse,
-        ):
-            assert cls is not None
-
-    def test_tool_schemas(self):
-        from app.api.schemas import (
-            InstallToolRequest,
-            InstallToolResponse,
-            PluginUploadResponse,
-            ToolAdminResponse,
-            ToolDetailResponse,
-            ToolListResponse,
-            ToolSummary,
-        )
-
-        for cls in (
-            InstallToolRequest,
-            InstallToolResponse,
-            PluginUploadResponse,
-            ToolAdminResponse,
-            ToolDetailResponse,
-            ToolListResponse,
-            ToolSummary,
-        ):
-            assert cls is not None
-
-
-# ---------------------------------------------------------------------------
-# Direct module imports
-# ---------------------------------------------------------------------------
-
 
 class TestDirectModuleImports:
-    """Schemas importable from their individual module files."""
+    """Schemas importable from their domain modules."""
 
     def test_auth_module(self):
         from app.api.schemas.auth import Token, TokenData, UserBase, UserCreate, UserResponse
@@ -129,30 +24,85 @@ class TestDirectModuleImports:
 
     def test_mission_module(self):
         from app.api.schemas.mission import (
+            ActionApprovalResponse,
+            MissionDeleteResponse,
+            MissionDetailResponse,
+            MissionFindingSummary,
+            MissionResponse,
             StartMissionRequest,
             TargetCreate,
             TargetResponse,
             TargetUpdate,
         )
 
-        assert all(cls is not None for cls in (StartMissionRequest, TargetCreate, TargetResponse, TargetUpdate))
+        for cls in (
+            ActionApprovalResponse,
+            MissionDeleteResponse,
+            MissionDetailResponse,
+            MissionFindingSummary,
+            MissionResponse,
+            StartMissionRequest,
+            TargetCreate,
+            TargetResponse,
+            TargetUpdate,
+        ):
+            assert cls is not None
 
     def test_system_module(self):
-        from app.api.schemas.system import HealthResponse, SettingsUpdate
+        from app.api.schemas.system import (
+            AdminUserCreate,
+            AdminUserUpdate,
+            DeleteAccountRequest,
+            HealthResponse,
+            LLMTestRequest,
+            PlanCreate,
+            PlanResponse,
+            PlanUpdate,
+            ServerProvisionRequest,
+            ServerVerifyRequest,
+            SettingsUpdate,
+            SystemSetupRequest,
+            UserAdminResponse,
+        )
 
-        assert HealthResponse is not None
-        assert SettingsUpdate is not None
+        for cls in (
+            AdminUserCreate,
+            AdminUserUpdate,
+            DeleteAccountRequest,
+            HealthResponse,
+            LLMTestRequest,
+            PlanCreate,
+            PlanResponse,
+            PlanUpdate,
+            ServerProvisionRequest,
+            ServerVerifyRequest,
+            SettingsUpdate,
+            SystemSetupRequest,
+            UserAdminResponse,
+        ):
+            assert cls is not None
 
     def test_tool_module(self):
-        from app.api.schemas.tool import ToolListResponse, ToolSummary
+        from app.api.schemas.tool import (
+            InstallToolRequest,
+            InstallToolResponse,
+            PluginUploadResponse,
+            ToolAdminResponse,
+            ToolDetailResponse,
+            ToolListResponse,
+            ToolSummary,
+        )
 
-        assert ToolSummary is not None
-        assert ToolListResponse is not None
-
-
-# ---------------------------------------------------------------------------
-# Validation: valid data
-# ---------------------------------------------------------------------------
+        for cls in (
+            InstallToolRequest,
+            InstallToolResponse,
+            PluginUploadResponse,
+            ToolAdminResponse,
+            ToolDetailResponse,
+            ToolListResponse,
+            ToolSummary,
+        ):
+            assert cls is not None
 
 
 class TestSchemaValidation:

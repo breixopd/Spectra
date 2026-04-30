@@ -2,15 +2,7 @@
 
 from fastapi import APIRouter
 
-# Re-export schemas used by tests for backward compatibility
-from app.api.routers.findings.bulk import BulkUpdateRequest, BulkUpdateResponse
 from app.api.routers.findings.bulk import router as bulk_router
-from app.api.routers.findings.core import (
-    FindingCreate,
-    FindingDetailResponse,
-    FindingUpdate,
-    list_findings,
-)
 from app.api.routers.findings.core import router as core_router
 
 router = APIRouter(tags=["Findings"])

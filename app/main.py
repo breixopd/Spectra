@@ -44,7 +44,7 @@ from app.api.routers import (
     vpn,
     wordlists,
 )
-from app.api.schemas import ErrorResponse
+from app.api.schemas.common import ErrorResponse
 from app.auth.exceptions import SpectraError, get_status_code_for_exception
 from app.auth.rate_limit import (
     RateLimits,
@@ -197,7 +197,7 @@ async def maintenance_mode_check(request: Request, call_next):
 
     path = request.url.path
     exempt = (
-        path == "/" or path.startswith(("/static", "/api/health", "/api/v1/health", "/api/admin", "/api/auth", "/api/v1/auth", "/legal/")) or path == "/admin" or path == "/login"
+        path == "/" or path.startswith(("/static", "/api/health", "/api/v1/health", "/api/admin", "/api/v1/auth", "/legal/")) or path == "/admin" or path == "/login"
     )
     if not exempt:
         is_maintenance = getattr(settings, "MAINTENANCE_MODE", False)

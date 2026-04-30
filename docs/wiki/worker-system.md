@@ -13,13 +13,13 @@ The worker image (`docker/Dockerfile.worker`) is a Kali Linux image with Python,
 On startup, the worker:
 
 1. Initializes the tool plugin registry
-2. Auto-installs any pending tools (unless `WORKER_SKIP_STARTUP_AUTO_INSTALL=true`)
+2. Optionally bulk-installs pending tools at startup only when `WORKER_SKIP_STARTUP_AUTO_INSTALL=false`; when unset the worker defaults to **skipping** that pass (`true`), and Compose sets `WORKER_SKIP_STARTUP_AUTO_INSTALL=true` anyway — so startup bulk-install is normally off
 3. Starts a heartbeat loop (for sandbox workers)
 4. Enters the main `worker_loop` — polling for and executing jobs
 
-This on-demand approach keeps the base image small and ensures tools match plugin configurations. When plugins are updated via the API, a `PLUGIN_UPDATED` event triggers a golden image rebuild (always-on platform behaviour).
+Tool binaries otherwise arrive via sandbox golden-image rebuilds and per-job installs. When plugins are updated via the API, a `PLUGIN_UPDATED` event triggers a golden image rebuild (always-on platform behaviour).
 
-The queue is implemented in `app/core/queue.py` using the `job_queue` database table. Jobs are claimed via `SELECT ... FOR UPDATE SKIP LOCKED` for safe concurrent processing.
+The queue is implemented in `app/infrastructure/queue.py` using the `job_queue` database table. Jobs are claimed via `SELECT ... FOR UPDATE SKIP LOCKED` for safe concurrent processing.
 
 ### Job Lifecycle
 

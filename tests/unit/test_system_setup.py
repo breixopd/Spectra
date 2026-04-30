@@ -3,7 +3,8 @@ from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas import SystemSetupRequest, UserCreate
+from app.api.schemas.auth import UserCreate
+from app.api.schemas.system import SystemSetupRequest
 from app.models.config import SystemConfig
 from app.models.user import User
 from app.services.system.setup import SystemSetupService

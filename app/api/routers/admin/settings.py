@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas import AdminSettingsUpdate
+from app.api.schemas.system import AdminSettingsUpdate
 from app.auth.rbac import Permission, require_permission
 from app.core.database import get_async_session
 from app.models.audit_log import AuditEventType

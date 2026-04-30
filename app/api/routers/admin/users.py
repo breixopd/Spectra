@@ -17,11 +17,11 @@ from app.api.dependencies import (
     _load_active_user_from_payload_with_session,
     validate_uuid_param,
 )
-from app.api.schemas import (
+from app.api.schemas.common import PaginatedResponse
+from app.api.schemas.system import (
     AdminUserCreate,
     AdminUserCreateResponse,
     AdminUserUpdate,
-    PaginatedResponse,
     UserAdminResponse,
 )
 from app.auth.rbac import Permission, require_permission

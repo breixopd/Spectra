@@ -17,9 +17,9 @@ Each mission runs in its own ephemeral Docker container with a dedicated worker.
 | Layer | Image | Contents |
 | ------- | ------- | ---------- |
 | Base | `spectra-tools:base` | `docker/Dockerfile.worker` base tooling — Kali rolling + OS essentials (curl, git, networking, VPN tools). No security tools preinstalled. |
-| Latest | `spectra-tools:latest` | Base + all plugin tools installed on demand |
+| Golden | `spectra-tools:latest` | Base plus Dockerfile `RUN` layers generated from current `plugins/*.json` install steps (built image), not a runtime “install everything on first boot” step |
 
-The base image is intentionally minimal (~1.1 GB). Security tools (nmap, nuclei, sqlmap, etc.) are **not** baked in — they are installed on demand at runtime from plugin definitions in `plugins/*.json`. This keeps images small, avoids stale tool versions, and lets operators control exactly which tools are available.
+The base image is intentionally minimal (~1.1 GB). Security scanners and similar tools are added when the golden pipeline rebuilds `spectra-tools:latest` from plugin definitions; new sandboxes pull that tag. Individual tool runs can still trigger installs if a plugin marks something missing.
 
 **Rebuild trigger**: When plugins change (upload/remove via the API or `PLUGIN_UPDATED` event), the golden image is rebuilt automatically — required for ephemeral workers to pull consistent tool images.
 
@@ -29,7 +29,7 @@ The base image is intentionally minimal (~1.1 GB). Security tools (nmap, nuclei,
 2. Generate ephemeral Dockerfile `FROM spectra-tools:base`
 3. `docker build` → tag as `spectra-tools:latest`
 4. Docker layer caching keeps unchanged layers fast
-5. Background task — sandboxes use existing `:latest` until new build completes
+5. Until the new image is ready, sandboxes keep using the previous `:latest`; swap happens when the build finishes
 
 **Image scanning**: Golden images are scanned for CVEs after each successful build when Grype is available.
 

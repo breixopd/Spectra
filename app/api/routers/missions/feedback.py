@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import check_resource_owner, get_current_active_user, validate_uuid_param
-from app.api.schemas import ActionApprovalResponse
+from app.api.schemas.mission import ActionApprovalResponse
 from app.auth.rate_limit import RateLimits, limiter
 from app.core.database import get_async_session
 from app.models.user import User

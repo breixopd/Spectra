@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import check_resource_owner, validate_uuid_param
-from app.api.schemas import MissionDeleteResponse, StatusResponse
+from app.api.schemas.common import StatusResponse
+from app.api.schemas.mission import MissionDeleteResponse
 from app.auth.rate_limit import RateLimits, limiter
 from app.auth.rbac import Permission, require_permission
 from app.core.database import get_async_session

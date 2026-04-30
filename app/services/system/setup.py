@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.services.ai.llm as llm_module
-from app.api.schemas import SystemSetupRequest
+from app.api.schemas.system import SystemSetupRequest
 from app.auth.exceptions import SpectraError
 from app.auth.security import get_password_hash
 from app.core.config import settings

@@ -125,7 +125,7 @@ async def test_execute_tool_job_handles_command_build_failure():
         mp.setitem(
             sys.modules,
             "app.services.tools.adapter.parser",
-            make_module("app.services.tools.adapter.parser", OutputParser=_Parser),
+            make_module("app.services.tools.adapter.parser", UniversalParser=_Parser),
         )
         mp.setattr(tool_jobs, "_is_tool_installed", lambda tool: True)
         result = await tool_jobs.execute_tool_job("nmap", "example.com")
@@ -173,7 +173,7 @@ async def test_execute_tool_job_adjusts_cidr_timeout_and_marks_timeout_with_pars
         mp.setitem(
             sys.modules,
             "app.services.tools.adapter.parser",
-            make_module("app.services.tools.adapter.parser", OutputParser=_Parser),
+            make_module("app.services.tools.adapter.parser", UniversalParser=_Parser),
         )
         mp.setattr(tool_jobs, "_run_command", run_command)
         mp.setattr(tool_jobs, "_track_tool_stats", track_stats)
@@ -233,7 +233,7 @@ async def test_execute_tool_job_flags_oom_results_and_returns_parsed_findings(tm
         mp.setitem(
             sys.modules,
             "app.services.tools.adapter.parser",
-            make_module("app.services.tools.adapter.parser", OutputParser=_Parser),
+            make_module("app.services.tools.adapter.parser", UniversalParser=_Parser),
         )
         mp.setattr(tool_jobs, "_run_command", run_command)
         mp.setattr(tool_jobs, "_track_tool_stats", track_stats)

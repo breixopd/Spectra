@@ -96,7 +96,7 @@ def app_client():
 @pytest.mark.asyncio
 async def test_mfa_setup_returns_provisioning_uri(mock_session):
     """Setup endpoint should return a valid provisioning URI and base32 secret."""
-    from app.api.routers.auth import mfa_setup
+    from app.api.routers.auth.totp import mfa_setup
 
     user = _make_user()
 
@@ -112,7 +112,7 @@ async def test_mfa_setup_returns_provisioning_uri(mock_session):
 @pytest.mark.asyncio
 async def test_mfa_verify_setup_enables_mfa(mock_session):
     """Verify-setup should enable MFA when given a valid code."""
-    from app.api.routers.auth import mfa_verify_setup
+    from app.api.routers.auth.totp import mfa_verify_setup
     from app.api.schemas.auth import MFAVerifyRequest
 
     secret = pyotp.random_base32()
@@ -137,7 +137,7 @@ async def test_mfa_verify_setup_rejects_bad_code(mock_session):
     """Verify-setup should reject an invalid TOTP code."""
     from fastapi import HTTPException
 
-    from app.api.routers.auth import mfa_verify_setup
+    from app.api.routers.auth.totp import mfa_verify_setup
     from app.api.schemas.auth import MFAVerifyRequest
 
     secret = pyotp.random_base32()
@@ -186,7 +186,7 @@ async def test_login_with_mfa_returns_token_after_verify(mock_session):
     """After MFA verify, a full access token should be returned."""
     from datetime import timedelta
 
-    from app.api.routers.auth import mfa_verify_login
+    from app.api.routers.auth.totp import mfa_verify_login
     from app.api.schemas.auth import MFAVerifyRequest
     from app.auth.security import create_access_token, decode_token
 
@@ -234,7 +234,7 @@ async def test_mfa_disable_requires_password_and_code(mock_session):
     """Disable endpoint should require valid password and TOTP code."""
     from fastapi import HTTPException
 
-    from app.api.routers.auth import mfa_disable
+    from app.api.routers.auth.totp import mfa_disable
     from app.api.schemas.auth import MFADisableRequest
 
     secret = pyotp.random_base32()
@@ -256,7 +256,7 @@ async def test_mfa_disable_requires_password_and_code(mock_session):
 @pytest.mark.asyncio
 async def test_mfa_disable_success(mock_session):
     """Disable endpoint should clear MFA fields on success."""
-    from app.api.routers.auth import mfa_disable
+    from app.api.routers.auth.totp import mfa_disable
     from app.api.schemas.auth import MFADisableRequest
 
     secret = pyotp.random_base32()
@@ -284,7 +284,8 @@ async def test_mfa_disable_success(mock_session):
 async def test_mfa_verify_setup_rejects_replayed_code(mock_session):
     from fastapi import HTTPException
 
-    from app.api.routers.auth import _used_totp_codes, mfa_verify_setup
+    from app.api.routers.auth._helpers import _used_totp_codes
+    from app.api.routers.auth.totp import mfa_verify_setup
     from app.api.schemas.auth import MFAVerifyRequest
 
     _used_totp_codes.clear()
@@ -311,7 +312,8 @@ async def test_mfa_verify_login_rejects_replayed_code(mock_session):
 
     from fastapi import HTTPException
 
-    from app.api.routers.auth import _used_totp_codes, mfa_verify_login
+    from app.api.routers.auth._helpers import _used_totp_codes
+    from app.api.routers.auth.totp import mfa_verify_login
     from app.api.schemas.auth import MFAVerifyRequest
     from app.auth.security import create_access_token
 
@@ -343,7 +345,8 @@ async def test_mfa_verify_login_rejects_replayed_code(mock_session):
 async def test_mfa_disable_rejects_replayed_code(mock_session):
     from fastapi import HTTPException
 
-    from app.api.routers.auth import _used_totp_codes, mfa_disable
+    from app.api.routers.auth._helpers import _used_totp_codes
+    from app.api.routers.auth.totp import mfa_disable
     from app.api.schemas.auth import MFADisableRequest
 
     _used_totp_codes.clear()

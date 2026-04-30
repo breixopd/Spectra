@@ -16,7 +16,7 @@ from app.api.dependencies import (
     get_ui_user,
     require_feature,
 )
-from app.api.schemas import SettingsUpdate
+from app.api.schemas.system import SettingsUpdate
 from app.auth.rbac import Permission, has_permission, require_permission
 from app.bootstrap.templates import templates
 from app.core.config import settings

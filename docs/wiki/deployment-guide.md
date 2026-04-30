@@ -476,7 +476,7 @@ cd /path/to/spectra
 docker build -t <registry>:5050/spectra-app:latest -f docker/Dockerfile.api .
 docker build -t <registry>:5050/spectra-ai-svc:latest -f docker/Dockerfile.ai .
 docker build -t <registry>:5050/spectra-scheduler:latest -f docker/Dockerfile.scheduler .
-docker build -t <registry>:5050/spectra-caddy:latest -f docker/Dockerfile.caddy docker/
+docker build -t <registry>:5050/spectra-caddy:latest -f docker/Dockerfile.caddy .
 docker build -t <registry>:5050/spectra-worker:latest -f docker/Dockerfile.worker .
 
 # Push all

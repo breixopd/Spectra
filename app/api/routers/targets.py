@@ -13,7 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.dependencies import check_resource_owner, check_target_limit, get_current_active_user, validate_uuid_param
-from app.api.schemas import FindingResponse, PaginatedResponse, TargetCreate, TargetResponse, TargetUpdate
+from app.api.schemas.common import PaginatedResponse
+from app.api.schemas.finding import FindingResponse
+from app.api.schemas.mission import TargetCreate, TargetResponse, TargetUpdate
 from app.auth.rate_limit import RateLimits, limiter
 from app.auth.rbac import Permission, require_permission
 from app.core.database import get_async_session

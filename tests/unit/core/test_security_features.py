@@ -8,7 +8,7 @@ import pytest
 from fastapi import HTTPException
 from jwt.exceptions import InvalidTokenError as JWTError
 
-from app.api.routers.auth import (
+from app.api.routers.auth._helpers import (
     LOCKOUT_THRESHOLD_1,
     LOCKOUT_THRESHOLD_2,
     _check_lockout,

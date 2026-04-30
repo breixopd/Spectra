@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi import HTTPException
 
-from app.api.routers.auth import (
+from app.api.routers.auth._helpers import (
     LOCKOUT_THRESHOLD_1,
     LOCKOUT_THRESHOLD_2,
     _check_lockout,

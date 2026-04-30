@@ -18,7 +18,7 @@ All API endpoints are prefixed with `/api`.
 Most endpoints require a JWT token (exceptions: `/api/health`, `/api/v1/auth/setup`, `/api/v1/auth/setup/status`).
 
 - **Header:** `Authorization: Bearer <token>`
-- **Obtaining a Token:** `POST /api/auth/token` with username and password.
+- **Obtaining a Token:** `POST /api/v1/auth/token` with username and password.
 
 ---
 
@@ -34,13 +34,13 @@ Most endpoints require a JWT token (exceptions: `/api/health`, `/api/v1/auth/set
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/auth/token` | Login — returns JWT access + refresh tokens |
-| POST | `/api/auth/refresh` | Refresh an expired access token |
-| POST | `/api/auth/logout` | Invalidate current token |
+| POST | `/api/v1/auth/token` | Login — returns JWT access + refresh tokens |
+| POST | `/api/v1/auth/refresh` | Refresh an expired access token |
+| POST | `/api/v1/auth/logout` | Invalidate current token |
 | POST | `/api/v1/auth/setup` | Create initial admin account (only before any users exist) |
 | GET | `/api/v1/auth/setup/status` | Check if setup has been completed |
 
-### POST `/api/auth/token`
+### POST `/api/v1/auth/token`
 
 ```text
 Content-Type: application/x-www-form-urlencoded

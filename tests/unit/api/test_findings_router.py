@@ -458,7 +458,7 @@ class TestFindingsAuth:
 
 class TestRateLimitDecorator:
     def test_list_findings_has_rate_limit(self):
-        from app.api.routers.findings import list_findings
+        from app.api.routers.findings.core import list_findings
 
         # slowapi wraps the function and adds _rate_limits
         assert hasattr(list_findings, "__wrapped__") or hasattr(list_findings, "_rate_limits"), (

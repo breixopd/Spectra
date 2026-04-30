@@ -215,7 +215,7 @@ class TestPersistentAccountLockout:
 
     @pytest.mark.asyncio
     async def test_record_failure_persists(self):
-        from app.api.routers.auth import _record_failure
+        from app.api.routers.auth._helpers import _record_failure
 
         user = self._make_user()
         session = AsyncMock()
@@ -233,7 +233,7 @@ class TestPersistentAccountLockout:
 
     @pytest.mark.asyncio
     async def test_lockout_after_threshold(self):
-        from app.api.routers.auth import LOCKOUT_THRESHOLD_1, _record_failure
+        from app.api.routers.auth._helpers import LOCKOUT_THRESHOLD_1, _record_failure
 
         user = self._make_user(fail_count=LOCKOUT_THRESHOLD_1 - 1)
         session = AsyncMock()
@@ -242,7 +242,7 @@ class TestPersistentAccountLockout:
 
     @pytest.mark.asyncio
     async def test_check_lockout_raises_when_locked(self):
-        from app.api.routers.auth import _check_lockout
+        from app.api.routers.auth._helpers import _check_lockout
 
         user = self._make_user(locked_until=datetime.now(UTC) + timedelta(minutes=5))
         with pytest.raises(HTTPException) as exc:
@@ -251,14 +251,14 @@ class TestPersistentAccountLockout:
 
     @pytest.mark.asyncio
     async def test_check_lockout_allows_after_expiry(self):
-        from app.api.routers.auth import _check_lockout
+        from app.api.routers.auth._helpers import _check_lockout
 
         user = self._make_user(locked_until=datetime.now(UTC) - timedelta(seconds=1))
         await _check_lockout(user)
 
     @pytest.mark.asyncio
     async def test_persist_and_load_lockout(self):
-        from app.api.routers.auth import LOCKOUT_THRESHOLD_2, _record_failure
+        from app.api.routers.auth._helpers import LOCKOUT_THRESHOLD_2, _record_failure
 
         user = self._make_user(fail_count=LOCKOUT_THRESHOLD_2 - 1)
         session = AsyncMock()
@@ -279,7 +279,7 @@ class TestSafetyStatsAuth:
         """Verify the endpoint function signature includes current_user."""
         import inspect
 
-        from app.api.routers.system import get_safety_stats
+        from app.api.routers.system.health import get_safety_stats
 
         sig = inspect.signature(get_safety_stats)
         param_names = list(sig.parameters.keys())
@@ -348,12 +348,13 @@ class TestMissionBlackboardWired:
 
 
 class TestAuditLoggingWired:
-    """Tests that audit logging is imported in auth and missions routers."""
+    """Tests that audit logging is wired in auth login and missions routers."""
 
-    def test_auth_router_imports_audit(self):
-        import app.api.routers.auth as auth_mod
+    def test_auth_login_wires_audit_log_event(self):
+        import app.api.routers.auth.login as login_mod
+        from app.services.system.audit import log_event
 
-        assert hasattr(auth_mod, "audit_log_event")
+        assert login_mod.audit_log_event is log_event
 
     def test_missions_router_imports_audit(self):
         import app.api.routers.missions.core as missions_core_mod
