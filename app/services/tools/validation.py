@@ -5,9 +5,9 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from app.services.tools.models import RegisteredTool, ToolExecutionResult
 from app.services.tools.output import create_error_result, validate_tool_name
 from app.services.tools.registry import get_registry
+from spectra_tools_core.models import RegisteredTool, ToolExecutionResult
 
 logger = logging.getLogger(__name__)
 

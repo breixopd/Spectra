@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.services.tools.dispatch import build_execution_request, dispatch_and_process_result
-from app.services.tools.models import ToolExecutionRequest, ToolExecutionResult
+from spectra_tools_core.models import ToolExecutionRequest, ToolExecutionResult
 
 
 def _make_tool(timeout: int = 300):

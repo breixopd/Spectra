@@ -5,20 +5,20 @@ from app.services.tools.adapter import (
     ToolExecutionError,
     create_adapter,
 )
-from app.services.tools.models import (
-    RegisteredTool,
-    ToolCategory,
-    ToolConfig,
-    ToolExecutionRequest,
-    ToolExecutionResult,
-    ToolStatus,
-)
 from app.services.tools.registry import (
     PluginInstallationError,
     PluginValidationError,
     ToolRegistry,
     get_registry,
     initialize_registry,
+)
+from spectra_tools_core.models import (
+    RegisteredTool,
+    ToolCategory,
+    ToolConfig,
+    ToolExecutionRequest,
+    ToolExecutionResult,
+    ToolStatus,
 )
 
 __all__ = [

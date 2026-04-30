@@ -5,15 +5,12 @@ Defines the schema for tool plugins including installation,
 execution, parsing, and UI configuration.
 """
 
-import logging
 from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.mission.core.enums import RiskLevel
-
-logger = logging.getLogger(__name__)
+from spectra_domain.enums import RiskLevel
 
 
 class ToolCategory(StrEnum):
@@ -124,9 +121,6 @@ class OutputFormat(StrEnum):
     TEXT = "text"
     NDJSON = "ndjson"
     CSV = "csv"
-
-
-# --- Sub-Models ---
 
 
 class InstallationConfig(BaseModel):
@@ -272,9 +266,6 @@ class ToolMetadata(BaseModel):
     )
 
 
-# --- Main Plugin Model ---
-
-
 class ToolConfig(BaseModel):
     """
     Complete configuration for a security tool plugin.
@@ -353,9 +344,6 @@ class ToolConfig(BaseModel):
         parts.append(f"Risk: {self.metadata.risk_level}")
 
         return "\n".join(parts)
-
-
-# --- Registry Models ---
 
 
 class RegisteredTool(BaseModel):

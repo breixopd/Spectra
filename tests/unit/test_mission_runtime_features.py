@@ -398,8 +398,8 @@ class TestStealthBuilder:
     """Tests for stealth args application in command builder."""
 
     def test_apply_stealth_args_adds_flags(self):
-        from app.services.tools.adapter.builder import CommandBuilder
-        from app.services.tools.models import StealthConfig
+        from spectra_tools_core.adapter.builder import CommandBuilder
+        from spectra_tools_core.models import StealthConfig
 
         config = MagicMock()
         config.execution.arg_modifiers = None
@@ -412,7 +412,7 @@ class TestStealthBuilder:
         assert "--rate-limit 20" in cmd
 
     def test_apply_stealth_args_skips_existing(self):
-        from app.services.tools.adapter.builder import CommandBuilder
+        from spectra_tools_core.adapter.builder import CommandBuilder
 
         config = MagicMock()
         config.execution.arg_modifiers = None
@@ -426,7 +426,7 @@ class TestStealthBuilder:
         assert cmd.count("--threads") == 1
 
     def test_apply_stealth_args_empty(self):
-        from app.services.tools.adapter.builder import CommandBuilder
+        from spectra_tools_core.adapter.builder import CommandBuilder
 
         config = MagicMock()
         config.execution.arg_modifiers = None
@@ -438,7 +438,7 @@ class TestStealthBuilder:
         assert cmd == "nmap 192.168.1.1"
 
     def test_apply_stealth_args_none_config(self):
-        from app.services.tools.adapter.builder import CommandBuilder
+        from spectra_tools_core.adapter.builder import CommandBuilder
 
         config = MagicMock()
         config.execution.arg_modifiers = None

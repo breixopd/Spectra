@@ -18,14 +18,14 @@ from typing import TYPE_CHECKING, Any
 
 import aiofiles
 
-from app.services.tools.models import (
+from app.services.tools.registry.installer import PluginInstaller
+from app.services.tools.registry.loader import PluginLoader
+from app.services.tools.registry.validator import PluginValidator
+from spectra_tools_core.models import (
     RegisteredTool,
     ToolConfig,
     ToolStatus,
 )
-from app.services.tools.registry.installer import PluginInstaller
-from app.services.tools.registry.loader import PluginLoader
-from app.services.tools.registry.validator import PluginValidator
 from spectra_tools_core.registry_exceptions import (
     PluginInstallationError,
     PluginValidationError,

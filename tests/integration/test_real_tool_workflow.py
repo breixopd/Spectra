@@ -29,18 +29,18 @@ from app.models.attack_surface import (
 )
 from app.services.mission.mission import Mission
 from app.services.tools.adapter import CommandToolAdapter
-from app.services.tools.models import (
+from app.services.tools.registry import ToolRegistry, initialize_registry
+from spectra_domain.enums import RiskLevel
+from spectra_tools_core.models import (
     ExecutionConfig,
     OutputFormat,
     ParsingConfig,
-    RiskLevel,
     ToolCapability,
     ToolCategory,
     ToolConfig,
     ToolExecutionRequest,
     ToolMetadata,
 )
-from app.services.tools.registry import ToolRegistry, initialize_registry
 
 # === REAL TOOL REGISTRY TESTS ===
 

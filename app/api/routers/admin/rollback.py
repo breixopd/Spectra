@@ -13,10 +13,10 @@ from app.models.user import User
 from app.services.system.rollback import describe_snapshot_restorability, get_all_snapshots, rollback_snapshot
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/rollback", tags=["Admin Rollback"])
+router = APIRouter(tags=["Admin Rollback"])
 
 
-@router.get("/snapshots")
+@router.get("/api/admin/rollback/snapshots")
 async def list_rollback_snapshots(
     limit: int = Query(default=50, le=200),
     session: AsyncSession = Depends(get_async_session),
@@ -42,7 +42,7 @@ async def list_rollback_snapshots(
     return items
 
 
-@router.post("/snapshots/{snapshot_id}/rollback")
+@router.post("/api/admin/rollback/snapshots/{snapshot_id}/rollback")
 async def apply_rollback(
     snapshot_id: str,
     request: Request,

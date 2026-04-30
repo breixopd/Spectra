@@ -42,7 +42,11 @@ def _plan_checkout_available(plan: Plan, *, payment_provider: str) -> bool:
 
 @router.get("/plans")
 @limiter.limit(RateLimits.BILLING)
-async def list_available_plans(request: Request, session: AsyncSession = Depends(get_async_session)):
+async def list_available_plans(
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+    _user: User = Depends(get_current_active_user),
+):
     """List all active plans available for subscription."""
     payment_provider = (get_settings().PAYMENT_PROVIDER or "manual").strip().lower()
     plans = (

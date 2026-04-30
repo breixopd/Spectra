@@ -12,12 +12,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from app.services.tools.models import (
+from spectra_common.constants import MAX_HOSTS_DEFAULT
+from spectra_tools_core.models import (
     ToolExecutionRequest,
     ToolExecutionResult,
     ToolStatus,
 )
-from spectra_common.constants import MAX_HOSTS_DEFAULT
 
 from .helpers import (
     _error_result,
@@ -139,9 +139,9 @@ async def execute_tool_job(
     output_dir: str | None = None,
 ) -> dict[str, Any]:
     """Execute a security tool locally in the tools container."""
-    from app.services.tools.adapter.builder import CommandBuilder
-    from app.services.tools.adapter.parser import UniversalParser
     from app.services.tools.registry import get_registry
+    from spectra_tools_core.adapter.builder import CommandBuilder
+    from spectra_tools_core.adapter.parser import UniversalParser
 
     logger.info("Executing tool %s against %s", tool_id, target)
 

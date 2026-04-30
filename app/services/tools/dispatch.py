@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any, cast
 from app.services.ai.context import truncate_for_llm
 from app.services.tools.adapter import CommandToolAdapter
 from app.services.tools.execution import execute_via_worker
-from app.services.tools.models import RegisteredTool, ToolExecutionRequest, ToolExecutionResult
 from app.services.tools.output import (
     cleanup_output_directory,
     log_success,
@@ -19,6 +18,7 @@ from app.services.tools.output import (
     prepare_output_directory,
     update_attack_surface_from_finding,
 )
+from spectra_tools_core.models import RegisteredTool, ToolExecutionRequest, ToolExecutionResult
 
 if TYPE_CHECKING:
     from app.services.mission.mission import Mission

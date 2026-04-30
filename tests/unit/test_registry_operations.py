@@ -10,13 +10,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.tools.models import (
+from app.services.tools.registry import ToolRegistry
+from spectra_tools_core.models import (
     ExecutionConfig,
     RegisteredTool,
     ToolConfig,
     ToolStatus,
 )
-from app.services.tools.registry import ToolRegistry
 from spectra_tools_core.registry_exceptions import PluginValidationError
 
 # --- Helpers ---

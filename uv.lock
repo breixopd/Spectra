@@ -843,6 +843,7 @@ source = { editable = "packages/domain" }
 dependencies = [
     { name = "aiofiles" },
     { name = "jsonschema" },
+    { name = "pydantic" },
     { name = "spectra-common" },
 ]
 
@@ -850,6 +851,7 @@ dependencies = [
 requires-dist = [
     { name = "aiofiles" },
     { name = "jsonschema" },
+    { name = "pydantic" },
     { name = "spectra-common", editable = "packages/common" },
 ]
 
@@ -877,6 +879,7 @@ source = { editable = "packages/tools-core" }
 dependencies = [
     { name = "defusedxml" },
     { name = "jsonschema" },
+    { name = "pydantic" },
     { name = "spectra-common" },
     { name = "spectra-domain" },
 ]
@@ -885,6 +888,7 @@ dependencies = [
 requires-dist = [
     { name = "defusedxml" },
     { name = "jsonschema" },
+    { name = "pydantic" },
     { name = "spectra-common", editable = "packages/common" },
     { name = "spectra-domain", editable = "packages/domain" },
 ]

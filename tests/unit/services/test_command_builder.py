@@ -4,8 +4,8 @@ import shlex
 
 import pytest
 
-from app.services.tools.adapter.builder import CommandBuilder
-from app.services.tools.models import (
+from spectra_tools_core.adapter.builder import CommandBuilder
+from spectra_tools_core.models import (
     ExecutionConfig,
     ToolCategory,
     ToolConfig,

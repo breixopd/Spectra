@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.services.tools.execution import ensure_tool_installed, execute_via_worker
-from app.services.tools.models import ToolExecutionResult
+from spectra_tools_core.models import ToolExecutionResult
 
 
 @pytest.mark.asyncio

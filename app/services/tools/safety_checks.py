@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from app.services.ai.agents.base import AgentContext
 from app.services.ai.agents.safety import SafetyAction, SafetyInput
-from app.services.tools.models import ToolExecutionRequest
+from spectra_tools_core.models import ToolExecutionRequest
 
 if TYPE_CHECKING:
     from app.services.ai.agents.safety import SafetySupervisorAgent

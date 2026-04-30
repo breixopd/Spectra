@@ -21,14 +21,13 @@ import re
 import xml.etree.ElementTree as ET
 from io import StringIO
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from defusedxml import ElementTree as SafeET
+from pydantic import BaseModel
 
-from app.services.tools.models import OutputFormat, ToolConfig
-
-if TYPE_CHECKING:
-    from app.services.ai.llm import LLMClient
+from spectra_tools_core.models import OutputFormat, ToolConfig
+from spectra_tools_core.parsers import parse_nmap_xml
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +43,7 @@ class UniversalParser:
     - llm_extraction: Use LLM for complex parsing
     """
 
-    def __init__(self, config: ToolConfig, llm_client: LLMClient | None = None):
+    def __init__(self, config: ToolConfig, llm_client: Any = None):
         self.config = config
         self.llm_client = llm_client
 
@@ -237,8 +236,6 @@ class UniversalParser:
 
     def _parse_nmap_xml(self, root: ET.Element) -> list[dict[str, Any]]:
         """Parse nmap XML output into structured findings."""
-        from app.services.tools.parsers import parse_nmap_xml
-
         return parse_nmap_xml(root)
 
     def _element_to_dict(self, elem: ET.Element) -> dict[str, Any]:
@@ -308,8 +305,6 @@ class UniversalParser:
             return []
 
         try:
-            from pydantic import BaseModel
-
             class ExtractedFinding(BaseModel):
                 """A single extracted finding."""
 
@@ -379,4 +374,3 @@ Extract all findings (services, vulnerabilities, credentials, etc.) as structure
                 result[key] = value
 
         return result
-

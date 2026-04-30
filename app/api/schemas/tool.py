@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, Field
 
-from app.services.tools.models import ToolCategory, ToolStatus
+from spectra_tools_core.models import ToolCategory, ToolStatus
 
 
 class ToolSummary(BaseModel):

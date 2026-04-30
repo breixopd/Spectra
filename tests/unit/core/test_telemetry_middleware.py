@@ -11,14 +11,14 @@ class TestNormalizePath:
     """Tests for the _normalize_path helper."""
 
     def test_replaces_uuid(self):
-        path = "/api/missions/550e8400-e29b-41d4-a716-446655440000/status"
-        assert _normalize_path(path) == "/api/missions/{id}/status"
+        path = "/api/v1/missions/550e8400-e29b-41d4-a716-446655440000/status"
+        assert _normalize_path(path) == "/api/v1/missions/{id}/status"
 
     def test_replaces_integer_id(self):
-        assert _normalize_path("/api/targets/42") == "/api/targets/{id}"
+        assert _normalize_path("/api/v1/targets/42") == "/api/v1/targets/{id}"
 
     def test_replaces_hex_id(self):
-        assert _normalize_path("/api/findings/abc123def456") == "/api/findings/{id}"
+        assert _normalize_path("/api/v1/findings/abc123def456") == "/api/v1/findings/{id}"
 
     def test_no_replacement_for_short_hex(self):
         # Hex shorter than 6 chars should not be treated as ID
@@ -28,8 +28,8 @@ class TestNormalizePath:
         assert _normalize_path("/api/health") == "/api/health"
 
     def test_replaces_multiple_ids(self):
-        path = "/api/missions/550e8400-e29b-41d4-a716-446655440000/findings/99"
-        assert _normalize_path(path) == "/api/missions/{id}/findings/{id}"
+        path = "/api/v1/missions/550e8400-e29b-41d4-a716-446655440000/findings/99"
+        assert _normalize_path(path) == "/api/v1/missions/{id}/findings/{id}"
 
 
 class TestTelemetryMiddleware:
@@ -59,7 +59,7 @@ class TestTelemetryMiddleware:
     @pytest.mark.asyncio
     async def test_request_counting(self, middleware):
         """Successful requests increment the total counter."""
-        request = self._make_request("/api/missions")
+        request = self._make_request("/api/v1/missions")
         response = MagicMock(status_code=200)
         call_next = AsyncMock(return_value=response)
 
@@ -81,7 +81,7 @@ class TestTelemetryMiddleware:
     @pytest.mark.asyncio
     async def test_latency_recorded(self, middleware):
         """Request latency should be recorded as a histogram."""
-        request = self._make_request("/api/findings")
+        request = self._make_request("/api/v1/findings")
         call_next = AsyncMock(return_value=MagicMock(status_code=200))
 
         with (
@@ -162,7 +162,7 @@ class TestTelemetryMiddleware:
     @pytest.mark.asyncio
     async def test_path_normalization_in_labels(self, middleware):
         """Labels should use normalized path (IDs replaced)."""
-        request = self._make_request("/api/missions/550e8400-e29b-41d4-a716-446655440000")
+        request = self._make_request("/api/v1/missions/550e8400-e29b-41d4-a716-446655440000")
         call_next = AsyncMock(return_value=MagicMock(status_code=200))
 
         with (
@@ -174,7 +174,7 @@ class TestTelemetryMiddleware:
         total_calls = [c for c in mock_tel.increment_counter.call_args_list if c.args[0] == "http.requests.total"]
         assert len(total_calls) == 1
         labels = total_calls[0][0][2]  # third positional arg
-        assert labels["path_template"] == "/api/missions/{id}"
+        assert labels["path_template"] == "/api/v1/missions/{id}"
 
     @pytest.mark.asyncio
     async def test_correlation_id_in_labels(self, middleware):

@@ -6,8 +6,8 @@
             <h1 class="text-2xl font-bold text-white">Changelog</h1>
             <p class="text-sm text-slate-500 mt-1">{{ app_name }} v{{ version }}</p>
         </div>
-        <a href="/dashboard" class="text-xs text-slate-400 hover:text-white transition-colors">
-            <i data-lucide="arrow-left" class="w-4 h-4 inline-block mr-1"></i> Back to Dashboard
+        <a href="{{ changelog_back_href | default('/') }}" class="text-xs text-slate-400 hover:text-white transition-colors">
+            <i data-lucide="arrow-left" class="w-4 h-4 inline-block mr-1"></i> {{ changelog_back_label | default('Back to Home') }}
         </a>
     </div>
 

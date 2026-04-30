@@ -154,7 +154,7 @@ def _check_ai(token: str) -> None:
     _ok(ai_status.status == 200, f"AI status endpoint responded (status {ai_status.status})")
 
     gateway_url = TENSORZERO_GATEWAY_URL or "http://tensorzero:3000"
-    tz = _request("POST", "/test-tz-gateway", json_body={"gateway_url": gateway_url}, timeout=30)
+    tz = _request("POST", "/test-tz-gateway", headers=headers, json_body={"gateway_url": gateway_url}, timeout=30)
     _ok(tz.status == 200 and isinstance(tz.data, dict), "TensorZero gateway test endpoint responded")
 
     if not AI_SERVICE_URL:

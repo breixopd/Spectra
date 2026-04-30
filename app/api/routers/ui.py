@@ -4,15 +4,16 @@ UI router for serving the frontend dashboard.
 
 import logging
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.routing import Route
 
 from app.api.dependencies import (
     _is_admin_user,
     get_current_active_user,
+    get_current_user,
     get_ui_user,
     require_feature,
 )
@@ -34,6 +35,23 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 templates.env.globals["get_nav_user"] = get_ui_user
+
+
+async def _require_manage_settings_or_prebootstrap(
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+) -> None:
+    """Allow gateway probe during install (no users yet); otherwise MANAGE_SETTINGS or superuser."""
+    user_count = (await session.execute(select(func.count()).select_from(User))).scalar_one()
+    if user_count == 0:
+        return
+    user = await get_current_user(request=request, session=session)
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive")
+    if user.is_superuser:
+        return
+    if not has_permission(user.role, Permission.MANAGE_SETTINGS):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
 
 
 async def _get_user_features_dict(username: str | None) -> dict[str, bool]:
@@ -426,7 +444,10 @@ async def get_ai_status(
 
 
 @router.post("/test-llm")
-async def test_llm_connection(request: Request):
+async def test_llm_connection(
+    request: Request,
+    _user: User = require_permission(Permission.MANAGE_SETTINGS),
+):
     """Test TensorZero gateway connection."""
     import httpx
 
@@ -443,7 +464,10 @@ async def test_llm_connection(request: Request):
 
 
 @router.post("/test-tz-gateway")
-async def test_tz_gateway(request: Request):
+async def test_tz_gateway(
+    request: Request,
+    _access: None = Depends(_require_manage_settings_or_prebootstrap),
+):
     """Test TensorZero gateway connection (setup page)."""
     import httpx
 

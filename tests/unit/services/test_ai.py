@@ -28,7 +28,7 @@ from app.services.ai.llm import (
     LLMResponse,
     get_llm_client,
 )
-from app.services.tools.models import (
+from spectra_tools_core.models import (
     RegisteredTool,
     ToolCategory,
     ToolConfig,

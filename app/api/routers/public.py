@@ -150,8 +150,6 @@ async def sitemap(request: Request):
     urls = [
         ("", "1.0", "monthly"),
         ("/changelog", "0.5", "weekly"),
-        ("/help", "0.5", "monthly"),
-        ("/docs/api", "0.7", "weekly"),
         ("/login", "0.3", "monthly"),
         ("/register", "0.3", "monthly"),
     ]
@@ -323,6 +321,7 @@ async def changelog_page(request: Request):
             ]
     except (OSError, RuntimeError, ValueError):
         logger.debug("Failed to load changelog", exc_info=True)
+    logged_in = await _get_user_from_cookie(request) is not None
     return templates.TemplateResponse(
         request,
         "changelog.html",
@@ -332,6 +331,8 @@ async def changelog_page(request: Request):
             "changelogs": changelogs,
             "version": __version__,
             "is_public_page": True,
+            "changelog_back_href": "/dashboard" if logged_in else "/",
+            "changelog_back_label": "Back to Dashboard" if logged_in else "Back to Home",
         },
     )
 
