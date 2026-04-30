@@ -180,6 +180,17 @@ jobs:
         run: ENV_FILE=../.env.example docker compose --env-file .env.example -f docker/compose.yaml --profile app --profile test --profile targets config --quiet
       - name: Validate Swarm compose
         run: docker compose --env-file .env.example -f docker/docker-compose.swarm.yml config --quiet
+      - name: Free hosted runner tool cache before image scans
+        run: sudo rm -rf /opt/hostedtoolcache || true; df -h
+      - name: Scan Caddy image for critical CVEs
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        with:
+          image-ref: spectra-caddy:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Free Docker cache after Caddy scan
+        run: docker rmi spectra-caddy:ci || true; docker builder prune -af || true; docker system prune -f || true
       - name: Scan API image for critical CVEs
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
@@ -216,13 +227,6 @@ jobs:
           exit-code: "1"
       - name: Free Docker cache after worker scan
         run: docker rmi spectra-worker:ci || true; docker builder prune -af || true; docker system prune -f || true
-      - name: Scan Caddy image for critical CVEs
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
-        with:
-          image-ref: spectra-caddy:ci
-          severity: CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
 
   deps:
     name: Dependency Audit
