@@ -70,8 +70,8 @@ async def test_configurable_limit():
 @pytest.mark.asyncio
 async def test_api_429_handler_preserves_non_slowapi_detail_and_headers():
     """Non-SlowAPI 429 responses should keep their original detail and headers."""
-    from app.bootstrap.templates import templates
     from spectra_api.errors import make_error_handler
+    from spectra_api.templates import templates
 
     request = MagicMock()
     request.url.path = "/api/test"

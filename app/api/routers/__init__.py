@@ -6,8 +6,6 @@ from importlib import import_module
 
 _ROUTER_MODULES = {
     "health_router": ("app.api.routers.health", "router"),
-    "ui_router": ("app.api.routers.ui", "router"),
-    "public_router": ("app.api.routers.public", "router"),
     "auth_router": ("app.api.routers.auth", "router"),
     "tools_router": ("app.api.routers.tools", "router"),
     "missions_router": ("app.api.routers.missions", "router"),

@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 
-from app.infrastructure.paths import data_path
+from spectra_common.paths import data_path
 
 logger = logging.getLogger(__name__)
 

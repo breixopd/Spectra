@@ -10,7 +10,7 @@ Spectra's frontend uses CSP-safe event delegation, Jinja2 macros, and consistent
 
 All interactive elements use data-attribute delegation instead of inline event handlers (`onclick`, `onsubmit`). This is required for Content Security Policy (CSP) compliance, since inline handlers are blocked under a strict nonce-based CSP.
 
-The delegation module lives at `static/js/modules/delegated-events.js` and is loaded on every page.
+The delegation module lives at `services/api/static/js/modules/delegated-events.js` and is loaded on every page.
 
 ### `data-action` — Click Delegation
 
@@ -131,13 +131,13 @@ Playwright E2E tests use `data-testid` attributes for stable, implementation-agn
 
 | Element | Location | `data-testid` |
 |---------|----------|---------------|
-| Sidebar | `templates/base.html` | `sidebar` |
-| Admin nav link | `templates/base.html` | `admin-nav-link` |
-| Mission target input | `templates/dashboard.html` | `mission-target` |
-| Mission directive input | `templates/dashboard.html` | `mission-directive` |
-| Launch button | `templates/dashboard.html` | `launch-btn` |
-| Getting started panel | `templates/dashboard.html` | `getting-started` |
-| API docs search | `templates/docs.html` | `api-docs-search` |
+| Sidebar | `services/api/templates/base.html` | `sidebar` |
+| Admin nav link | `services/api/templates/base.html` | `admin-nav-link` |
+| Mission target input | `services/api/templates/dashboard.html` | `mission-target` |
+| Mission directive input | `services/api/templates/dashboard.html` | `mission-directive` |
+| Launch button | `services/api/templates/dashboard.html` | `launch-btn` |
+| Getting started panel | `services/api/templates/dashboard.html` | `getting-started` |
+| API docs search | `services/api/templates/docs.html` | `api-docs-search` |
 
 ### Adding New Test IDs
 
@@ -157,7 +157,7 @@ await page.getByTestId('save-settings-btn').click();
 
 ## Modal Macro
 
-The modal macro (`templates/partials/modal.html`) provides a consistent, accessible modal component.
+The modal macro (`services/api/templates/partials/modal.html`) provides a consistent, accessible modal component.
 
 ### Usage
 
@@ -202,7 +202,7 @@ The modal includes `role="dialog"` and `aria-modal="true"`. When a `title` is pr
 
 ## Feature Gate Macro
 
-The feature gate macro (`templates/macros/feature_gate.html`) provides server-side feature gating based on the user's plan.
+The feature gate macro (`services/api/templates/macros/feature_gate.html`) provides server-side feature gating based on the user's plan.
 
 ### Usage
 

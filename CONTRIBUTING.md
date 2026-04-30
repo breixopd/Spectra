@@ -138,19 +138,10 @@ packages/
 └── tools-core/       # spectra_tools_core registry contracts
 
 services/
-├── api/              # `spectra_api` package (`services/api/`); uvicorn targets `spectra_api.main:app`
+├── api/              # `spectra_api` package + API-owned UI assets/templates
 ├── ai/               # spectra_ai HTTP service entry point
 ├── scheduler/        # spectra_scheduler background service entry point
 └── worker/           # spectra_worker job queue consumer
-
-static/               # CSS, JS, vendor libs (project root)
-├── css/              # Tailwind input.css + built output.css
-└── js/               # Page modules + shared JS
-
-templates/            # Jinja2 HTML templates (project root)
-├── macros/           # Reusable Jinja2 macros (feature_gate, etc.)
-├── partials/         # Reusable partials (modal, etc.)
-└── ...               # Page templates
 
 plugins/              # Tool plugin JSON configs
 config/               # Build configs (tailwind, postcss)
@@ -218,7 +209,7 @@ When adding a dependency, add it to the correct requirements file:
 - **Line length**: 120 characters
 - **Formatter**: `ruff format` (120 line length)
 - **Type hints**: Use them for function signatures. `from __future__ import annotations` at the top of new files.
-- **Imports**: Use absolute imports (`from app.services.ai import ...`), not relative, except within a package's own submodules.
+- **Imports**: Use absolute imports from concrete modules (for example `from app.services.ai.agents.base import AgentContext`), not relative, except within a package's own submodules. Prefer specific subpackages (`agents`, `consensus`, `memory`, …) rather than importing from `app.services.ai` as a catch-all umbrella.
 
 ### Running the linter
 
@@ -252,7 +243,7 @@ make css-build-prod
 make css-build
 ```
 
-The source file is `static/css/input.css`. Custom properties (design tokens) are defined in `:root`. Component classes use `@layer components`. See [Design Tokens](docs/wiki/design-tokens.md) for the full token reference.
+The source file is `services/api/static/css/input.css`. Custom properties (design tokens) are defined in `:root`. Component classes use `@layer components`. See [Design Tokens](docs/wiki/design-tokens.md) for the full token reference.
 
 ### Naming conventions
 

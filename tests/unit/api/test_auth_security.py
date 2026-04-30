@@ -236,7 +236,7 @@ class TestLoginRedirectsAuthenticated:
 
     @pytest.mark.asyncio
     async def test_login_page_redirects_authenticated_user(self):
-        from app.api.routers.ui import login_page
+        from spectra_api.ui.pages import login_page
 
         scope = {
             "type": "http",
@@ -261,8 +261,8 @@ class TestLoginRedirectsAuthenticated:
                 pass
 
         with (
-            patch("app.api.routers.ui.async_session_maker", return_value=_MockCtx()),
-            patch("app.api.routers.ui.get_ui_user", return_value={"id": "u1", "username": "alice"}),
+            patch("spectra_api.ui.pages.async_session_maker", return_value=_MockCtx()),
+            patch("spectra_api.ui.pages.get_ui_user", return_value={"id": "u1", "username": "alice"}),
         ):
             resp = await login_page(request)
 
@@ -272,7 +272,7 @@ class TestLoginRedirectsAuthenticated:
     @pytest.mark.asyncio
     async def test_login_page_renders_for_anonymous_user(self):
         """Unauthenticated GET /login renders the login template."""
-        from app.api.routers.ui import login_page
+        from spectra_api.ui.pages import login_page
 
         scope = {
             "type": "http",
@@ -296,9 +296,9 @@ class TestLoginRedirectsAuthenticated:
                 pass
 
         with (
-            patch("app.api.routers.ui.async_session_maker", return_value=_MockCtx()),
-            patch("app.api.routers.ui.get_ui_user", return_value=None),
-            patch("app.api.routers.ui.templates") as mock_tmpl,
+            patch("spectra_api.ui.pages.async_session_maker", return_value=_MockCtx()),
+            patch("spectra_api.ui.pages.get_ui_user", return_value=None),
+            patch("spectra_api.ui.pages.templates") as mock_tmpl,
         ):
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
             resp = await login_page(request)
@@ -316,7 +316,7 @@ class TestPreSetupRegistrationBlocked:
 
     @pytest.mark.asyncio
     async def test_register_blocked_when_no_superuser(self):
-        from app.api.routers.public import RegisterRequest, register_user
+        from spectra_api.ui.public import RegisterRequest, register_user
 
         # Superuser check returns None — setup not complete
         superuser_result = MagicMock()
@@ -333,14 +333,14 @@ class TestPreSetupRegistrationBlocked:
         }
         request = Request(scope)
 
-        with patch("app.api.routers.public.async_session_maker", maker), pytest.raises(HTTPException) as exc:
+        with patch("spectra_api.ui.public.async_session_maker", maker), pytest.raises(HTTPException) as exc:
             await register_user.__wrapped__(request, body, Response())
 
         assert exc.value.status_code == 403
 
     @pytest.mark.asyncio
     async def test_register_allowed_when_superuser_exists(self):
-        from app.api.routers.public import RegisterRequest, register_user
+        from spectra_api.ui.public import RegisterRequest, register_user
 
         superuser_result = MagicMock()
         superuser_result.scalar_one_or_none.return_value = "admin-id"
@@ -358,8 +358,8 @@ class TestPreSetupRegistrationBlocked:
         request = Request(scope)
 
         with (
-            patch("app.api.routers.public.async_session_maker", maker),
-            patch("app.api.routers.public.PlanRepository.get_self_service_registration_plan", new=AsyncMock(return_value=None)),
+            patch("spectra_api.ui.public.async_session_maker", maker),
+            patch("spectra_api.ui.public.PlanRepository.get_self_service_registration_plan", new=AsyncMock(return_value=None)),
             patch("app.services.system.audit.log_event", AsyncMock()),
         ):
             result = await register_user.__wrapped__(request, body, Response())
@@ -420,6 +420,7 @@ class TestProfileEntitlementSource:
         assert profile["plan"]["id"] == "subscription-plan-id"
         assert profile["plan"]["name"] == "starter"
         assert profile["subscription"]["can_manage_billing"] is True
+        assert profile["can_access_observability"] is False
 
     @pytest.mark.asyncio
     async def test_current_profile_returns_plan_none_without_entitlement(self):
@@ -452,6 +453,38 @@ class TestProfileEntitlementSource:
 
         assert profile["plan"] is None
         assert profile["subscription"] is None
+        assert profile["can_access_observability"] is False
+
+    @pytest.mark.asyncio
+    async def test_current_profile_can_access_observability_for_superuser(self):
+        from app.api.routers.auth.session import get_current_profile
+
+        user = MagicMock()
+        user.id = "user-su"
+        user.username = "rootish"
+        user.email = "root@example.com"
+        user.role = "user"
+        user.is_superuser = True
+        user.mfa_enabled = False
+        user.processing_restricted = False
+        user.created_at = datetime.now(UTC)
+        user.plan_id = None
+
+        subscription_result = MagicMock()
+        subscription_result.first.return_value = None
+        prefs_result = MagicMock()
+        prefs_result.scalar_one_or_none.return_value = None
+        session = AsyncMock()
+        session.execute = AsyncMock(side_effect=[subscription_result, prefs_result])
+
+        with patch("app.api.routers.auth.session.get_user_entitlement", new=AsyncMock(return_value=None)):
+            profile = await get_current_profile.__wrapped__(
+                request=_make_request(path="/api/v1/auth/me"),
+                user=user,
+                session=session,
+            )
+
+        assert profile["can_access_observability"] is True
 
     @pytest.mark.asyncio
     async def test_current_profile_exposes_past_due_billing_recovery_without_entitlement(self):
@@ -504,7 +537,7 @@ class TestEmailVerifyIdempotency:
 
     @pytest.mark.asyncio
     async def test_verify_already_verified_email_returns_success(self):
-        from app.api.routers.public import verify_email_page
+        from spectra_api.ui.public import verify_email_page
 
         scope = {
             "type": "http",
@@ -534,8 +567,8 @@ class TestEmailVerifyIdempotency:
 
         with (
             patch("app.auth.security.verify_email_verification_token", return_value="user-id-123"),
-            patch("app.api.routers.public.async_session_maker", return_value=_MockCtx()),
-            patch("app.api.routers.public.templates") as mock_tmpl,
+            patch("spectra_api.ui.public.async_session_maker", return_value=_MockCtx()),
+            patch("spectra_api.ui.public.templates") as mock_tmpl,
         ):
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
             await verify_email_page(request, token="fake-verify-token")
@@ -548,7 +581,7 @@ class TestEmailVerifyIdempotency:
 
     @pytest.mark.asyncio
     async def test_verify_fresh_email_sets_verified_flag_and_activates_user(self):
-        from app.api.routers.public import verify_email_page
+        from spectra_api.ui.public import verify_email_page
 
         scope = {
             "type": "http",
@@ -578,9 +611,9 @@ class TestEmailVerifyIdempotency:
 
         with (
             patch("app.auth.security.verify_email_verification_token", return_value="user-id-123"),
-            patch("app.api.routers.public.async_session_maker", return_value=_MockCtx()),
-            patch("app.api.routers.public.invalidate_token", new_callable=AsyncMock),
-            patch("app.api.routers.public.templates") as mock_tmpl,
+            patch("spectra_api.ui.public.async_session_maker", return_value=_MockCtx()),
+            patch("spectra_api.ui.public.invalidate_token", new_callable=AsyncMock),
+            patch("spectra_api.ui.public.templates") as mock_tmpl,
         ):
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
             await verify_email_page(request, token="fresh-token")
@@ -591,7 +624,7 @@ class TestEmailVerifyIdempotency:
 
     @pytest.mark.asyncio
     async def test_verify_already_verified_inactive_user_reactivates_account(self):
-        from app.api.routers.public import verify_email_page
+        from spectra_api.ui.public import verify_email_page
 
         scope = {
             "type": "http",
@@ -621,9 +654,9 @@ class TestEmailVerifyIdempotency:
 
         with (
             patch("app.auth.security.verify_email_verification_token", return_value="user-id-456"),
-            patch("app.api.routers.public.async_session_maker", return_value=_MockCtx()),
-            patch("app.api.routers.public.invalidate_token", new_callable=AsyncMock),
-            patch("app.api.routers.public.templates") as mock_tmpl,
+            patch("spectra_api.ui.public.async_session_maker", return_value=_MockCtx()),
+            patch("spectra_api.ui.public.invalidate_token", new_callable=AsyncMock),
+            patch("spectra_api.ui.public.templates") as mock_tmpl,
         ):
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
             await verify_email_page(request, token="inactive-token")

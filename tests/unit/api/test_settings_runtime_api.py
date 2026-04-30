@@ -86,7 +86,7 @@ async def test_get_settings_returns_current_settings_snapshot(test_app):
 async def test_update_settings_saves_sandbox_fields(test_app):
     mock_apply = AsyncMock(return_value={"status": "updated", "message": "Settings updated and saved"})
 
-    with patch("app.api.routers.ui.apply_settings_update", mock_apply):
+    with patch("spectra_api.ui.pages.apply_settings_update", mock_apply):
         transport = ASGITransport(app=test_app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             response = await client.post(

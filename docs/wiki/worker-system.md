@@ -77,7 +77,7 @@ Dead-letter jobs older than 30 days are automatically purged by the cleanup syst
 
 ## Cleanup Jobs
 
-Periodic cleanup runs every **hour** via `periodic_cleanup_loop()` in the application lifespan (`app/core/lifespan.py`). It calls `run_all_cleanup()` which executes four tasks:
+Periodic cleanup runs every **hour** via `periodic_cleanup_loop()` in `app/infrastructure/background_tasks.py`. The **scheduler** service runs that loop under a PostgreSQL advisory lock (see `services/scheduler/src/spectra_scheduler/loops/core_loops.py`). It calls `run_all_cleanup()` which executes four tasks:
 
 | Task | Function | Description |
 |------|----------|-------------|

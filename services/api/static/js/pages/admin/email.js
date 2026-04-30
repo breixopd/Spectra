@@ -79,3 +79,96 @@ async function sendTestEmail(e) {
         if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 }
+
+function _announcementPayload() {
+    var titleEl = document.getElementById('announcement-title');
+    var bodyEl = document.getElementById('announcement-body');
+    var title = (titleEl && titleEl.value) ? titleEl.value.trim() : '';
+    var content = bodyEl ? bodyEl.value : '';
+    return { title: title, content: content };
+}
+
+function _setAnnouncementResult(ok, msg) {
+    var result = document.getElementById('announcement-result');
+    if (!result) return;
+    result.className = ok
+        ? 'mt-3 p-3 rounded-lg text-sm bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+        : 'mt-3 p-3 rounded-lg text-sm bg-red-500/10 text-red-400 border border-red-500/20';
+    result.textContent = msg;
+    result.classList.remove('hidden');
+}
+
+async function sendAnnouncementTest() {
+    var payload = _announcementPayload();
+    if (!payload.title) {
+        _setAnnouncementResult(false, 'Enter a subject title.');
+        return;
+    }
+    var btn = document.getElementById('announcement-test-btn');
+    if (btn) { btn.disabled = true; btn.dataset.prevText = btn.innerHTML; btn.textContent = 'Sending...'; }
+    try {
+        var r = await spectraApi.post('/api/admin/email/announcement', {
+            title: payload.title,
+            content: payload.content,
+            test_only: true,
+        });
+        if (r.error) {
+            _setAnnouncementResult(false, r.error || 'Request failed');
+        } else {
+            var n = r.data && r.data.count != null ? r.data.count : 1;
+            _setAnnouncementResult(true, 'Test announcement sent (' + n + '). Check your inbox.');
+        }
+    } catch (err) {
+        _setAnnouncementResult(false, err.message || 'Failed');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = btn.dataset.prevText || '<i data-lucide="mail" class="w-4 h-4 inline-block mr-1.5"></i> Send test to me';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+    }
+}
+
+async function _postAnnouncementBroadcast() {
+    var payload = _announcementPayload();
+    if (!payload.title) {
+        _setAnnouncementResult(false, 'Enter a subject title.');
+        return;
+    }
+    var btn = document.getElementById('announcement-send-all-btn');
+    if (btn) { btn.disabled = true; btn.dataset.prevText = btn.innerHTML; btn.textContent = 'Sending...'; }
+    try {
+        var r = await spectraApi.post('/api/admin/email/announcement', {
+            title: payload.title,
+            content: payload.content,
+            test_only: false,
+        });
+        if (r.error) {
+            _setAnnouncementResult(false, r.error || 'Request failed');
+        } else {
+            var c = r.data && r.data.count != null ? r.data.count : 0;
+            _setAnnouncementResult(true, 'Queued sends completed. Messages accepted: ' + c + '.');
+        }
+    } catch (err) {
+        _setAnnouncementResult(false, err.message || 'Failed');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = btn.dataset.prevText || '<i data-lucide="megaphone" class="w-4 h-4 inline-block mr-1.5"></i> Send to opted-in users';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+    }
+}
+
+function confirmSendAnnouncementToAll() {
+    var payload = _announcementPayload();
+    if (!payload.title) {
+        _setAnnouncementResult(false, 'Enter a subject title.');
+        return;
+    }
+    showConfirm(
+        'Send announcement',
+        'Send this announcement to all active users who opted in?',
+        function () { void _postAnnouncementBroadcast(); },
+    );
+}

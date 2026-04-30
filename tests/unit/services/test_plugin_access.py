@@ -52,7 +52,7 @@ class TestToolboxPageAccess:
     """Toolbox page passes is_admin to the template context."""
 
     async def test_toolbox_passes_is_admin_true_for_admin(self):
-        from app.api.routers.ui import toolbox_page
+        from spectra_api.ui.pages import toolbox_page
 
         admin_user = _make_user(is_superuser=True)
 
@@ -60,10 +60,10 @@ class TestToolboxPageAccess:
         request.cookies = {"access_token": "valid-token"}
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"sub": "admin"}),
-            patch("app.api.routers.ui.async_session_maker") as mock_sm,
-            patch("app.api.routers.ui._is_admin_user", return_value=True),
-            patch("app.api.routers.ui.templates") as mock_templates,
+            patch("spectra_api.ui.pages.get_ui_user", return_value={"sub": "admin"}),
+            patch("spectra_api.ui.pages.async_session_maker") as mock_sm,
+            patch("spectra_api.ui.pages._is_admin_user", return_value=True),
+            patch("spectra_api.ui.pages.templates") as mock_templates,
         ):
             # Mock session context manager
             mock_session = AsyncMock()
@@ -84,7 +84,7 @@ class TestToolboxPageAccess:
             assert context.get("is_admin") is True
 
     async def test_toolbox_passes_is_admin_false_for_operator(self):
-        from app.api.routers.ui import toolbox_page
+        from spectra_api.ui.pages import toolbox_page
 
         operator_user = _make_user(is_superuser=False, role="user")
 
@@ -92,10 +92,10 @@ class TestToolboxPageAccess:
         request.cookies = {"access_token": "valid-token"}
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"sub": "user"}),
-            patch("app.api.routers.ui.async_session_maker") as mock_sm,
-            patch("app.api.routers.ui._is_admin_user", return_value=False),
-            patch("app.api.routers.ui.templates") as mock_templates,
+            patch("spectra_api.ui.pages.get_ui_user", return_value={"sub": "user"}),
+            patch("spectra_api.ui.pages.async_session_maker") as mock_sm,
+            patch("spectra_api.ui.pages._is_admin_user", return_value=False),
+            patch("spectra_api.ui.pages.templates") as mock_templates,
         ):
             mock_session = AsyncMock()
             mock_result = MagicMock()
@@ -127,14 +127,14 @@ class TestPluginCreatorAccess:
     async def test_non_admin_redirected_to_toolbox(self):
         from fastapi.responses import RedirectResponse
 
-        from app.api.routers.ui import plugin_creator_page
+        from spectra_api.ui.pages import plugin_creator_page
 
         request = MagicMock()
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"sub": "user"}),
-            patch("app.api.routers.ui.async_session_maker") as mock_sm,
-            patch("app.api.routers.ui._is_admin_user", return_value=False),
+            patch("spectra_api.ui.pages.get_ui_user", return_value={"sub": "user"}),
+            patch("spectra_api.ui.pages.async_session_maker") as mock_sm,
+            patch("spectra_api.ui.pages._is_admin_user", return_value=False),
         ):
             mock_session = AsyncMock()
             mock_result = MagicMock()
@@ -154,15 +154,15 @@ class TestPluginCreatorAccess:
             assert "/toolbox" in resp.headers.get("location", "")
 
     async def test_admin_sees_creator_page(self):
-        from app.api.routers.ui import plugin_creator_page
+        from spectra_api.ui.pages import plugin_creator_page
 
         request = MagicMock()
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"sub": "admin"}),
-            patch("app.api.routers.ui.async_session_maker") as mock_sm,
-            patch("app.api.routers.ui._is_admin_user", return_value=True),
-            patch("app.api.routers.ui.templates") as mock_templates,
+            patch("spectra_api.ui.pages.get_ui_user", return_value={"sub": "admin"}),
+            patch("spectra_api.ui.pages.async_session_maker") as mock_sm,
+            patch("spectra_api.ui.pages._is_admin_user", return_value=True),
+            patch("spectra_api.ui.pages.templates") as mock_templates,
         ):
             mock_session = AsyncMock()
             mock_result = MagicMock()
@@ -186,11 +186,11 @@ class TestPluginCreatorAccess:
     async def test_unauthenticated_redirected_to_login(self):
         from fastapi.responses import RedirectResponse
 
-        from app.api.routers.ui import plugin_creator_page
+        from spectra_api.ui.pages import plugin_creator_page
 
         request = MagicMock()
 
-        with patch("app.api.routers.ui.get_ui_user", return_value=None):
+        with patch("spectra_api.ui.pages.get_ui_user", return_value=None):
             resp = await plugin_creator_page(request)
 
             assert isinstance(resp, RedirectResponse)

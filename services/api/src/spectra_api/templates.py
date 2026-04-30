@@ -1,18 +1,13 @@
-"""Shared Jinja2Templates instance for all routers."""
-
-from pathlib import Path
+"""Shared Jinja2Templates instance for API-owned web UI."""
 
 from fastapi.templating import Jinja2Templates
 
 from app._meta.version import __version__
 from app.core.config import settings
+from spectra_api.paths import template_directory
 from spectra_common.constants import format_feature_label
 
-_APP_DIR = Path(__file__).resolve().parent.parent
-_TEMPLATES_DIR = _APP_DIR.parent / "templates"
-
-
-templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+templates = Jinja2Templates(directory=str(template_directory()))
 templates.env.auto_reload = settings.DEBUG
 templates.env.globals["app_name"] = settings.APP_NAME
 templates.env.globals["version"] = __version__

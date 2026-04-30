@@ -115,7 +115,7 @@ class TestPublicPageRoutes:
     async def test_status_page_renders_without_auth(self):
         from starlette.requests import Request
 
-        from app.api.routers.public import status_page
+        from spectra_api.ui.public import status_page
 
         scope = {
             "type": "http",
@@ -126,7 +126,7 @@ class TestPublicPageRoutes:
         }
         request = Request(scope)
 
-        with patch("app.api.routers.public.templates") as mock_tmpl:
+        with patch("spectra_api.ui.public.templates") as mock_tmpl:
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
             resp = await status_page(request)
 
@@ -136,7 +136,7 @@ class TestPublicPageRoutes:
     async def test_security_page_renders_without_auth(self):
         from starlette.requests import Request
 
-        from app.api.routers.public import security_page
+        from spectra_api.ui.public import security_page
 
         scope = {
             "type": "http",
@@ -147,7 +147,7 @@ class TestPublicPageRoutes:
         }
         request = Request(scope)
 
-        with patch("app.api.routers.public.templates") as mock_tmpl:
+        with patch("spectra_api.ui.public.templates") as mock_tmpl:
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
             resp = await security_page(request)
 

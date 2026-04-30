@@ -28,7 +28,7 @@ def backup_svc(tmp_path):
 
     with (
         patch("app.services.infrastructure.backup.BackupService.__init__", return_value=None),
-        patch("app.infrastructure.paths.data_path", return_value=temp_root),
+        patch("spectra_common.paths.data_path", return_value=temp_root),
     ):
         svc = BackupService()
         svc.settings = mock_settings

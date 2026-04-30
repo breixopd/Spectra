@@ -12,13 +12,13 @@ from app.api.schemas.system import SystemSetupRequest
 from app.auth.exceptions import SpectraError
 from app.auth.security import get_password_hash
 from app.core.config import settings
-from app.infrastructure.paths import data_path
 from app.models.user import User
 from app.services.system.runtime_settings import (
     hydrate_runtime_settings_from_db,
     upsert_system_config_values,
 )
 from spectra_ai.llm import close_global_llm_client
+from spectra_common.paths import data_path
 
 logger = logging.getLogger(__name__)
 

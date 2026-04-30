@@ -28,9 +28,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 RUN apt-get update && apt-get install -y --no-install-recommends nodejs npm && \
     rm -rf /var/lib/apt/lists/*
 COPY config/package.json config/package-lock.json config/postcss.config.js config/tailwind.config.js ./config/
-COPY static/css/input.css ./static/css/input.css
+COPY services/api/static/css/input.css ./services/api/static/css/input.css
 RUN cp config/package.json config/package-lock.json . && npm install && \
-    NODE_ENV=production npx postcss static/css/input.css -o static/css/output.css --config config/postcss.config.js
+    NODE_ENV=production npx postcss services/api/static/css/input.css -o services/api/static/css/output.css --config config/postcss.config.js
 
 # ── Runtime stage ──
 FROM ${PYTHON_BASE_IMAGE}
@@ -76,8 +76,8 @@ COPY --chown=spectra:spectra packages/tools-core/src/spectra_tools_core/ ./spect
 COPY --chown=spectra:spectra packages/common/src/spectra_common/ ./spectra_common/
 COPY --chown=spectra:spectra packages/domain/src/spectra_domain/ ./spectra_domain/
 COPY --chown=spectra:spectra app/ ./app/
-COPY --chown=spectra:spectra static/ ./static/
-COPY --chown=spectra:spectra templates/ ./templates/
+COPY --chown=spectra:spectra services/api/static/ ./spectra_api/static/
+COPY --chown=spectra:spectra services/api/templates/ ./spectra_api/templates/
 COPY --chown=spectra:spectra alembic/ ./alembic/
 COPY --chown=spectra:spectra config/alembic.ini ./config/alembic.ini
 COPY --chown=spectra:spectra plugins/ ./plugins/
@@ -87,7 +87,7 @@ COPY --chown=spectra:spectra config/postcss.config.js ./config/postcss.config.js
 RUN chmod +x /app/scripts/start.sh
 
 # Copy pre-built CSS from builder stage
-COPY --from=builder --chown=spectra:spectra /build/static/css/output.css ./static/css/output.css
+COPY --from=builder --chown=spectra:spectra /build/services/api/static/css/output.css ./spectra_api/static/css/output.css
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1

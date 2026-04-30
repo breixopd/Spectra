@@ -77,6 +77,18 @@
                         <i data-lucide="file-text" class="w-4 h-4"></i>
                         <span class="ml-3 text-sm font-medium">Reports</span>
                     </a>
+                    <a href="/profile" data-tooltip="Account, security, and billing" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/profile' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i data-lucide="user-circle" class="w-4 h-4"></i>
+                        <span class="ml-3 text-sm font-medium">Account</span>
+                    </a>
+                    <a href="/toolbox" data-tooltip="Tool registry and custom plugins" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/toolbox' or request.url.path.startswith('/toolbox/') %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i data-lucide="package" class="w-4 h-4"></i>
+                        <span class="ml-3 text-sm font-medium">Toolbox</span>
+                    </a>
+                    <a href="/overseer" data-tooltip="Agent overseer and safety controls" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/overseer' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i data-lucide="bot" class="w-4 h-4"></i>
+                        <span class="ml-3 text-sm font-medium">Agents</span>
+                    </a>
                     <a href="/docs/api" data-entitlement-gate="api_access" data-tooltip="API docs and integrations" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/docs/api' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i data-lucide="book-open" class="w-4 h-4"></i>
                         <span class="ml-3 text-sm font-medium">Documentation</span>
@@ -92,6 +104,10 @@
                     <a href="/help" data-tooltip="Help resources and support" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/help' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i data-lucide="help-circle" class="w-4 h-4"></i>
                         <span class="ml-3 text-sm font-medium">Help Center</span>
+                    </a>
+                    <a id="observability-nav-link" href="/observability" data-testid="observability-nav-link" data-tooltip="Platform metrics and traces" data-tooltip-pos="right" class="hidden flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/observability' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i data-lucide="line-chart" class="w-4 h-4"></i>
+                        <span class="ml-3 text-sm font-medium">Observability</span>
                     </a>
                     <a id="admin-nav-link" href="/admin" data-testid="admin-nav-link" data-tooltip="Admin controls and oversight" data-tooltip-pos="right" class="hidden flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/admin' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i data-lucide="shield-check" class="w-4 h-4"></i>

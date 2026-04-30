@@ -106,6 +106,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         adminNavLink.classList.add('hidden');
                     }
                 }
+                var observabilityNavLink = document.getElementById('observability-nav-link');
+                if (observabilityNavLink) {
+                    if (user && user.can_access_observability) {
+                        observabilityNavLink.classList.remove('hidden');
+                    } else {
+                        observabilityNavLink.classList.add('hidden');
+                    }
+                }
                 var features = (user && user.plan && user.plan.features) || {};
                 document.querySelectorAll('[data-entitlement-gate]').forEach(function(el) {
                     var feat = el.dataset.entitlementGate;

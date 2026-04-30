@@ -19,17 +19,17 @@ from app.api.routers import (
     missions,
     observability,
     pentest_sessions,
-    public,
     shell,
     system,
     targets,
     tools,
-    ui,
     user_settings,
     vpn,
     wordlists,
 )
 from app.core.config import settings
+from spectra_api.ui import pages as ui
+from spectra_api.ui import public
 
 logger = logging.getLogger(__name__)
 

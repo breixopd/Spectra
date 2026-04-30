@@ -26,7 +26,6 @@ from app.api.schemas.system import (
 )
 from app.auth.rbac import Permission, require_permission
 from app.auth.security import create_password_reset_token, get_password_hash
-from app.bootstrap.templates import templates
 from app.core.config import settings
 from app.core.database import get_async_session
 from app.models.audit_log import AuditEventType
@@ -45,6 +44,7 @@ from app.services.billing.entitlements import (
 )
 from app.services.system.audit import log_event as audit_log_event
 from app.services.system.rollback import create_snapshot
+from spectra_api.templates import templates
 from spectra_common.constants import API_DEFAULT_PAGE_SIZE, API_MAX_PAGE_SIZE
 
 logger = logging.getLogger(__name__)

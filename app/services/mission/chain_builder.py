@@ -18,7 +18,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app.infrastructure.paths import data_path
+from spectra_common.paths import data_path
 
 logger = logging.getLogger(__name__)
 

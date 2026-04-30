@@ -85,19 +85,19 @@ deploy-check: ## Run pre-deploy checks without deploying
 
 # --- CSS (Tailwind) ---
 css-build: ## Build Tailwind CSS (production, minified)
-	@npx tailwindcss -i static/css/input.css -o static/css/output.css --minify 2>/dev/null || \
-	 tailwindcss -i static/css/input.css -o static/css/output.css --minify
+	@npx tailwindcss -i services/api/static/css/input.css -o services/api/static/css/output.css --minify 2>/dev/null || \
+	 tailwindcss -i services/api/static/css/input.css -o services/api/static/css/output.css --minify
 
 css-build-prod: ## Build Tailwind CSS with PostCSS pipeline (autoprefixer + cssnano)
-	@NODE_ENV=production npx postcss static/css/input.css -o static/css/output.css --config config/postcss.config.js 2>/dev/null || \
-	 NODE_ENV=production postcss static/css/input.css -o static/css/output.css --config config/postcss.config.js
+	@NODE_ENV=production npx postcss services/api/static/css/input.css -o services/api/static/css/output.css --config config/postcss.config.js 2>/dev/null || \
+	 NODE_ENV=production postcss services/api/static/css/input.css -o services/api/static/css/output.css --config config/postcss.config.js
 
 .PHONY: import-boundaries
 import-boundaries: ## Check import boundary enforcement
 	@python3 scripts/check_import_boundaries.py
 
 css-watch: ## Watch and rebuild Tailwind CSS on changes
-	@npx tailwindcss -i static/css/input.css -o static/css/output.css --watch 2>/dev/null || \
-	 tailwindcss -i static/css/input.css -o static/css/output.css --watch
+	@npx tailwindcss -i services/api/static/css/input.css -o services/api/static/css/output.css --watch 2>/dev/null || \
+	 tailwindcss -i services/api/static/css/input.css -o services/api/static/css/output.css --watch
 
 

@@ -4,13 +4,13 @@
 
 ---
 
-Spectra's visual design system is built on CSS custom properties defined in `static/css/input.css` and extended through Tailwind CSS configuration in `config/tailwind.config.js`. This page documents every token so UI changes stay consistent.
+Spectra's visual design system is built on CSS custom properties defined in `services/api/static/css/input.css` and extended through Tailwind CSS configuration in `config/tailwind.config.js`. This page documents every token so UI changes stay consistent.
 
 ## Source Files
 
 | File | Purpose |
 |------|---------|
-| `static/css/input.css` | CSS custom properties (`:root` variables), component classes, reduced-motion overrides |
+| `services/api/static/css/input.css` | CSS custom properties (`:root` variables), component classes, reduced-motion overrides |
 | `config/tailwind.config.js` | Tailwind theme extensions (brand colors, fonts, animations) |
 | `config/postcss.config.js` | PostCSS pipeline (autoprefixer + cssnano for production builds) |
 
@@ -104,7 +104,7 @@ Extended in `config/tailwind.config.js`:
 
 ### Font Loading
 
-Inter and JetBrains Mono are loaded via CDN in `templates/base.html`. No local font files are bundled.
+Inter and JetBrains Mono are loaded via CDN in `services/api/templates/base.html`. No local font files are bundled.
 
 ### Usage in Templates
 
@@ -161,7 +161,7 @@ animation: {
 
 ### Reduced Motion
 
-`static/css/input.css` includes a `prefers-reduced-motion` media query that disables all animations and transitions for users who prefer reduced motion:
+`services/api/static/css/input.css` includes a `prefers-reduced-motion` media query that disables all animations and transitions for users who prefer reduced motion:
 
 ```css
 @media (prefers-reduced-motion: reduce) {
@@ -177,7 +177,7 @@ animation: {
 
 ## Component Classes
 
-Defined in `static/css/input.css` under `@layer components`:
+Defined in `services/api/static/css/input.css` under `@layer components`:
 
 | Class | Purpose |
 |-------|---------|
@@ -211,7 +211,7 @@ make css-build    # One-time production build (Tailwind only)
 make css-build-prod    # Full PostCSS pipeline: Tailwind + autoprefixer + cssnano
 ```
 
-The production build uses `config/postcss.config.js` which runs autoprefixer for browser compatibility and cssnano for minification. Output goes to `static/css/output.css`.
+The production build uses `config/postcss.config.js` which runs autoprefixer for browser compatibility and cssnano for minification. Output goes to `services/api/static/css/output.css`.
 
 ---
 
