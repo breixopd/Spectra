@@ -85,7 +85,7 @@ class SystemStatusResponse(BaseModel):
     rag_status: str = "unknown"
 
     # Tool cache stats
-    tool_cache_stats: dict[str, int] | None = None
+    tool_cache_stats: dict[str, int | float] | None = None
     storage_health: dict[str, Any] | None = None
 
 
@@ -123,7 +123,7 @@ def _get_cache() -> CacheService | None:
     return get_cache()
 
 
-def _get_tool_cache_stats() -> dict[str, int]:
+def _get_tool_cache_stats() -> dict[str, int | float]:
     """Get tool result cache statistics."""
     try:
         from app.mission.core.optimizations import tool_cache
