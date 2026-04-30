@@ -183,6 +183,9 @@ async def list_jobs(
                 "base_model": j.base_model,
                 "sample_count": j.sample_count,
                 "provider": j.provider,
+                "provider_job_id": j.provider_job_id,
+                "output_model_path": j.output_model_path,
+                "error_message": j.error_message,
                 "metrics": j.metrics,
                 "started_at": j.started_at.isoformat() if j.started_at else None,
                 "completed_at": j.completed_at.isoformat() if j.completed_at else None,
@@ -223,6 +226,8 @@ async def create_job(
         get_training_backend(provider)
     except ValueError:
         raise HTTPException(status_code=400, detail="Unknown training provider")
+    config = dict(body.get("config") or {})
+    config["min_quality"] = min_quality
 
     job = FineTuningJob(
         name=body.get("name", f"fine-tune-{sample_count}-samples"),
@@ -230,7 +235,7 @@ async def create_job(
         base_model=body.get("base_model", ""),
         sample_count=sample_count,
         sample_types=sample_types or None,
-        config=body.get("config"),
+        config=config,
         provider=provider,
         created_by=_user.id,
     )
