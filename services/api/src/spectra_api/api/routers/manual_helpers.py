@@ -13,7 +13,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.exceptions import NotFoundError, ValidationError
 from app.auth.rate_limit import RateLimits, limiter
 from app.core.database import get_async_session
 from app.models.user import User
@@ -31,6 +30,7 @@ from app.services.system.report_templates import (
     list_report_templates,
 )
 from spectra_api.api.dependencies import check_feature_allowed, check_resource_owner, get_current_active_user
+from spectra_common.errors import NotFoundError, ValidationError
 
 logger = logging.getLogger(__name__)
 

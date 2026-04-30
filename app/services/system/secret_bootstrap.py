@@ -17,9 +17,9 @@ from pydantic import SecretStr
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.advisory_locks import stable_lock_id
 from app.core.config import settings
 from app.models.config import SystemConfig
+from spectra_common.advisory_locks import stable_lock_id
 
 logger = logging.getLogger(__name__)
 

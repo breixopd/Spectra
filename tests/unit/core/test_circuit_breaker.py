@@ -5,13 +5,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.auth.exceptions import CircuitBreakerOpenError
 from app.infrastructure.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,
     CircuitBreakerRegistry,
     CircuitState,
 )
+from spectra_common.errors import CircuitBreakerOpenError
 
 
 def _make_breaker(failure_threshold=3, recovery_timeout=30, success_threshold=2):

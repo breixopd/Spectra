@@ -1,6 +1,6 @@
-"""Tests for app.auth.exceptions module."""
+"""Tests for spectra_common.errors module."""
 
-from app.auth.exceptions import (
+from spectra_common.errors import (
     AuthenticationError,
     AuthorizationError,
     CircuitBreakerOpenError,

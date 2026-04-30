@@ -93,8 +93,8 @@ async def health_deep(response: Response):
 
     start = time.monotonic()
     try:
-        from app.auth.advisory_locks import advisory_lock_owner, stable_lock_id
         from app.core.database import advisory_lock_connection
+        from spectra_common.advisory_locks import advisory_lock_owner, stable_lock_id
 
         test_lock_id = stable_lock_id("spectra_health_deep_test")
         async with advisory_lock_owner(test_lock_id, connection_factory=advisory_lock_connection) as lock_conn:

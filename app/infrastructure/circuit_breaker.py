@@ -16,8 +16,8 @@ from enum import StrEnum
 from functools import wraps
 from typing import Any, ParamSpec, TypeVar
 
-from app.auth.exceptions import CircuitBreakerOpenError
 from app.infrastructure.events import EventType, events
+from spectra_common.errors import CircuitBreakerOpenError
 
 logger = logging.getLogger(__name__)
 

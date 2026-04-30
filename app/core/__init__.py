@@ -22,7 +22,7 @@ import importlib as _importlib
 # Lazy-load submodule symbols on first access to avoid import-time coupling.
 # Consumers should import from specific submodules directly:
 #   from app.core.config import settings
-#   from app.auth.exceptions import SpectraError
+#   from spectra_common.errors import SpectraError
 
 _SUBMODULE_MAP: dict[str, str] = {
     # cache
@@ -58,18 +58,18 @@ _SUBMODULE_MAP: dict[str, str] = {
     "EventType": "app.infrastructure.events",
     "events": "app.infrastructure.events",
     # exceptions
-    "AuthError": "app.auth.exceptions",
-    "LLMConnectionError": "app.auth.exceptions",
-    "LLMError": "app.auth.exceptions",
-    "MissionError": "app.auth.exceptions",
-    "MissionNotFoundError": "app.auth.exceptions",
-    "MissionStateError": "app.auth.exceptions",
-    "RateLimitError": "app.auth.exceptions",
-    "SpectraError": "app.auth.exceptions",
-    "ToolError": "app.auth.exceptions",
-    "ToolExecutionError": "app.auth.exceptions",
-    "ToolNotFoundError": "app.auth.exceptions",
-    "ValidationError": "app.auth.exceptions",
+    "AuthError": "spectra_common.errors",
+    "LLMConnectionError": "spectra_common.errors",
+    "LLMError": "spectra_common.errors",
+    "MissionError": "spectra_common.errors",
+    "MissionNotFoundError": "spectra_common.errors",
+    "MissionStateError": "spectra_common.errors",
+    "RateLimitError": "spectra_common.errors",
+    "SpectraError": "spectra_common.errors",
+    "ToolError": "spectra_common.errors",
+    "ToolExecutionError": "spectra_common.errors",
+    "ToolNotFoundError": "spectra_common.errors",
+    "ValidationError": "spectra_common.errors",
     # protocols
     "HealthCheckable": "app.di.protocols",
     # rate_limit

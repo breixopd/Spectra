@@ -8,7 +8,6 @@ from typing import Any
 from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.auth.advisory_locks import stable_lock_id
 from app.core.database import async_session_maker
 from app.infrastructure.events import events
 from app.models.mission import Mission as MissionModel
@@ -24,6 +23,7 @@ from app.services.tools.output import cleanup_mission_workspace
 from app.services.training.dataset import create_mission_completion_sample
 from app.utils.geoip import resolve_ip
 from spectra_ai.sanitizer import sanitize_for_prompt
+from spectra_common.advisory_locks import stable_lock_id
 
 logger = logging.getLogger(__name__)
 
