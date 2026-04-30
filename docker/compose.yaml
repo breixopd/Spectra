@@ -157,14 +157,19 @@ services:
     cap_add:
       - CHOWN
       - DAC_OVERRIDE
+      - KILL
       - SETGID
       - SETUID
+    cap_drop:
+      - ALL
+    security_opt:
+      - "no-new-privileges:true"
     healthcheck:
       test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
       interval: 10s
       timeout: 5s
-      retries: 3
-      start_period: 10s
+      retries: 10
+      start_period: 60s
     deploy:
       resources:
         limits:
@@ -174,7 +179,6 @@ services:
       - frontend
       - backend
     logging: *default-logging
-    <<: *security-stateful
 
   tensorzero:
     image: ${TENSORZERO_IMAGE:-tensorzero/gateway:2026.4.1}
@@ -914,9 +918,15 @@ services:
 networks:
   frontend:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
   backend:
     driver: bridge
     internal: true
+    ipam:
+      config:
+        - subnet: 172.31.0.0/16
   targets:
     driver: bridge
     ipam:

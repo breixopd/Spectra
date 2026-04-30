@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!window.PUBLIC_PATHS.includes(window.location.pathname)) {
         spectraApi.get('/api/v1/auth/me')
             .then(function(result) {
-                if (result.error) {
+                if (result.error && (result.status === 401 || result.status === 403)) {
                     // Check if setup is needed before redirecting
                     spectraApi.get('/api/v1/auth/setup/status')
                         .then(function(r2) {
@@ -89,6 +89,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         })
                         .catch(function() { window.location.href = '/login'; });
+                    return;
+                } else if (result.error) {
                     return;
                 }
 
