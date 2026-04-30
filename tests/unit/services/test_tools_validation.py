@@ -53,8 +53,9 @@ async def test_validate_and_resolve_tool_not_installed():
     with patch("app.services.tools.validation.get_registry", return_value=mock_registry):
         tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {}, 300)
 
-    assert tool is None
-    assert "verified worker image" in error.stderr
+    assert tool == mock_tool
+    assert error is None
+    mission.log.assert_called_with("Tool nmap readiness is pending; worker will verify the installed binary before execution")
 
 
 @pytest.mark.asyncio

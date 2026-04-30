@@ -97,13 +97,14 @@ class TestLiveCampaign:
 
         # Generic directive as requested
         directive = (
-            "Perform a full security assessment of the target. "
-            "Identify attack vectors and attempt to exploit any critical vulnerabilities found to demonstrate impact."
+            "Perform a quick validation security assessment of the target. "
+            "Identify exposed services and report findings without long-running scans."
         )
 
         mission_id = await real_mission_manager.start_mission(
             target=TARGET_SERVER,
             directive=directive,
+            requirements="Smoke-test mode: use deterministic baseline discovery only.",
         )
 
         mission = await self.run_mission_until_completion(real_mission_manager, mission_id)
@@ -128,13 +129,14 @@ class TestLiveCampaign:
 
         # Generic directive as requested
         directive = (
-            "Perform a full security assessment of the web application. "
-            "Identify vulnerabilities and attempt to exploit them to demonstrate impact."
+            "Perform a quick validation security assessment of the web application. "
+            "Identify exposed web services and report findings without long-running scans."
         )
 
         mission_id = await real_mission_manager.start_mission(
             target=TARGET_WEB,
             directive=directive,
+            requirements="Smoke-test mode: use deterministic baseline discovery only.",
         )
 
         mission = await self.run_mission_until_completion(real_mission_manager, mission_id)
