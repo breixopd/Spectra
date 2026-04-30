@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from app.core.config import settings
+from spectra_ai.settings import get_ai_settings
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +18,7 @@ class EmbeddingService:
     """Embedding service: local fastembed or OpenAI SDK API backend."""
 
     def __init__(self, model_name: str = ""):
+        settings = get_ai_settings()
         self.model_name = model_name or settings.EMBEDDING_MODEL
         self._api_ready = False
         self._use_local = False
@@ -65,6 +66,7 @@ class EmbeddingService:
             if self._api_ready:
                 return
 
+            settings = get_ai_settings()
             # Check if using local embedding model
             model_lower = self.model_name.lower()
             api_key = settings.EMBEDDING_API_KEY.get_secret_value()

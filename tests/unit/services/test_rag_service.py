@@ -4,12 +4,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.ai.rag import Document, RAGConfig, RAGService, SearchResult
+from spectra_ai.rag import Document, RAGConfig, RAGService, SearchResult
 
 
 @pytest.fixture
 def rag_service():
-    with patch("app.services.ai.rag.EmbeddingService") as MockEmbed:
+    with patch("spectra_ai.rag.EmbeddingService") as MockEmbed:
         mock_embed = MockEmbed.return_value
         mock_embed.is_functional = False
         mock_embed.embed = AsyncMock(return_value=[0.1] * 384)
@@ -19,7 +19,7 @@ def rag_service():
 
 @pytest.fixture
 def functional_rag():
-    with patch("app.services.ai.rag.EmbeddingService") as MockEmbed:
+    with patch("spectra_ai.rag.EmbeddingService") as MockEmbed:
         mock_embed = MockEmbed.return_value
         mock_embed.is_functional = True
         mock_embed.embed = AsyncMock(return_value=[0.5] * 384)
@@ -89,7 +89,7 @@ class TestRAGIndexDocument:
 
         rag_service._table_ready = True
 
-        with patch("app.services.ai.rag.async_session_maker", return_value=mock_session_maker):
+        with patch("spectra_ai.rag.get_async_session_maker", return_value=lambda: mock_session_maker):
             await rag_service.index_document(sample_doc)
             rag_service.embeddings.embed.assert_awaited_once()
 
@@ -105,7 +105,7 @@ class TestRAGIndexDocument:
         mock_session_maker.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session_maker.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("app.services.ai.rag.async_session_maker", return_value=mock_session_maker):
+        with patch("spectra_ai.rag.get_async_session_maker", return_value=lambda: mock_session_maker):
             await rag_service.index_document(sample_doc)
             rag_service.initialize.assert_awaited_once()
 
@@ -120,7 +120,7 @@ class TestRAGIndexDocument:
         mock_cm.__aenter__ = AsyncMock(return_value=mock_session)
         mock_cm.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("app.services.ai.rag.async_session_maker", return_value=mock_cm):
+        with patch("spectra_ai.rag.get_async_session_maker", return_value=lambda: mock_cm):
             result = await rag_service.index_document(sample_doc)
         assert result is False
 
@@ -148,7 +148,7 @@ class TestRAGBatchIndex:
         mock_session_maker.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session_maker.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("app.services.ai.rag.async_session_maker", return_value=mock_session_maker):
+        with patch("spectra_ai.rag.get_async_session_maker", return_value=lambda: mock_session_maker):
             result = await rag_service.index_batch(docs)
         assert result == 2
         assert rag_service.index_document.await_count == 2

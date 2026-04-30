@@ -217,7 +217,7 @@ def get_current_settings() -> dict[str, Any]:
 
 async def get_ai_status_snapshot() -> dict[str, Any]:
     """Build the AI status response payload."""
-    from app.services.ai.llm import get_global_llm_client
+    from spectra_ai.llm import get_global_llm_client
 
     client = await get_global_llm_client()
     is_healthy = await client.health_check()
@@ -235,7 +235,7 @@ async def test_llm_connection(
     model: str | None = None,
 ) -> dict[str, Any]:
     """Test connectivity to TensorZero gateway. Returns {success, error?}."""
-    from app.services.ai.llm import get_global_llm_client
+    from spectra_ai.llm import get_global_llm_client
 
     try:
         client = await get_global_llm_client()

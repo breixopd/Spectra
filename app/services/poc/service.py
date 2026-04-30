@@ -12,13 +12,13 @@ from app.models.audit_log import AuditEventType
 from app.services.ai.agents.base import AgentContext
 from app.services.ai.agents.poc_developer import POCDeveloperAgent, POCDeveloperInput
 from app.services.ai.consensus import QualityGate, VotingSystem
-from app.services.ai.llm import LLMClient
 from app.services.mission.artifact_workspace import MissionArtifactWorkspace
 from app.services.poc.models import POCMetadata, POCRequest, POCResult
 from app.services.security.capabilities import Capability, CapabilityRequest, require_capability
 from app.services.shell.relay_client import shell_relay_client
 from app.services.system.audit import log_event as audit_log_event
 from app.services.tools.service import StandaloneMissionAdapter, ToolExecutionService
+from spectra_ai.llm import LLMClient
 
 logger = logging.getLogger(__name__)
 

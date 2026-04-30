@@ -4,8 +4,8 @@ import pytest
 
 from app.models.mission import Mission
 from app.services.ai.agents.mission_controller import AssessmentPhase, Task
-from app.services.ai.llm import LLMClient
 from app.services.mission.executor import MissionExecutor
+from spectra_ai.llm import LLMClient
 
 
 @pytest.fixture

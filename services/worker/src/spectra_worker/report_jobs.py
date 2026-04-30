@@ -21,7 +21,7 @@ async def generate_mission_report(mission_id: str, report_format: str = "pdf") -
     from app.core.database import async_session_maker
     from app.services.ai.agents.base import AgentContext
     from app.services.ai.agents.reporter import ReporterAgent, ReporterInput
-    from app.services.ai.llm import get_global_llm_client
+    from spectra_ai.llm import get_global_llm_client
 
     async with async_session_maker() as session:
         mission_result = await session.execute(select(Mission).where(Mission.id == mission_id))
@@ -57,7 +57,7 @@ async def generate_executive_summary(mission_id: str) -> str:
     from app.core.database import async_session_maker
     from app.services.ai.agents.base import AgentContext
     from app.services.ai.agents.reporter import ReporterAgent, ReporterInput
-    from app.services.ai.llm import get_global_llm_client
+    from spectra_ai.llm import get_global_llm_client
 
     async with async_session_maker() as session:
         mission_result = await session.execute(select(Mission).where(Mission.id == mission_id))

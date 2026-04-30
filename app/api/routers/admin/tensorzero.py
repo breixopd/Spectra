@@ -330,7 +330,7 @@ async def tz_model_performance(
     _user: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Get model performance metrics from cost trackers."""
-    from app.services.ai.cost_tracker import get_cost_trackers
+    from spectra_ai.cost_tracker import get_cost_trackers
 
     cost_trackers = get_cost_trackers()
     performance = {}

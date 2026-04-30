@@ -15,8 +15,8 @@ from app.services.tools.service import ToolExecutionService
 if TYPE_CHECKING:
     from app.services.ai.agents.base import Agent, AgentContext
     from app.services.ai.agents.mission_controller import Task
-    from app.services.ai.llm import LLMClient
     from app.services.mission.mission import Mission
+    from spectra_ai.llm import LLMClient
 
 logger = logging.getLogger(__name__)
 

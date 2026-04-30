@@ -1,7 +1,7 @@
 """RAG Facade Service.
 
 High-level convenience methods for indexing and searching documents,
-built on top of the core ``app.services.ai.rag.RAGService``.
+built on top of the core ``spectra_ai.rag.RAGService``.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ import logging
 from typing import Any
 
 from app.services.ai.knowledge import get_rag_service
-from app.services.ai.rag import Document, SearchResult
+from spectra_ai.rag import Document, SearchResult
 
 logger = logging.getLogger(__name__)
 

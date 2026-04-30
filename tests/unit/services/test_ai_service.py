@@ -21,8 +21,8 @@ async def test_lifespan_initializes_embeddings_on_startup():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.ai.embeddings",
-            make_module("app.services.ai.embeddings", EmbeddingService=lambda: embedding_service),
+            "spectra_ai.embeddings",
+            make_module("spectra_ai.embeddings", EmbeddingService=lambda: embedding_service),
         )
 
         async with ai_service.lifespan(ai_service.app):
@@ -40,8 +40,8 @@ async def test_lifespan_tolerates_embedding_init_failure():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.ai.embeddings",
-            make_module("app.services.ai.embeddings", EmbeddingService=lambda: embedding_service),
+            "spectra_ai.embeddings",
+            make_module("spectra_ai.embeddings", EmbeddingService=lambda: embedding_service),
         )
 
         async with ai_service.lifespan(ai_service.app):
@@ -89,8 +89,8 @@ async def test_ai_chat_returns_router_response():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.ai.router",
-            make_module("app.services.ai.router", get_smart_router=lambda: router),
+            "spectra_ai.router",
+            make_module("spectra_ai.router", get_smart_router=lambda: router),
         )
         response = await ai_service.ai_chat(request)
 
@@ -115,8 +115,8 @@ async def test_ai_chat_wraps_router_failures():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.ai.router",
-            make_module("app.services.ai.router", get_smart_router=lambda: router),
+            "spectra_ai.router",
+            make_module("spectra_ai.router", get_smart_router=lambda: router),
         )
         with pytest.raises(HTTPException) as exc:
             await ai_service.ai_chat(ai_service.ChatRequest(messages=[{"role": "user", "content": "ping"}]))
@@ -138,8 +138,8 @@ async def test_generate_embeddings_returns_vectors_and_dimensions():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.ai.embeddings",
-            make_module("app.services.ai.embeddings", EmbeddingService=lambda model_name="": embedding_service),
+            "spectra_ai.embeddings",
+            make_module("spectra_ai.embeddings", EmbeddingService=lambda model_name="": embedding_service),
         )
         response = await ai_service.generate_embeddings(
             ai_service.EmbeddingRequest(texts=["alpha", "beta"], model="mini-embed")
@@ -161,8 +161,8 @@ async def test_generate_embeddings_wraps_service_failures():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.ai.embeddings",
-            make_module("app.services.ai.embeddings", EmbeddingService=lambda model_name="": embedding_service),
+            "spectra_ai.embeddings",
+            make_module("spectra_ai.embeddings", EmbeddingService=lambda model_name="": embedding_service),
         )
         with pytest.raises(HTTPException) as exc:
             await ai_service.generate_embeddings(ai_service.EmbeddingRequest(texts=["alpha"]))
@@ -185,8 +185,8 @@ async def test_rag_query_returns_serialized_results():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.ai.rag",
-            make_module("app.services.ai.rag", RAGService=lambda: rag_service),
+            "spectra_ai.rag",
+            make_module("spectra_ai.rag", RAGService=lambda: rag_service),
         )
         response = await ai_service.rag_query(
             ai_service.RAGRequest(query="what changed", top_k=3, filters={"kind": "doc"})
@@ -206,8 +206,8 @@ async def test_rag_query_wraps_service_failures():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.ai.rag",
-            make_module("app.services.ai.rag", RAGService=lambda: rag_service),
+            "spectra_ai.rag",
+            make_module("spectra_ai.rag", RAGService=lambda: rag_service),
         )
         with pytest.raises(HTTPException) as exc:
             await ai_service.rag_query(ai_service.RAGRequest(query="what changed"))

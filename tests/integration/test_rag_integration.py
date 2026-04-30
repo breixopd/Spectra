@@ -5,7 +5,7 @@ import pytest
 import pytest_asyncio
 
 from app.core.config import settings
-from app.services.ai.rag import Document, RAGService
+from spectra_ai.rag import Document, RAGService
 
 pytestmark = [
     pytest.mark.asyncio,

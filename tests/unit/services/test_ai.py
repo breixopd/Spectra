@@ -24,7 +24,7 @@ from app.services.ai.consensus import (
     VotingConfig,
     VotingSystem,
 )
-from app.services.ai.llm import (
+from spectra_ai.llm import (
     LLMResponse,
     get_llm_client,
 )
@@ -179,14 +179,14 @@ class TestLLMFactory:
 
     def test_get_default_returns_tensorzero_router(self):
         """Factory returns a TensorZero router."""
-        from app.services.ai.router import TensorZeroRouter
+        from spectra_ai.router import TensorZeroRouter
 
         client = get_llm_client()
         assert isinstance(client, TensorZeroRouter)
 
     def test_get_with_provider_arg_returns_tensorzero(self):
         """Any provider string still returns the TensorZero router."""
-        from app.services.ai.router import TensorZeroRouter
+        from spectra_ai.router import TensorZeroRouter
 
         client = get_llm_client("openai")
         assert isinstance(client, TensorZeroRouter)
@@ -198,7 +198,7 @@ class TestLLMFactory:
 
     def test_custom_gateway_url(self):
         """Factory accepts a custom gateway_url kwarg."""
-        from app.services.ai.router import TensorZeroRouter
+        from spectra_ai.router import TensorZeroRouter
 
         client = get_llm_client(gateway_url="http://custom:3000")
         assert isinstance(client, TensorZeroRouter)

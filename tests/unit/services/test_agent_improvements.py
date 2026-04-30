@@ -283,14 +283,14 @@ class TestConfigurableConsensus:
 
 class TestPOCPromptMoved:
     def test_poc_prompt_in_prompts_module(self):
-        from app.services.ai.prompts import POC_DEVELOPER_PROMPT
+        from spectra_ai.prompts import POC_DEVELOPER_PROMPT
 
         assert "Exploit Developer" in POC_DEVELOPER_PROMPT
         assert "{target}" in POC_DEVELOPER_PROMPT
 
     def test_poc_developer_uses_prompt_from_prompts_module(self):
         """Verify the poc_developer module no longer defines its own prompt."""
-        import app.services.ai.prompts as prompts_mod
+        import spectra_ai.prompts as prompts_mod
 
         assert hasattr(prompts_mod, "POC_DEVELOPER_PROMPT")
 

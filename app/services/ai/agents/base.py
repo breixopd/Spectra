@@ -13,9 +13,9 @@ from typing import Any, ClassVar, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.services.ai.cost_tracker import CostTracker
-from app.services.ai.llm import LLMClient, _extract_json_block
-from app.services.ai.prompts import BASE_SYSTEM_PROMPT
+from spectra_ai.cost_tracker import CostTracker
+from spectra_ai.llm import LLMClient, _extract_json_block
+from spectra_ai.prompts import BASE_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 

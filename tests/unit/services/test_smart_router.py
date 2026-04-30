@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from app.services.ai.agents.base import ROLE_TASK_MAP, AgentRole
-from app.services.ai.router import (
+from spectra_ai.router import (
     TASK_TIERS,
     TensorZeroRouter,
     close_smart_router,
@@ -34,8 +34,10 @@ class TestTaskTiers:
 
 class TestTensorZeroRouter:
     def test_init_defaults(self):
-        with patch("app.services.ai.router.settings") as mock_settings:
-            mock_settings.TENSORZERO_GATEWAY_URL = "http://tensorzero:3000"
+        mock_s = MagicMock()
+        mock_s.TENSORZERO_GATEWAY_URL = "http://tensorzero:3000"
+        mock_s.LLM_TIMEOUT = 120.0
+        with patch("spectra_ai.router.get_ai_settings", return_value=mock_s):
             router = TensorZeroRouter()
         assert router._gateway_url == "http://tensorzero:3000"
         assert router._client is None
@@ -109,10 +111,10 @@ class TestTensorZeroRouter:
 
 class TestSingleton:
     def test_get_smart_router(self):
-        import app.services.ai.router as mod
+        import spectra_ai.router as mod
 
         mod._smart_router = None
-        with patch("app.services.ai.router.create_smart_router") as mock_create:
+        with patch("spectra_ai.router.create_smart_router") as mock_create:
             mock_create.return_value = MagicMock()
             r1 = get_smart_router()
             r2 = get_smart_router()
@@ -122,7 +124,7 @@ class TestSingleton:
 
     @pytest.mark.asyncio
     async def test_close_smart_router(self):
-        import app.services.ai.router as mod
+        import spectra_ai.router as mod
 
         mock_router = MagicMock()
         mock_router.close = AsyncMock()
@@ -134,14 +136,18 @@ class TestSingleton:
 
 class TestCreateSmartRouter:
     def test_create_requires_gateway_url(self):
-        with patch("app.services.ai.router.settings") as mock_settings:
-            mock_settings.TENSORZERO_GATEWAY_URL = ""
+        mock_s = MagicMock()
+        mock_s.TENSORZERO_GATEWAY_URL = ""
+        mock_s.LLM_TIMEOUT = 120.0
+        with patch("spectra_ai.router.get_ai_settings", return_value=mock_s):
             with pytest.raises(ValueError, match="TENSORZERO_GATEWAY_URL"):
                 create_smart_router()
 
     def test_create_router_success(self):
-        with patch("app.services.ai.router.settings") as mock_settings:
-            mock_settings.TENSORZERO_GATEWAY_URL = "http://tensorzero:3000"
+        mock_s = MagicMock()
+        mock_s.TENSORZERO_GATEWAY_URL = "http://tensorzero:3000"
+        mock_s.LLM_TIMEOUT = 120.0
+        with patch("spectra_ai.router.get_ai_settings", return_value=mock_s):
             router = create_smart_router()
         assert isinstance(router, TensorZeroRouter)
         assert router._gateway_url == "http://tensorzero:3000"

@@ -66,8 +66,8 @@ async def index_to_rag(mission: Mission) -> None:
     try:
         from app.models.attack_surface import VectorStatus
         from app.services.ai.knowledge import get_rag_service
-        from app.services.ai.rag import Document
         from app.services.rag.service import get_rag_facade
+        from spectra_ai.rag import Document
 
         rag = await get_rag_service()
         if not rag.is_functional:

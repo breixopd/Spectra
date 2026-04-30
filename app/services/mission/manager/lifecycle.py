@@ -15,7 +15,6 @@ from app.models.mission import Mission as MissionModel
 from app.models.user import User
 from app.repositories.mission import MissionRepository
 from app.services.ai.agents.base import AgentContext
-from app.services.ai.sanitizer import sanitize_for_prompt
 from app.services.billing.entitlements import get_user_entitlement_plan
 from app.services.billing.quota_enforcer import QuotaEnforcer
 from app.services.billing.usage_tracker import UsageTracker
@@ -24,6 +23,7 @@ from app.services.mission.state_store import MissionStateStore
 from app.services.tools.output import cleanup_mission_workspace
 from app.services.training.dataset import create_mission_completion_sample
 from app.utils.geoip import resolve_ip
+from spectra_ai.sanitizer import sanitize_for_prompt
 
 logger = logging.getLogger(__name__)
 

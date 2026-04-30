@@ -328,7 +328,7 @@ async def _initialize_services() -> None:
     if not settings.AI_SERVICE_URL:
         # In-process AI: preload embeddings
         try:
-            from app.services.ai.embeddings import EmbeddingService
+            from spectra_ai.embeddings import EmbeddingService
 
             await add_system_operation("embeddings", "load", "Loading embedding model")
             embed_service = EmbeddingService()
@@ -612,14 +612,14 @@ async def _shutdown_services() -> None:
         logger.info("[OK] Health clients closed")
 
         # Close smart router (TensorZero httpx client)
-        from app.services.ai.router import close_smart_router
+        from spectra_ai.router import close_smart_router
 
         await close_smart_router()
         logger.info("[OK] Smart router closed")
 
         # Close LLM Client
         if settings.SERVICE_MODE in ("api", "ai"):
-            from app.services.ai.llm import close_global_llm_client
+            from spectra_ai.llm import close_global_llm_client
 
             await close_global_llm_client()
             logger.info("[OK] LLM client closed")

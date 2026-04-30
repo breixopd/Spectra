@@ -60,7 +60,7 @@ async def test_generate_mission_report_returns_path():
 
     with (
         patch("app.core.database.async_session_maker", return_value=_mock_session_ctx(session)),
-        patch("app.services.ai.llm.get_global_llm_client", new_callable=AsyncMock, return_value=MagicMock()),
+        patch("spectra_ai.llm.get_global_llm_client", new_callable=AsyncMock, return_value=MagicMock()),
         patch("app.services.ai.agents.reporter.ReporterAgent", return_value=mock_reporter),
     ):
         path = await generate_mission_report("m-1")
@@ -134,7 +134,7 @@ async def test_generate_executive_summary_returns_text():
 
     with (
         patch("app.core.database.async_session_maker", return_value=_mock_session_ctx(session)),
-        patch("app.services.ai.llm.get_global_llm_client", new_callable=AsyncMock, return_value=MagicMock()),
+        patch("spectra_ai.llm.get_global_llm_client", new_callable=AsyncMock, return_value=MagicMock()),
         patch("app.services.ai.agents.reporter.ReporterAgent", return_value=mock_reporter),
     ):
         summary = await generate_executive_summary("m-1")

@@ -2,7 +2,7 @@
 
 import logging
 
-from app.services.ai.router import TensorZeroRouter, get_smart_router
+from spectra_ai.router import TensorZeroRouter, get_smart_router
 
 logger = logging.getLogger(__name__)
 

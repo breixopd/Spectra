@@ -66,7 +66,7 @@ class AIGateway:
             )
             return resp.get("results", [])
         # Monolith fallback — call RAGService directly
-        from app.services.ai.rag import RAGService
+        from spectra_ai.rag import RAGService
 
         svc = RAGService()
         results = await svc.search(query=query, top_k=kwargs.get("top_k", 5), filters=kwargs.get("filters"))
@@ -93,7 +93,7 @@ class AIGateway:
                 return {"functional": False, "status": f"unreachable: {type(exc).__name__}"}
         # Monolith fallback
         try:
-            from app.services.ai.rag import RAGService
+            from spectra_ai.rag import RAGService
 
             rag = RAGService()
             if rag.is_functional:
@@ -116,7 +116,7 @@ class AIGateway:
                 return {"available": False, "provider": "unknown", "status": f"unreachable: {type(exc).__name__}"}
         # Monolith fallback
         try:
-            from app.services.ai.router import get_smart_router
+            from spectra_ai.router import get_smart_router
 
             router_instance = get_smart_router()
             provider = getattr(router_instance, "provider", "unknown")

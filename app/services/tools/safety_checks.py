@@ -11,9 +11,9 @@ from spectra_tools_core.models import ToolExecutionRequest
 
 if TYPE_CHECKING:
     from app.services.ai.agents.safety import SafetySupervisorAgent
-    from app.services.ai.llm import LLMClient
     from app.services.mission.mission import Mission
     from app.services.tools.adapter import CommandToolAdapter
+    from spectra_ai.llm import LLMClient
 
 logger = logging.getLogger(__name__)
 

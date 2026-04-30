@@ -47,6 +47,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Application code (minimal surface — no API templates/static)
 COPY services/worker/src/spectra_worker/ ./spectra_worker/
+COPY services/ai/src/spectra_ai/ ./spectra_ai/
 COPY packages/tools-core/src/spectra_tools_core/ ./spectra_tools_core/
 COPY packages/common/src/spectra_common/ ./spectra_common/
 COPY packages/domain/src/spectra_domain/ ./spectra_domain/

@@ -46,8 +46,8 @@ from spectra_domain.jobs import WorkerJobName
 from spectra_tools_core.models import ToolExecutionResult
 
 if TYPE_CHECKING:
-    from app.services.ai.llm import LLMClient
     from app.services.mission.mission import Mission
+    from spectra_ai.llm import LLMClient
 
 logger = logging.getLogger(__name__)
 

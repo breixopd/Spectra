@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 from app.services.ai.agents.base import Agent, AgentRole
 
 if TYPE_CHECKING:
-    from app.services.ai.llm import LLMClient
+    from spectra_ai.llm import LLMClient
 
 logger = logging.getLogger(__name__)
 

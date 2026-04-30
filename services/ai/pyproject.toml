@@ -6,6 +6,12 @@ requires-python = ">=3.11"
 dependencies = [
     "spectra-common",
     "spectra-domain",
+    "httpx>=0.28.1",
+    "json-repair>=0.58.5",
+    "openai>=2.26.0",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.13.1",
+    "sqlalchemy[asyncio]>=2.0.48",
 ]
 
 [build-system]

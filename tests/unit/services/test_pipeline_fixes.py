@@ -139,7 +139,7 @@ class TestLLMRetry:
 
     @pytest.mark.asyncio
     async def test_retry_attribute_exists(self):
-        from app.services.ai.llm import LLMClient
+        from spectra_ai.llm import LLMClient
 
         assert hasattr(LLMClient, "generate_with_retry")
         assert hasattr(LLMClient, "MAX_RETRIES")

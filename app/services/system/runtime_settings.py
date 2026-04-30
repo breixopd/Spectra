@@ -331,9 +331,9 @@ async def upsert_system_config_values(
 
 async def reset_runtime_ai_caches(preload: bool = False) -> None:
     """Reset cached AI router and LLM singletons after runtime config changes."""
-    from app.services.ai.embeddings import EmbeddingService
-    from app.services.ai.llm import close_global_llm_client, get_global_llm_client
-    from app.services.ai.router import close_smart_router
+    from spectra_ai.embeddings import EmbeddingService
+    from spectra_ai.llm import close_global_llm_client, get_global_llm_client
+    from spectra_ai.router import close_smart_router
 
     await close_global_llm_client()
     await close_smart_router()

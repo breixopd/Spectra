@@ -11,7 +11,7 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
-from app.core.config import settings
+from spectra_ai.settings import get_ai_settings
 
 logger = logging.getLogger(__name__)
 
@@ -259,7 +259,7 @@ Respond ONLY with the JSON object. No markdown, no explanation, just the JSON.""
 
 def get_llm_client(
     provider: str = "tensorzero",
-    **kwargs,
+    **kwargs: Any,
 ) -> LLMClient:
     """
     Factory function to get the appropriate LLM client.
@@ -271,8 +271,9 @@ def get_llm_client(
     Returns:
         Configured LLM client instance.
     """
-    from app.services.ai.router import TensorZeroRouter
+    from spectra_ai.router import TensorZeroRouter
 
+    settings = get_ai_settings()
     gateway_url = kwargs.get("gateway_url") or settings.TENSORZERO_GATEWAY_URL
     return TensorZeroRouter(gateway_url=gateway_url)
 
@@ -283,7 +284,7 @@ def get_default_llm_client() -> LLMClient:
     Uses TensorZero gateway for all LLM routing.
     """
 
-    from app.services.ai.router import create_smart_router
+    from spectra_ai.router import create_smart_router
 
     try:
         client = create_smart_router()

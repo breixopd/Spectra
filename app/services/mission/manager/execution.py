@@ -16,8 +16,6 @@ from app.services.ai.agents.mission_controller import (
 )
 from app.services.ai.agents.scope import ScopeAgent, ScopeInput
 from app.services.ai.consensus import QualityGate, VotingSystem
-from app.services.ai.cost_tracker import CostTracker
-from app.services.ai.llm import get_global_llm_client
 from app.services.mission.executor import MissionExecutor
 from app.services.mission.manager.checkpoint import index_to_rag, record_mission_lessons
 from app.services.mission.manager.helpers import (
@@ -30,6 +28,8 @@ from app.services.mission.manager.steering import MissionSteeringManager
 from app.services.mission.mission import Mission
 from app.services.shell.session_manager import shell_manager
 from app.services.tools.output import cleanup_mission_workspace
+from spectra_ai.cost_tracker import CostTracker
+from spectra_ai.llm import get_global_llm_client
 from spectra_common.constants import (
     MAX_HOSTS_DEFAULT,
 )

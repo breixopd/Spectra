@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services.ai.cost_tracker import CostTracker
+from spectra_ai.cost_tracker import CostTracker
 
 
 def _build_mock_tracker(mission_id: str, agent_records: list[dict]) -> CostTracker:
@@ -33,7 +33,7 @@ def _build_mock_tracker(mission_id: str, agent_records: list[dict]) -> CostTrack
 
 
 @pytest.mark.asyncio
-@patch("app.services.ai.cost_tracker.get_cost_trackers")
+@patch("spectra_ai.cost_tracker.get_cost_trackers")
 @patch("app.api.routers.admin.audit.telemetry")
 async def test_admin_usage_response_format(mock_telemetry, mock_get_trackers):
     """The endpoint must return the documented top-level keys."""
@@ -67,7 +67,7 @@ async def test_admin_usage_response_format(mock_telemetry, mock_get_trackers):
 
 
 @pytest.mark.asyncio
-@patch("app.services.ai.cost_tracker.get_cost_trackers")
+@patch("spectra_ai.cost_tracker.get_cost_trackers")
 @patch("app.api.routers.admin.audit.telemetry")
 async def test_admin_usage_token_cost_aggregation(mock_telemetry, mock_get_trackers):
     """Totals must aggregate across all trackers and agents."""
@@ -116,7 +116,7 @@ async def test_admin_usage_token_cost_aggregation(mock_telemetry, mock_get_track
 
 
 @pytest.mark.asyncio
-@patch("app.services.ai.cost_tracker.get_cost_trackers")
+@patch("spectra_ai.cost_tracker.get_cost_trackers")
 @patch("app.api.routers.admin.audit.telemetry")
 async def test_admin_usage_empty_state(mock_telemetry, mock_get_trackers):
     """With no active trackers, everything should be zero."""

@@ -51,7 +51,7 @@ class TestMonitoringOverview:
         _override_deps(app)
 
         with (
-            patch("app.services.ai.cost_tracker.get_cost_trackers", return_value={}),
+            patch("spectra_ai.cost_tracker.get_cost_trackers", return_value={}),
             patch("app.api.routers.admin.monitoring.get_metrics_store") as mock_ms,
         ):
             mock_ms.return_value.get_history.return_value = []

@@ -21,9 +21,9 @@ from typing import Any, TypeVar
 import httpx
 from pydantic import BaseModel
 
-from app.core.config import settings
-from app.services.ai.llm import LLMClient, LLMResponse
-from app.telemetry.telemetry import record_llm_call
+from spectra_ai.llm import LLMClient, LLMResponse
+from spectra_ai.settings import get_ai_settings
+from spectra_ai.telemetry_hooks import record_llm_call
 
 logger = logging.getLogger(__name__)
 
@@ -61,11 +61,13 @@ class TensorZeroRouter(LLMClient):
     provider = "tensorzero"
 
     def __init__(self, gateway_url: str = ""):
+        settings = get_ai_settings()
         self._gateway_url = (gateway_url or settings.TENSORZERO_GATEWAY_URL).rstrip("/")
         self._client: httpx.AsyncClient | None = None
 
     def _get_client(self) -> httpx.AsyncClient:
         """Lazy-initialize the HTTP client."""
+        settings = get_ai_settings()
         if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(
                 base_url=self._gateway_url,
@@ -89,6 +91,7 @@ class TensorZeroRouter(LLMClient):
         task_type: str | None = None,
     ) -> LLMResponse:
         """Generate text via TensorZero gateway."""
+        settings = get_ai_settings()
         function_name = self._get_function_for_task(task_type)
 
         messages = []
@@ -201,6 +204,7 @@ class TensorZeroRouter(LLMClient):
         task_type: str | None = None,
     ) -> AsyncIterator[str]:
         """Stream tokens via TensorZero gateway."""
+        settings = get_ai_settings()
         function_name = self._get_function_for_task(task_type)
 
         messages = []
@@ -289,7 +293,7 @@ class TensorZeroRouter(LLMClient):
 
 def create_smart_router() -> LLMClient:
     """Create a TensorZero router from current settings."""
-    gateway_url = settings.TENSORZERO_GATEWAY_URL
+    gateway_url = get_ai_settings().TENSORZERO_GATEWAY_URL
     if not gateway_url:
         raise ValueError(
             "TENSORZERO_GATEWAY_URL is not configured. "

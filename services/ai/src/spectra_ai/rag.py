@@ -16,9 +16,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 
-from app.core.config import settings
-from app.core.database import async_session_maker
-from app.services.ai.embeddings import EmbeddingService
+from spectra_ai.db import get_async_session_maker
+from spectra_ai.embeddings import EmbeddingService
+from spectra_ai.settings import get_ai_settings
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +99,7 @@ class RAGService:
 
     def __init__(self, config: RAGConfig | None = None):
         self.config = config or RAGConfig()
-        model = self.config.embedding_model or settings.EMBEDDING_MODEL
+        model = self.config.embedding_model or get_ai_settings().EMBEDDING_MODEL
         self.embeddings = EmbeddingService(model)
         self._table_ready = False
 
@@ -117,7 +117,7 @@ class RAGService:
                 dim = self.embeddings.embedding_dim or 384
                 self.config.embedding_dim = dim
             dim = _validate_vector_dimension(dim)
-            async with async_session_maker() as session:
+            async with get_async_session_maker()() as session:
                 await session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
                 await session.execute(
                     text(f"""
@@ -188,7 +188,7 @@ class RAGService:
             content_hash = hashlib.sha256(doc.content.encode()).hexdigest()
 
             # Check if document exists with same content hash
-            async with async_session_maker() as session:
+            async with get_async_session_maker()() as session:
                 existing = await session.execute(
                     text("SELECT content_hash FROM rag_documents WHERE id = :id"),
                     {"id": doc.id},
@@ -201,7 +201,7 @@ class RAGService:
 
             embedding = await self.embeddings.embed(doc.content)
             embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
-            async with async_session_maker() as session:
+            async with get_async_session_maker()() as session:
                 await session.execute(
                     text("""
                         INSERT INTO rag_documents
@@ -251,7 +251,7 @@ class RAGService:
 
         # Check existing hashes in bulk
         try:
-            async with async_session_maker() as session:
+            async with get_async_session_maker()() as session:
                 doc_ids = list(doc_hashes.keys())
                 rows = (
                     (
@@ -290,7 +290,7 @@ class RAGService:
         # Bulk insert
         success = 0
         try:
-            async with async_session_maker() as session:
+            async with get_async_session_maker()() as session:
                 for doc, embedding in zip(docs_to_index, embeddings, strict=True):
                     content_hash = doc_hashes[doc.id]
                     embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
@@ -387,7 +387,7 @@ class RAGService:
             params["q_emb"] = embedding_str
             params["top_k"] = top_k
 
-            async with async_session_maker() as session:
+            async with get_async_session_maker()() as session:
                 await session.execute(text("SET hnsw.ef_search = 60"))
                 rows = (await session.execute(text(sql), params)).mappings().all()
 
@@ -422,7 +422,7 @@ class RAGService:
             await self.initialize()
 
         try:
-            async with async_session_maker() as session:
+            async with get_async_session_maker()() as session:
                 row = (
                     (
                         await session.execute(
@@ -468,7 +468,7 @@ class RAGService:
         if not self._table_ready:
             await self.initialize()
         try:
-            async with async_session_maker() as session:
+            async with get_async_session_maker()() as session:
                 result = await session.execute(text("DELETE FROM rag_documents WHERE id = :id"), {"id": doc_id})
                 deleted = result.rowcount > 0  # type: ignore[union-attr]
                 await session.commit()
@@ -482,7 +482,7 @@ class RAGService:
         if not self._table_ready:
             await self.initialize()
         try:
-            async with async_session_maker() as session:
+            async with get_async_session_maker()() as session:
                 count = await session.execute(text("SELECT COUNT(*) FROM rag_documents"))
                 return {"num_docs": count.scalar() or 0, "backend": "postgres"}
         except (OSError, RuntimeError) as e:
@@ -550,7 +550,7 @@ class RAGService:
         if not context_parts:
             return ""
         context = "Relevant Context:\n\n" + "\n\n---\n\n".join(context_parts)
-        from app.services.ai.sanitizer import sanitize_for_prompt
+        from spectra_ai.sanitizer import sanitize_for_prompt
 
         context = sanitize_for_prompt(context, max_length=50000, field_name="rag_context")
         return context

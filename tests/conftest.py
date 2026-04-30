@@ -44,9 +44,9 @@ def _is_live_test(item: pytest.Item) -> bool:
 @pytest_asyncio.fixture
 async def real_mission_manager():
     """Provide a real MissionManager instance for live tests."""
-    import app.services.ai.llm as llm_module
-    from app.services.ai.llm import get_default_llm_client
+    import spectra_ai.llm as llm_module
     from app.services.mission.manager import MissionManager
+    from spectra_ai.llm import get_default_llm_client
 
     # Use real LLM client (configured via env vars/settings)
     real_llm = get_default_llm_client()
@@ -198,8 +198,8 @@ def mock_llm_for_unit_tests(request):
         return mock_instance
 
     with (
-        patch("app.services.ai.llm.get_llm_client", patched_get_llm_client),
-        patch("app.services.ai.llm.get_default_llm_client", patched_get_default_llm_client),
+        patch("spectra_ai.llm.get_llm_client", patched_get_llm_client),
+        patch("spectra_ai.llm.get_default_llm_client", patched_get_default_llm_client),
     ):
         yield
 

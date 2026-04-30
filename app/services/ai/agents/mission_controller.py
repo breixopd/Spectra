@@ -28,13 +28,13 @@ from app.services.ai.agents.base import (
     SteeringAction,
 )
 from app.services.ai.agents.registry import register_agent
-from app.services.ai.errors import AgentError, LLMParseError, LLMTimeoutError
-from app.services.ai.prompts import (
+from spectra_ai.errors import AgentError, LLMParseError, LLMTimeoutError
+from spectra_ai.prompts import (
     MISSION_PLAN_PROMPT,
 )
 
 if TYPE_CHECKING:
-    from app.services.ai.llm import LLMClient
+    from spectra_ai.llm import LLMClient
 
 logger = logging.getLogger(__name__)
 
@@ -233,7 +233,7 @@ class MissionController(Agent[MissionInput, MissionPlan | PhaseTransition | Stee
             logger.debug("Could not fetch debrief lessons from memory", exc_info=True)
 
         from app.services.ai.context import ContextManager, ContextSection, Priority
-        from app.services.ai.sanitizer import sanitize_for_prompt
+        from spectra_ai.sanitizer import sanitize_for_prompt
 
         sanitized_directive = sanitize_for_prompt(input_data.directive, field_name="directive")
         sanitized_requirements = sanitize_for_prompt(input_data.requirements or "None", field_name="requirements")
