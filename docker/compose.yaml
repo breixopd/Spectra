@@ -590,7 +590,7 @@ services:
     entrypoint: ["sh", "-c"]
     command:
       - >-
-        python3 -m pytest tests/ -v --tb=short -x --ignore=tests/e2e/ui --ignore=tests/unit --ignore=tests/load --ignore=tests/performance --ignore=tests/soak
+        python3 -m pytest tests/ -v --tb=short -x --ignore=tests/e2e/ui --ignore=tests/unit --ignore=tests/load --ignore=tests/performance --ignore=tests/soak --no-cov -o addopts=
     env_file:
       - ../.env.test
     environment:
