@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-BASE_TEMPLATE = Path(__file__).resolve().parents[3] / "templates" / "base.html"
+BASE_TEMPLATE = Path(__file__).resolve().parents[3] / "services" / "api" / "templates" / "base.html"
 
 
 class TestLogoutButton:
