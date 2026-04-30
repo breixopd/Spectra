@@ -339,9 +339,10 @@ async def initialize_registry(
 ) -> ToolRegistry:
     """Initialize the global ToolRegistry instance."""
     global _registry_instance
-    if _registry_instance is None:
+    requested_dir = Path(plugins_dir)
+    if _registry_instance is None or _registry_instance.plugins_dir != requested_dir:
         _registry_instance = ToolRegistry(
-            plugins_dir=plugins_dir,
+            plugins_dir=requested_dir,
         )
         await _registry_instance.load_plugins()
     return _registry_instance
