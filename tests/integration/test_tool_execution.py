@@ -518,6 +518,10 @@ class TestPluginLoading:
     @pytest.mark.asyncio
     @pytest.mark.skipif(os.geteuid() != 0, reason="Tool installation requires root privileges")
     @pytest.mark.skipif(
+        os.environ.get("IS_TOOLS_CONTAINER", "").lower() != "true",
+        reason="Full tool verification must run inside the Kali tools container",
+    )
+    @pytest.mark.skipif(
         os.environ.get("SKIP_TOOL_VERIFY") == "1",
         reason="Tool verification skipped in this environment",
     )
