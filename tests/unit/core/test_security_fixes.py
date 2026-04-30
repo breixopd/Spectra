@@ -34,57 +34,57 @@ class TestPathTraversalPrevention:
     """Tests for session_id / note_id / evidence_id validation."""
 
     def test_validate_id_accepts_valid_ids(self):
-        from app.api.routers.pentest_sessions import _validate_id
+        from spectra_api.api.routers.pentest_sessions import _validate_id
 
         assert _validate_id("20260307-120000") == "20260307-120000"
         assert _validate_id("abc-123_xyz") == "abc-123_xyz"
         assert _validate_id("a") == "a"
 
     def test_validate_id_rejects_path_traversal(self):
-        from app.api.routers.pentest_sessions import _validate_id
+        from spectra_api.api.routers.pentest_sessions import _validate_id
 
         with pytest.raises(HTTPException) as exc:
             _validate_id("../../etc/passwd", "session_id")
         assert exc.value.status_code == 400
 
     def test_validate_id_rejects_dots(self):
-        from app.api.routers.pentest_sessions import _validate_id
+        from spectra_api.api.routers.pentest_sessions import _validate_id
 
         with pytest.raises(HTTPException):
             _validate_id("..session", "session_id")
 
     def test_validate_id_rejects_slashes(self):
-        from app.api.routers.pentest_sessions import _validate_id
+        from spectra_api.api.routers.pentest_sessions import _validate_id
 
         with pytest.raises(HTTPException):
             _validate_id("foo/bar", "session_id")
 
     def test_validate_id_rejects_backslash(self):
-        from app.api.routers.pentest_sessions import _validate_id
+        from spectra_api.api.routers.pentest_sessions import _validate_id
 
         with pytest.raises(HTTPException):
             _validate_id("foo\\bar", "session_id")
 
     def test_validate_id_rejects_empty(self):
-        from app.api.routers.pentest_sessions import _validate_id
+        from spectra_api.api.routers.pentest_sessions import _validate_id
 
         with pytest.raises(HTTPException):
             _validate_id("", "session_id")
 
     def test_validate_id_rejects_null_bytes(self):
-        from app.api.routers.pentest_sessions import _validate_id
+        from spectra_api.api.routers.pentest_sessions import _validate_id
 
         with pytest.raises(HTTPException):
             _validate_id("test\x00evil", "session_id")
 
     def test_session_path_validates_id(self):
-        from app.api.routers.pentest_sessions import _session_path
+        from spectra_api.api.routers.pentest_sessions import _session_path
 
         with pytest.raises(HTTPException):
             _session_path("../../../etc/passwd")
 
     def test_session_path_normal_id(self):
-        from app.api.routers.pentest_sessions import _session_path
+        from spectra_api.api.routers.pentest_sessions import _session_path
 
         path = _session_path("20260307-120000")
         assert "20260307-120000.json" in str(path)
@@ -101,7 +101,7 @@ class TestSessionOwnerFiltering:
     def test_create_session_stores_owner_id(self):
         """Verify the session dict includes owner_id field."""
         # This is a structural test - verify the schema includes owner_id
-        from app.api.routers.pentest_sessions import CreateSessionRequest
+        from spectra_api.api.routers.pentest_sessions import CreateSessionRequest
 
         req = CreateSessionRequest(name="test", target="10.0.0.1")
         assert req.name == "test"
@@ -215,7 +215,7 @@ class TestPersistentAccountLockout:
 
     @pytest.mark.asyncio
     async def test_record_failure_persists(self):
-        from app.api.routers.auth._helpers import _record_failure
+        from spectra_api.api.routers.auth._helpers import _record_failure
 
         user = self._make_user()
         session = AsyncMock()
@@ -233,7 +233,7 @@ class TestPersistentAccountLockout:
 
     @pytest.mark.asyncio
     async def test_lockout_after_threshold(self):
-        from app.api.routers.auth._helpers import LOCKOUT_THRESHOLD_1, _record_failure
+        from spectra_api.api.routers.auth._helpers import LOCKOUT_THRESHOLD_1, _record_failure
 
         user = self._make_user(fail_count=LOCKOUT_THRESHOLD_1 - 1)
         session = AsyncMock()
@@ -242,7 +242,7 @@ class TestPersistentAccountLockout:
 
     @pytest.mark.asyncio
     async def test_check_lockout_raises_when_locked(self):
-        from app.api.routers.auth._helpers import _check_lockout
+        from spectra_api.api.routers.auth._helpers import _check_lockout
 
         user = self._make_user(locked_until=datetime.now(UTC) + timedelta(minutes=5))
         with pytest.raises(HTTPException) as exc:
@@ -251,14 +251,14 @@ class TestPersistentAccountLockout:
 
     @pytest.mark.asyncio
     async def test_check_lockout_allows_after_expiry(self):
-        from app.api.routers.auth._helpers import _check_lockout
+        from spectra_api.api.routers.auth._helpers import _check_lockout
 
         user = self._make_user(locked_until=datetime.now(UTC) - timedelta(seconds=1))
         await _check_lockout(user)
 
     @pytest.mark.asyncio
     async def test_persist_and_load_lockout(self):
-        from app.api.routers.auth._helpers import LOCKOUT_THRESHOLD_2, _record_failure
+        from spectra_api.api.routers.auth._helpers import LOCKOUT_THRESHOLD_2, _record_failure
 
         user = self._make_user(fail_count=LOCKOUT_THRESHOLD_2 - 1)
         session = AsyncMock()
@@ -279,7 +279,7 @@ class TestSafetyStatsAuth:
         """Verify the endpoint function signature includes current_user."""
         import inspect
 
-        from app.api.routers.system.health import get_safety_stats
+        from spectra_api.api.routers.system.health import get_safety_stats
 
         sig = inspect.signature(get_safety_stats)
         param_names = list(sig.parameters.keys())
@@ -351,13 +351,13 @@ class TestAuditLoggingWired:
     """Tests that audit logging is wired in auth login and missions routers."""
 
     def test_auth_login_wires_audit_log_event(self):
-        import app.api.routers.auth.login as login_mod
+        import spectra_api.api.routers.auth.login as login_mod
         from app.services.system.audit import log_event
 
         assert login_mod.audit_log_event is log_event
 
     def test_missions_router_imports_audit(self):
-        import app.api.routers.missions.core as missions_core_mod
+        import spectra_api.api.routers.missions.core as missions_core_mod
 
         assert hasattr(missions_core_mod, "audit_log_event")
 

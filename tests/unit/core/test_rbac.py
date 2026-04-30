@@ -1,6 +1,6 @@
-"""Tests for app.auth.rbac module."""
+"""Tests for spectra_api.authz module."""
 
-from app.auth.rbac import ROLE_PERMISSIONS, Permission, has_permission
+from spectra_api.authz import ROLE_PERMISSIONS, Permission, has_permission
 
 
 class TestPermissionEnum:

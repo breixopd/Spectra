@@ -3,11 +3,11 @@ from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas.auth import UserCreate
-from app.api.schemas.system import SystemSetupRequest
 from app.models.config import SystemConfig
 from app.models.user import User
-from app.services.system.setup import SystemSetupService
+from spectra_api.api.schemas.auth import UserCreate
+from spectra_api.api.schemas.system import SystemSetupRequest
+from spectra_api.services.system.setup import SystemSetupService
 
 
 @pytest.fixture
@@ -38,9 +38,9 @@ def setup_request():
 
 
 @pytest.mark.asyncio
-@patch("app.services.system.setup.get_password_hash")
-@patch("app.services.system.setup.hydrate_runtime_settings_from_db", new_callable=AsyncMock)
-@patch("app.services.system.setup.SystemSetupService._save_infra_config")
+@patch("spectra_api.services.system.setup.get_password_hash")
+@patch("spectra_api.services.system.setup.hydrate_runtime_settings_from_db", new_callable=AsyncMock)
+@patch("spectra_api.services.system.setup.SystemSetupService._save_infra_config")
 async def test_perform_setup_success(
     mock_save_infra,
     mock_hydrate,
@@ -69,7 +69,7 @@ async def test_perform_setup_success(
 
 @pytest.mark.asyncio
 async def test_create_admin_user(service, setup_request, mock_session):
-    with patch("app.services.system.setup.get_password_hash") as mock_hash:
+    with patch("spectra_api.services.system.setup.get_password_hash") as mock_hash:
         mock_hash.return_value = "hashed"
         user = await service._create_admin_user(setup_request)
 
@@ -108,10 +108,10 @@ async def test_configure_system_persists_tensorzero_config(service, mock_session
 
 
 @pytest.mark.asyncio
-@patch("app.services.system.setup.json.dump")
+@patch("spectra_api.services.system.setup.json.dump")
 @patch("builtins.open", new_callable=mock_open)
-@patch("app.services.system.setup.Path.mkdir")
-@patch("app.services.system.setup.Path.exists")
+@patch("spectra_api.services.system.setup.Path.mkdir")
+@patch("spectra_api.services.system.setup.Path.exists")
 async def test_save_infra_config(mock_exists, mock_mkdir, mock_file, mock_json_dump, service):
     mock_exists.return_value = False
 
@@ -133,8 +133,8 @@ async def test_check_database_success(service, mock_session):
 @pytest.mark.asyncio
 async def test_check_directories(service):
     with (
-        patch("app.services.system.setup.Path.mkdir"),
-        patch("app.services.system.setup.Path.exists") as mock_exists,
+        patch("spectra_api.services.system.setup.Path.mkdir"),
+        patch("spectra_api.services.system.setup.Path.exists") as mock_exists,
     ):
         mock_exists.return_value = True
         result = await service.check_directories()

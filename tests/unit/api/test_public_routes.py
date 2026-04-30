@@ -32,9 +32,9 @@ class TestPublicStatusApi:
     async def test_public_status_returns_operational_when_db_healthy(self):
         from unittest.mock import patch
 
-        from app.api.routers.system.health import get_public_system_status
+        from spectra_api.api.routers.system.health import get_public_system_status
 
-        with patch("app.api.routers.system.health.collect_platform_health", new_callable=AsyncMock) as mock_health:
+        with patch("spectra_api.api.routers.system.health.collect_platform_health", new_callable=AsyncMock) as mock_health:
             mock_health.return_value = {
                 "status": "healthy",
                 "version": "1.0.0",
@@ -51,7 +51,7 @@ class TestPublicStatusApi:
 
     @pytest.mark.asyncio
     async def test_public_status_returns_degraded_when_db_fails(self):
-        from app.api.routers.system.health import get_public_system_status
+        from spectra_api.api.routers.system.health import get_public_system_status
 
         mock_session = AsyncMock()
         mock_session.execute = AsyncMock(side_effect=Exception("DB down"))
@@ -63,7 +63,7 @@ class TestPublicStatusApi:
 
     def test_public_status_route_has_no_auth_dependency(self):
         """The public-status route must not require get_current_active_user."""
-        from app.api.dependencies import get_current_active_user
+        from spectra_api.api.dependencies import get_current_active_user
         from spectra_api.main import app
 
         routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path == "/api/v1/system/public-status"]

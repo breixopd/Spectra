@@ -154,8 +154,8 @@ def mock_websocket_for_unit_tests(request):
         patch("app.infrastructure.events.EventBus.emit_sync", mock_emit_sync),
         patch("app.infrastructure.background_tasks.cache_cleanup_loop", mock_cache_loop),
         patch("app.infrastructure.background_tasks.periodic_cleanup_loop", mock_periodic_loop),
-        patch("app.bootstrap.lifespan.asyncio.create_task", mock_lifespan_create_task),
-        patch("app.api.routers.shell.asyncio.create_task", mock_lifespan_create_task),
+        patch("spectra_api.bootstrap.lifespan.asyncio.create_task", mock_lifespan_create_task),
+        patch("spectra_api.api.routers.shell.asyncio.create_task", mock_lifespan_create_task),
         patch("asyncio.create_task", safe_create_task),
     ):
         yield

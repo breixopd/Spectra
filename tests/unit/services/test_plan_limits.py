@@ -38,12 +38,12 @@ class TestCheckMissionLimit:
     """Plan-based concurrent mission cap."""
 
     async def test_no_active_subscription_blocked_403(self):
-        from app.api.dependencies import check_mission_limit
+        from spectra_api.api.dependencies import check_mission_limit
 
         user = _make_user(plan_id=None)
         session = AsyncMock()
 
-        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=None)):
+        with patch("spectra_api.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=None)):
             with pytest.raises(HTTPException) as exc_info:
                 await check_mission_limit(user, session)
 
@@ -51,21 +51,21 @@ class TestCheckMissionLimit:
         assert exc_info.value.detail == "No active subscription"
 
     async def test_admin_bypasses_limit(self):
-        from app.api.dependencies import check_mission_limit
+        from spectra_api.api.dependencies import check_mission_limit
 
         user = _make_user(is_superuser=True, plan_id="plan-1")
         session = AsyncMock()
         await check_mission_limit(user, session)
 
     async def test_admin_role_bypasses_limit(self):
-        from app.api.dependencies import check_mission_limit
+        from spectra_api.api.dependencies import check_mission_limit
 
         user = _make_user(role="admin", plan_id="plan-1")
         session = AsyncMock()
         await check_mission_limit(user, session)
 
     async def test_under_limit_allowed(self):
-        from app.api.dependencies import check_mission_limit
+        from spectra_api.api.dependencies import check_mission_limit
 
         plan = _make_plan(max_concurrent_missions=3)
         user = _make_user(plan_id="plan-1")
@@ -76,11 +76,11 @@ class TestCheckMissionLimit:
 
         session.execute = AsyncMock(return_value=count_result)
 
-        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+        with patch("spectra_api.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
             await check_mission_limit(user, session)
 
     async def test_at_limit_blocked_429(self):
-        from app.api.dependencies import check_mission_limit
+        from spectra_api.api.dependencies import check_mission_limit
 
         plan = _make_plan(max_concurrent_missions=2)
         user = _make_user(plan_id="plan-1")
@@ -91,20 +91,20 @@ class TestCheckMissionLimit:
 
         session.execute = AsyncMock(return_value=count_result)
 
-        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+        with patch("spectra_api.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
             with pytest.raises(HTTPException) as exc_info:
                 await check_mission_limit(user, session)
         assert exc_info.value.status_code == 429
         assert "max 2" in exc_info.value.detail
 
     async def test_plan_without_mission_cap_not_blocked(self):
-        from app.api.dependencies import check_mission_limit
+        from spectra_api.api.dependencies import check_mission_limit
 
         plan = _make_plan(max_concurrent_missions=None)
         user = _make_user(plan_id="plan-1")
         session = AsyncMock()
 
-        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+        with patch("spectra_api.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
             await check_mission_limit(user, session)
 
         session.execute.assert_not_awaited()
@@ -120,12 +120,12 @@ class TestCheckTargetLimit:
     """Plan-based target cap."""
 
     async def test_no_active_subscription_blocked_403(self):
-        from app.api.dependencies import check_target_limit
+        from spectra_api.api.dependencies import check_target_limit
 
         user = _make_user(plan_id=None)
         session = AsyncMock()
 
-        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=None)):
+        with patch("spectra_api.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=None)):
             with pytest.raises(HTTPException) as exc_info:
                 await check_target_limit(user, session)
 
@@ -133,14 +133,14 @@ class TestCheckTargetLimit:
         assert exc_info.value.detail == "No active subscription"
 
     async def test_admin_bypasses_limit(self):
-        from app.api.dependencies import check_target_limit
+        from spectra_api.api.dependencies import check_target_limit
 
         user = _make_user(is_superuser=True, plan_id="plan-1")
         session = AsyncMock()
         await check_target_limit(user, session)
 
     async def test_under_limit_allowed(self):
-        from app.api.dependencies import check_target_limit
+        from spectra_api.api.dependencies import check_target_limit
 
         plan = _make_plan(max_targets=10)
         user = _make_user(plan_id="plan-1")
@@ -151,11 +151,11 @@ class TestCheckTargetLimit:
 
         session.execute = AsyncMock(return_value=count_result)
 
-        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+        with patch("spectra_api.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
             await check_target_limit(user, session)
 
     async def test_at_limit_blocked_429(self):
-        from app.api.dependencies import check_target_limit
+        from spectra_api.api.dependencies import check_target_limit
 
         plan = _make_plan(max_targets=3)
         user = _make_user(plan_id="plan-1")
@@ -166,20 +166,20 @@ class TestCheckTargetLimit:
 
         session.execute = AsyncMock(return_value=count_result)
 
-        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+        with patch("spectra_api.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
             with pytest.raises(HTTPException) as exc_info:
                 await check_target_limit(user, session)
         assert exc_info.value.status_code == 429
         assert "max 3" in exc_info.value.detail
 
     async def test_plan_without_target_cap_not_blocked(self):
-        from app.api.dependencies import check_target_limit
+        from spectra_api.api.dependencies import check_target_limit
 
         plan = _make_plan(max_targets=None)
         user = _make_user(plan_id="plan-1")
         session = AsyncMock()
 
-        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+        with patch("spectra_api.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
             await check_target_limit(user, session)
 
         session.execute.assert_not_awaited()
@@ -195,12 +195,12 @@ class TestCheckFeatureAllowed:
     """Feature gating by plan."""
 
     async def test_no_active_subscription_blocked_403(self):
-        from app.api.dependencies import check_feature_allowed
+        from spectra_api.api.dependencies import check_feature_allowed
 
         user = _make_user(plan_id=None)
         session = AsyncMock()
 
-        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=None)):
+        with patch("spectra_api.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=None)):
             with pytest.raises(HTTPException) as exc_info:
                 await check_feature_allowed(user, session, "advanced_scanning")
 
@@ -208,52 +208,52 @@ class TestCheckFeatureAllowed:
         assert exc_info.value.detail == "No active subscription"
 
     async def test_admin_bypasses_feature_gate(self):
-        from app.api.dependencies import check_feature_allowed
+        from spectra_api.api.dependencies import check_feature_allowed
 
         user = _make_user(is_superuser=True, plan_id="plan-1")
         session = AsyncMock()
         await check_feature_allowed(user, session, "advanced_scanning")
 
     async def test_plan_with_no_features_dict_allows_all(self):
-        from app.api.dependencies import check_feature_allowed
+        from spectra_api.api.dependencies import check_feature_allowed
 
         plan = _make_plan(features=None)
         user = _make_user(plan_id="plan-1")
         session = AsyncMock()
 
-        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+        with patch("spectra_api.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
             await check_feature_allowed(user, session, "advanced_scanning")
 
     async def test_feature_enabled_allowed(self):
-        from app.api.dependencies import check_feature_allowed
+        from spectra_api.api.dependencies import check_feature_allowed
 
         plan = _make_plan(features={"advanced_scanning": True})
         user = _make_user(plan_id="plan-1")
         session = AsyncMock()
 
-        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+        with patch("spectra_api.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
             await check_feature_allowed(user, session, "advanced_scanning")
 
     async def test_feature_disabled_blocked_403(self):
-        from app.api.dependencies import check_feature_allowed
+        from spectra_api.api.dependencies import check_feature_allowed
 
         plan = _make_plan(features={"advanced_scanning": False})
         user = _make_user(plan_id="plan-1")
         session = AsyncMock()
 
-        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+        with patch("spectra_api.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
             with pytest.raises(HTTPException) as exc_info:
                 await check_feature_allowed(user, session, "advanced_scanning")
         assert exc_info.value.status_code == 403
         assert "advanced_scanning" in exc_info.value.detail
 
     async def test_unlisted_feature_defaults_to_allowed(self):
-        from app.api.dependencies import check_feature_allowed
+        from spectra_api.api.dependencies import check_feature_allowed
 
         plan = _make_plan(features={"other_feature": False})
         user = _make_user(plan_id="plan-1")
         session = AsyncMock()
 
-        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+        with patch("spectra_api.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
             # Feature not in dict → defaults to True (not blocked)
             await check_feature_allowed(user, session, "advanced_scanning")

@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.api.routers.findings.core import FindingCreate
+from spectra_api.api.routers.findings.core import FindingCreate
 from app.models.finding import FindingStatus, Severity
 
 

@@ -1,7 +1,7 @@
-"""Tests for app/services/system/settings_service.py.
+"""Tests for spectra_api.services.system.settings_service.
 
 Uses sys.modules pre-population to break remaining circular imports via
-heavy ``app.api`` / router stubs where needed.
+heavy ``spectra_api.api`` / router stubs where needed.
 """
 
 import sys
@@ -16,8 +16,8 @@ def _break_circular_import():
     """Pre-populate heavy modules so the import chain doesn't recurse."""
     stubs = {}
     for mod_name in (
-        "app.api",
-        "app.api.routers",
+        "spectra_api.api",
+        "spectra_api.api.routers",
         "spectra_api.ui.pages",
     ):
         if mod_name not in sys.modules:
@@ -29,7 +29,7 @@ def _break_circular_import():
 
 
 def _mod():
-    from app.services.system import settings_service
+    from spectra_api.services.system import settings_service
 
     return settings_service
 
@@ -149,9 +149,9 @@ class TestApplySettingsUpdate:
         db.commit = AsyncMock()
 
         with (
-            patch("app.services.system.settings_service.upsert_system_config_values") as mock_upsert,
-            patch("app.services.system.settings_service.hydrate_runtime_settings_from_db") as mock_hydrate,
-            patch("app.services.system.settings_service.settings") as mock_settings,
+            patch("spectra_api.services.system.settings_service.upsert_system_config_values") as mock_upsert,
+            patch("spectra_api.services.system.settings_service.hydrate_runtime_settings_from_db") as mock_hydrate,
+            patch("spectra_api.services.system.settings_service.settings") as mock_settings,
         ):
             mock_settings.save_runtime_settings = MagicMock()
             result = await apply_settings_update(data, db)

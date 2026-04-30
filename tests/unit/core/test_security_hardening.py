@@ -30,7 +30,7 @@ from app.auth.encryption import (
     encrypt_sensitive_fields,
     is_sensitive_key,
 )
-from app.auth.rbac import ROLE_PERMISSIONS, Permission, has_permission, require_permission
+from spectra_api.authz import ROLE_PERMISSIONS, Permission, has_permission, require_permission
 from app.models.user import User
 from app.services.ai.agents.post_exploitation import (
     POST_EXPLOIT_TOOLS,

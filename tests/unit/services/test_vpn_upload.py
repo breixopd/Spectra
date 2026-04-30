@@ -1,6 +1,6 @@
-"""Tests for VPN config directive validation in app.api.routers.vpn."""
+"""Tests for VPN config directive validation in spectra_api.api.routers.vpn."""
 
-from app.api.routers.vpn import DANGEROUS_OPENVPN_DIRECTIVES
+from spectra_api.api.routers.vpn import DANGEROUS_OPENVPN_DIRECTIVES
 
 
 class TestDangerousDirectiveDetection:

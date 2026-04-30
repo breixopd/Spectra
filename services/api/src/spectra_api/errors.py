@@ -11,9 +11,9 @@ from fastapi.templating import Jinja2Templates
 from slowapi.errors import RateLimitExceeded
 from starlette.responses import Response as StarletteResponse
 
-from app.api.schemas.common import ErrorResponse
 from app.auth.exceptions import SpectraError, get_status_code_for_exception
 from app.auth.rate_limit import rate_limit_exceeded_handler_sync
+from spectra_api.api.schemas.common import ErrorResponse
 
 logger = logging.getLogger(__name__)
 

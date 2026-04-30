@@ -43,14 +43,14 @@ def _make_regular_user():
 class TestOtlpExportEndpoint:
     @pytest.mark.asyncio
     async def test_export_otlp_returns_valid_structure(self):
-        from app.api.routers.observability import export_otlp
+        from spectra_api.api.routers.observability import export_otlp
 
         collector = TelemetryCollector()
         collector.increment_counter("test.counter", 5)
         span = collector.start_span("test.span")
         collector.end_span(span)
 
-        with patch("app.api.routers.observability.telemetry", collector):
+        with patch("spectra_api.api.routers.observability.telemetry", collector):
             result = await export_otlp(request=_make_mock_request(), _current_user=_make_admin_user())
 
         assert "resourceMetrics" in result
@@ -62,10 +62,10 @@ class TestOtlpExportEndpoint:
 
     @pytest.mark.asyncio
     async def test_export_otlp_empty_collector(self):
-        from app.api.routers.observability import export_otlp
+        from spectra_api.api.routers.observability import export_otlp
 
         collector = TelemetryCollector()
-        with patch("app.api.routers.observability.telemetry", collector):
+        with patch("spectra_api.api.routers.observability.telemetry", collector):
             result = await export_otlp(request=_make_mock_request(), _current_user=_make_admin_user())
 
         metrics = result["resourceMetrics"][0]["scopeMetrics"][0]["metrics"]
@@ -82,14 +82,14 @@ class TestOtlpExportEndpoint:
 class TestSaasMetricsEndpoint:
     @pytest.mark.asyncio
     async def test_saas_metrics_returns_kpis(self):
-        from app.api.routers.observability import get_saas_metrics
+        from spectra_api.api.routers.observability import get_saas_metrics
 
         collector = TelemetryCollector()
         collector.increment_counter("auth.login", 10)
         collector.increment_counter("mission_events_total", 5, {"event": "started"})
         collector.increment_counter("mission_events_total", 3, {"event": "completed"})
 
-        with patch("app.api.routers.observability.telemetry", collector):
+        with patch("spectra_api.api.routers.observability.telemetry", collector):
             result = await get_saas_metrics(request=_make_mock_request(), _current_user=_make_admin_user())
 
         assert result["active_users"] == 10
@@ -98,10 +98,10 @@ class TestSaasMetricsEndpoint:
 
     @pytest.mark.asyncio
     async def test_saas_metrics_empty(self):
-        from app.api.routers.observability import get_saas_metrics
+        from spectra_api.api.routers.observability import get_saas_metrics
 
         collector = TelemetryCollector()
-        with patch("app.api.routers.observability.telemetry", collector):
+        with patch("spectra_api.api.routers.observability.telemetry", collector):
             result = await get_saas_metrics(request=_make_mock_request(), _current_user=_make_admin_user())
 
         assert result["active_users"] == 0
@@ -117,14 +117,14 @@ class TestSaasMetricsEndpoint:
 class TestMetricsSummaryEndpoint:
     @pytest.mark.asyncio
     async def test_metrics_summary(self):
-        from app.api.routers.observability import get_metrics_summary
+        from spectra_api.api.routers.observability import get_metrics_summary
 
         collector = TelemetryCollector()
         collector.increment_counter("req", 1)
         collector.set_gauge("cpu", 55.0)
         collector.observe_histogram("dur", 100.0)
 
-        with patch("app.api.routers.observability.telemetry", collector):
+        with patch("spectra_api.api.routers.observability.telemetry", collector):
             result = await get_metrics_summary(request=_make_mock_request(), _current_user=_make_admin_user())
 
         assert "counters" in result
@@ -140,13 +140,13 @@ class TestMetricsSummaryEndpoint:
 class TestTracesEndpoints:
     @pytest.mark.asyncio
     async def test_get_traces(self):
-        from app.api.routers.observability import get_traces
+        from spectra_api.api.routers.observability import get_traces
 
         collector = TelemetryCollector()
         span = collector.start_span("op1")
         collector.end_span(span)
 
-        with patch("app.api.routers.observability.telemetry", collector):
+        with patch("spectra_api.api.routers.observability.telemetry", collector):
             result = await get_traces(request=_make_mock_request(), limit=10, status=None, _current_user=_make_admin_user())
 
         assert len(result) == 1
@@ -154,7 +154,7 @@ class TestTracesEndpoints:
 
     @pytest.mark.asyncio
     async def test_get_traces_filtered_by_status(self):
-        from app.api.routers.observability import get_traces
+        from spectra_api.api.routers.observability import get_traces
 
         collector = TelemetryCollector()
         ok_span = collector.start_span("ok_op")
@@ -162,7 +162,7 @@ class TestTracesEndpoints:
         err_span = collector.start_span("err_op")
         collector.end_span(err_span, "error", "fail")
 
-        with patch("app.api.routers.observability.telemetry", collector):
+        with patch("spectra_api.api.routers.observability.telemetry", collector):
             errors = await get_traces(request=_make_mock_request(), limit=10, status="error", _current_user=_make_admin_user())
             oks = await get_traces(request=_make_mock_request(), limit=10, status="ok", _current_user=_make_admin_user())
 
@@ -173,7 +173,7 @@ class TestTracesEndpoints:
 
     @pytest.mark.asyncio
     async def test_get_trace_by_id(self):
-        from app.api.routers.observability import get_trace_by_id
+        from spectra_api.api.routers.observability import get_trace_by_id
 
         collector = TelemetryCollector()
         trace_id = collector.create_trace()
@@ -185,7 +185,7 @@ class TestTracesEndpoints:
         other = collector.start_span("other")
         collector.end_span(other)
 
-        with patch("app.api.routers.observability.telemetry", collector):
+        with patch("spectra_api.api.routers.observability.telemetry", collector):
             result = await get_trace_by_id(request=_make_mock_request(), trace_id=trace_id, _current_user=_make_admin_user())
 
         assert len(result) == 2
@@ -200,7 +200,7 @@ class TestTracesEndpoints:
 class TestErrorAndSlowEndpoints:
     @pytest.mark.asyncio
     async def test_get_error_traces(self):
-        from app.api.routers.observability import get_error_traces
+        from spectra_api.api.routers.observability import get_error_traces
 
         collector = TelemetryCollector()
         err = collector.start_span("fail")
@@ -208,7 +208,7 @@ class TestErrorAndSlowEndpoints:
         ok = collector.start_span("success")
         collector.end_span(ok, "ok")
 
-        with patch("app.api.routers.observability.telemetry", collector):
+        with patch("spectra_api.api.routers.observability.telemetry", collector):
             result = await get_error_traces(request=_make_mock_request(), limit=10, _current_user=_make_admin_user())
 
         assert len(result) == 1
@@ -216,7 +216,7 @@ class TestErrorAndSlowEndpoints:
 
     @pytest.mark.asyncio
     async def test_get_slow_operations(self):
-        from app.api.routers.observability import get_slow_operations
+        from spectra_api.api.routers.observability import get_slow_operations
 
         collector = TelemetryCollector()
         # Create a span with artificial high duration
@@ -225,7 +225,7 @@ class TestErrorAndSlowEndpoints:
         span.end_time = span.start_time
         collector._traces.append(span)
 
-        with patch("app.api.routers.observability.telemetry", collector):
+        with patch("spectra_api.api.routers.observability.telemetry", collector):
             result = await get_slow_operations(request=_make_mock_request(), threshold_ms=1000, limit=5, _current_user=_make_admin_user())
 
         assert len(result) == 1
@@ -240,10 +240,10 @@ class TestErrorAndSlowEndpoints:
 class TestCircuitBreakerReset:
     @pytest.mark.asyncio
     async def test_reset_circuit_breakers_as_superuser(self):
-        from app.api.routers.observability import reset_circuit_breakers
+        from spectra_api.api.routers.observability import reset_circuit_breakers
 
         mock_cbs = MagicMock()
-        with patch("app.api.routers.observability.circuit_breakers", mock_cbs):
+        with patch("spectra_api.api.routers.observability.circuit_breakers", mock_cbs):
             result = await reset_circuit_breakers(request=_make_mock_request(), _current_user=_make_admin_user())
 
         assert result["status"] == "ok"
@@ -253,7 +253,7 @@ class TestCircuitBreakerReset:
     async def test_reset_circuit_breakers_denied_for_non_superuser(self):
         from fastapi import HTTPException
 
-        from app.api.routers.observability import reset_circuit_breakers
+        from spectra_api.api.routers.observability import reset_circuit_breakers
 
         with pytest.raises(HTTPException) as exc_info:
             await reset_circuit_breakers(request=_make_mock_request(), _current_user=_make_regular_user())

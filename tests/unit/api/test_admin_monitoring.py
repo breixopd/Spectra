@@ -8,7 +8,7 @@ from httpx import ASGITransport, AsyncClient
 
 
 def _make_app():
-    from app.api.routers.admin.monitoring import router
+    from spectra_api.api.routers.admin.monitoring import router
     from app.auth.rate_limit import limiter
 
     app = FastAPI()
@@ -19,7 +19,7 @@ def _make_app():
 
 
 def _override_deps(app, role="admin"):
-    from app.api.dependencies import get_current_active_user
+    from spectra_api.api.dependencies import get_current_active_user
     from app.core.database import get_async_session
 
     user = MagicMock()
@@ -52,7 +52,7 @@ class TestMonitoringOverview:
 
         with (
             patch("spectra_ai.cost_tracker.get_cost_trackers", return_value={}),
-            patch("app.api.routers.admin.monitoring.get_metrics_store") as mock_ms,
+            patch("spectra_api.api.routers.admin.monitoring.get_metrics_store") as mock_ms,
         ):
             mock_ms.return_value.get_history.return_value = []
             transport = ASGITransport(app=app)
@@ -71,7 +71,7 @@ class TestMonitoringTrends:
         app = _make_app()
         _override_deps(app)
 
-        with patch("app.api.routers.admin.monitoring.get_metrics_store") as mock_ms:
+        with patch("spectra_api.api.routers.admin.monitoring.get_metrics_store") as mock_ms:
             mock_ms.return_value.get_history.return_value = [{"value": 1}]
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -87,7 +87,7 @@ class TestMonitoringExport:
         app = _make_app()
         _override_deps(app)
 
-        with patch("app.api.routers.admin.monitoring.get_metrics_store") as mock_ms:
+        with patch("spectra_api.api.routers.admin.monitoring.get_metrics_store") as mock_ms:
             mock_ms.return_value.get_history.return_value = []
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -99,7 +99,7 @@ class TestMonitoringExport:
         app = _make_app()
         _override_deps(app)
 
-        with patch("app.api.routers.admin.monitoring.get_metrics_store") as mock_ms:
+        with patch("spectra_api.api.routers.admin.monitoring.get_metrics_store") as mock_ms:
             mock_ms.return_value.get_history.return_value = []
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as ac:

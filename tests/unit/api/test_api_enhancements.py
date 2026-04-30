@@ -134,8 +134,8 @@ class TestBulkUpdateSchema:
     """API-002: Bulk update schemas."""
 
     def test_bulk_update_request_schema(self):
-        from app.api.routers.findings.bulk import BulkUpdateRequest
-        from app.api.routers.findings.core import FindingUpdate
+        from spectra_api.api.routers.findings.bulk import BulkUpdateRequest
+        from spectra_api.api.routers.findings.core import FindingUpdate
 
         req = BulkUpdateRequest(
             finding_ids=["id1", "id2"],
@@ -145,7 +145,7 @@ class TestBulkUpdateSchema:
         assert req.update.status == FindingStatus.VERIFIED
 
     def test_bulk_update_response_schema(self):
-        from app.api.routers.findings.bulk import BulkUpdateResponse
+        from spectra_api.api.routers.findings.bulk import BulkUpdateResponse
 
         resp = BulkUpdateResponse(updated=5)
         assert resp.updated == 5
@@ -155,13 +155,13 @@ class TestBulkDeleteSchema:
     """API-002: Bulk delete schemas."""
 
     def test_bulk_delete_request_schema(self):
-        from app.api.routers.targets import BulkDeleteRequest
+        from spectra_api.api.routers.targets import BulkDeleteRequest
 
         req = BulkDeleteRequest(target_ids=["t1", "t2", "t3"])
         assert len(req.target_ids) == 3
 
     def test_bulk_delete_response_schema(self):
-        from app.api.routers.targets import BulkDeleteResponse
+        from spectra_api.api.routers.targets import BulkDeleteResponse
 
         resp = BulkDeleteResponse(deleted=2)
         assert resp.deleted == 2
@@ -171,13 +171,13 @@ class TestMissionFilterImports:
     """API-006: Mission search/filter works at import level."""
 
     def test_mission_router_imports(self):
-        from app.api.routers.missions import router
+        from spectra_api.api.routers.missions import router
 
         routes = [r.path for r in router.routes]
         assert any(r == "" or "/{mission_id}" in r for r in routes)
 
     def test_create_chain_request_schema(self):
-        from app.api.routers.missions.mission_catalog import CreateChainRequest
+        from spectra_api.api.routers.missions.mission_catalog import CreateChainRequest
 
         req = CreateChainRequest(
             name="My Chain",

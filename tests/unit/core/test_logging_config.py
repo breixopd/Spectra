@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.bootstrap.logging_config import (
+from spectra_api.bootstrap.logging_config import (
     CorrelationIdMiddleware,
     HumanFormatter,
     JSONFormatter,

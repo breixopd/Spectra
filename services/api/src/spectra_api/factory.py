@@ -23,15 +23,15 @@ from app.auth.rate_limit import (
     limiter,
     rate_limit_exceeded_handler_sync,
 )
-from app.bootstrap.lifespan import lifespan
-from app.bootstrap.logging_config import CorrelationIdMiddleware, configure_logging
-from app.bootstrap.middleware import AdminIPAllowlistMiddleware, SecurityHeadersMiddleware
 from app.core.config import settings
 from app.mission.core.websocket import manager
-from app.telemetry.telemetry_middleware import TelemetryMiddleware
+from spectra_api.bootstrap.lifespan import lifespan
+from spectra_api.bootstrap.logging_config import CorrelationIdMiddleware, configure_logging
+from spectra_api.bootstrap.middleware import AdminIPAllowlistMiddleware, SecurityHeadersMiddleware
 from spectra_api.errors import register_exception_handlers
 from spectra_api.paths import static_directory
 from spectra_api.routing import include_routers
+from spectra_api.telemetry_middleware import TelemetryMiddleware
 from spectra_api.templates import templates as shared_templates
 from spectra_common.constants import SECONDS_PER_DAY
 
@@ -211,7 +211,7 @@ def create_app() -> FastAPI:
 
         @app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> None:
-            from app.api.dependencies import validate_websocket_token
+            from spectra_api.api.dependencies import validate_websocket_token
 
             ws_token = token
             if not ws_token:

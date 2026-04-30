@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.telemetry.telemetry_middleware import TelemetryMiddleware, _normalize_path
+from spectra_api.telemetry_middleware import TelemetryMiddleware, _normalize_path
 
 
 class TestNormalizePath:
@@ -52,7 +52,7 @@ class TestTelemetryMiddleware:
         request = self._make_request("/static/css/style.css")
         call_next = AsyncMock(return_value=MagicMock(status_code=200))
 
-        with patch("app.telemetry.telemetry_middleware.telemetry") as mock_tel:
+        with patch("spectra_api.telemetry_middleware.telemetry") as mock_tel:
             await middleware.dispatch(request, call_next)
             mock_tel.increment_counter.assert_not_called()
 
@@ -64,8 +64,8 @@ class TestTelemetryMiddleware:
         call_next = AsyncMock(return_value=response)
 
         with (
-            patch("app.telemetry.telemetry_middleware.telemetry") as mock_tel,
-            patch("app.telemetry.telemetry_middleware.get_correlation_id", return_value=None),
+            patch("spectra_api.telemetry_middleware.telemetry") as mock_tel,
+            patch("spectra_api.telemetry_middleware.get_correlation_id", return_value=None),
         ):
             result = await middleware.dispatch(request, call_next)
 
@@ -85,8 +85,8 @@ class TestTelemetryMiddleware:
         call_next = AsyncMock(return_value=MagicMock(status_code=200))
 
         with (
-            patch("app.telemetry.telemetry_middleware.telemetry") as mock_tel,
-            patch("app.telemetry.telemetry_middleware.get_correlation_id", return_value=None),
+            patch("spectra_api.telemetry_middleware.telemetry") as mock_tel,
+            patch("spectra_api.telemetry_middleware.get_correlation_id", return_value=None),
         ):
             await middleware.dispatch(request, call_next)
 
@@ -104,8 +104,8 @@ class TestTelemetryMiddleware:
         call_next = AsyncMock(return_value=MagicMock(status_code=500))
 
         with (
-            patch("app.telemetry.telemetry_middleware.telemetry") as mock_tel,
-            patch("app.telemetry.telemetry_middleware.get_correlation_id", return_value=None),
+            patch("spectra_api.telemetry_middleware.telemetry") as mock_tel,
+            patch("spectra_api.telemetry_middleware.get_correlation_id", return_value=None),
         ):
             await middleware.dispatch(request, call_next)
 
@@ -119,8 +119,8 @@ class TestTelemetryMiddleware:
         call_next = AsyncMock(return_value=MagicMock(status_code=404))
 
         with (
-            patch("app.telemetry.telemetry_middleware.telemetry") as mock_tel,
-            patch("app.telemetry.telemetry_middleware.get_correlation_id", return_value=None),
+            patch("spectra_api.telemetry_middleware.telemetry") as mock_tel,
+            patch("spectra_api.telemetry_middleware.get_correlation_id", return_value=None),
         ):
             await middleware.dispatch(request, call_next)
 
@@ -134,8 +134,8 @@ class TestTelemetryMiddleware:
         call_next = AsyncMock(side_effect=RuntimeError("kaboom"))
 
         with (
-            patch("app.telemetry.telemetry_middleware.telemetry") as mock_tel,
-            patch("app.telemetry.telemetry_middleware.get_correlation_id", return_value=None),
+            patch("spectra_api.telemetry_middleware.telemetry") as mock_tel,
+            patch("spectra_api.telemetry_middleware.get_correlation_id", return_value=None),
         ):
             with pytest.raises(RuntimeError, match="kaboom"):
                 await middleware.dispatch(request, call_next)
@@ -150,8 +150,8 @@ class TestTelemetryMiddleware:
         call_next = AsyncMock(return_value=MagicMock(status_code=200))
 
         with (
-            patch("app.telemetry.telemetry_middleware.telemetry") as mock_tel,
-            patch("app.telemetry.telemetry_middleware.get_correlation_id", return_value=None),
+            patch("spectra_api.telemetry_middleware.telemetry") as mock_tel,
+            patch("spectra_api.telemetry_middleware.get_correlation_id", return_value=None),
         ):
             await middleware.dispatch(request, call_next)
 
@@ -166,8 +166,8 @@ class TestTelemetryMiddleware:
         call_next = AsyncMock(return_value=MagicMock(status_code=200))
 
         with (
-            patch("app.telemetry.telemetry_middleware.telemetry") as mock_tel,
-            patch("app.telemetry.telemetry_middleware.get_correlation_id", return_value=None),
+            patch("spectra_api.telemetry_middleware.telemetry") as mock_tel,
+            patch("spectra_api.telemetry_middleware.get_correlation_id", return_value=None),
         ):
             await middleware.dispatch(request, call_next)
 
@@ -183,8 +183,8 @@ class TestTelemetryMiddleware:
         call_next = AsyncMock(return_value=MagicMock(status_code=200))
 
         with (
-            patch("app.telemetry.telemetry_middleware.telemetry") as mock_tel,
-            patch("app.telemetry.telemetry_middleware.get_correlation_id", return_value="req-abc-123"),
+            patch("spectra_api.telemetry_middleware.telemetry") as mock_tel,
+            patch("spectra_api.telemetry_middleware.get_correlation_id", return_value="req-abc-123"),
         ):
             await middleware.dispatch(request, call_next)
 

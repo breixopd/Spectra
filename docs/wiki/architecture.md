@@ -295,7 +295,7 @@ spectra/
 | Layer | Path | Rule |
 |-------|------|------|
 | **Shared** | `app/core/`, `app/models/`, `app/repositories/` | Used by all services. Must NOT import service-specific code. |
-| **Service: API** | `app/api/`, `services/api/src/spectra_api/` (`spectra_api.main:app`) | Routers, schemas, bootstrap, UI templates |
+| **Service: API** | `services/api/src/spectra_api/` (`spectra_api.main:app`) | Routers, schemas, bootstrap, UI templates, API-owned settings/setup services |
 | **Service: AI** | `services/ai/src/spectra_ai/main.py`, `app/services/ai/` | LLM clients, agents, RAG |
 | **Service: Worker** | `services/worker/src/spectra_worker/` (`spectra_worker.main:app`) | Job queue consumer, tool execution |
 | **Service: Scheduler** | `services/scheduler/src/spectra_scheduler/main.py` | Background task loops |

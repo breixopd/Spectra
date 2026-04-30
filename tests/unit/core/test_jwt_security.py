@@ -95,7 +95,7 @@ async def test_refresh_token_has_type_refresh():
 @pytest.mark.asyncio
 async def test_get_current_user_rejects_refresh_token():
     """get_current_user raises 401 when given a refresh token."""
-    from app.api.dependencies import get_current_user
+    from spectra_api.api.dependencies import get_current_user
 
     refresh = create_refresh_token(data={"sub": "testuser"})
     request = _make_request(headers={"authorization": f"Bearer {refresh}"})
@@ -112,7 +112,7 @@ async def test_get_current_user_rejects_refresh_token():
 @pytest.mark.asyncio
 async def test_get_current_user_accepts_access_token():
     """get_current_user accepts a valid access token and fetches the user."""
-    from app.api.dependencies import get_current_user
+    from spectra_api.api.dependencies import get_current_user
 
     access = create_access_token(data={"sub": "testuser"})
     request = _make_request(headers={"authorization": f"Bearer {access}"})
@@ -128,7 +128,7 @@ async def test_get_current_user_accepts_access_token():
     mock_session = AsyncMock()
     mock_session.execute.return_value = mock_result
 
-    with patch("app.api.dependencies.async_session_maker") as session_maker:
+    with patch("spectra_api.api.dependencies.async_session_maker") as session_maker:
         user = await get_current_user(request=request, session=mock_session, token=access)
 
     assert user.username == "testuser"
@@ -139,7 +139,7 @@ async def test_get_current_user_accepts_access_token():
 @pytest.mark.asyncio
 async def test_get_current_user_accepts_cookie_auth_without_bearer_header():
     """get_current_user falls back to the access_token cookie for browser API calls."""
-    from app.api.dependencies import get_current_user
+    from spectra_api.api.dependencies import get_current_user
 
     access = create_access_token(data={"sub": "cookieuser"})
     request = _make_request(cookies={"access_token": access})
@@ -155,7 +155,7 @@ async def test_get_current_user_accepts_cookie_auth_without_bearer_header():
     mock_session = AsyncMock()
     mock_session.execute.return_value = mock_result
 
-    with patch("app.api.dependencies.async_session_maker") as session_maker:
+    with patch("spectra_api.api.dependencies.async_session_maker") as session_maker:
         user = await get_current_user(request=request, session=mock_session)
 
     assert user.username == "cookieuser"
@@ -198,7 +198,7 @@ async def test_get_current_user_rejects_token_without_type():
     import jwt
     from fastapi import HTTPException
 
-    from app.api.dependencies import get_current_user
+    from spectra_api.api.dependencies import get_current_user
     from app.core.config import settings
 
     payload = {
@@ -222,7 +222,7 @@ async def test_get_current_user_rejects_token_without_type():
 
 @pytest.mark.asyncio
 async def test_get_ui_user_and_validate_websocket_token_reject_refresh_tokens():
-    from app.api.dependencies import get_ui_user, validate_websocket_token
+    from spectra_api.api.dependencies import get_ui_user, validate_websocket_token
 
     refresh = create_refresh_token(data={"sub": "testuser"})
     request = _make_request(cookies={"access_token": refresh}, path="/dashboard")
@@ -233,7 +233,7 @@ async def test_get_ui_user_and_validate_websocket_token_reject_refresh_tokens():
 
 @pytest.mark.asyncio
 async def test_get_ui_user_and_validate_websocket_token_reject_mfa_pending_tokens():
-    from app.api.dependencies import get_ui_user, validate_websocket_token
+    from spectra_api.api.dependencies import get_ui_user, validate_websocket_token
 
     pending = create_access_token(
         data={"sub": "testuser", "mfa_pending": True},
@@ -247,7 +247,7 @@ async def test_get_ui_user_and_validate_websocket_token_reject_mfa_pending_token
 
 @pytest.mark.asyncio
 async def test_get_ui_user_and_validate_websocket_token_reject_invalidated_tokens():
-    from app.api.dependencies import get_ui_user, validate_websocket_token
+    from spectra_api.api.dependencies import get_ui_user, validate_websocket_token
 
     access = create_access_token(data={"sub": "revoked-user"})
     request = _make_request(cookies={"access_token": access}, path="/dashboard")
@@ -260,7 +260,7 @@ async def test_get_ui_user_and_validate_websocket_token_reject_invalidated_token
 
 @pytest.mark.asyncio
 async def test_validate_websocket_token_rejects_user_invalidated_before():
-    from app.api.dependencies import validate_websocket_token
+    from spectra_api.api.dependencies import validate_websocket_token
 
     access = create_access_token(data={"sub": "db-invalidated-user"})
     payload = await decode_token(access)
@@ -270,7 +270,7 @@ async def test_validate_websocket_token_rejects_user_invalidated_before():
     mock_user.is_active = True
     mock_user.invalidated_before = datetime.fromtimestamp(payload["iat"], tz=UTC) + timedelta(seconds=1)
 
-    with patch("app.api.dependencies.async_session_maker", _mock_async_session_maker_with_user(mock_user)):
+    with patch("spectra_api.api.dependencies.async_session_maker", _mock_async_session_maker_with_user(mock_user)):
         assert await validate_websocket_token(access) is None
 
 
@@ -281,7 +281,7 @@ async def test_validate_websocket_token_rejects_user_invalidated_before():
 
 def test_login_response_sets_httponly_secure_cookie():
     """The auth helper writes both cookies with secure, strict headers."""
-    from app.api.routers.auth._helpers import (
+    from spectra_api.api.routers.auth._helpers import (
         ACCESS_COOKIE_KEY,
         REFRESH_COOKIE_KEY,
         _set_auth_cookies,
@@ -302,7 +302,7 @@ def test_login_response_sets_httponly_secure_cookie():
 
 def test_logout_deletes_cookie_with_secure_flags():
     """The auth helper clears both cookies with secure deletion headers."""
-    from app.api.routers.auth._helpers import (
+    from spectra_api.api.routers.auth._helpers import (
         ACCESS_COOKIE_PATH,
         REFRESH_COOKIE_PATH,
         _clear_auth_cookies,

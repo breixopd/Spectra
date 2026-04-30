@@ -229,7 +229,7 @@ class TestDeployToNode:
 
     @pytest.mark.asyncio
     async def test_forwards_pinned_known_host_from_node_metadata(self):
-        from app.api.routers.admin.servers import deploy_to_node
+        from spectra_api.api.routers.admin.servers import deploy_to_node
         from app.services.infrastructure.deploy import DeploymentStatus, DeployResult
 
         node = MagicMock()
@@ -255,7 +255,7 @@ class TestDeployToNode:
         deploy_result = DeployResult(DeploymentStatus.COMPLETE, "Deployment successful", ["ok"])
 
         with (
-            patch("app.api.routers.admin.servers.audit_log_event", new_callable=AsyncMock),
+            patch("spectra_api.api.routers.admin.servers.audit_log_event", new_callable=AsyncMock),
             patch("app.services.infrastructure.deploy.ServerDeployer.deploy_to_server", new_callable=AsyncMock) as mock_deploy,
         ):
             mock_deploy.return_value = deploy_result
@@ -292,7 +292,7 @@ class TestProvisioningEndpointKnownHostForwarding:
 
     @pytest.mark.asyncio
     async def test_verify_forwards_pinned_known_host(self):
-        from app.api.routers.admin.servers import ServerConnectionRequest, verify_server_connection
+        from spectra_api.api.routers.admin.servers import ServerConnectionRequest, verify_server_connection
 
         provisioner = MagicMock()
         provisioner.verify_connection = AsyncMock(return_value={"connected": True})
@@ -316,7 +316,7 @@ class TestProvisioningEndpointKnownHostForwarding:
 
     @pytest.mark.asyncio
     async def test_provision_forwards_pinned_known_host(self):
-        from app.api.routers.admin.servers import ProvisionRequest, provision_server
+        from spectra_api.api.routers.admin.servers import ProvisionRequest, provision_server
         from app.services.provisioning.provisioner import ProvisioningResult
 
         provisioner = MagicMock()
@@ -333,7 +333,7 @@ class TestProvisioningEndpointKnownHostForwarding:
         pinned_entry = "[provision.example.com]:2222 ssh-ed25519 AAAAPINNED"
 
         with (
-            patch("app.api.routers.admin.servers.audit_log_event", new_callable=AsyncMock),
+            patch("spectra_api.api.routers.admin.servers.audit_log_event", new_callable=AsyncMock),
             patch("app.services.provisioning.ServerProvisioner", return_value=provisioner),
         ):
             response = await provision_server(
@@ -362,7 +362,7 @@ class TestProvisioningEndpointKnownHostForwarding:
 
     @pytest.mark.asyncio
     async def test_deprovision_forwards_pinned_known_host(self):
-        from app.api.routers.admin.servers import DeprovisionRequest, deprovision_server
+        from spectra_api.api.routers.admin.servers import DeprovisionRequest, deprovision_server
         from app.services.provisioning.provisioner import ProvisioningResult
 
         provisioner = MagicMock()
@@ -377,7 +377,7 @@ class TestProvisioningEndpointKnownHostForwarding:
         pinned_entry = "[deprovision.example.com]:2222 ssh-ed25519 AAAAPINNED"
 
         with (
-            patch("app.api.routers.admin.servers.audit_log_event", new_callable=AsyncMock),
+            patch("spectra_api.api.routers.admin.servers.audit_log_event", new_callable=AsyncMock),
             patch("app.services.provisioning.ServerProvisioner", return_value=provisioner),
         ):
             response = await deprovision_server(

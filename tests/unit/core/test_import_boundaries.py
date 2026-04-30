@@ -29,14 +29,14 @@ def test_service_boundary_rules_exist():
     assert "services/scheduler/src" in SERVICE_BOUNDARIES
     assert "services/worker/src" in SERVICE_BOUNDARIES
 
-    assert "app.api" in SERVICE_BOUNDARIES["services/scheduler/src"]
+    assert "spectra_api.api" in SERVICE_BOUNDARIES["services/scheduler/src"]
     assert "spectra_worker" in SERVICE_BOUNDARIES["services/scheduler/src"]
 
-    assert "app.api" in SERVICE_BOUNDARIES["services/worker/src/spectra_worker/__main__.py"]
+    assert "spectra_api.api" in SERVICE_BOUNDARIES["services/worker/src/spectra_worker/__main__.py"]
     assert "spectra_scheduler" in SERVICE_BOUNDARIES["services/worker/src/spectra_worker/__main__.py"]
     assert "spectra_ai" in SERVICE_BOUNDARIES["services/worker/src/spectra_worker/__main__.py"]
 
-    assert "app.api" in SERVICE_BOUNDARIES["services/ai/src"]
+    assert "spectra_api.api" in SERVICE_BOUNDARIES["services/ai/src"]
     assert "spectra_worker" in SERVICE_BOUNDARIES["services/ai/src"]
     assert "spectra_scheduler" in SERVICE_BOUNDARIES["services/ai/src"]
 

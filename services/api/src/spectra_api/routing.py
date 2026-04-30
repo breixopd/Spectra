@@ -6,7 +6,8 @@ import logging
 
 from fastapi import APIRouter, FastAPI
 
-from app.api.routers import (
+from app.core.config import settings
+from spectra_api.api.routers import (
     admin,
     auth,
     billing,
@@ -27,7 +28,6 @@ from app.api.routers import (
     vpn,
     wordlists,
 )
-from app.core.config import settings
 from spectra_api.ui import pages as ui
 from spectra_api.ui import public
 
@@ -66,7 +66,7 @@ def include_routers(app: FastAPI, mode: str | None = None) -> None:
         api_v1.include_router(billing.router, tags=["Billing"])
         app.include_router(api_v1)
 
-        from app.api.mcp import router as mcp_router
+        from spectra_api.api.mcp import router as mcp_router
 
         app.include_router(mcp_router)
 
