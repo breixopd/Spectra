@@ -444,6 +444,76 @@ def test_docker_client_detects_manager_swarm_socket():
     assert docker_client._is_swarm_manager(client) is True
 
 
+def test_parse_service_failed_tasks_from_task_state_not_desired_minus_running():
+    """Replica gap during rollout must not be counted as failed_tasks (healer false positives)."""
+    attrs = {
+        "Spec": {
+            "Mode": {"Replicated": {"Replicas": 3}},
+            "TaskTemplate": {"ContainerSpec": {"Image": "spectra/app:latest"}},
+        }
+    }
+
+    def tasks(filters=None):
+        if filters == {"desired-state": "running"}:
+            return [
+                {"Status": {"State": "running"}, "NodeID": "n1", "Version": {"Index": 5}},
+                {"Status": {"State": "starting"}, "NodeID": "", "Version": {"Index": 4}},
+            ]
+        return [
+            {"Status": {"State": "running"}, "NodeID": "n1", "Version": {"Index": 5}},
+            {"Status": {"State": "starting"}, "NodeID": "", "Version": {"Index": 4}},
+        ]
+
+    svc = SimpleNamespace(name="spectra_app", attrs=attrs, tasks=tasks)
+    info = docker_client._parse_service(svc)
+    assert info.running_tasks == 1
+    assert info.desired_replicas == 3
+    assert info.failed_tasks == 0
+
+
+def test_parse_service_counts_failed_in_desired_running_task_list():
+    attrs = {
+        "Spec": {
+            "Mode": {"Replicated": {"Replicas": 2}},
+            "TaskTemplate": {"ContainerSpec": {"Image": "spectra/app:latest"}},
+        }
+    }
+
+    def tasks(filters=None):
+        if filters == {"desired-state": "running"}:
+            return [
+                {"Status": {"State": "running"}, "NodeID": "n1", "Version": {"Index": 3}},
+                {"Status": {"State": "failed"}, "NodeID": "", "Version": {"Index": 2}},
+            ]
+        return []
+
+    svc = SimpleNamespace(name="spectra_app", attrs=attrs, tasks=tasks)
+    info = docker_client._parse_service(svc)
+    assert info.failed_tasks == 1
+
+
+def test_parse_service_counts_tail_failed_when_running_filter_has_no_failed():
+    attrs = {
+        "Spec": {
+            "Mode": {"Replicated": {"Replicas": 1}},
+            "TaskTemplate": {"ContainerSpec": {"Image": "spectra/w:latest"}},
+        }
+    }
+
+    def tasks(filters=None):
+        if filters == {"desired-state": "running"}:
+            return [{"Status": {"State": "running"}, "NodeID": "n1", "Version": {"Index": 10}}]
+        return [
+            {"Status": {"State": "running"}, "NodeID": "n1", "Version": {"Index": 10}},
+            {"Status": {"State": "failed"}, "Version": {"Index": 9}},
+            {"Status": {"State": "shutdown"}, "Version": {"Index": 8}},
+        ]
+
+    svc = SimpleNamespace(name="spectra_worker", attrs=attrs, tasks=tasks)
+    info = docker_client._parse_service(svc)
+    assert info.failed_tasks == 1
+
+
 def test_parse_mem_units():
     assert metrics_collector._parse_mem("1GiB") == 1024
     assert metrics_collector._parse_mem("512MiB") == 512

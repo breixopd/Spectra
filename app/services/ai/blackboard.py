@@ -117,14 +117,8 @@ class MissionBlackboard:
                 return True
         return False
 
-    async def get_cross_mission_findings(self, target_address: str, user_id: str | None = None) -> list[dict]:
-        """Retrieve findings from previous missions against the same target.
-
-        Args:
-            target_address: The target IP/hostname to search for.
-            user_id: If provided, only return findings from missions owned by
-                this user (prevents cross-user data leakage).
-        """
+    async def get_cross_mission_findings(self, target_address: str, user_id: str) -> list[dict]:
+        """Retrieve findings from previous missions against the same target (same user only)."""
         from sqlalchemy import text
 
         from app.core.database import async_session_maker
@@ -136,31 +130,18 @@ class MissionBlackboard:
         safe_addr = _escape_like(target_address)
 
         async with async_session_maker() as session:
-            if user_id:
-                # Join against missions table to enforce same-user access
-                result = await session.execute(
-                    text("""
-                        SELECT sc.key, sc.value FROM system_cache sc
-                        INNER JOIN missions m ON sc.key = 'blackboard:' || m.id::text
-                        WHERE sc.key LIKE 'blackboard:%'
-                        AND sc.value::text LIKE :target_pattern
-                        AND (sc.expires_at IS NULL OR sc.expires_at > now())
-                        AND m.user_id = :user_id
-                        ORDER BY sc.key DESC LIMIT 5
-                    """),
-                    {"target_pattern": f"%{safe_addr}%", "user_id": user_id},
-                )
-            else:
-                result = await session.execute(
-                    text("""
-                        SELECT key, value FROM system_cache
-                        WHERE key LIKE 'blackboard:%'
-                        AND value::text LIKE :target_pattern
-                        AND (expires_at IS NULL OR expires_at > now())
-                        ORDER BY key DESC LIMIT 5
-                    """),
-                    {"target_pattern": f"%{safe_addr}%"},
-                )
+            result = await session.execute(
+                text("""
+                    SELECT sc.key, sc.value FROM system_cache sc
+                    INNER JOIN missions m ON sc.key = 'blackboard:' || m.id::text
+                    WHERE sc.key LIKE 'blackboard:%'
+                    AND sc.value::text LIKE :target_pattern
+                    AND (sc.expires_at IS NULL OR sc.expires_at > now())
+                    AND m.user_id = :user_id
+                    ORDER BY sc.key DESC LIMIT 5
+                """),
+                {"target_pattern": f"%{safe_addr}%", "user_id": user_id},
+            )
             findings: list[dict] = []
             for row in result.fetchall():
                 data = json.loads(row[1]) if isinstance(row[1], str) else row[1]
