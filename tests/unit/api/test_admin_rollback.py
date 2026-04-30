@@ -1,4 +1,4 @@
-"""Tests for app.api.routers.admin.rollback endpoints."""
+"""Tests for spectra_api.api.routers.admin.rollback endpoints."""
 
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -7,7 +7,7 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.routers.admin.rollback import router
+from spectra_api.api.routers.admin.rollback import router
 
 
 def _fake_user(role: str = "admin", user_id: str = "u-admin-1"):
@@ -29,7 +29,7 @@ def _make_app() -> FastAPI:
 
 
 def _override_deps(app: FastAPI, user, mock_session):
-    from app.api.dependencies import get_current_active_user
+    from spectra_api.api.dependencies import get_current_active_user
     from app.core.database import get_async_session
 
     app.dependency_overrides[get_current_active_user] = lambda: user
@@ -58,7 +58,7 @@ def _make_snapshot(**overrides):
 
 
 @pytest.mark.asyncio
-@patch("app.api.routers.admin.rollback.get_all_snapshots", new_callable=AsyncMock)
+@patch("spectra_api.api.routers.admin.rollback.get_all_snapshots", new_callable=AsyncMock)
 async def test_list_snapshots_as_admin(mock_get_all):
     snap = _make_snapshot()
     mock_get_all.return_value = [snap]
@@ -103,7 +103,7 @@ async def test_list_snapshots_as_operator_forbidden():
 
 
 @pytest.mark.asyncio
-@patch("app.api.routers.admin.rollback.rollback_snapshot", new_callable=AsyncMock)
+@patch("spectra_api.api.routers.admin.rollback.rollback_snapshot", new_callable=AsyncMock)
 async def test_apply_rollback_success(mock_rollback):
     mock_rollback.return_value = {"role": "staff"}
 
@@ -122,7 +122,7 @@ async def test_apply_rollback_success(mock_rollback):
 
 
 @pytest.mark.asyncio
-@patch("app.api.routers.admin.rollback.rollback_snapshot", new_callable=AsyncMock)
+@patch("spectra_api.api.routers.admin.rollback.rollback_snapshot", new_callable=AsyncMock)
 async def test_apply_rollback_value_error(mock_rollback):
     mock_rollback.side_effect = ValueError("Rollback cannot recreate a remotely cancelled Stripe subscription")
 
@@ -138,7 +138,7 @@ async def test_apply_rollback_value_error(mock_rollback):
 
 
 @pytest.mark.asyncio
-@patch("app.api.routers.admin.rollback.rollback_snapshot", new_callable=AsyncMock)
+@patch("spectra_api.api.routers.admin.rollback.rollback_snapshot", new_callable=AsyncMock)
 async def test_apply_rollback_unexpected_error(mock_rollback):
     mock_rollback.side_effect = RuntimeError("unexpected")
 
@@ -165,7 +165,7 @@ async def test_apply_rollback_without_admin_forbidden():
 
 
 @pytest.mark.asyncio
-@patch("app.api.routers.admin.rollback.get_all_snapshots", new_callable=AsyncMock)
+@patch("spectra_api.api.routers.admin.rollback.get_all_snapshots", new_callable=AsyncMock)
 async def test_list_snapshots_custom_limit(mock_get_all):
     mock_get_all.return_value = []
 
@@ -181,7 +181,7 @@ async def test_list_snapshots_custom_limit(mock_get_all):
 
 
 @pytest.mark.asyncio
-@patch("app.api.routers.admin.rollback.get_all_snapshots", new_callable=AsyncMock)
+@patch("spectra_api.api.routers.admin.rollback.get_all_snapshots", new_callable=AsyncMock)
 async def test_list_snapshots_marks_remote_stripe_restore_as_non_restorable(mock_get_all):
     snap = _make_snapshot()
     snap.before_state = '{"subscription": {"payment_provider": "stripe", "external_subscription_id": "sub_123"}}'

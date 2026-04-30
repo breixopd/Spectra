@@ -89,7 +89,7 @@ class TestLogoutRevokesRefreshToken:
 
     @pytest.mark.asyncio
     async def test_logout_sets_invalidated_before_on_user(self):
-        from app.api.routers.auth.login import logout
+        from spectra_api.api.routers.auth.login import logout
 
         token = create_access_token({"sub": "user-logout-invalidated"})
         user = MagicMock()
@@ -101,7 +101,7 @@ class TestLogoutRevokesRefreshToken:
         response = MagicMock()
         response.delete_cookie = MagicMock()
 
-        with patch("app.api.routers.auth.login.invalidate_token"):
+        with patch("spectra_api.api.routers.auth.login.invalidate_token"):
             await logout(request=request, response=response, session=session)
 
         assert user.invalidated_before is not None
@@ -110,7 +110,7 @@ class TestLogoutRevokesRefreshToken:
     @pytest.mark.asyncio
     async def test_logout_blacklists_access_token(self):
         """logout calls invalidate_token, which places the token in the blacklist."""
-        from app.api.routers.auth.login import logout
+        from spectra_api.api.routers.auth.login import logout
 
         # Use a unique sub to guarantee a distinct token from other tests
         token = create_access_token({"sub": "user-logout-blacklist"})
@@ -129,7 +129,7 @@ class TestLogoutRevokesRefreshToken:
 
     @pytest.mark.asyncio
     async def test_logout_uses_access_token_cookie_when_bearer_missing(self):
-        from app.api.routers.auth.login import logout
+        from spectra_api.api.routers.auth.login import logout
 
         token = create_access_token({"sub": "user-logout-cookie"})
         user = MagicMock()
@@ -149,7 +149,7 @@ class TestLogoutRevokesRefreshToken:
     @pytest.mark.asyncio
     async def test_refresh_rejected_when_issued_before_invalidation(self):
         """Refresh token whose iat predates user.invalidated_before → 401."""
-        from app.api.routers.auth.login import refresh_token as refresh_endpoint
+        from spectra_api.api.routers.auth.login import refresh_token as refresh_endpoint
 
         rt = create_refresh_token({"sub": "bob"})
 
@@ -191,7 +191,7 @@ class TestMfaCancelBlocklist:
 
     @pytest.mark.asyncio
     async def test_cancel_mfa_blacklists_pending_token(self):
-        from app.api.routers.auth.totp import cancel_mfa
+        from spectra_api.api.routers.auth.totp import cancel_mfa
 
         token = create_access_token(
             {"sub": "alice", "mfa_pending": True},
@@ -206,7 +206,7 @@ class TestMfaCancelBlocklist:
     @pytest.mark.asyncio
     async def test_cancel_mfa_does_not_blacklist_normal_token(self):
         """A regular access token (no mfa_pending) is not blacklisted by cancel."""
-        from app.api.routers.auth.totp import cancel_mfa
+        from spectra_api.api.routers.auth.totp import cancel_mfa
 
         token = create_access_token({"sub": "alice"})
         request = _make_request({"authorization": f"Bearer {token}"})
@@ -218,7 +218,7 @@ class TestMfaCancelBlocklist:
     @pytest.mark.asyncio
     async def test_cancel_mfa_without_token_returns_204(self):
         """Missing Authorization header returns 204 without error."""
-        from app.api.routers.auth.totp import cancel_mfa
+        from spectra_api.api.routers.auth.totp import cancel_mfa
 
         request = _make_request()
         result = await cancel_mfa.__wrapped__(request)
@@ -370,7 +370,7 @@ class TestPreSetupRegistrationBlocked:
 class TestProfileEntitlementSource:
     @pytest.mark.asyncio
     async def test_current_profile_uses_active_subscription_plan_not_user_plan_id(self):
-        from app.api.routers.auth.session import get_current_profile
+        from spectra_api.api.routers.auth.session import get_current_profile
 
         user = MagicMock()
         user.id = "user-1"
@@ -410,7 +410,7 @@ class TestProfileEntitlementSource:
         session = AsyncMock()
         session.execute = AsyncMock(side_effect=[subscription_result, prefs_result])
 
-        with patch("app.api.routers.auth.session.get_user_entitlement", new=AsyncMock(return_value=entitlement)):
+        with patch("spectra_api.api.routers.auth.session.get_user_entitlement", new=AsyncMock(return_value=entitlement)):
             profile = await get_current_profile.__wrapped__(
                 request=_make_request(path="/api/v1/auth/me"),
                 user=user,
@@ -424,7 +424,7 @@ class TestProfileEntitlementSource:
 
     @pytest.mark.asyncio
     async def test_current_profile_returns_plan_none_without_entitlement(self):
-        from app.api.routers.auth.session import get_current_profile
+        from spectra_api.api.routers.auth.session import get_current_profile
 
         user = MagicMock()
         user.id = "user-2"
@@ -444,7 +444,7 @@ class TestProfileEntitlementSource:
         session = AsyncMock()
         session.execute = AsyncMock(side_effect=[subscription_result, prefs_result])
 
-        with patch("app.api.routers.auth.session.get_user_entitlement", new=AsyncMock(return_value=None)):
+        with patch("spectra_api.api.routers.auth.session.get_user_entitlement", new=AsyncMock(return_value=None)):
             profile = await get_current_profile.__wrapped__(
                 request=_make_request(path="/api/v1/auth/me"),
                 user=user,
@@ -457,7 +457,7 @@ class TestProfileEntitlementSource:
 
     @pytest.mark.asyncio
     async def test_current_profile_can_access_observability_for_superuser(self):
-        from app.api.routers.auth.session import get_current_profile
+        from spectra_api.api.routers.auth.session import get_current_profile
 
         user = MagicMock()
         user.id = "user-su"
@@ -477,7 +477,7 @@ class TestProfileEntitlementSource:
         session = AsyncMock()
         session.execute = AsyncMock(side_effect=[subscription_result, prefs_result])
 
-        with patch("app.api.routers.auth.session.get_user_entitlement", new=AsyncMock(return_value=None)):
+        with patch("spectra_api.api.routers.auth.session.get_user_entitlement", new=AsyncMock(return_value=None)):
             profile = await get_current_profile.__wrapped__(
                 request=_make_request(path="/api/v1/auth/me"),
                 user=user,
@@ -488,7 +488,7 @@ class TestProfileEntitlementSource:
 
     @pytest.mark.asyncio
     async def test_current_profile_exposes_past_due_billing_recovery_without_entitlement(self):
-        from app.api.routers.auth.session import get_current_profile
+        from spectra_api.api.routers.auth.session import get_current_profile
 
         user = MagicMock()
         user.id = "user-3"
@@ -514,7 +514,7 @@ class TestProfileEntitlementSource:
         session = AsyncMock()
         session.execute = AsyncMock(side_effect=[subscription_result, prefs_result])
 
-        with patch("app.api.routers.auth.session.get_user_entitlement", new=AsyncMock(return_value=None)):
+        with patch("spectra_api.api.routers.auth.session.get_user_entitlement", new=AsyncMock(return_value=None)):
             profile = await get_current_profile.__wrapped__(
                 request=_make_request(path="/api/v1/auth/me"),
                 user=user,

@@ -22,7 +22,7 @@ async def client():
 
     transport = ASGITransport(app=app)
     with (
-        patch("app.api.routers.auth.login.invalidate_token", AsyncMock(return_value=None)),
+        patch("spectra_api.api.routers.auth.login.invalidate_token", AsyncMock(return_value=None)),
         patch("app.auth.security.is_token_blacklisted", AsyncMock(return_value=False)),
     ):
         async with AsyncClient(transport=transport, base_url="http://test") as c:

@@ -19,7 +19,7 @@ def _mock_http_request():
 
 async def test_mcp_initialize():
     """MCP initialize returns server info."""
-    from app.api.mcp import MCPRequest, handle_mcp_request
+    from spectra_api.api.mcp import MCPRequest, handle_mcp_request
 
     req = MCPRequest(method="initialize", id=1)
     result = await handle_mcp_request(_mock_http_request(), body=req, api_key="test-key", session=AsyncMock())
@@ -31,7 +31,7 @@ async def test_mcp_initialize():
 
 async def test_mcp_tools_list():
     """MCP tools/list returns available tools."""
-    from app.api.mcp import MCPRequest, handle_mcp_request
+    from spectra_api.api.mcp import MCPRequest, handle_mcp_request
 
     req = MCPRequest(method="tools/list", id=2)
     result = await handle_mcp_request(_mock_http_request(), body=req, api_key="test-key", session=AsyncMock())
@@ -49,7 +49,7 @@ async def test_mcp_tools_list():
 
 async def test_mcp_tools_have_input_schema():
     """Each MCP tool has a valid inputSchema."""
-    from app.api.mcp import MCP_TOOLS
+    from spectra_api.api.mcp import MCP_TOOLS
 
     for tool in MCP_TOOLS:
         assert "name" in tool
@@ -60,7 +60,7 @@ async def test_mcp_tools_have_input_schema():
 
 async def test_mcp_unknown_method():
     """MCP returns error for unknown methods."""
-    from app.api.mcp import MCPRequest, handle_mcp_request
+    from spectra_api.api.mcp import MCPRequest, handle_mcp_request
 
     req = MCPRequest(method="unknown/method", id=3)
     result = await handle_mcp_request(_mock_http_request(), body=req, api_key="test-key", session=AsyncMock())
@@ -72,7 +72,7 @@ async def test_mcp_unknown_method():
 
 async def test_mcp_notifications_initialized():
     """MCP notifications/initialized returns empty result."""
-    from app.api.mcp import MCPRequest, handle_mcp_request
+    from spectra_api.api.mcp import MCPRequest, handle_mcp_request
 
     req = MCPRequest(method="notifications/initialized", id=4)
     result = await handle_mcp_request(_mock_http_request(), body=req, api_key="test-key", session=AsyncMock())
@@ -83,7 +83,7 @@ async def test_mcp_notifications_initialized():
 
 async def test_mcp_tool_call_unknown_tool():
     """MCP tools/call with unknown tool returns error."""
-    from app.api.mcp import MCPRequest, handle_mcp_request
+    from spectra_api.api.mcp import MCPRequest, handle_mcp_request
 
     req = MCPRequest(
         method="tools/call",
@@ -98,7 +98,7 @@ async def test_mcp_tool_call_unknown_tool():
 
 async def test_mcp_tool_start_mission():
     """MCP start_mission tool delegates to MissionManager with server-side user_id."""
-    from app.api.mcp import MCPRequest, handle_mcp_request
+    from spectra_api.api.mcp import MCPRequest, handle_mcp_request
 
     req = MCPRequest(
         method="tools/call",
@@ -118,7 +118,7 @@ async def test_mcp_tool_start_mission():
     mock_session.get.return_value = mock_user
 
     with patch("app.services.mission.manager.mission_manager", mock_manager):
-        with patch("app.api.mcp.settings") as mock_settings:
+        with patch("spectra_api.api.mcp.settings") as mock_settings:
             mock_settings.MCP_USER_ID = "server-bound-user"
             mock_settings.MCP_API_KEY = "test-key"
             result = await handle_mcp_request(_mock_http_request(), body=req, api_key="test-key", session=mock_session)
@@ -138,14 +138,14 @@ async def test_mcp_tool_start_mission():
 
 async def test_mcp_tool_start_mission_missing_fields():
     """MCP start_mission requires target and directive."""
-    from app.api.mcp import MCPRequest, handle_mcp_request
+    from spectra_api.api.mcp import MCPRequest, handle_mcp_request
 
     req = MCPRequest(
         method="tools/call",
         id=7,
         params={"name": "start_mission", "arguments": {"target": "192.168.1.1"}},
     )
-    with patch("app.api.mcp.settings") as mock_settings:
+    with patch("spectra_api.api.mcp.settings") as mock_settings:
         mock_settings.MCP_USER_ID = "server-user"
         mock_settings.MCP_API_KEY = "test-key"
         result = await handle_mcp_request(_mock_http_request(), body=req, api_key="test-key", session=AsyncMock())
@@ -157,7 +157,7 @@ async def test_mcp_tool_start_mission_missing_fields():
 
 async def test_mcp_request_model_defaults():
     """MCPRequest has correct defaults."""
-    from app.api.mcp import MCPRequest
+    from spectra_api.api.mcp import MCPRequest
 
     req = MCPRequest(method="test")
     assert req.jsonrpc == "2.0"
@@ -167,7 +167,7 @@ async def test_mcp_request_model_defaults():
 
 async def test_mcp_response_model():
     """MCPResponse serializes correctly."""
-    from app.api.mcp import MCPResponse
+    from spectra_api.api.mcp import MCPResponse
 
     resp = MCPResponse(id=1, result={"key": "value"})
     assert resp.jsonrpc == "2.0"
@@ -180,7 +180,7 @@ async def test_mcp_api_key_verification_missing():
     """verify_mcp_api_key rejects missing key."""
     from fastapi import HTTPException
 
-    from app.api.mcp import verify_mcp_api_key
+    from spectra_api.api.mcp import verify_mcp_api_key
 
     mock_request = AsyncMock()
     mock_request.headers = {}
@@ -194,12 +194,12 @@ async def test_mcp_api_key_verification_invalid():
     """verify_mcp_api_key rejects wrong key."""
     from fastapi import HTTPException
 
-    from app.api.mcp import verify_mcp_api_key
+    from spectra_api.api.mcp import verify_mcp_api_key
 
     mock_request = AsyncMock()
     mock_request.headers = {"X-API-Key": "wrong-key"}
 
-    with patch("app.api.mcp.settings") as mock_settings:
+    with patch("spectra_api.api.mcp.settings") as mock_settings:
         mock_settings.MCP_API_KEY = "correct-key"
         with pytest.raises(HTTPException) as exc_info:
             await verify_mcp_api_key(mock_request)
@@ -208,12 +208,12 @@ async def test_mcp_api_key_verification_invalid():
 
 async def test_mcp_api_key_verification_bearer():
     """verify_mcp_api_key accepts Bearer token."""
-    from app.api.mcp import verify_mcp_api_key
+    from spectra_api.api.mcp import verify_mcp_api_key
 
     mock_request = AsyncMock()
     mock_request.headers = {"Authorization": "Bearer correct-key"}
 
-    with patch("app.api.mcp.settings") as mock_settings:
+    with patch("spectra_api.api.mcp.settings") as mock_settings:
         mock_settings.MCP_API_KEY = "correct-key"
         result = await verify_mcp_api_key(mock_request)
     assert result == "correct-key"
@@ -223,12 +223,12 @@ async def test_mcp_api_key_verification_not_configured():
     """verify_mcp_api_key returns 503 when MCP not configured."""
     from fastapi import HTTPException
 
-    from app.api.mcp import verify_mcp_api_key
+    from spectra_api.api.mcp import verify_mcp_api_key
 
     mock_request = AsyncMock()
     mock_request.headers = {"X-API-Key": "some-key"}
 
-    with patch("app.api.mcp.settings") as mock_settings:
+    with patch("spectra_api.api.mcp.settings") as mock_settings:
         mock_settings.MCP_API_KEY = ""
         with pytest.raises(HTTPException) as exc_info:
             await verify_mcp_api_key(mock_request)

@@ -10,21 +10,21 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.routing import Route
 
-from app.api.dependencies import (
+from app.core.config import settings
+from app.core.database import async_session_maker, get_async_session
+from app.models.user import User
+from app.services.billing.entitlements import ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES
+from app.services.shell.session_manager import shell_manager
+from spectra_api.api.dependencies import (
     _is_admin_user,
     get_current_active_user,
     get_current_user,
     get_ui_user,
     require_feature,
 )
-from app.api.schemas.system import SettingsUpdate
-from app.auth.rbac import Permission, has_permission, require_permission
-from app.core.config import settings
-from app.core.database import async_session_maker, get_async_session
-from app.models.user import User
-from app.services.billing.entitlements import ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES
-from app.services.shell.session_manager import shell_manager
-from app.services.system.settings_service import (
+from spectra_api.api.schemas.system import SettingsUpdate
+from spectra_api.authz import Permission, has_permission, require_permission
+from spectra_api.services.system.settings_service import (
     apply_settings_update,
     get_ai_status_snapshot,
     get_current_settings,

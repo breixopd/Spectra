@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from app.api.schemas.system import DeleteAccountRequest
+from spectra_api.api.schemas.system import DeleteAccountRequest
 
 # --- Schema validation ---
 
@@ -54,13 +54,13 @@ async def test_delete_account_wrong_password(mock_user, mock_session):
     """Should return 400 when password is incorrect."""
     from fastapi import HTTPException
 
-    from app.api.routers.auth.session import delete_account
+    from spectra_api.api.routers.auth.session import delete_account
 
     body = DeleteAccountRequest(password="wrongpass")
     request = MagicMock()
     request.client.host = "127.0.0.1"
 
-    with patch("app.api.routers.auth.session.verify_password", return_value=False):
+    with patch("spectra_api.api.routers.auth.session.verify_password", return_value=False):
         with pytest.raises(HTTPException) as exc_info:
             await delete_account(
                 request=request,
@@ -78,7 +78,7 @@ async def test_delete_account_last_superuser_blocked(mock_user, mock_session):
     """Should return 400 when trying to delete the last superuser."""
     from fastapi import HTTPException
 
-    from app.api.routers.auth.session import delete_account
+    from spectra_api.api.routers.auth.session import delete_account
 
     mock_user.is_superuser = True
     body = DeleteAccountRequest(password="correct")
@@ -90,7 +90,7 @@ async def test_delete_account_last_superuser_blocked(mock_user, mock_session):
     count_result.scalar_one.return_value = 1
     mock_session.execute.return_value = count_result
 
-    with patch("app.api.routers.auth.session.verify_password", return_value=True):
+    with patch("spectra_api.api.routers.auth.session.verify_password", return_value=True):
         with pytest.raises(HTTPException) as exc_info:
             await delete_account(
                 request=request,
@@ -106,15 +106,15 @@ async def test_delete_account_last_superuser_blocked(mock_user, mock_session):
 @pytest.mark.asyncio
 async def test_delete_account_success(mock_user, mock_session):
     """Should delete user and return success message."""
-    from app.api.routers.auth.session import delete_account
+    from spectra_api.api.routers.auth.session import delete_account
 
     body = DeleteAccountRequest(password="correct")
     request = MagicMock()
     request.client.host = "127.0.0.1"
 
     with (
-        patch("app.api.routers.auth.session.verify_password", return_value=True),
-        patch("app.api.routers.auth.session.audit_log_event", new_callable=AsyncMock),
+        patch("spectra_api.api.routers.auth.session.verify_password", return_value=True),
+        patch("spectra_api.api.routers.auth.session.audit_log_event", new_callable=AsyncMock),
     ):
         result = await delete_account(
             request=request,
@@ -132,7 +132,7 @@ async def test_delete_account_success(mock_user, mock_session):
 @pytest.mark.asyncio
 async def test_delete_account_superuser_with_others_succeeds(mock_user, mock_session):
     """Superuser deletion should succeed when other superusers exist."""
-    from app.api.routers.auth.session import delete_account
+    from spectra_api.api.routers.auth.session import delete_account
 
     mock_user.is_superuser = True
     body = DeleteAccountRequest(password="correct")
@@ -151,7 +151,7 @@ async def test_delete_account_superuser_with_others_succeeds(mock_user, mock_ses
     update_result = MagicMock()
     mock_session.execute.side_effect = [count_result, advisory_lock_result, hash_result, update_result]
 
-    with patch("app.api.routers.auth.session.verify_password", return_value=True):
+    with patch("spectra_api.api.routers.auth.session.verify_password", return_value=True):
         result = await delete_account(
             request=request,
             response=MagicMock(),

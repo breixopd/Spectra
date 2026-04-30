@@ -259,13 +259,13 @@ class TestShellKeepalive:
     @pytest.mark.asyncio
     async def test_keepalive_sends_ping(self):
         """_keepalive sends a JSON ping after sleeping."""
-        from app.api.routers.shell import _keepalive
+        from spectra_api.api.routers.shell import _keepalive
 
         mock_ws = AsyncMock()
         # Let the first sleep succeed, then raise to break the loop
         mock_ws.send_json = AsyncMock(side_effect=[None, OSError("stop")])
 
-        with patch("app.api.routers.shell.asyncio.sleep", new_callable=AsyncMock):
+        with patch("spectra_api.api.routers.shell.asyncio.sleep", new_callable=AsyncMock):
             await _keepalive(mock_ws)
 
         mock_ws.send_json.assert_any_call({"type": "ping"})
@@ -274,7 +274,7 @@ class TestShellKeepalive:
     async def test_keepalive_task_created_and_cancelled(self):
         """shell_websocket creates a keepalive task and cancels it on disconnect."""
 
-        from app.api.routers.shell import shell_websocket
+        from spectra_api.api.routers.shell import shell_websocket
 
         mock_ws = AsyncMock()
         mock_ws.accept = AsyncMock()
@@ -301,12 +301,12 @@ class TestShellKeepalive:
         mock_task.cancel = MagicMock()
 
         with (
-            patch("app.api.routers.shell.validate_websocket_token", return_value=mock_user),
-            patch("app.api.routers.shell.check_feature_allowed", new_callable=AsyncMock),
-            patch("app.api.routers.shell.shell_manager") as mock_mgr,
-            patch("app.api.routers.shell.audit_log_event", new_callable=AsyncMock),
-            patch("app.api.routers.shell.async_session_maker") as mock_session_maker,
-            patch("app.api.routers.shell.asyncio.create_task", return_value=mock_task) as mock_ct,
+            patch("spectra_api.api.routers.shell.validate_websocket_token", return_value=mock_user),
+            patch("spectra_api.api.routers.shell.check_feature_allowed", new_callable=AsyncMock),
+            patch("spectra_api.api.routers.shell.shell_manager") as mock_mgr,
+            patch("spectra_api.api.routers.shell.audit_log_event", new_callable=AsyncMock),
+            patch("spectra_api.api.routers.shell.async_session_maker") as mock_session_maker,
+            patch("spectra_api.api.routers.shell.asyncio.create_task", return_value=mock_task) as mock_ct,
         ):
             mock_mgr.get_session = AsyncMock(return_value=mock_session)
             mock_db = AsyncMock()

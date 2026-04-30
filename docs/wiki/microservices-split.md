@@ -84,7 +84,7 @@ python3 scripts/check_import_boundaries.py
 ```
 
 Forbidden top-level imports in shared packages:
-- `app.api.*`
+- `spectra_api.api.*`
 - `spectra_worker.*`
 - `spectra_ai.*`
 - `spectra_scheduler.*`

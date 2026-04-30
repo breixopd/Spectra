@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import app.services.system.health as _health_module
-from app.api.routers.health import health_check, readiness_check, service_health
+from spectra_api.api.routers.health import health_check, readiness_check, service_health
 from app.services.system.health import (
     _health_cache,
     _is_control_plane_health_url,
@@ -125,7 +125,7 @@ async def test_full_health_requires_admin_or_service_auth():
     db.execute = AsyncMock()
     response = _mock_response()
 
-    with patch("app.api.routers.health._get_settings", return_value=_settings()):
+    with patch("spectra_api.api.routers.health._get_settings", return_value=_settings()):
         with pytest.raises(Exception) as exc:
             await health_check(request=_mock_request(), response=response, db=db, detail="full")
 
@@ -143,7 +143,7 @@ async def test_full_health_allows_service_auth_and_includes_latency():
 
     with (
         _mock_core_checks(),
-        patch("app.api.routers.health._get_settings", return_value=_settings()),
+        patch("spectra_api.api.routers.health._get_settings", return_value=_settings()),
         patch("app.services.system.health.get_settings", return_value=_settings()),
         patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw),
         patch("app.infrastructure.cache.get_cache", return_value=None),
@@ -193,7 +193,7 @@ async def test_readiness_uses_canonical_health_checks():
 @pytest.mark.asyncio
 async def test_service_health_requires_admin():
     db = AsyncMock()
-    with patch("app.api.routers.health._get_settings", return_value=_settings()):
+    with patch("spectra_api.api.routers.health._get_settings", return_value=_settings()):
         with pytest.raises(Exception) as exc:
             await service_health(request=_mock_request(), db=db)
     assert exc.value.status_code == 401
@@ -212,8 +212,8 @@ async def test_service_health_returns_nodes_for_internal_call():
     }
 
     with (
-        patch("app.api.routers.health._get_settings", return_value=_settings()),
-        patch("app.api.routers.health.collect_platform_health", new=AsyncMock(return_value=response)),
+        patch("spectra_api.api.routers.health._get_settings", return_value=_settings()),
+        patch("spectra_api.api.routers.health.collect_platform_health", new=AsyncMock(return_value=response)),
     ):
         result = await service_health(request=_mock_request(service_auth="svc-secret"), db=db)
 
@@ -222,8 +222,8 @@ async def test_service_health_returns_nodes_for_internal_call():
 
 
 def test_probe_http_health_wrapper():
-    with patch("app.api.routers.health.probe_http_health", new=AsyncMock(return_value={"status": "healthy"})) as mock_probe:
-        from app.api.routers.health import _probe_http_health
+    with patch("spectra_api.api.routers.health.probe_http_health", new=AsyncMock(return_value={"status": "healthy"})) as mock_probe:
+        from spectra_api.api.routers.health import _probe_http_health
 
         result = asyncio.run(_probe_http_health("http://test", path="/health"))
     assert result is True
@@ -231,8 +231,8 @@ def test_probe_http_health_wrapper():
 
 
 def test_probe_http_health_wrapper_unhealthy():
-    with patch("app.api.routers.health.probe_http_health", new=AsyncMock(return_value={"status": "degraded"})):
-        from app.api.routers.health import _probe_http_health
+    with patch("spectra_api.api.routers.health.probe_http_health", new=AsyncMock(return_value={"status": "degraded"})):
+        from spectra_api.api.routers.health import _probe_http_health
 
         result = asyncio.run(_probe_http_health("http://test", path="/health"))
     assert result is False
@@ -242,7 +242,7 @@ import asyncio
 
 
 def test_data_dir():
-    from app.api.routers.health import _data_dir
+    from spectra_api.api.routers.health import _data_dir
 
     assert _data_dir() == "/app/data"
 
@@ -252,8 +252,8 @@ async def test_get_version():
     from fastapi import FastAPI
     from httpx import ASGITransport, AsyncClient
 
-    from app.api.dependencies import get_current_active_user
-    from app.api.routers.health import router as health_router
+    from spectra_api.api.dependencies import get_current_active_user
+    from spectra_api.api.routers.health import router as health_router
 
     app = FastAPI()
     app.include_router(health_router)
@@ -279,9 +279,9 @@ async def test_service_health_degraded_logs_debug():
     }
 
     with (
-        patch("app.api.routers.health._get_settings", return_value=_settings()),
-        patch("app.api.routers.health.collect_platform_health", new=AsyncMock(return_value=response)),
-        patch("app.api.routers.health.logger") as mock_logger,
+        patch("spectra_api.api.routers.health._get_settings", return_value=_settings()),
+        patch("spectra_api.api.routers.health.collect_platform_health", new=AsyncMock(return_value=response)),
+        patch("spectra_api.api.routers.health.logger") as mock_logger,
     ):
         result = await service_health(request=_mock_request(service_auth="svc-secret"), db=db)
 

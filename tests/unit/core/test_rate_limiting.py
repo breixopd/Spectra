@@ -57,7 +57,7 @@ def test_rate_limit_identifier_handles_invalid_bearer_token():
 @pytest.mark.asyncio
 async def test_enforce_rate_limit_allows_within_limit():
     """User within plan limit passes through."""
-    from app.api.dependencies import enforce_api_rate_limit
+    from spectra_api.api.dependencies import enforce_api_rate_limit
 
     user = _make_user()
     session = _make_transactional_session()
@@ -72,8 +72,8 @@ async def test_enforce_rate_limit_allows_within_limit():
     with (
         patch("app.services.billing.quota_enforcer.QuotaEnforcer", return_value=mock_enforcer),
         patch("app.services.billing.usage_tracker.UsageTracker", return_value=mock_tracker),
-        patch("app.api.dependencies.async_session_maker", return_value=session),
-        patch("app.api.dependencies.stable_lock_id", return_value=12345),
+        patch("spectra_api.api.dependencies.async_session_maker", return_value=session),
+        patch("spectra_api.api.dependencies.stable_lock_id", return_value=12345),
     ):
         result = await enforce_api_rate_limit(user=user)
 
@@ -85,7 +85,7 @@ async def test_enforce_rate_limit_allows_within_limit():
 @pytest.mark.asyncio
 async def test_enforce_rate_limit_blocks_over_limit():
     """User over plan limit gets 429."""
-    from app.api.dependencies import enforce_api_rate_limit
+    from spectra_api.api.dependencies import enforce_api_rate_limit
 
     user = _make_user()
     session = _make_transactional_session()
@@ -99,8 +99,8 @@ async def test_enforce_rate_limit_blocks_over_limit():
     with (
         patch("app.services.billing.quota_enforcer.QuotaEnforcer", return_value=mock_enforcer),
         patch("app.services.billing.usage_tracker.UsageTracker", return_value=mock_tracker),
-        patch("app.api.dependencies.async_session_maker", return_value=session),
-        patch("app.api.dependencies.stable_lock_id", return_value=12345),
+        patch("spectra_api.api.dependencies.async_session_maker", return_value=session),
+        patch("spectra_api.api.dependencies.stable_lock_id", return_value=12345),
     ):
         with pytest.raises(HTTPException) as exc_info:
             await enforce_api_rate_limit(user=user)
@@ -113,7 +113,7 @@ async def test_enforce_rate_limit_blocks_over_limit():
 @pytest.mark.asyncio
 async def test_enforce_rate_limit_skips_admin():
     """Admin users bypass rate limiting entirely."""
-    from app.api.dependencies import enforce_api_rate_limit
+    from spectra_api.api.dependencies import enforce_api_rate_limit
 
     admin = _make_user(is_superuser=True)
 
@@ -125,7 +125,7 @@ async def test_enforce_rate_limit_skips_admin():
 @pytest.mark.asyncio
 async def test_enforce_rate_limit_skips_admin_role():
     """Users with role='admin' bypass rate limiting."""
-    from app.api.dependencies import enforce_api_rate_limit
+    from spectra_api.api.dependencies import enforce_api_rate_limit
 
     admin = _make_user(is_superuser=False, role="admin")
 

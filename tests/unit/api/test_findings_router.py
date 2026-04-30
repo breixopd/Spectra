@@ -10,7 +10,7 @@ import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.routers.findings import router
+from spectra_api.api.routers.findings import router
 from app.mission.core.enums import Severity
 from app.models.finding import FindingStatus
 
@@ -70,7 +70,7 @@ def _make_app() -> FastAPI:
 @pytest_asyncio.fixture
 async def client():
     app = _make_app()
-    from app.api.dependencies import get_current_active_user
+    from spectra_api.api.dependencies import get_current_active_user
     from app.core.database import get_async_session
 
     user = _fake_user()
@@ -457,7 +457,7 @@ class TestFindingExportsAndStatusPaths:
 
     async def test_confirm_finding_keeps_generic_500_when_update_is_falsy(self):
         app = _make_app()
-        from app.api.dependencies import get_current_active_user
+        from spectra_api.api.dependencies import get_current_active_user
         from app.core.database import get_async_session
         from app.repositories.finding import FindingRepository
 
@@ -516,7 +516,7 @@ class TestFindingsAuth:
 
 class TestRateLimitDecorator:
     def test_list_findings_has_rate_limit(self):
-        from app.api.routers.findings.core import list_findings
+        from spectra_api.api.routers.findings.core import list_findings
 
         # slowapi wraps the function and adds _rate_limits
         assert hasattr(list_findings, "__wrapped__") or hasattr(list_findings, "_rate_limits"), (

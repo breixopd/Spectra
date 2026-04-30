@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.api.routers.vpn import DANGEROUS_OPENVPN_DIRECTIVES
+from spectra_api.api.routers.vpn import DANGEROUS_OPENVPN_DIRECTIVES
 
 
 class TestDangerousDirectiveDetection:

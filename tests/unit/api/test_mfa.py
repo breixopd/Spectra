@@ -86,7 +86,7 @@ def app_client():
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
-    from app.api.routers.auth import router
+    from spectra_api.api.routers.auth import router
 
     app = FastAPI()
     app.include_router(router, prefix="/auth")
@@ -96,11 +96,11 @@ def app_client():
 @pytest.mark.asyncio
 async def test_mfa_setup_returns_provisioning_uri(mock_session):
     """Setup endpoint should return a valid provisioning URI and base32 secret."""
-    from app.api.routers.auth.totp import mfa_setup
+    from spectra_api.api.routers.auth.totp import mfa_setup
 
     user = _make_user()
 
-    with patch("app.api.routers.auth.totp.encrypt_mfa_secret", side_effect=lambda s: f"enc:{s}"):
+    with patch("spectra_api.api.routers.auth.totp.encrypt_mfa_secret", side_effect=lambda s: f"enc:{s}"):
         result = await mfa_setup(user=user, session=mock_session)
 
     assert result.secret  # base32 string
@@ -112,8 +112,8 @@ async def test_mfa_setup_returns_provisioning_uri(mock_session):
 @pytest.mark.asyncio
 async def test_mfa_verify_setup_enables_mfa(mock_session):
     """Verify-setup should enable MFA when given a valid code."""
-    from app.api.routers.auth.totp import mfa_verify_setup
-    from app.api.schemas.auth import MFAVerifyRequest
+    from spectra_api.api.routers.auth.totp import mfa_verify_setup
+    from spectra_api.api.schemas.auth import MFAVerifyRequest
 
     secret = pyotp.random_base32()
     encrypted = encrypt_mfa_secret(secret)
@@ -125,7 +125,7 @@ async def test_mfa_verify_setup_enables_mfa(mock_session):
     request = MagicMock()
     request.client.host = "127.0.0.1"
 
-    with patch("app.api.routers.auth.totp.audit_log_event", new_callable=AsyncMock):
+    with patch("spectra_api.api.routers.auth.totp.audit_log_event", new_callable=AsyncMock):
         result = await mfa_verify_setup(request=request, body=body, user=user, session=mock_session)
 
     assert result["detail"] == "MFA enabled successfully"
@@ -137,8 +137,8 @@ async def test_mfa_verify_setup_rejects_bad_code(mock_session):
     """Verify-setup should reject an invalid TOTP code."""
     from fastapi import HTTPException
 
-    from app.api.routers.auth.totp import mfa_verify_setup
-    from app.api.schemas.auth import MFAVerifyRequest
+    from spectra_api.api.routers.auth.totp import mfa_verify_setup
+    from spectra_api.api.schemas.auth import MFAVerifyRequest
 
     secret = pyotp.random_base32()
     encrypted = encrypt_mfa_secret(secret)
@@ -186,8 +186,8 @@ async def test_login_with_mfa_returns_token_after_verify(mock_session):
     """After MFA verify, a full access token should be returned."""
     from datetime import timedelta
 
-    from app.api.routers.auth.totp import mfa_verify_login
-    from app.api.schemas.auth import MFAVerifyRequest
+    from spectra_api.api.routers.auth.totp import mfa_verify_login
+    from spectra_api.api.schemas.auth import MFAVerifyRequest
     from app.auth.security import create_access_token, decode_token
 
     secret = pyotp.random_base32()
@@ -213,7 +213,7 @@ async def test_login_with_mfa_returns_token_after_verify(mock_session):
     code = pyotp.TOTP(secret).now()
     body = MFAVerifyRequest(code=code)
 
-    with patch("app.api.routers.auth.totp.invalidate_token"):
+    with patch("spectra_api.api.routers.auth.totp.invalidate_token"):
         result = await mfa_verify_login(request=request, response=response, body=body, session=mock_session)
 
     assert "access_token" in result
@@ -234,8 +234,8 @@ async def test_mfa_disable_requires_password_and_code(mock_session):
     """Disable endpoint should require valid password and TOTP code."""
     from fastapi import HTTPException
 
-    from app.api.routers.auth.totp import mfa_disable
-    from app.api.schemas.auth import MFADisableRequest
+    from spectra_api.api.routers.auth.totp import mfa_disable
+    from spectra_api.api.schemas.auth import MFADisableRequest
 
     secret = pyotp.random_base32()
     encrypted = encrypt_mfa_secret(secret)
@@ -246,7 +246,7 @@ async def test_mfa_disable_requires_password_and_code(mock_session):
     request = MagicMock()
     request.client.host = "127.0.0.1"
 
-    with patch("app.api.routers.auth.totp.verify_password", return_value=False):
+    with patch("spectra_api.api.routers.auth.totp.verify_password", return_value=False):
         with pytest.raises(HTTPException) as exc_info:
             await mfa_disable(request=request, body=body, user=user, session=mock_session)
         assert exc_info.value.status_code == 400
@@ -256,8 +256,8 @@ async def test_mfa_disable_requires_password_and_code(mock_session):
 @pytest.mark.asyncio
 async def test_mfa_disable_success(mock_session):
     """Disable endpoint should clear MFA fields on success."""
-    from app.api.routers.auth.totp import mfa_disable
-    from app.api.schemas.auth import MFADisableRequest
+    from spectra_api.api.routers.auth.totp import mfa_disable
+    from spectra_api.api.schemas.auth import MFADisableRequest
 
     secret = pyotp.random_base32()
     encrypted = encrypt_mfa_secret(secret)
@@ -270,8 +270,8 @@ async def test_mfa_disable_success(mock_session):
     request.client.host = "127.0.0.1"
 
     with (
-        patch("app.api.routers.auth.totp.verify_password", return_value=True),
-        patch("app.api.routers.auth.totp.audit_log_event", new_callable=AsyncMock),
+        patch("spectra_api.api.routers.auth.totp.verify_password", return_value=True),
+        patch("spectra_api.api.routers.auth.totp.audit_log_event", new_callable=AsyncMock),
     ):
         result = await mfa_disable(request=request, body=body, user=user, session=mock_session)
 
@@ -284,9 +284,9 @@ async def test_mfa_disable_success(mock_session):
 async def test_mfa_verify_setup_rejects_replayed_code(mock_session):
     from fastapi import HTTPException
 
-    from app.api.routers.auth._helpers import _used_totp_codes
-    from app.api.routers.auth.totp import mfa_verify_setup
-    from app.api.schemas.auth import MFAVerifyRequest
+    from spectra_api.api.routers.auth._helpers import _used_totp_codes
+    from spectra_api.api.routers.auth.totp import mfa_verify_setup
+    from spectra_api.api.schemas.auth import MFAVerifyRequest
 
     _used_totp_codes.clear()
     secret = pyotp.random_base32()
@@ -296,7 +296,7 @@ async def test_mfa_verify_setup_rejects_replayed_code(mock_session):
     request = MagicMock()
     request.client.host = "127.0.0.1"
 
-    with patch("app.api.routers.auth.totp.audit_log_event", new_callable=AsyncMock):
+    with patch("spectra_api.api.routers.auth.totp.audit_log_event", new_callable=AsyncMock):
         await mfa_verify_setup(request=request, body=body, user=user, session=mock_session)
 
     user.mfa_enabled = False
@@ -312,9 +312,9 @@ async def test_mfa_verify_login_rejects_replayed_code(mock_session):
 
     from fastapi import HTTPException
 
-    from app.api.routers.auth._helpers import _used_totp_codes
-    from app.api.routers.auth.totp import mfa_verify_login
-    from app.api.schemas.auth import MFAVerifyRequest
+    from spectra_api.api.routers.auth._helpers import _used_totp_codes
+    from spectra_api.api.routers.auth.totp import mfa_verify_login
+    from spectra_api.api.schemas.auth import MFAVerifyRequest
     from app.auth.security import create_access_token
 
     _used_totp_codes.clear()
@@ -332,7 +332,7 @@ async def test_mfa_verify_login_rejects_replayed_code(mock_session):
     mock_session.execute = AsyncMock(return_value=mock_result)
     body = MFAVerifyRequest(code=pyotp.TOTP(secret).now())
 
-    with patch("app.api.routers.auth.totp.invalidate_token"):
+    with patch("spectra_api.api.routers.auth.totp.invalidate_token"):
         await mfa_verify_login(request=request, response=response, body=body, session=mock_session)
         with pytest.raises(HTTPException) as exc_info:
             await mfa_verify_login(request=request, response=response, body=body, session=mock_session)
@@ -345,9 +345,9 @@ async def test_mfa_verify_login_rejects_replayed_code(mock_session):
 async def test_mfa_disable_rejects_replayed_code(mock_session):
     from fastapi import HTTPException
 
-    from app.api.routers.auth._helpers import _used_totp_codes
-    from app.api.routers.auth.totp import mfa_disable
-    from app.api.schemas.auth import MFADisableRequest
+    from spectra_api.api.routers.auth._helpers import _used_totp_codes
+    from spectra_api.api.routers.auth.totp import mfa_disable
+    from spectra_api.api.schemas.auth import MFADisableRequest
 
     _used_totp_codes.clear()
     secret = pyotp.random_base32()
@@ -358,14 +358,14 @@ async def test_mfa_disable_rejects_replayed_code(mock_session):
     request.client.host = "127.0.0.1"
 
     with (
-        patch("app.api.routers.auth.totp.verify_password", return_value=True),
-        patch("app.api.routers.auth.totp.audit_log_event", new_callable=AsyncMock),
+        patch("spectra_api.api.routers.auth.totp.verify_password", return_value=True),
+        patch("spectra_api.api.routers.auth.totp.audit_log_event", new_callable=AsyncMock),
     ):
         await mfa_disable(request=request, body=body, user=user, session=mock_session)
 
     user.mfa_enabled = True
     user.mfa_secret = encrypted
-    with patch("app.api.routers.auth.totp.verify_password", return_value=True):
+    with patch("spectra_api.api.routers.auth.totp.verify_password", return_value=True):
         with pytest.raises(HTTPException) as exc_info:
             await mfa_disable(request=request, body=body, user=user, session=mock_session)
 

@@ -27,7 +27,7 @@ def _fake_user(role: str = "admin", user_id: str = "00000000-0000-4000-a000-0000
 
 
 def _override_deps(app: FastAPI, user, mock_session):
-    from app.api.dependencies import get_current_active_user
+    from spectra_api.api.dependencies import get_current_active_user
     from app.core.database import get_async_session
 
     app.dependency_overrides[get_current_active_user] = lambda: user
@@ -56,7 +56,7 @@ def _make_app_with_router(router, prefix: str = ""):
 @pytest.mark.asyncio
 class TestLogoutAuditEmission:
     async def test_logout_emits_audit_event(self):
-        from app.api.routers.auth import router
+        from spectra_api.api.routers.auth import router
 
         app = _make_app_with_router(router, prefix="/auth")
         user = _fake_user()
@@ -67,12 +67,12 @@ class TestLogoutAuditEmission:
         token_payload = {"sub": user.username, "exp": 9999999999}
 
         with (
-            patch("app.api.routers.auth.login._extract_bearer_token", return_value="fake-token"),
-            patch("app.api.routers.auth.login._decode_token_or_http_error", return_value=token_payload),
-            patch("app.api.routers.auth.login.invalidate_token"),
-            patch("app.api.routers.auth.login._get_user_by_username", new_callable=AsyncMock, return_value=user),
-            patch("app.api.routers.auth.login._clear_auth_cookies"),
-            patch("app.api.routers.auth.login.audit_log_event", new_callable=AsyncMock) as mock_audit,
+            patch("spectra_api.api.routers.auth.login._extract_bearer_token", return_value="fake-token"),
+            patch("spectra_api.api.routers.auth.login._decode_token_or_http_error", return_value=token_payload),
+            patch("spectra_api.api.routers.auth.login.invalidate_token"),
+            patch("spectra_api.api.routers.auth.login._get_user_by_username", new_callable=AsyncMock, return_value=user),
+            patch("spectra_api.api.routers.auth.login._clear_auth_cookies"),
+            patch("spectra_api.api.routers.auth.login.audit_log_event", new_callable=AsyncMock) as mock_audit,
         ):
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -98,7 +98,7 @@ class TestLogoutAuditEmission:
 @pytest.mark.asyncio
 class TestMissionStopAuditEmission:
     async def test_mission_stop_emits_audit_event(self):
-        from app.api.routers.missions import router
+        from spectra_api.api.routers.missions import router
 
         app = _make_app_with_router(router, prefix="/missions")
         user = _fake_user()
@@ -108,9 +108,9 @@ class TestMissionStopAuditEmission:
         mission_id = "00000000-0000-4000-a000-000000000123"
 
         with (
-            patch("app.api.routers.missions.mission_lifecycle.mission_manager") as mock_mm,
-            patch("app.api.routers.missions.mission_lifecycle.audit_log_event", new_callable=AsyncMock) as mock_audit,
-            patch("app.api.routers.missions.mission_lifecycle.check_resource_owner"),
+            patch("spectra_api.api.routers.missions.mission_lifecycle.mission_manager") as mock_mm,
+            patch("spectra_api.api.routers.missions.mission_lifecycle.audit_log_event", new_callable=AsyncMock) as mock_audit,
+            patch("spectra_api.api.routers.missions.mission_lifecycle.check_resource_owner"),
         ):
             mock_mm.get_mission = AsyncMock(return_value=None)
             mock_mm.stop_mission = AsyncMock(return_value=True)
@@ -137,7 +137,7 @@ class TestMissionStopAuditEmission:
 @pytest.mark.asyncio
 class TestMissionPauseAuditEmission:
     async def test_mission_pause_emits_audit_event(self):
-        from app.api.routers.missions import router
+        from spectra_api.api.routers.missions import router
 
         app = _make_app_with_router(router, prefix="/missions")
         user = _fake_user()
@@ -147,9 +147,9 @@ class TestMissionPauseAuditEmission:
         mission_id = "00000000-0000-4000-a000-000000000456"
 
         with (
-            patch("app.api.routers.missions.mission_lifecycle.mission_manager") as mock_mm,
-            patch("app.api.routers.missions.mission_lifecycle.audit_log_event", new_callable=AsyncMock) as mock_audit,
-            patch("app.api.routers.missions.mission_lifecycle.check_resource_owner"),
+            patch("spectra_api.api.routers.missions.mission_lifecycle.mission_manager") as mock_mm,
+            patch("spectra_api.api.routers.missions.mission_lifecycle.audit_log_event", new_callable=AsyncMock) as mock_audit,
+            patch("spectra_api.api.routers.missions.mission_lifecycle.check_resource_owner"),
         ):
             mock_mm.get_mission = AsyncMock(return_value=None)
             mock_mm.pause_mission = AsyncMock(return_value=True)
@@ -176,7 +176,7 @@ class TestMissionPauseAuditEmission:
 @pytest.mark.asyncio
 class TestFailedMfaAuditEmission:
     async def test_failed_mfa_emits_audit_event(self):
-        from app.api.routers.auth import router
+        from spectra_api.api.routers.auth import router
 
         app = _make_app_with_router(router, prefix="/auth")
         user = _fake_user()
@@ -186,14 +186,14 @@ class TestFailedMfaAuditEmission:
         mfa_payload = {"sub": user.username, "mfa_pending": True, "exp": 9999999999}
 
         with (
-            patch("app.api.routers.auth.totp._extract_bearer_token", return_value="mfa-token"),
-            patch("app.api.routers.auth.totp._decode_token_or_http_error", return_value=mfa_payload),
-            patch("app.api.routers.auth.totp._get_user_by_username", new_callable=AsyncMock, return_value=user),
-            patch("app.api.routers.auth.totp._check_lockout", new_callable=AsyncMock),
-            patch("app.api.routers.auth.totp._record_failure", new_callable=AsyncMock),
-            patch("app.api.routers.auth.totp.decrypt_mfa_secret", return_value="raw-secret"),
-            patch("app.api.routers.auth.totp.verify_totp", return_value=False),
-            patch("app.api.routers.auth.totp.audit_log_event", new_callable=AsyncMock) as mock_audit,
+            patch("spectra_api.api.routers.auth.totp._extract_bearer_token", return_value="mfa-token"),
+            patch("spectra_api.api.routers.auth.totp._decode_token_or_http_error", return_value=mfa_payload),
+            patch("spectra_api.api.routers.auth.totp._get_user_by_username", new_callable=AsyncMock, return_value=user),
+            patch("spectra_api.api.routers.auth.totp._check_lockout", new_callable=AsyncMock),
+            patch("spectra_api.api.routers.auth.totp._record_failure", new_callable=AsyncMock),
+            patch("spectra_api.api.routers.auth.totp.decrypt_mfa_secret", return_value="raw-secret"),
+            patch("spectra_api.api.routers.auth.totp.verify_totp", return_value=False),
+            patch("spectra_api.api.routers.auth.totp.audit_log_event", new_callable=AsyncMock) as mock_audit,
         ):
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -220,7 +220,7 @@ class TestFailedMfaAuditEmission:
 @pytest.mark.asyncio
 class TestFindingsExportAuditEmission:
     async def test_findings_export_csv_emits_audit_event(self):
-        from app.api.routers.findings import router
+        from spectra_api.api.routers.findings import router
 
         app = _make_app_with_router(router, prefix="/findings")
         user = _fake_user()
@@ -228,8 +228,8 @@ class TestFindingsExportAuditEmission:
         _override_deps(app, user, mock_session)
 
         with (
-            patch("app.api.routers.findings.bulk._fetch_all_findings", new_callable=AsyncMock, return_value=[]),
-            patch("app.api.routers.findings.bulk.audit_log_event", new_callable=AsyncMock) as mock_audit,
+            patch("spectra_api.api.routers.findings.bulk._fetch_all_findings", new_callable=AsyncMock, return_value=[]),
+            patch("spectra_api.api.routers.findings.bulk.audit_log_event", new_callable=AsyncMock) as mock_audit,
         ):
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -250,7 +250,7 @@ class TestFindingsExportAuditEmission:
 @pytest.mark.asyncio
 class TestAuditIpAddressFilter:
     async def test_ip_address_filter_in_audit_api(self):
-        from app.api.routers.admin.audit import router
+        from spectra_api.api.routers.admin.audit import router
 
         app = _make_app_with_router(router)
         user = _fake_user(role="admin")
@@ -264,7 +264,7 @@ class TestAuditIpAddressFilter:
         fake_row.ip_address = "10.0.0.42"
         fake_row.created_at = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
 
-        with patch("app.api.routers.admin.audit.AuditLogRepository") as MockRepo:
+        with patch("spectra_api.api.routers.admin.audit.AuditLogRepository") as MockRepo:
             repo_inst = MockRepo.return_value
             repo_inst.count_events = AsyncMock(return_value=1)
             repo_inst.list_events = AsyncMock(return_value=[fake_row])

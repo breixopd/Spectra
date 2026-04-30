@@ -42,7 +42,7 @@ class TestTrainingRouter:
         from fastapi import FastAPI
         from httpx import ASGITransport, AsyncClient
 
-        from app.api.routers.admin.training import router
+        from spectra_api.api.routers.admin.training import router
         from app.auth.rate_limit import limiter
 
         app = FastAPI()
@@ -61,7 +61,7 @@ class TestTrainingRouter:
         user.hashed_password = "h"
         user.invalidated_before = None
 
-        from app.api.dependencies import get_current_active_user
+        from spectra_api.api.dependencies import get_current_active_user
         from app.core.database import get_async_session
 
         app.dependency_overrides[get_current_active_user] = lambda: user
@@ -86,7 +86,7 @@ class TestTrainingRouter:
         from fastapi import FastAPI
         from httpx import ASGITransport, AsyncClient
 
-        from app.api.routers.admin.training import router
+        from spectra_api.api.routers.admin.training import router
         from app.auth.rate_limit import limiter
 
         app = FastAPI()
@@ -105,7 +105,7 @@ class TestTrainingRouter:
         user.hashed_password = "h"
         user.invalidated_before = None
 
-        from app.api.dependencies import get_current_active_user
+        from spectra_api.api.dependencies import get_current_active_user
 
         app.dependency_overrides[get_current_active_user] = lambda: user
 

@@ -11,7 +11,7 @@ def _app():
     """Create a minimal FastAPI app with the security headers middleware."""
     from fastapi import FastAPI
 
-    from app.bootstrap.middleware import SecurityHeadersMiddleware
+    from spectra_api.bootstrap.middleware import SecurityHeadersMiddleware
 
     app = FastAPI()
     app.add_middleware(SecurityHeadersMiddleware)
@@ -60,9 +60,9 @@ class TestSecurityHeaders:
         """HSTS header should be present when DEBUG=False."""
         from fastapi import FastAPI
 
-        from app.bootstrap.middleware import SecurityHeadersMiddleware
+        from spectra_api.bootstrap.middleware import SecurityHeadersMiddleware
 
-        with patch("app.bootstrap.middleware.settings") as mock_settings:
+        with patch("spectra_api.bootstrap.middleware.settings") as mock_settings:
             mock_settings.DEBUG = False
             mock_settings.CORS_ORIGINS = ["http://localhost:5000"]
             app = FastAPI()
@@ -82,9 +82,9 @@ class TestSecurityHeaders:
         """HSTS should NOT be set when DEBUG=True."""
         from fastapi import FastAPI
 
-        from app.bootstrap.middleware import SecurityHeadersMiddleware
+        from spectra_api.bootstrap.middleware import SecurityHeadersMiddleware
 
-        with patch("app.bootstrap.middleware.settings") as mock_settings:
+        with patch("spectra_api.bootstrap.middleware.settings") as mock_settings:
             mock_settings.DEBUG = True
             mock_settings.CORS_ORIGINS = ["*"]
             app = FastAPI()
@@ -114,9 +114,9 @@ class TestSecurityHeaders:
         """POST from unknown origin should be blocked in non-DEBUG mode."""
         from fastapi import FastAPI
 
-        from app.bootstrap.middleware import SecurityHeadersMiddleware
+        from spectra_api.bootstrap.middleware import SecurityHeadersMiddleware
 
-        with patch("app.bootstrap.middleware.settings") as mock_settings:
+        with patch("spectra_api.bootstrap.middleware.settings") as mock_settings:
             mock_settings.DEBUG = False
             mock_settings.CORS_ORIGINS = ["http://allowed.example.com"]
             app = FastAPI()

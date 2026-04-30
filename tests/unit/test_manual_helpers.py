@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 
-from app.api.routers.manual_helpers import (
+from spectra_api.api.routers.manual_helpers import (
     GenerateReportRequest,
     _build_report_source_from_mission,
 )

@@ -10,8 +10,8 @@ from httpx import ASGITransport, AsyncClient
 
 
 def _make_app(role: str):
-    from app.api.dependencies import get_current_active_user
-    from app.api.routers.vpn import router
+    from spectra_api.api.dependencies import get_current_active_user
+    from spectra_api.api.routers.vpn import router
     from app.auth.rate_limit import limiter
 
     app = FastAPI()
@@ -49,7 +49,7 @@ async def test_runtime_controls_require_operator_permissions(method: str, path: 
     manager.status = AsyncMock(return_value={"job_id": "job-3", "action": "status", "type": "wireguard"})
     manager.test_connection = AsyncMock(return_value={"job_id": "job-4", "action": "test", "type": "wireguard"})
 
-    with patch("app.api.routers.vpn._get_vpn_manager", return_value=manager):
+    with patch("spectra_api.api.routers.vpn._get_vpn_manager", return_value=manager):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await getattr(client, method)(path)
@@ -64,7 +64,7 @@ async def test_list_configs_remains_available_to_regular_users():
     manager = MagicMock()
     manager.list_configs = AsyncMock(return_value=[{"name": "u_user-123_lab", "type": "wireguard", "size": 12}])
 
-    with patch("app.api.routers.vpn._get_vpn_manager", return_value=manager):
+    with patch("spectra_api.api.routers.vpn._get_vpn_manager", return_value=manager):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/api/v1/vpn/configs")
@@ -75,7 +75,7 @@ async def test_list_configs_remains_available_to_regular_users():
 
 @pytest.mark.asyncio
 async def test_operator_can_connect_shared_runtime_with_owned_config():
-    from app.api.routers import vpn as vpn_router
+    from spectra_api.api.routers import vpn as vpn_router
 
     app = _make_app("operator")
 
@@ -83,7 +83,7 @@ async def test_operator_can_connect_shared_runtime_with_owned_config():
     manager.connect = AsyncMock(return_value={"job_id": "job-1", "action": "connect", "type": "wireguard"})
 
     with (
-        patch("app.api.routers.vpn._get_vpn_manager", return_value=manager),
+        patch("spectra_api.api.routers.vpn._get_vpn_manager", return_value=manager),
         patch.object(vpn_router.settings, "VPN_ENABLED", True),
     ):
         transport = ASGITransport(app=app)

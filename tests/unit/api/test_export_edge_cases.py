@@ -11,7 +11,7 @@ import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.routers.export import (
+from spectra_api.api.routers.export import (
     _COLUMNS,
     _VALID_ENTITIES,
     router,
@@ -82,7 +82,7 @@ async def client():
     """Async test client with mocked auth and DB returning empty results."""
     app = _make_app()
 
-    from app.api.dependencies import get_current_active_user
+    from spectra_api.api.dependencies import get_current_active_user
     from app.core.database import get_async_session
 
     user = _fake_user()

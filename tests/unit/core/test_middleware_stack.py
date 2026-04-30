@@ -14,8 +14,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from httpx import ASGITransport, AsyncClient
 
-from app.bootstrap.logging_config import CorrelationIdMiddleware
-from app.bootstrap.middleware import AdminIPAllowlistMiddleware, SecurityHeadersMiddleware
+from spectra_api.bootstrap.logging_config import CorrelationIdMiddleware
+from spectra_api.bootstrap.middleware import AdminIPAllowlistMiddleware, SecurityHeadersMiddleware
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -136,7 +136,7 @@ class TestSecurityHeadersMiddleware:
     @pytest.mark.asyncio
     async def test_hsts_present_in_production(self):
         """HSTS should be present when DEBUG=False."""
-        with patch("app.bootstrap.middleware.settings") as mock_settings:
+        with patch("spectra_api.bootstrap.middleware.settings") as mock_settings:
             mock_settings.DEBUG = False
             mock_settings.CORS_ORIGINS = ["http://localhost:5000"]
 
@@ -150,7 +150,7 @@ class TestSecurityHeadersMiddleware:
     @pytest.mark.asyncio
     async def test_cross_origin_blocked_in_production(self):
         """POST with a disallowed Origin is rejected (403) in non-DEBUG mode."""
-        with patch("app.bootstrap.middleware.settings") as mock_settings:
+        with patch("spectra_api.bootstrap.middleware.settings") as mock_settings:
             mock_settings.DEBUG = False
             mock_settings.CORS_ORIGINS = ["http://localhost:5000"]
 
@@ -203,7 +203,7 @@ class TestAdminIPAllowlistMiddleware:
 
     @pytest.mark.asyncio
     async def test_empty_allowlist_disables_middleware(self):
-        with patch("app.bootstrap.middleware.settings") as mock_settings:
+        with patch("spectra_api.bootstrap.middleware.settings") as mock_settings:
             mock_settings.ADMIN_IP_ALLOWLIST = ""
             app = _make_app_with(AdminIPAllowlistMiddleware)
             async with await _client(app) as c:
@@ -213,7 +213,7 @@ class TestAdminIPAllowlistMiddleware:
 
     @pytest.mark.asyncio
     async def test_invalid_allowlist_denies_admin_routes(self):
-        with patch("app.bootstrap.middleware.settings") as mock_settings:
+        with patch("spectra_api.bootstrap.middleware.settings") as mock_settings:
             mock_settings.ADMIN_IP_ALLOWLIST = "not-a-cidr"
             app = _make_app_with(AdminIPAllowlistMiddleware)
             async with await _client(app) as c:
@@ -224,7 +224,7 @@ class TestAdminIPAllowlistMiddleware:
 
     @pytest.mark.asyncio
     async def test_invalid_allowlist_does_not_block_non_admin_routes(self):
-        with patch("app.bootstrap.middleware.settings") as mock_settings:
+        with patch("spectra_api.bootstrap.middleware.settings") as mock_settings:
             mock_settings.ADMIN_IP_ALLOWLIST = "not-a-cidr"
             app = _make_app_with(AdminIPAllowlistMiddleware)
             async with await _client(app) as c:

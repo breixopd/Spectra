@@ -9,7 +9,7 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.routers.admin.settings import router as admin_settings_router
+from spectra_api.api.routers.admin.settings import router as admin_settings_router
 
 
 def _make_admin() -> MagicMock:
@@ -29,7 +29,7 @@ def _build_app() -> FastAPI:
     app = FastAPI()
     app.include_router(admin_settings_router)
 
-    from app.api.dependencies import get_current_active_user
+    from spectra_api.api.dependencies import get_current_active_user
 
     app.dependency_overrides[get_current_active_user] = _make_admin
     return app
@@ -40,7 +40,7 @@ class TestAdminSettingsRouter:
     async def test_get_admin_settings(self):
         app = _build_app()
 
-        with patch("app.api.routers.admin.settings.get_current_settings", return_value={"MAINTENANCE_MODE": False}) as get_mock:
+        with patch("spectra_api.api.routers.admin.settings.get_current_settings", return_value={"MAINTENANCE_MODE": False}) as get_mock:
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
                 resp = await ac.get("/api/admin/settings")
 
@@ -59,10 +59,10 @@ class TestAdminSettingsRouter:
 
         with (
             patch(
-                "app.api.routers.admin.settings.apply_settings_update",
+                "spectra_api.api.routers.admin.settings.apply_settings_update",
                 new=AsyncMock(return_value={"status": "updated", "message": "ok"}),
             ) as apply_mock,
-            patch("app.api.routers.admin.settings.audit_log_event", new=AsyncMock()) as audit_mock,
+            patch("spectra_api.api.routers.admin.settings.audit_log_event", new=AsyncMock()) as audit_mock,
         ):
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
                 resp = await ac.put("/api/admin/settings", json={"MAINTENANCE_MODE": True})
@@ -82,7 +82,7 @@ class TestAdminSettingsRouter:
 
         app.dependency_overrides[get_async_session] = lambda: mock_session
 
-        with patch("app.api.routers.admin.settings.apply_settings_update", new=AsyncMock()) as apply_mock:
+        with patch("spectra_api.api.routers.admin.settings.apply_settings_update", new=AsyncMock()) as apply_mock:
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
                 resp = await ac.put("/api/admin/settings", json={"maintenance_mode": True})
 
@@ -98,7 +98,7 @@ class TestAdminSettingsRouter:
 
         app.dependency_overrides[get_async_session] = lambda: mock_session
 
-        with patch("app.api.routers.admin.settings.apply_settings_update", new=AsyncMock()) as apply_mock:
+        with patch("spectra_api.api.routers.admin.settings.apply_settings_update", new=AsyncMock()) as apply_mock:
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
                 resp = await ac.put("/api/admin/settings", json={"MAINTENANCE_MODE": True, "UNKNOWN_SETTING": True})
 

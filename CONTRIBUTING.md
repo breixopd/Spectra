@@ -171,7 +171,7 @@ Spectra runs as four microservices controlled by `SERVICE_MODE`. Import boundari
 - `packages/tools-core/src/spectra_tools_core/` — tool registry contracts
 
 **Service-specific packages** (only loaded by their respective service):
-- `app/api/` — routers, schemas, UI (API service)
+- `services/api/src/spectra_api/` — routers, schemas, bootstrap, UI, API-owned settings/setup services
 - `services/worker/src/spectra_worker/` — job queue consumer (Worker package; image CMD `uvicorn spectra_worker.main:app`)
 - `services/ai/src/spectra_ai/main.py` — AI service entry point (image: `uvicorn spectra_ai.main:app`)
 - `services/scheduler/src/spectra_scheduler/main.py` — Scheduler entry point (image: `uvicorn spectra_scheduler.main:app`)
@@ -183,7 +183,7 @@ Spectra runs as four microservices controlled by `SERVICE_MODE`. Import boundari
 python3 scripts/check_import_boundaries.py
 ```
 
-This checks that `app/core/` and `app/models/` have no top-level imports of service-specific modules (`app.api`, `spectra_worker`, `spectra_ai`, `spectra_scheduler`, etc.). Lazy imports inside functions are allowed.
+This checks that `app/core/` and `app/models/` have no top-level imports of service-specific modules (`spectra_api.api`, `spectra_worker`, `spectra_ai`, `spectra_scheduler`, etc.). Lazy imports inside functions are allowed.
 
 The pre-commit hook also runs this check automatically on every commit (see [Pre-commit Hooks](#pre-commit-hooks)).
 
@@ -395,8 +395,8 @@ We will acknowledge receipt within 48 hours and provide a timeline for resolutio
 
 ### Adding a new API endpoint
 
-1. Add the route handler in the appropriate router under `app/api/routers/`
-2. Define request/response schemas under `app/api/schemas/` (or the router-local `schemas` module)
+1. Add the route handler in the appropriate router under `services/api/src/spectra_api/api/routers/`
+2. Define request/response schemas under `services/api/src/spectra_api/api/schemas/` (or the router-local `schemas` module)
 3. Implement business logic in the relevant service
 4. Add database access through a repository if needed
 5. Add permission checks via `require_permission()`

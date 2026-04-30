@@ -8,7 +8,7 @@ import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.routers.targets import router
+from spectra_api.api.routers.targets import router
 
 
 def _fake_user(is_superuser: bool = False, user_id: str = "00000000-0000-4000-a000-000000000001"):
@@ -49,7 +49,7 @@ def _make_app() -> FastAPI:
 @pytest_asyncio.fixture
 async def client():
     app = _make_app()
-    from app.api.dependencies import get_current_active_user
+    from spectra_api.api.dependencies import get_current_active_user
     from app.core.database import get_async_session
 
     user = _fake_user()
@@ -146,7 +146,7 @@ class TestCreateTarget:
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(TargetRepository, "find_one_by", AsyncMock(return_value=None))
             mp.setattr(TargetRepository, "create", AsyncMock(return_value=created))
-            mp.setattr("app.api.routers.targets.check_target_limit", AsyncMock())
+            mp.setattr("spectra_api.api.routers.targets.check_target_limit", AsyncMock())
             resp = await ac.post(
                 "/api/v1/targets",
                 json={
@@ -165,7 +165,7 @@ class TestCreateTarget:
         existing = _fake_target()
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(TargetRepository, "find_one_by", AsyncMock(return_value=existing))
-            mp.setattr("app.api.routers.targets.check_target_limit", AsyncMock())
+            mp.setattr("spectra_api.api.routers.targets.check_target_limit", AsyncMock())
             resp = await ac.post(
                 "/api/v1/targets",
                 json={

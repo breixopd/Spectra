@@ -14,7 +14,7 @@ This module provides the foundational infrastructure for the Spectra platform:
 - Custom exceptions
 - Protocol interfaces
 
-Note: Import lifespan directly from app.bootstrap.lifespan to avoid circular imports.
+Note: Import lifespan directly from spectra_api.bootstrap.lifespan to avoid circular imports.
 """
 
 import importlib as _importlib

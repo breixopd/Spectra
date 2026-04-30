@@ -32,7 +32,7 @@ class TestPluginUploadAccess:
 
     def test_upload_endpoint_requires_superuser_dependency(self):
         """Verify the upload_plugin route has get_current_superuser in its dependencies."""
-        from app.api.routers.tools import router
+        from spectra_api.api.routers.tools import router
 
         upload_routes = [r for r in router.routes if getattr(r, "path", "").rstrip("/").endswith("/upload")]
         assert upload_routes, "No /upload route found"
@@ -208,7 +208,7 @@ class TestPluginReadAccess:
 
     def test_list_tools_endpoint_does_not_require_superuser(self):
         """The GET /api/v1/tools/ route uses get_current_active_user, not get_current_superuser."""
-        from app.api.routers.tools import router
+        from spectra_api.api.routers.tools import router
 
         # The route path is "/tools" (prefix) with path "" → full path "/tools"
         list_routes = [

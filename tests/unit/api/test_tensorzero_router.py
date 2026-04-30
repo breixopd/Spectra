@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from app.api.routers.admin import tensorzero
+from spectra_api.api.routers.admin import tensorzero
 
 
 class _FakeRequest:

@@ -168,7 +168,7 @@ class TestPaymentServiceExternalCancellation:
 @pytest.mark.asyncio
 class TestBillingRouter:
     async def test_provider_webhook_dispatches_registered_non_stripe_provider(self):
-        from app.api.routers.billing import _handle_provider_webhook
+        from spectra_api.api.routers.billing import _handle_provider_webhook
 
         adapter = AsyncMock()
         adapter.handle_webhook = AsyncMock(return_value={"type": "invoice.created", "data": {"id": "evt_1"}})
@@ -177,8 +177,8 @@ class TestBillingRouter:
         request.body = AsyncMock(return_value=b"payload")
 
         with (
-            patch("app.api.routers.billing.list_payment_providers", return_value=["demo"]),
-            patch("app.api.routers.billing.get_payment_adapter", return_value=adapter),
+            patch("spectra_api.api.routers.billing.list_payment_providers", return_value=["demo"]),
+            patch("spectra_api.api.routers.billing.get_payment_adapter", return_value=adapter),
         ):
             result = await _handle_provider_webhook(request, "demo")
 
@@ -186,7 +186,7 @@ class TestBillingRouter:
         adapter.handle_webhook.assert_awaited_once_with(b"payload", "sig_123")
 
     async def test_provider_webhook_reconciles_stripe_events(self):
-        from app.api.routers.billing import _handle_provider_webhook
+        from spectra_api.api.routers.billing import _handle_provider_webhook
 
         adapter = AsyncMock()
         adapter.handle_webhook = AsyncMock(
@@ -199,9 +199,9 @@ class TestBillingRouter:
         request.body = AsyncMock(return_value=b"payload")
 
         with (
-            patch("app.api.routers.billing.list_payment_providers", return_value=["stripe"]),
-            patch("app.api.routers.billing.get_payment_adapter", return_value=adapter),
-            patch("app.api.routers.billing.PaymentService", return_value=service),
+            patch("spectra_api.api.routers.billing.list_payment_providers", return_value=["stripe"]),
+            patch("spectra_api.api.routers.billing.get_payment_adapter", return_value=adapter),
+            patch("spectra_api.api.routers.billing.PaymentService", return_value=service),
         ):
             result = await _handle_provider_webhook(request, "stripe")
 
@@ -210,11 +210,11 @@ class TestBillingRouter:
         service.reconcile_stripe_event.assert_awaited_once_with("invoice.payment_succeeded", {"id": "in_123"})
 
     async def test_provider_webhook_rejects_unregistered_provider(self):
-        from app.api.routers.billing import _handle_provider_webhook
+        from spectra_api.api.routers.billing import _handle_provider_webhook
 
         request = MagicMock()
         with (
-            patch("app.api.routers.billing.list_payment_providers", return_value=["stripe"]),
+            patch("spectra_api.api.routers.billing.list_payment_providers", return_value=["stripe"]),
             pytest.raises(HTTPException) as exc_info,
         ):
             await _handle_provider_webhook(request, "missing")
@@ -222,7 +222,7 @@ class TestBillingRouter:
         assert exc_info.value.status_code == 404
 
     async def test_list_available_plans_exposes_provider_agnostic_checkout_signal_for_stripe(self):
-        from app.api.routers.billing import list_available_plans
+        from spectra_api.api.routers.billing import list_available_plans
 
         priced_plan = MagicMock()
         priced_plan.id = "plan-priced"
@@ -253,7 +253,7 @@ class TestBillingRouter:
         session = AsyncMock()
         session.execute = AsyncMock(return_value=mock_result)
 
-        with patch("app.api.routers.billing.get_settings", return_value=MagicMock(PAYMENT_PROVIDER="stripe")):
+        with patch("spectra_api.api.routers.billing.get_settings", return_value=MagicMock(PAYMENT_PROVIDER="stripe")):
             payload = await list_available_plans.__wrapped__(request=MagicMock(), session=session, _user=MagicMock())
 
         assert payload[0]["checkout_available"] is True
@@ -261,7 +261,7 @@ class TestBillingRouter:
         assert payload[1]["checkout_available"] is False
 
     async def test_list_available_plans_marks_crypto_plans_checkout_available_without_stripe_price(self):
-        from app.api.routers.billing import list_available_plans
+        from spectra_api.api.routers.billing import list_available_plans
 
         crypto_plan = MagicMock()
         crypto_plan.id = "plan-crypto"
@@ -280,14 +280,14 @@ class TestBillingRouter:
         session = AsyncMock()
         session.execute = AsyncMock(return_value=mock_result)
 
-        with patch("app.api.routers.billing.get_settings", return_value=MagicMock(PAYMENT_PROVIDER="crypto")):
+        with patch("spectra_api.api.routers.billing.get_settings", return_value=MagicMock(PAYMENT_PROVIDER="crypto")):
             payload = await list_available_plans.__wrapped__(request=MagicMock(), session=session, _user=MagicMock())
 
         assert payload[0]["checkout_available"] is True
         assert payload[0]["checkout_provider"] == "crypto"
 
     async def test_checkout_rejects_inactive_plan(self):
-        from app.api.routers.billing import create_checkout
+        from spectra_api.api.routers.billing import create_checkout
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
@@ -309,7 +309,7 @@ class TestBillingRouter:
         assert "plans.is_active" in str(session.execute.await_args.args[0])
 
     async def test_checkout_rejects_plan_without_supported_self_service_checkout(self):
-        from app.api.routers.billing import create_checkout
+        from spectra_api.api.routers.billing import create_checkout
 
         active_plan = MagicMock()
         active_plan.id = "manual-plan"
@@ -325,7 +325,7 @@ class TestBillingRouter:
         user.id = "u-1"
 
         with (
-            patch("app.api.routers.billing.get_settings", return_value=MagicMock(PAYMENT_PROVIDER="manual")),
+            patch("spectra_api.api.routers.billing.get_settings", return_value=MagicMock(PAYMENT_PROVIDER="manual")),
             pytest.raises(HTTPException, match="Plan is not available for self-service checkout") as exc_info,
         ):
             await create_checkout.__wrapped__(
@@ -338,7 +338,7 @@ class TestBillingRouter:
         assert exc_info.value.status_code == 400
 
     async def test_checkout_rejects_manageable_stripe_subscription(self):
-        from app.api.routers.billing import create_checkout
+        from spectra_api.api.routers.billing import create_checkout
 
         active_plan = MagicMock()
         active_plan.id = "plan-priced"
@@ -354,12 +354,12 @@ class TestBillingRouter:
         user.id = "u-1"
 
         with (
-            patch("app.api.routers.billing.get_settings", return_value=MagicMock(PAYMENT_PROVIDER="stripe")),
+            patch("spectra_api.api.routers.billing.get_settings", return_value=MagicMock(PAYMENT_PROVIDER="stripe")),
             patch(
-                "app.api.routers.billing.get_manageable_billing_subscription",
+                "spectra_api.api.routers.billing.get_manageable_billing_subscription",
                 new=AsyncMock(return_value=MagicMock()),
             ),
-            patch("app.api.routers.billing.PaymentService") as payment_service_cls,
+            patch("spectra_api.api.routers.billing.PaymentService") as payment_service_cls,
             pytest.raises(HTTPException, match="billing portal") as exc_info,
         ):
             await create_checkout.__wrapped__(
@@ -373,7 +373,7 @@ class TestBillingRouter:
         payment_service_cls.assert_not_called()
 
     async def test_checkout_allows_first_time_stripe_checkout(self):
-        from app.api.routers.billing import create_checkout
+        from spectra_api.api.routers.billing import create_checkout
 
         active_plan = MagicMock()
         active_plan.id = "plan-priced"
@@ -391,12 +391,12 @@ class TestBillingRouter:
         payment_service.create_checkout = AsyncMock(return_value="https://billing.example/checkout")
 
         with (
-            patch("app.api.routers.billing.get_settings", return_value=MagicMock(PAYMENT_PROVIDER="stripe")),
+            patch("spectra_api.api.routers.billing.get_settings", return_value=MagicMock(PAYMENT_PROVIDER="stripe")),
             patch(
-                "app.api.routers.billing.get_manageable_billing_subscription",
+                "spectra_api.api.routers.billing.get_manageable_billing_subscription",
                 new=AsyncMock(return_value=None),
             ),
-            patch("app.api.routers.billing.PaymentService", return_value=payment_service),
+            patch("spectra_api.api.routers.billing.PaymentService", return_value=payment_service),
         ):
             payload = await create_checkout.__wrapped__(
                 request=MagicMock(),

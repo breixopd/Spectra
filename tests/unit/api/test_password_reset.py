@@ -80,7 +80,7 @@ class TestForgotPasswordEndpoint:
             fake_user.id = "user-1"
 
             with (
-                patch("app.api.routers.auth.password.limiter") as mock_limiter,
+                patch("spectra_api.api.routers.auth.password.limiter") as mock_limiter,
                 patch(
                     "app.repositories.user.UserRepository.get_by_email", new_callable=AsyncMock, return_value=fake_user
                 ),
@@ -100,7 +100,7 @@ class TestForgotPasswordEndpoint:
         client, _mock_session = _build_test_client()
         try:
             with (
-                patch("app.api.routers.auth.password.limiter") as mock_limiter,
+                patch("spectra_api.api.routers.auth.password.limiter") as mock_limiter,
                 patch("app.repositories.user.UserRepository.get_by_email", new_callable=AsyncMock, return_value=None),
             ):
                 mock_limiter.limit.return_value = lambda f: f
@@ -129,7 +129,7 @@ class TestResetPasswordEndpoint:
             fake_user.hashed_password = "old-hash"
 
             with (
-                patch("app.api.routers.auth.password.limiter") as mock_limiter,
+                patch("spectra_api.api.routers.auth.password.limiter") as mock_limiter,
                 patch("app.repositories.user.UserRepository.get_by_id", new_callable=AsyncMock, return_value=fake_user),
             ):
                 mock_limiter.limit.return_value = lambda f: f
@@ -147,7 +147,7 @@ class TestResetPasswordEndpoint:
     def test_invalid_token_returns_400(self):
         client, _ = _build_test_client()
         try:
-            with patch("app.api.routers.auth.password.limiter") as mock_limiter:
+            with patch("spectra_api.api.routers.auth.password.limiter") as mock_limiter:
                 mock_limiter.limit.return_value = lambda f: f
                 resp = client.post(
                     "/api/v1/auth/reset-password",
@@ -165,7 +165,7 @@ class TestResetPasswordEndpoint:
         expired_token = create_password_reset_token("user-exp", expires_minutes=-1)
         client, _ = _build_test_client()
         try:
-            with patch("app.api.routers.auth.password.limiter") as mock_limiter:
+            with patch("spectra_api.api.routers.auth.password.limiter") as mock_limiter:
                 mock_limiter.limit.return_value = lambda f: f
                 resp = client.post(
                     "/api/v1/auth/reset-password",

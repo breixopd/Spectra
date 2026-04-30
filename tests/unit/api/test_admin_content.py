@@ -1,4 +1,4 @@
-"""Tests for app.api.routers.admin.content CRUD endpoints."""
+"""Tests for spectra_api.api.routers.admin.content CRUD endpoints."""
 
 from unittest.mock import AsyncMock, MagicMock
 
@@ -6,7 +6,7 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.routers.admin.content import router
+from spectra_api.api.routers.admin.content import router
 
 
 def _fake_user(role: str = "admin"):
@@ -48,7 +48,7 @@ def _make_app() -> FastAPI:
 
 
 def _override_deps(app: FastAPI, user, mock_session):
-    from app.api.dependencies import get_current_active_user
+    from spectra_api.api.dependencies import get_current_active_user
     from app.core.database import get_async_session
 
     app.dependency_overrides[get_current_active_user] = lambda: user

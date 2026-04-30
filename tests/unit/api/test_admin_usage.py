@@ -34,7 +34,7 @@ def _build_mock_tracker(mission_id: str, agent_records: list[dict]) -> CostTrack
 
 @pytest.mark.asyncio
 @patch("spectra_ai.cost_tracker.get_cost_trackers")
-@patch("app.api.routers.admin.audit.telemetry")
+@patch("spectra_api.api.routers.admin.audit.telemetry")
 async def test_admin_usage_response_format(mock_telemetry, mock_get_trackers):
     """The endpoint must return the documented top-level keys."""
     mock_telemetry.get_saas_metrics.return_value = {"missions": {"started": 2}}
@@ -47,10 +47,10 @@ async def test_admin_usage_response_format(mock_telemetry, mock_get_trackers):
     )
     mock_get_trackers.return_value = {"m-1": tracker}
 
-    from app.api.routers.admin.audit import admin_usage
+    from spectra_api.api.routers.admin.audit import admin_usage
 
     # Call the endpoint function directly (bypass auth via mock)
-    with patch("app.api.routers.admin.audit.require_permission", return_value=MagicMock()):
+    with patch("spectra_api.api.routers.admin.audit.require_permission", return_value=MagicMock()):
         result = await admin_usage(request=MagicMock(), _user=MagicMock())
 
     assert "total_calls" in result
@@ -68,7 +68,7 @@ async def test_admin_usage_response_format(mock_telemetry, mock_get_trackers):
 
 @pytest.mark.asyncio
 @patch("spectra_ai.cost_tracker.get_cost_trackers")
-@patch("app.api.routers.admin.audit.telemetry")
+@patch("spectra_api.api.routers.admin.audit.telemetry")
 async def test_admin_usage_token_cost_aggregation(mock_telemetry, mock_get_trackers):
     """Totals must aggregate across all trackers and agents."""
     mock_telemetry.get_saas_metrics.return_value = {"missions": {"started": 3}}
@@ -88,9 +88,9 @@ async def test_admin_usage_token_cost_aggregation(mock_telemetry, mock_get_track
     )
     mock_get_trackers.return_value = {"m-1": t1, "m-2": t2}
 
-    from app.api.routers.admin.audit import admin_usage
+    from spectra_api.api.routers.admin.audit import admin_usage
 
-    with patch("app.api.routers.admin.audit.require_permission", return_value=MagicMock()):
+    with patch("spectra_api.api.routers.admin.audit.require_permission", return_value=MagicMock()):
         result = await admin_usage(request=MagicMock(), _user=MagicMock())
 
     # 3 calls total (2 in t1, 1 in t2)
@@ -117,15 +117,15 @@ async def test_admin_usage_token_cost_aggregation(mock_telemetry, mock_get_track
 
 @pytest.mark.asyncio
 @patch("spectra_ai.cost_tracker.get_cost_trackers")
-@patch("app.api.routers.admin.audit.telemetry")
+@patch("spectra_api.api.routers.admin.audit.telemetry")
 async def test_admin_usage_empty_state(mock_telemetry, mock_get_trackers):
     """With no active trackers, everything should be zero."""
     mock_telemetry.get_saas_metrics.return_value = {"missions": {"started": 0}}
     mock_get_trackers.return_value = {}
 
-    from app.api.routers.admin.audit import admin_usage
+    from spectra_api.api.routers.admin.audit import admin_usage
 
-    with patch("app.api.routers.admin.audit.require_permission", return_value=MagicMock()):
+    with patch("spectra_api.api.routers.admin.audit.require_permission", return_value=MagicMock()):
         result = await admin_usage(request=MagicMock(), _user=MagicMock())
 
     assert result["total_calls"] == 0

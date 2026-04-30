@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi import HTTPException
 
-from app.api.routers.auth._helpers import (
+from spectra_api.api.routers.auth._helpers import (
     LOCKOUT_THRESHOLD_1,
     LOCKOUT_THRESHOLD_2,
     _check_lockout,
@@ -19,7 +19,7 @@ from app.auth.encryption import (
     encrypt_sensitive_fields,
     is_sensitive_key,
 )
-from app.auth.rbac import ROLE_PERMISSIONS, Permission, has_permission
+from spectra_api.authz import ROLE_PERMISSIONS, Permission, has_permission
 from app.auth.security import (
     _blacklisted_tokens,
     _user_token_blacklist,
