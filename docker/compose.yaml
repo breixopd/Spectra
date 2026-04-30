@@ -674,6 +674,8 @@ services:
       - LOAD_TEST_APP_URL=http://app:5000
       - LOAD_TEST_APP_REPLICA_URL=http://app-replica:5000
       - LOAD_TEST_CADDY_URL=http://caddy
+      - LOAD_TEST_ADMIN_USERNAME=${APP_USERNAME:-admin}
+      - LOAD_TEST_ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin123!}
       - LOAD_TEST_RESET_RATE_LIMIT_STATE=1
     volumes:
       - ../.env.test:/app/.env.test:ro
