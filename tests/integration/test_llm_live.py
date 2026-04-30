@@ -21,6 +21,6 @@ async def test_llm_connectivity():
         response = await client.generate("Hello, are you there?", max_tokens=10)
         print(f"[IT] Response: {response}")
         assert response
-        assert len(response) > 0
+        assert response.content.strip()
     except Exception as e:
         pytest.fail(f"LLM Connection failed: {e}")
