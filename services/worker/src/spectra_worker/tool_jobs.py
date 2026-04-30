@@ -37,7 +37,9 @@ async def _ensure_available_tool(registry: Any, tool_id: str, target: str) -> tu
     if not tool:
         return None, _error_result(tool_id, target, f"Tool not found: {tool_id}")
 
-    if tool.is_available and _is_tool_installed(tool):
+    if _is_tool_installed(tool):
+        if not tool.is_available:
+            await _sync_tool_status(tool_id, {"status": ToolStatus.READY.value, "phase": "verified_worker_binary"})
         return tool, None
 
     status = tool.status.value if hasattr(tool.status, "value") else str(tool.status)

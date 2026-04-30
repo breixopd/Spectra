@@ -323,13 +323,10 @@ IMPORTANT OPERATIONAL GUIDELINES:
             if plan.mission_type == MissionType.EXPLOIT:
                 plan.mission_type = MissionType.VULN_SCAN
 
-        if any(marker in constraints for marker in quick_markers) and len(plan.tasks) > 6:
-            kept_ids = {task.task_id for task in plan.tasks[:6]}
-            plan.tasks = [
-                task.model_copy(update={"dependencies": [dep for dep in task.dependencies if dep in kept_ids]})
-                for task in plan.tasks[:6]
-            ]
-            plan.estimated_duration_minutes = min(plan.estimated_duration_minutes, 15)
+        if any(marker in constraints for marker in quick_markers):
+            plan.tasks = self._default_assessment_tasks(constraints)
+            plan.reasoning = "Quick validation requested; using deterministic baseline assessment workflow."
+            plan.estimated_duration_minutes = 15
 
         if not plan.tasks:
             plan.tasks = self._default_assessment_tasks(constraints)
@@ -361,18 +358,6 @@ IMPORTANT OPERATIONAL GUIDELINES:
                 parameters={"tool_hint": "nikto" if "web" in constraints else "nmap"},
             ),
         ]
-
-        if "exploit" in constraints or "demonstrate impact" in constraints:
-            tasks.append(
-                Task(
-                    task_id="baseline-exploit-review",
-                    description="Evaluate validated findings for safe exploitability",
-                    agent_type="exploit_crafter",
-                    phase=AssessmentPhase.EXPLOITATION,
-                    priority=3,
-                    dependencies=["baseline-vuln-scan"],
-                )
-            )
 
         return tasks
 
