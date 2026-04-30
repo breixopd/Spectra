@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-SHELL_TEMPLATE = Path(__file__).resolve().parents[3] / "templates" / "shell.html"
+SHELL_TEMPLATE = Path(__file__).resolve().parents[3] / "services" / "api" / "templates" / "shell.html"
 TARGETS_JS = (
     Path(__file__).resolve().parents[3] / "services" / "api" / "static" / "js" / "pages" / "targets" / "shell.js"
 )
