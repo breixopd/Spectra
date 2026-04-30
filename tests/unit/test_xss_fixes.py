@@ -3,10 +3,11 @@
 import re
 from pathlib import Path
 
-TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
+API_SERVICE_ROOT = Path(__file__).resolve().parents[2] / "services" / "api"
+TEMPLATES_DIR = API_SERVICE_ROOT / "templates"
 DASHBOARD = TEMPLATES_DIR / "dashboard.html"
 BASE = TEMPLATES_DIR / "base.html"
-API_STATIC = Path(__file__).resolve().parents[2] / "services" / "api" / "static"
+API_STATIC = API_SERVICE_ROOT / "static"
 DASHBOARD_JS = API_STATIC / "js" / "pages" / "dashboard" / "init.js"
 
 # Templates that previously had duplicate escapeHtml
