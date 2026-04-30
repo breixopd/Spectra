@@ -133,55 +133,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile.caddy
-          push: false
-          load: true
-          tags: spectra-caddy:ci
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile.api
-          push: false
-          load: true
-          tags: spectra-api:ci
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile.ai
-          push: false
-          load: true
-          tags: spectra-ai:ci
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile.scheduler
-          push: false
-          load: true
-          tags: spectra-scheduler:ci
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile.worker
-          push: false
-          load: true
-          tags: spectra-worker:ci
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile.test
-          push: false
-          load: false
       - name: Ensure .env.test for Docker Compose
         run: test -f .env.test || cp .env.test.example .env.test
       - name: Validate Compose config
         run: ENV_FILE=../.env.example docker compose --env-file .env.example -f docker/compose.yaml --profile app --profile test --profile targets config --quiet
       - name: Validate Swarm compose
         run: docker compose --env-file .env.example -f docker/docker-compose.swarm.yml config --quiet
-      - name: Free hosted runner tool cache before image scans
+      - name: Free hosted runner tool cache before image builds
         run: sudo rm -rf /opt/hostedtoolcache || true; df -h
+      - name: Build Caddy image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.caddy
+          push: false
+          load: true
+          tags: spectra-caddy:ci
       - name: Scan Caddy image for critical CVEs
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
@@ -190,7 +157,15 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
       - name: Free Docker cache after Caddy scan
-        run: docker rmi spectra-caddy:ci || true; docker builder prune -af || true; docker system prune -f || true
+        run: docker rmi spectra-caddy:ci || true; docker builder prune -af || true; docker system prune -f || true; df -h
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.api
+          push: false
+          load: true
+          tags: spectra-api:ci
       - name: Scan API image for critical CVEs
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
@@ -199,7 +174,15 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
       - name: Free Docker cache after API scan
-        run: docker rmi spectra-api:ci || true; docker builder prune -af || true; docker system prune -f || true
+        run: docker rmi spectra-api:ci || true; docker builder prune -af || true; docker system prune -f || true; df -h
+      - name: Build AI image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.ai
+          push: false
+          load: true
+          tags: spectra-ai:ci
       - name: Scan AI image for critical CVEs
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
@@ -208,7 +191,15 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
       - name: Free Docker cache after AI scan
-        run: docker rmi spectra-ai:ci || true; docker builder prune -af || true; docker system prune -f || true
+        run: docker rmi spectra-ai:ci || true; docker builder prune -af || true; docker system prune -f || true; df -h
+      - name: Build scheduler image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.scheduler
+          push: false
+          load: true
+          tags: spectra-scheduler:ci
       - name: Scan scheduler image for critical CVEs
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
@@ -217,7 +208,15 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
       - name: Free Docker cache after scheduler scan
-        run: docker rmi spectra-scheduler:ci || true; docker builder prune -af || true; docker system prune -f || true
+        run: docker rmi spectra-scheduler:ci || true; docker builder prune -af || true; docker system prune -f || true; df -h
+      - name: Build worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.worker
+          push: false
+          load: true
+          tags: spectra-worker:ci
       - name: Scan worker image for critical CVEs
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
@@ -226,7 +225,14 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
       - name: Free Docker cache after worker scan
-        run: docker rmi spectra-worker:ci || true; docker builder prune -af || true; docker system prune -f || true
+        run: docker rmi spectra-worker:ci || true; docker builder prune -af || true; docker system prune -f || true; df -h
+      - name: Build Docker test runner image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.test
+          push: false
+          load: false
 
   deps:
     name: Dependency Audit
