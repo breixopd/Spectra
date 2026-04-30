@@ -64,6 +64,6 @@ echo "Running UI tests..."
 docker compose -f "${COMPOSE_FILE}" --profile test build ui-test-runner
 # Playwright runs in ui-test-runner on the compose network: reach the API as service `app:5000`
 # (Caddy on host :15080 is for manual browser testing, not this job.)
-docker compose -f "${COMPOSE_FILE}" --profile test run --rm -e APP_BASE_URL=http://app:5000 ui-test-runner tests/e2e/ui/ -v --tb=short -x --no-cov --confcutdir=tests/e2e/ui --override-ini=addopts= "$@"
+docker compose -f "${COMPOSE_FILE}" --profile test run --rm -e APP_BASE_URL=http://app:5000 ui-test-runner tests/e2e/ui/ -v --tb=short -x -p no:cov --confcutdir=tests/e2e/ui --override-ini=addopts= "$@"
 
 echo "=== Done ==="
