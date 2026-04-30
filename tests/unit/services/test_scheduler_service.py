@@ -12,6 +12,12 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi import Response
 
+import spectra_scheduler.async_ops as scheduler_async_ops
+import spectra_scheduler.locking as scheduler_locking
+import spectra_scheduler.loops.core_loops as scheduler_core_loops
+import spectra_scheduler.routes as scheduler_routes
+import spectra_scheduler.service as scheduler_svc_mod
+import spectra_scheduler.state as scheduler_state
 from tests.helpers import make_module
 
 
@@ -53,8 +59,8 @@ async def test_start_schedules_expected_background_tasks():
         return task
 
     with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(scheduler_service, "create_safe_task", fake_create_safe_task)
-        mp.setattr(scheduler_service.asyncio, "gather", AsyncMock(return_value=None))
+        mp.setattr(scheduler_svc_mod, "create_safe_task", fake_create_safe_task)
+        mp.setattr(scheduler_async_ops, "gather", AsyncMock(return_value=None))
         await service.start()
 
     assert service.running is True
@@ -153,8 +159,8 @@ async def test_sandbox_watchdog_loop_runs_single_iteration():
             "app.infrastructure.background_tasks",
             make_module("app.infrastructure.background_tasks", sandbox_watchdog_loop=watchdog),
         )
-        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
-        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
         await service._sandbox_watchdog()
 
     watchdog.assert_awaited_once()
@@ -181,8 +187,8 @@ async def test_sandbox_watchdog_loop_handles_errors_and_continues():
             "app.infrastructure.background_tasks",
             make_module("app.infrastructure.background_tasks", sandbox_watchdog_loop=watchdog),
         )
-        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
-        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock(side_effect=stop_after_sleep))
+        mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_async_ops, "sleep", AsyncMock(side_effect=stop_after_sleep))
         await service._sandbox_watchdog()
 
     watchdog.assert_awaited_once()
@@ -209,8 +215,8 @@ async def test_sandbox_watchdog_skips_work_when_lock_not_acquired():
             "app.infrastructure.background_tasks",
             make_module("app.infrastructure.background_tasks", sandbox_watchdog_loop=watchdog),
         )
-        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
-        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock(side_effect=stop_after_sleep))
+        mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_async_ops, "sleep", AsyncMock(side_effect=stop_after_sleep))
         await service._sandbox_watchdog()
 
     watchdog.assert_not_awaited()
@@ -239,9 +245,9 @@ async def test_quota_reset_runs_single_iteration():
             "app.services.billing.usage_tracker",
             make_module("app.services.billing.usage_tracker", UsageTracker=lambda: tracker),
         )
-        mp.setattr(scheduler_service, "datetime", _FakeDateTime)
-        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
-        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        mp.setattr(scheduler_core_loops, "datetime", _FakeDateTime)
+        mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
         await service._quota_reset()
 
     tracker.reset_daily_counters.assert_awaited_once()
@@ -275,9 +281,9 @@ async def test_quota_reset_handles_reset_errors():
             "app.services.billing.usage_tracker",
             make_module("app.services.billing.usage_tracker", UsageTracker=lambda: tracker),
         )
-        mp.setattr(scheduler_service, "datetime", _FakeDateTime)
-        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
-        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        mp.setattr(scheduler_core_loops, "datetime", _FakeDateTime)
+        mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
         await service._quota_reset()
 
     tracker.reset_daily_counters.assert_awaited_once()
@@ -301,8 +307,8 @@ async def test_metrics_collector_runs_single_iteration():
             "app.infrastructure.metrics_store",
             make_module("app.infrastructure.metrics_store", get_metrics_store=lambda: store),
         )
-        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
-        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
         await service._metrics_collector()
 
     store.collect.assert_awaited_once()
@@ -331,8 +337,8 @@ async def test_metrics_collector_handles_collection_errors():
             "app.infrastructure.metrics_store",
             make_module("app.infrastructure.metrics_store", get_metrics_store=lambda: store),
         )
-        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
-        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
         await service._metrics_collector()
 
     store.collect.assert_awaited_once()
@@ -356,8 +362,8 @@ async def test_health_reporter_runs_single_iteration():
             "app.infrastructure.cache",
             make_module("app.infrastructure.cache", get_cache=lambda: cache),
         )
-        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
-        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
         await service._health_reporter()
 
     cache.set.assert_awaited_once()
@@ -384,8 +390,8 @@ async def test_health_reporter_swallows_cache_errors():
             "app.infrastructure.cache",
             make_module("app.infrastructure.cache", get_cache=lambda: cache),
         )
-        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
-        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock(side_effect=stop_after_sleep))
+        mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_async_ops, "sleep", AsyncMock(side_effect=stop_after_sleep))
         await service._health_reporter()
 
     cache.set.assert_awaited_once()
@@ -417,8 +423,8 @@ async def test_backup_scheduler_runs_single_iteration():
             "app.services.infrastructure.backup",
             make_module("app.services.infrastructure.backup", BackupService=lambda: backup_service),
         )
-        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
-        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
         await service._backup_scheduler()
 
     backup_service.create_backup.assert_awaited_once()
@@ -443,7 +449,7 @@ async def test_backup_scheduler_skips_work_when_backups_disabled():
             "app.core.config",
             make_module("app.core.config", get_settings=lambda: settings),
         )
-        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock(side_effect=record_sleep))
+        mp.setattr(scheduler_async_ops, "sleep", AsyncMock(side_effect=record_sleep))
         await service._backup_scheduler()
 
     assert 3600 in sleep_calls
@@ -478,8 +484,8 @@ async def test_backup_scheduler_handles_backup_errors():
             "app.services.infrastructure.backup",
             make_module("app.services.infrastructure.backup", BackupService=lambda: backup_service),
         )
-        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
-        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
         await service._backup_scheduler()
 
     backup_service.create_backup.assert_awaited_once()
@@ -512,8 +518,8 @@ async def test_image_update_check_skips_registry_when_auto_update_disabled():
             "app.services.scaling.image_updater",
             make_module("app.services.scaling.image_updater", check_and_update_services=image_updater.check_and_update_services),
         )
-        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
-        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock(side_effect=stop_after_sleep))
+        mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_async_ops, "sleep", AsyncMock(side_effect=stop_after_sleep))
         await service._image_update_check()
 
     image_updater.check_and_update_services.assert_not_awaited()
@@ -545,8 +551,8 @@ async def test_image_update_check_runs_when_auto_update_enabled():
             "app.services.scaling.image_updater",
             make_module("app.services.scaling.image_updater", check_and_update_services=image_updater.check_and_update_services),
         )
-        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
-        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
         await service._image_update_check()
 
     image_updater.check_and_update_services.assert_awaited_once_with(apply=True)
@@ -556,7 +562,7 @@ async def test_image_update_check_runs_when_auto_update_enabled():
 async def test_health_reports_scheduler_running_state():
     import spectra_scheduler.main as scheduler_service
 
-    scheduler_service._scheduler_instance = SimpleNamespace(
+    scheduler_state._scheduler_instance = SimpleNamespace(
         running=True, health=lambda: {"status": "healthy", "tasks": {}, "running": True}
     )
     response = Response()
@@ -568,7 +574,7 @@ async def test_health_reports_scheduler_running_state():
     }
     assert response.status_code == 200
 
-    scheduler_service._scheduler_instance = None
+    scheduler_state._scheduler_instance = None
     response = Response()
     assert await scheduler_service.health(response) == {"status": "starting", "service": "scheduler"}
     assert response.status_code == 200
@@ -578,7 +584,7 @@ async def test_health_reports_scheduler_running_state():
 async def test_health_route_returns_503_when_scheduler_is_degraded():
     import spectra_scheduler.main as scheduler_service
 
-    scheduler_service._scheduler_instance = SimpleNamespace(
+    scheduler_state._scheduler_instance = SimpleNamespace(
         running=True,
         health=lambda: {"status": "degraded", "tasks": {"quota_reset": "dead"}, "running": True},
     )
@@ -600,7 +606,7 @@ async def test_health_route_returns_503_when_scheduler_is_degraded():
 async def test_health_route_keeps_standby_at_http_200():
     import spectra_scheduler.main as scheduler_service
 
-    scheduler_service._scheduler_instance = SimpleNamespace(
+    scheduler_state._scheduler_instance = SimpleNamespace(
         running=False,
         health=lambda: {"status": "standby", "tasks": {}, "running": False},
     )
@@ -678,10 +684,10 @@ async def test_lifespan_starts_and_stops_scheduler_service():
         return task
 
     with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(scheduler_service, "SchedulerService", lambda: service)
-        mp.setattr(scheduler_service, "create_safe_task", fake_create_safe_task)
+        mp.setattr(scheduler_routes, "SchedulerService", lambda: service)
+        mp.setattr(scheduler_routes, "create_safe_task", fake_create_safe_task)
         async with scheduler_service.lifespan(scheduler_service.app):
-            assert scheduler_service._scheduler_instance is service
+            assert scheduler_state._scheduler_instance is service
 
     service.stop.assert_awaited_once()
     task.cancel.assert_called_once()
@@ -723,7 +729,7 @@ async def test_leader_election_runs_scheduler_inside_lock_context():
             events.append("exit")
 
     with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         await scheduler_service._leader_election_loop(scheduler)
 
     scheduler.start.assert_awaited_once()
