@@ -7,9 +7,9 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from app.api.dependencies import get_current_active_user
-from app.api.routers import ui
 from app.core.database import get_async_session
 from app.services.system import settings_service as _svc
+from spectra_api.ui import pages as ui
 
 
 def _make_settings_stub() -> SimpleNamespace:
