@@ -16,11 +16,11 @@ from app.infrastructure.events import events
 from app.services.ai.agents.base import AgentContext, ParallelToolAction, ToolAction
 from app.services.ai.agents.mission_controller import AssessmentPhase, Task
 from app.services.ai.output_intelligence import extract_intelligence
-from app.services.ai.sanitizer import sanitize_for_prompt
 from app.services.mission.executor.analysis import auto_expand_scope
 from app.services.mission.executor.utils import detect_target_type
 from app.services.mission.task_tree import TaskStatus
 from app.services.mission.tool_chain_rules import get_triggered_rules
+from spectra_ai.sanitizer import sanitize_for_prompt
 from spectra_common.constants import MAX_HOSTS_DEFAULT
 
 # Phase transition rules for autonomous decision making

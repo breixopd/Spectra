@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.services.ai.rag import Document, SearchResult
 from app.services.rag.service import RAGFacade, get_rag_facade
+from spectra_ai.rag import Document, SearchResult
 
 
 @pytest.fixture

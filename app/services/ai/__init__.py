@@ -1,14 +1,9 @@
 """
-AI Services package for the MAKER Framework.
+AI orchestration package (MAKER framework).
 
-Contains:
-- LLM clients (TensorZero smart router, Mock) — all providers unified through TensorZero
-- Agent swarm architecture (scope, tool selector, exploit, safety, etc.)
-- Consensus engine (K-threshold voting system)
-- Persistent memory (cross-mission learning)
-- Playbook engine (deterministic attack patterns)
-- CVE intelligence (version-to-exploit correlation)
-- RAG engine (knowledge retrieval via PostgreSQL)
+Runtime primitives (LLM, router, embeddings, RAG, prompts, etc.) live in
+``spectra_ai``. This package keeps mission agents, consensus, memory, and other
+parts tightly coupled to app models and mission lifecycle.
 """
 
 from app.services.ai.consensus import (
@@ -19,7 +14,7 @@ from app.services.ai.consensus import (
     VotingConfig,
     VotingSystem,
 )
-from app.services.ai.llm import (
+from spectra_ai.llm import (
     LLMClient,
     LLMResponse,
     get_llm_client,

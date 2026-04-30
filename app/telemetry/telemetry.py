@@ -686,6 +686,15 @@ async def record_mission_event(
     telemetry.increment_counter("mission_events_total", 1, labels)
 
 
+def _wire_spectra_ai_telemetry() -> None:
+    from spectra_ai.telemetry_hooks import set_record_llm_call
+
+    set_record_llm_call(record_llm_call)
+
+
+_wire_spectra_ai_telemetry()
+
+
 __all__ = [
     "MetricData",
     "SpanData",

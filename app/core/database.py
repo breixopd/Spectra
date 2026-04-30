@@ -121,3 +121,12 @@ async def advisory_lock_connection() -> AsyncGenerator[AsyncConnection, None]:
         finally:
             if lock_connection.in_transaction():
                 await lock_connection.rollback()
+
+
+def _wire_spectra_ai_session_maker() -> None:
+    from spectra_ai.db import set_async_session_maker
+
+    set_async_session_maker(async_session_maker)
+
+
+_wire_spectra_ai_session_maker()

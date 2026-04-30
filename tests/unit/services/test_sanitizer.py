@@ -1,6 +1,6 @@
 """Tests for prompt injection sanitizer."""
 
-from app.services.ai.sanitizer import INJECTION_PATTERNS, sanitize_for_prompt
+from spectra_ai.sanitizer import INJECTION_PATTERNS, sanitize_for_prompt
 
 
 class TestSanitizeForPrompt:

@@ -25,8 +25,8 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel, Field
 
 from app.services.ai.agents.base import ActionRisk, AgentAction
-from app.services.ai.llm import LLMClient
-from app.services.ai.prompts import BLUE_TEAM_VOTER_PROMPT, RED_TEAM_VOTER_PROMPT, SAFETY_VALIDATOR_PROMPT
+from spectra_ai.llm import LLMClient
+from spectra_ai.prompts import BLUE_TEAM_VOTER_PROMPT, RED_TEAM_VOTER_PROMPT, SAFETY_VALIDATOR_PROMPT
 
 if TYPE_CHECKING:
     from app.models.mission import Mission

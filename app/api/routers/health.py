@@ -220,7 +220,7 @@ async def deep_health_check(
 
     start = time.monotonic()
     try:
-        from app.services.ai.embeddings import EmbeddingService
+        from spectra_ai.embeddings import EmbeddingService
 
         svc = EmbeddingService()
         await svc._load_model()

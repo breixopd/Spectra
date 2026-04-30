@@ -12,7 +12,7 @@ import logging
 from datetime import UTC
 from typing import Any
 
-from app.services.ai.rag import RAGService
+from spectra_ai.rag import RAGService
 
 logger = logging.getLogger(__name__)
 
@@ -280,7 +280,7 @@ async def index_exploit_attempt(
         import json
         from datetime import datetime
 
-        from app.services.ai.rag import Document
+        from spectra_ai.rag import Document
 
         rag = await get_rag_service()
 

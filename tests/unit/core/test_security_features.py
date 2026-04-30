@@ -190,20 +190,20 @@ class TestSettingsRBAC:
 
 class TestRAGFunctionalGuard:
     def test_embedding_service_is_functional_false_on_fallback(self):
-        from app.services.ai.embeddings import EmbeddingService
+        from spectra_ai.embeddings import EmbeddingService
 
         svc = EmbeddingService()
         svc._use_fallback = True
         assert svc.is_functional is False
 
     def test_embedding_service_is_functional_false_no_model(self):
-        from app.services.ai.embeddings import EmbeddingService
+        from spectra_ai.embeddings import EmbeddingService
 
         svc = EmbeddingService()
         assert svc.is_functional is False
 
     def test_rag_service_is_functional_false(self):
-        from app.services.ai.rag import RAGService
+        from spectra_ai.rag import RAGService
 
         svc = RAGService()
         svc.embeddings._use_fallback = True
@@ -212,7 +212,7 @@ class TestRAGFunctionalGuard:
 
     @pytest.mark.asyncio
     async def test_rag_search_returns_empty_on_fallback(self):
-        from app.services.ai.rag import RAGService
+        from spectra_ai.rag import RAGService
 
         svc = RAGService()
         svc.embeddings._use_fallback = True

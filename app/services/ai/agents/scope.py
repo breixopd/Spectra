@@ -285,7 +285,7 @@ class ScopeAgent(Agent[ScopeInput, ScopeAction]):
             "- notes: Any relevant context"
         )
 
-        from app.services.ai.sanitizer import sanitize_for_prompt
+        from spectra_ai.sanitizer import sanitize_for_prompt
 
         sanitized_input = sanitize_for_prompt(input_data.raw_input, field_name="scope_raw_input")
 

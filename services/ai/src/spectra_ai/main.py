@@ -11,6 +11,8 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
+import app.core.database
+import app.telemetry.telemetry
 from spectra_domain.ai import ChatRequest, ChatResponse, EmbeddingRequest, EmbeddingResponse, RAGRequest, RAGResponse
 
 logger = logging.getLogger(__name__)
@@ -21,7 +23,7 @@ async def lifespan(app: FastAPI):
     """AI service startup/shutdown."""
     logger.info("AI Service starting...")
 
-    from app.services.ai.embeddings import EmbeddingService
+    from spectra_ai.embeddings import EmbeddingService
 
     try:
         svc = EmbeddingService()
@@ -35,7 +37,7 @@ async def lifespan(app: FastAPI):
 
     # Close httpx clients used by AI router
     try:
-        from app.services.ai.router import get_smart_router
+        from spectra_ai.router import get_smart_router
 
         router = get_smart_router()
         if hasattr(router, "close"):
@@ -45,7 +47,7 @@ async def lifespan(app: FastAPI):
 
     # Unload embedding model
     try:
-        from app.services.ai.embeddings import EmbeddingService
+        from spectra_ai.embeddings import EmbeddingService
 
         svc = EmbeddingService()
         if hasattr(svc, "unload"):
@@ -139,7 +141,7 @@ async def health_ready(response: Response):
     overall = overall and checks["tensorzero"]
 
     try:
-        from app.services.ai.embeddings import EmbeddingService
+        from spectra_ai.embeddings import EmbeddingService
 
         svc = EmbeddingService()
         await svc._load_model()
@@ -149,7 +151,7 @@ async def health_ready(response: Response):
     overall = overall and checks["embeddings"]
 
     try:
-        from app.services.ai.rag import RAGService
+        from spectra_ai.rag import RAGService
 
         rag = RAGService()
         checks["rag"] = rag.is_functional
@@ -167,7 +169,7 @@ async def health_ready(response: Response):
 async def health_deep(response: Response):
     start = time.time()
     try:
-        from app.services.ai.router import get_smart_router
+        from spectra_ai.router import get_smart_router
 
         router = get_smart_router()
         result = await router.generate(
@@ -194,7 +196,7 @@ async def health_deep(response: Response):
 async def ai_chat(req: ChatRequest):
     """Route an LLM chat request through the smart router."""
     try:
-        from app.services.ai.router import get_smart_router
+        from spectra_ai.router import get_smart_router
 
         router = get_smart_router()
 
@@ -232,7 +234,7 @@ async def ai_chat(req: ChatRequest):
 async def generate_embeddings(req: EmbeddingRequest):
     """Generate embeddings for a list of texts."""
     try:
-        from app.services.ai.embeddings import EmbeddingService
+        from spectra_ai.embeddings import EmbeddingService
 
         svc = EmbeddingService(model_name=req.model or "")
         await svc._load_model()
@@ -251,7 +253,7 @@ async def generate_embeddings(req: EmbeddingRequest):
 async def rag_query(req: RAGRequest):
     """Search the RAG vector store."""
     try:
-        from app.services.ai.rag import RAGService
+        from spectra_ai.rag import RAGService
 
         svc = RAGService()
         results = await svc.search(

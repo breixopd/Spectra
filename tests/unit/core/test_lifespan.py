@@ -99,7 +99,7 @@ def _make_done_task(coro):
 class TestLifespanContextManager:
     @pytest.mark.asyncio
     @patch("app.bootstrap.lifespan.engine")
-    @patch("app.services.ai.llm.close_global_llm_client", new_callable=AsyncMock)
+    @patch("spectra_ai.llm.close_global_llm_client", new_callable=AsyncMock)
     @patch("app.bootstrap.lifespan.async_session_maker")
     @patch("app.bootstrap.lifespan.CacheService")
     @patch("app.bootstrap.lifespan.set_cache")
@@ -158,7 +158,7 @@ class TestLifespanContextManager:
             patch("app.services.tools.sandbox.set_sandbox_pool"),
             patch("app.services.gateway.service_registry.get_service_registry", return_value=MagicMock()),
             patch("app.services.gateway.service_registry.close_service_registry", new_callable=AsyncMock),
-            patch("app.services.ai.embeddings.EmbeddingService", return_value=MagicMock(_load_model=AsyncMock())),
+            patch("spectra_ai.embeddings.EmbeddingService", return_value=MagicMock(_load_model=AsyncMock())),
             patch("app.infrastructure.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock())),
             patch("app.bootstrap.lifespan._validate_rate_limit_storage"),
             patch(

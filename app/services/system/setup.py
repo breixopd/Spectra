@@ -7,18 +7,18 @@ from pathlib import Path
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import app.services.ai.llm as llm_module
+import spectra_ai.llm as llm_module
 from app.api.schemas.system import SystemSetupRequest
 from app.auth.exceptions import SpectraError
 from app.auth.security import get_password_hash
 from app.core.config import settings
 from app.infrastructure.paths import data_path
 from app.models.user import User
-from app.services.ai.llm import close_global_llm_client
 from app.services.system.runtime_settings import (
     hydrate_runtime_settings_from_db,
     upsert_system_config_values,
 )
+from spectra_ai.llm import close_global_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -253,7 +253,7 @@ class SystemSetupService:
         await close_global_llm_client()
 
         try:
-            from app.services.ai.llm import get_llm_client
+            from spectra_ai.llm import get_llm_client
 
             new_client = get_llm_client(
                 gateway_url=setup_in.tensorzero_gateway_url or settings.TENSORZERO_GATEWAY_URL,

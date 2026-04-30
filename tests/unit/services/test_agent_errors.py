@@ -1,6 +1,6 @@
 """Tests for structured agent error types."""
 
-from app.services.ai.errors import (
+from spectra_ai.errors import (
     AgentChainError,
     AgentError,
     LLMParseError,

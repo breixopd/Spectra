@@ -186,7 +186,7 @@ Provide a JSON response with:
 - risk_level: "low", "medium", "high", or "critical"
 """
 
-        from app.services.ai.sanitizer import sanitize_for_prompt
+        from spectra_ai.sanitizer import sanitize_for_prompt
 
         sanitized_target = sanitize_for_prompt(input_data.target, field_name="safety_target")
         command_info = f"Command: `{input_data.command}`\nTool: {input_data.tool_id}\nTarget: {sanitized_target}"

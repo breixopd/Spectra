@@ -142,7 +142,7 @@ async def admin_usage(
 ) -> dict[str, Any]:
     """Return aggregated LLM usage stats from active cost trackers."""
     _ = request
-    from app.services.ai.cost_tracker import get_cost_trackers
+    from spectra_ai.cost_tracker import get_cost_trackers
 
     trackers = get_cost_trackers()
     saas = telemetry.get_saas_metrics()

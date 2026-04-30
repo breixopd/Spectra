@@ -4,8 +4,8 @@ Scripts package.
 Shared utilities for command-line scripts.
 """
 
-from app.services.ai.rag import RAGService
 from app.services.tools.registry import get_registry
+from spectra_ai.rag import RAGService
 
 
 async def init_script_services() -> RAGService:

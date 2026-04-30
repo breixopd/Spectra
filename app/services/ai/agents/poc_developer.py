@@ -19,9 +19,9 @@ from app.services.ai.agents.base import (
 )
 from app.services.ai.agents.registry import register_agent
 from app.services.ai.context import ContextManager, ContextSection, Priority
-from app.services.ai.prompts import POC_DEVELOPER_PROMPT
-from app.services.ai.sanitizer import sanitize_for_prompt
 from app.services.poc.models import POCRequest
+from spectra_ai.prompts import POC_DEVELOPER_PROMPT
+from spectra_ai.sanitizer import sanitize_for_prompt
 
 logger = logging.getLogger(__name__)
 

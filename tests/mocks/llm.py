@@ -7,7 +7,7 @@ from typing import Any, TypeVar
 from pydantic import BaseModel
 from pydantic.fields import PydanticUndefined
 
-from app.services.ai.llm import LLMClient, LLMResponse
+from spectra_ai.llm import LLMClient, LLMResponse
 
 logger = logging.getLogger("spectra.services.ai.llm")
 

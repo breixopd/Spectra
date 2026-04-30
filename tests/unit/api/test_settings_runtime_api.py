@@ -155,7 +155,7 @@ async def test_ai_status_exposes_current_gateway_snapshot(test_app):
 
     with (
         patch.object(_svc, "settings", settings_stub),
-        patch("app.services.ai.llm.get_global_llm_client", AsyncMock(return_value=mock_client)),
+        patch("spectra_ai.llm.get_global_llm_client", AsyncMock(return_value=mock_client)),
     ):
         transport = ASGITransport(app=test_app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:

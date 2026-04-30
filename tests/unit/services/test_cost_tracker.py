@@ -1,6 +1,6 @@
 """Tests for per-agent LLM cost tracking."""
 
-from app.services.ai.cost_tracker import AgentUsage, CostTracker
+from spectra_ai.cost_tracker import AgentUsage, CostTracker
 
 
 def _usage(prompt: int = 100, completion: int = 50, total: int | None = None) -> dict[str, int]:

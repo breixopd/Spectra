@@ -4,7 +4,7 @@ import pytest
 
 from app.services.ai.agents.base import ActionRisk, AgentContext
 from app.services.ai.agents.reporter import ReporterAgent, ReporterInput, ReportOutput
-from app.services.ai.llm import LLMResponse
+from spectra_ai.llm import LLMResponse
 
 
 @pytest.fixture

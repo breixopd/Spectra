@@ -129,7 +129,7 @@ addopts = [
     "--cov-fail-under=70",
 ]
 filterwarnings = []
-pythonpath = ["."]
+pythonpath = [".", "services/ai/src"]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
 

@@ -1,4 +1,4 @@
-"""Comprehensive unit tests for app.services.ai.llm module."""
+"""Comprehensive unit tests for spectra_ai.llm module."""
 
 import json
 from typing import Any
@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import BaseModel
 
-from app.services.ai.llm import (
+from spectra_ai.llm import (
     LLMResponse,
     get_default_llm_client,
     get_llm_client,
@@ -234,13 +234,13 @@ class TestGetLLMClient:
     """Tests for the get_llm_client factory function."""
 
     def test_default_returns_tensorzero_router(self):
-        from app.services.ai.router import TensorZeroRouter
+        from spectra_ai.router import TensorZeroRouter
 
         client = get_llm_client()
         assert isinstance(client, TensorZeroRouter)
 
     def test_with_gateway_url(self):
-        from app.services.ai.router import TensorZeroRouter
+        from spectra_ai.router import TensorZeroRouter
 
         client = get_llm_client(gateway_url="http://tz:3000")
         assert isinstance(client, TensorZeroRouter)
@@ -259,12 +259,9 @@ class TestGetDefaultLLMClient:
         mock_settings.TENSORZERO_GATEWAY_URL = "http://tensorzero:3000"
         mock_settings.LLM_TIMEOUT = 600.0
 
-        with (
-            patch("app.services.ai.llm.settings", mock_settings),
-            patch("app.services.ai.router.settings", mock_settings),
-        ):
+        with patch("spectra_ai.settings.get_ai_settings", return_value=mock_settings):
             client = get_default_llm_client()
-            from app.services.ai.router import TensorZeroRouter
+            from spectra_ai.router import TensorZeroRouter
 
             assert isinstance(client, TensorZeroRouter)
 
@@ -273,11 +270,9 @@ class TestGetDefaultLLMClient:
         mock_settings.TENSORZERO_GATEWAY_URL = ""
         mock_settings.LLM_TIMEOUT = 600.0
 
-        with (
-            patch("app.services.ai.llm.settings", mock_settings),
-            patch("app.services.ai.router.settings", mock_settings),pytest.raises((ValueError, RuntimeError))
-        ):
-            get_default_llm_client()
+        with patch("spectra_ai.settings.get_ai_settings", return_value=mock_settings):
+            with pytest.raises((ValueError, RuntimeError)):
+                get_default_llm_client()
 
 
 # ===================================================================
@@ -334,7 +329,7 @@ async def _call_base_generate_structured(
     system_prompt: str | None = None,
 ):
     """Call the base LLMClient.generate_structured instead of the mock override."""
-    from app.services.ai.llm import LLMClient
+    from spectra_ai.llm import LLMClient
 
     return await LLMClient.generate_structured(
         client,

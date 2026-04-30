@@ -1,7 +1,7 @@
 """RAG (Retrieval-Augmented Generation) service package.
 
-Provides convenience wrappers around the core RAG engine in
-``app.services.ai.rag`` for common indexing and search operations.
+Provides convenience wrappers and a high-level facade over ``spectra_ai.rag.RAGService``
+for common indexing and search operations.
 """
 
 from app.services.rag.service import RAGFacade, get_rag_facade

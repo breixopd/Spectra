@@ -171,7 +171,7 @@ token_budget = TokenBudget()
 async def check_llm_health() -> bool:
     """Check if the LLM provider is reachable."""
     try:
-        from app.services.ai.llm import get_global_llm_client
+        from spectra_ai.llm import get_global_llm_client
 
         client = await get_global_llm_client()
         return await client.health_check()

@@ -27,7 +27,7 @@ from app.services.ai.agents.mission_controller import (
     MissionPlan,
     PhaseTransition,
 )
-from app.services.ai.errors import LLMParseError
+from spectra_ai.errors import LLMParseError
 from tests.mocks.llm import MockLLMClient
 
 # ---------------------------------------------------------------------------

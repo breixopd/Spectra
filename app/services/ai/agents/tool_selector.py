@@ -22,10 +22,10 @@ from app.services.ai.agents.base import (
     ToolAction,
 )
 from app.services.ai.agents.registry import register_agent
-from app.services.ai.errors import LLMParseError
-from app.services.ai.prompts import TOOL_SELECTION_PROMPT
-from app.services.ai.sanitizer import sanitize_for_prompt
 from app.services.tools.registry import get_registry
+from spectra_ai.errors import LLMParseError
+from spectra_ai.prompts import TOOL_SELECTION_PROMPT
+from spectra_ai.sanitizer import sanitize_for_prompt
 from spectra_domain.enums import RiskLevel
 from spectra_tools_core.models import RegisteredTool, ToolCapability, ToolCategory
 
