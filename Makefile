@@ -1,5 +1,6 @@
 # Spectra Makefile — developer convenience targets
 # All test targets run inside Docker containers.
+# lint/import-boundaries are fast local conveniences; CI-parity validation runs through docker/Dockerfile.test.
 
 .PHONY: test test-unit test-integration test-all test-coverage test-compose \
 	test-load test-performance test-soak test-live-smoke \
