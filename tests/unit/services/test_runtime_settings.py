@@ -121,6 +121,13 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         def stop(self):
             return None
 
+    class FakeSessionContext:
+        async def __aenter__(self):
+            return AsyncMock()
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
     import contextlib
 
     with contextlib.ExitStack() as stack:
@@ -141,6 +148,7 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         stack.enter_context(patch("app.bootstrap.lifespan.asyncio.gather", new_callable=AsyncMock))
         stack.enter_context(patch("app.bootstrap.lifespan.asyncio.wait_for", new_callable=AsyncMock))
         stack.enter_context(patch("app.bootstrap.lifespan.asyncio.create_task", return_value=task))
+        stack.enter_context(patch("app.bootstrap.lifespan.async_session_maker", return_value=FakeSessionContext()))
         mock_hydrate = stack.enter_context(
             patch("app.bootstrap.lifespan.hydrate_runtime_settings_from_db", new_callable=AsyncMock)
         )
