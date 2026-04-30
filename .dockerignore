@@ -4,9 +4,7 @@
 __pycache__
 *.pyc
 *.pyo
-data/missions/*
-data/cache/*.bak
-data/sessions/*
+data/
 logs/
 .env
 .env.*

@@ -257,13 +257,7 @@ spectra/
 │   ├── telemetry/          # Observability — telemetry, tracing, middleware
 │   ├── utils/              # Shared utilities
 │   └── worker/             # Worker entry point + job queue consumer
-├── static/                 # CSS, JS, vendor libs (project root)
-│   ├── css/                # Tailwind input.css + built output.css
-│   └── js/                 # Page modules + shared JS
-├── templates/              # Jinja2 HTML templates (project root)
-│   ├── macros/             # Reusable Jinja2 macros (feature_gate, etc.)
-│   ├── partials/           # Reusable partials (modal, etc.)
-│   └── ...                 # Page templates
+├── services/api/           # API service package plus static UI assets and Jinja templates
 ├── plugins/                # Tool plugin JSON configs
 ├── config/                 # Build configs (tailwind, postcss)
 ├── docker/                 # Docker Compose files, Dockerfiles, Caddyfile

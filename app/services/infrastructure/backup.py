@@ -26,7 +26,7 @@ class BackupService:
         return self.settings.S3_BUCKET_BACKUPS
 
     def _temp_root(self) -> Path:
-        from app.infrastructure.paths import data_path
+        from spectra_common.paths import data_path
 
         tmp_root = data_path(*_RUNTIME_TMP_PARTS)
         tmp_root.mkdir(parents=True, exist_ok=True)

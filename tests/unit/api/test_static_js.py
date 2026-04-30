@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-STATIC_JS_DIR = Path(__file__).resolve().parents[3] / "static" / "js"
+STATIC_JS_DIR = Path(__file__).resolve().parents[3] / "services" / "api" / "static" / "js"
 API_JS = STATIC_JS_DIR / "api.js"
 
 # JS files that consume the API (exclude api.js itself and data-only helpers)
@@ -14,7 +14,7 @@ CONSUMER_JS_FILES = [f for f in sorted(STATIC_JS_DIR.glob("*.js")) if f.name not
 
 class TestApiJsUtilities:
     def test_api_js_exists(self):
-        assert API_JS.exists(), "static/js/api.js must exist"
+        assert API_JS.exists(), "services/api/static/js/api.js must exist"
 
     def test_debounce_function_defined(self):
         content = API_JS.read_text()

@@ -9,8 +9,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 class ServiceAuthMiddleware(BaseHTTPMiddleware):
     """Validate X-Service-Auth header for inter-service requests.
 
-    Only applied to internal service endpoints (ai_service, scheduler, worker).
-    Skips validation for /health endpoints and when no secret is configured.
+    Used on AI, scheduler, and worker HTTP servers. Lightweight probes may omit
+    the header only for ``/health`` and ``/healthz``. When no shared secret is
+    configured, all other routes fail closed (401).
     """
 
     def __init__(self, app, secret: str = ""):
@@ -22,7 +23,7 @@ class ServiceAuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         if not self.secret:
-            return await call_next(request)
+            raise HTTPException(status_code=401, detail="Service authentication not configured")
 
         provided = request.headers.get("X-Service-Auth", "")
         if not hmac.compare_digest(provided, self.secret):

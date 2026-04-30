@@ -55,8 +55,7 @@ from app.core.config import settings as _settings
 from app.di.service_auth import ServiceAuthMiddleware
 
 _secret = _settings.SERVICE_AUTH_SECRET.get_secret_value()
-if _secret:
-    app.add_middleware(ServiceAuthMiddleware, secret=_secret)
+app.add_middleware(ServiceAuthMiddleware, secret=_secret)
 
 
 @app.get("/healthz")

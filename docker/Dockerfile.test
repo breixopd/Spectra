@@ -49,8 +49,8 @@ COPY scripts/ scripts/
 COPY plugins/ plugins/
 COPY config/ config/
 COPY alembic/ alembic/
-COPY static/ static/
-COPY templates/ templates/
+COPY services/api/static/ spectra_api/static/
+COPY services/api/templates/ spectra_api/templates/
 COPY pyproject.toml .
 
 # Default: run unit tests

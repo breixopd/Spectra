@@ -9,7 +9,7 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from app.infrastructure.paths import data_path
+from spectra_common.paths import data_path
 
 if TYPE_CHECKING:
     from app.services.mission.mission import Mission

@@ -26,13 +26,13 @@ from app.auth.rate_limit import (
 from app.bootstrap.lifespan import lifespan
 from app.bootstrap.logging_config import CorrelationIdMiddleware, configure_logging
 from app.bootstrap.middleware import AdminIPAllowlistMiddleware, SecurityHeadersMiddleware
-from app.bootstrap.templates import templates as shared_templates
 from app.core.config import settings
 from app.mission.core.websocket import manager
 from app.telemetry.telemetry_middleware import TelemetryMiddleware
 from spectra_api.errors import register_exception_handlers
 from spectra_api.paths import static_directory
 from spectra_api.routing import include_routers
+from spectra_api.templates import templates as shared_templates
 from spectra_common.constants import SECONDS_PER_DAY
 
 logger = logging.getLogger(__name__)
@@ -115,7 +115,15 @@ def create_app() -> FastAPI:
         exempt = (
             path == "/"
             or path.startswith(
-                ("/static", "/api/health", "/api/v1/health", "/api/admin", "/api/v1/auth", "/legal/")
+                (
+                    "/static",
+                    "/api/health",
+                    "/api/v1/health",
+                    "/api/admin",
+                    "/api/v1/admin",
+                    "/api/v1/auth",
+                    "/legal/",
+                )
             )
             or path == "/admin"
             or path == "/login"

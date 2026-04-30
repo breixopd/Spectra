@@ -22,7 +22,6 @@ from app.auth.security import (
     get_password_hash,
     invalidate_token,
 )
-from app.bootstrap.templates import templates
 from app.core.config import settings
 from app.core.database import async_session_maker
 from app.mission.core.enums import MissionStatus
@@ -36,12 +35,22 @@ from app.services.auth.email_verification import (
 )
 from app.services.billing.entitlements import sync_user_plan_mirror
 from app.utils.html_sanitization import sanitize_legal_html
+from spectra_api.paths import api_assets_root
+from spectra_api.templates import templates
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-APP_DIR = Path(__file__).resolve().parent.parent.parent
+APP_DIR = api_assets_root()
+
+
+def _plugins_dir() -> Path:
+    for base in (APP_DIR, *APP_DIR.parents):
+        candidate = base / "plugins"
+        if candidate.is_dir():
+            return candidate
+    return APP_DIR / "plugins"
 
 
 async def _get_user_from_cookie(request: Request) -> dict | None:
@@ -107,7 +116,7 @@ async def landing_page(request: Request):
             total_missions = 0
             total_users = 0
 
-        plugin_dir = APP_DIR.parent / "plugins"
+        plugin_dir = _plugins_dir()
         total_tools = len(list(plugin_dir.glob("*.json"))) if plugin_dir.exists() else 0
 
         stats = {

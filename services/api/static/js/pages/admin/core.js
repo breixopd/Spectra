@@ -104,6 +104,7 @@ function exposeAdminHandlers() {
         'quickCreatePlan', 'openContentModal', 'closeContentModal', 'editContent',
         'deleteContent', 'testTZConnection', 'saveTZConfig', 'loadTZConfig',
         'createBackup', 'restoreBackup', 'saveEmailTemplate', 'sendTestEmail',
+        'sendAnnouncementTest', 'confirmSendAnnouncementToAll',
         'loadTZStatus', 'loadTZInferences', 'loadTZFunctionStats', 'loadRollbackSnapshots',
         'performRollback', 'loadScalingStatus', 'refreshScalingStatus', 'saveScalingConfig',
         'scalingAction', 'loadTraining', 'approveTrainingSample', 'bulkApproveTrainingSamples',

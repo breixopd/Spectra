@@ -29,7 +29,6 @@ from app.core.config import settings
 from app.core.database import async_session_maker, engine
 from app.infrastructure.cache import CacheService, set_cache
 from app.infrastructure.events import EventType, events
-from app.infrastructure.paths import data_root
 from app.infrastructure.system_status import (
     add_system_operation,
     remove_system_operation,
@@ -37,6 +36,7 @@ from app.infrastructure.system_status import (
 )
 from app.services.system.runtime_settings import hydrate_runtime_settings_from_db
 from app.telemetry.telemetry import telemetry
+from spectra_common.paths import data_root
 from spectra_common.tasks import create_safe_task
 
 logger = logging.getLogger(__name__)

@@ -181,7 +181,7 @@ class TestSettingsRBAC:
     def test_settings_endpoint_has_superuser_dependency(self):
         import inspect
 
-        from app.api.routers.ui import update_settings
+        from spectra_api.ui.pages import update_settings
 
         sig = inspect.signature(update_settings)
         param_names = list(sig.parameters.keys())

@@ -80,12 +80,22 @@ async def test_healthz_endpoint_bypasses_auth():
 
 
 @pytest.mark.asyncio
-async def test_no_secret_configured_allows_all():
-    """When no secret is set, middleware is effectively disabled."""
+async def test_no_secret_configured_denies_non_health():
+    """When no secret is set, non-health routes fail closed."""
     app = _make_app(secret="")
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.get("/internal")
-    assert resp.status_code == 200
+        with pytest.raises(HTTPException) as exc_info:
+            await client.get("/internal")
+        assert exc_info.value.status_code == 401
+        assert "not configured" in (exc_info.value.detail or "").lower()
+
+
+@pytest.mark.asyncio
+async def test_no_secret_health_endpoints_still_public():
+    app = _make_app(secret="")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        assert (await client.get("/health")).status_code == 200
+        assert (await client.get("/healthz")).status_code == 200
 
 
 @pytest.mark.asyncio

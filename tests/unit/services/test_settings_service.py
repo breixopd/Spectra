@@ -18,7 +18,7 @@ def _break_circular_import():
     for mod_name in (
         "app.api",
         "app.api.routers",
-        "app.api.routers.ui",
+        "spectra_api.ui.pages",
     ):
         if mod_name not in sys.modules:
             stubs[mod_name] = sys.modules.setdefault(mod_name, MagicMock())

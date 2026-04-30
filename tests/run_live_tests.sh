@@ -124,15 +124,15 @@ $COMPOSE up -d --build app app-replica caddy tools
 # ── Step 2: Wait for health checks ──────────────────────────
 echo "Waiting for app to be ready..."
 for i in $(seq 1 90); do
-    if curl -sf http://localhost:15000/api/health > /dev/null 2>&1; then
+    if curl -sf http://localhost:5000/api/health > /dev/null 2>&1; then
         echo "App is ready (attempt $i)!"
         break
     fi
     sleep 2
 done
 
-curl -sf http://localhost:15000/api/health > /dev/null || {
-    echo "ERROR: test app did not become ready at http://localhost:15000"
+curl -sf http://localhost:5000/api/health > /dev/null || {
+    echo "ERROR: test app did not become ready at http://localhost:5000"
     $COMPOSE logs --tail=40 app
     exit 1
 }

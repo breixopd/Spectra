@@ -342,8 +342,8 @@ async def test_main_api_429_handler_delegates_rate_limit_exceeded():
     """The app-level 429 handler must preserve SlowAPI's structured response."""
     import json
 
-    from app.bootstrap.templates import templates
     from spectra_api.errors import make_error_handler
+    from spectra_api.templates import templates
 
     request = MagicMock()
     request.url.path = "/api/v1/auth/token"

@@ -411,7 +411,7 @@ async def get_tool_admin(
 async def get_tool_execution_config(
     tool_id: str,
     registry: ToolRegistry = Depends(get_tool_registry),
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_TOOLS),
 ):
     """Get full execution configuration for building a manual execution form."""
     tool = _get_tool_or_404(registry, tool_id)

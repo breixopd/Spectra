@@ -6,9 +6,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import get_current_active_user
-from app.api.routers.ui import router
 from app.core.database import get_async_session
 from app.models.user import User
+from spectra_api.ui.pages import router
 
 
 def _make_user(is_superuser: bool = False, username: str = "testuser") -> User:
@@ -33,7 +33,7 @@ def _build_app(current_user: User | None = None, db=None):
 
 
 class TestGetSettings:
-    @patch("app.api.routers.ui.get_current_settings")
+    @patch("spectra_api.ui.pages.get_current_settings")
     def test_get_settings_authenticated(self, mock_get):
         mock_get.return_value = {"tensorzero_gateway_url": "http://tensorzero:3000", "log_level": "DEBUG"}
         app = _build_app(_make_user(is_superuser=True))
@@ -55,7 +55,7 @@ class TestGetSettings:
 
 
 class TestUpdateSettings:
-    @patch("app.api.routers.ui.apply_settings_update", new_callable=AsyncMock)
+    @patch("spectra_api.ui.pages.apply_settings_update", new_callable=AsyncMock)
     def test_superuser_can_update(self, mock_apply):
         mock_apply.return_value = {"status": "updated", "message": "Settings updated and saved"}
         app = _build_app(_make_user(is_superuser=True), AsyncMock())
@@ -76,7 +76,7 @@ class TestUpdateSettings:
 
 
 class TestSettingsValidation:
-    @patch("app.api.routers.ui.apply_settings_update", new_callable=AsyncMock)
+    @patch("spectra_api.ui.pages.apply_settings_update", new_callable=AsyncMock)
     def test_invalid_shell_routing_mode_rejected(self, mock_apply):
         app = _build_app(_make_user(is_superuser=True), AsyncMock())
         client = TestClient(app)
@@ -85,7 +85,7 @@ class TestSettingsValidation:
 
         assert resp.status_code == 422
 
-    @patch("app.api.routers.ui.apply_settings_update", new_callable=AsyncMock)
+    @patch("spectra_api.ui.pages.apply_settings_update", new_callable=AsyncMock)
     def test_invalid_log_level_rejected(self, mock_apply):
         app = _build_app(_make_user(is_superuser=True), AsyncMock())
         client = TestClient(app)

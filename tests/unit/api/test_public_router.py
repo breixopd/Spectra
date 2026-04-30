@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request, Response
 from httpx import ASGITransport, AsyncClient
 from starlette.responses import HTMLResponse
 
-from app.api.routers.public import router
+from spectra_api.ui.public import router
 
 
 def _make_app() -> FastAPI:
@@ -51,7 +51,7 @@ async def client():
 @pytest.mark.asyncio
 class TestLandingPage:
     async def test_landing_page_redirects_authed(self, client):
-        with patch("app.api.routers.public._get_user_from_cookie", return_value={"sub": "admin"}):
+        with patch("spectra_api.ui.public._get_user_from_cookie", return_value={"sub": "admin"}):
             resp = await client.get("/")
         assert resp.status_code == 302
         assert "/dashboard" in resp.headers.get("location", "")
@@ -72,16 +72,16 @@ class TestLandingPage:
         maker, _ = _mock_session_ctx([plan_result, findings_result, missions_result, users_result, reviews_result])
 
         with (
-            patch("app.api.routers.public._get_user_from_cookie", return_value=None),
-            patch("app.api.routers.public.async_session_maker", maker),
-            patch("app.api.routers.public.templates") as mock_tmpl,
+            patch("spectra_api.ui.public._get_user_from_cookie", return_value=None),
+            patch("spectra_api.ui.public.async_session_maker", maker),
+            patch("spectra_api.ui.public.templates") as mock_tmpl,
         ):
             mock_tmpl.TemplateResponse.return_value = HTMLResponse("<html></html>")
             resp = await client.get("/")
         assert resp.status_code == 200
 
     async def test_landing_template_adds_nonce_to_json_ld_script(self):
-        from app.api.routers.public import templates
+        from spectra_api.ui.public import templates
 
         request = Request(
             {
@@ -117,7 +117,7 @@ class TestLandingPage:
         assert '<script nonce="landing-nonce" type="application/ld+json">' in html
 
     async def test_extract_legal_html_sanitizes_and_preserves_safe_legal_markup(self):
-        from app.api.routers.public import _extract_legal_html
+        from spectra_api.ui.public import _extract_legal_html
 
         html = _extract_legal_html(
             {
@@ -144,7 +144,7 @@ class TestPricingRedirect:
 class TestRegisterEndpoint:
     async def test_register_success(self):
         """Call register_user directly to bypass slowapi decorator."""
-        from app.api.routers.public import RegisterRequest, register_user
+        from spectra_api.ui.public import RegisterRequest, register_user
 
         superuser_result = MagicMock()
         superuser_result.scalar_one_or_none.return_value = "admin-id"
@@ -157,20 +157,20 @@ class TestRegisterEndpoint:
 
         body = RegisterRequest(username="newuser", email="new@example.com", password="StrongP4ss!")
         with (
-            patch("app.api.routers.public.async_session_maker", maker),
+            patch("spectra_api.ui.public.async_session_maker", maker),
             patch(
-                "app.api.routers.public.PlanRepository.get_self_service_registration_plan",
+                "spectra_api.ui.public.PlanRepository.get_self_service_registration_plan",
                 new=AsyncMock(return_value=None),
             ),
-            patch("app.api.routers.public.sync_user_plan_mirror", new=AsyncMock()),
+            patch("spectra_api.ui.public.sync_user_plan_mirror", new=AsyncMock()),
         ):
             result = await register_user.__wrapped__(_fake_request(), body, Response())
         assert "created" in result["detail"].lower()
 
     async def test_register_without_self_service_plan_leaves_user_unassigned(self):
-        from app.api.routers.public import RegisterRequest, register_user
         from app.models.plan import Subscription
         from app.models.user import User
+        from spectra_api.ui.public import RegisterRequest, register_user
 
         superuser_result = MagicMock()
         superuser_result.scalar_one_or_none.return_value = "admin-id"
@@ -183,12 +183,12 @@ class TestRegisterEndpoint:
 
         body = RegisterRequest(username="unassigned", email="unassigned@example.com", password="StrongP4ss!")
         with (
-            patch("app.api.routers.public.async_session_maker", maker),
+            patch("spectra_api.ui.public.async_session_maker", maker),
             patch(
-                "app.api.routers.public.PlanRepository.get_self_service_registration_plan",
+                "spectra_api.ui.public.PlanRepository.get_self_service_registration_plan",
                 new=AsyncMock(return_value=None),
             ),
-            patch("app.api.routers.public.sync_user_plan_mirror", new=AsyncMock()) as sync_mock,
+            patch("spectra_api.ui.public.sync_user_plan_mirror", new=AsyncMock()) as sync_mock,
         ):
             await register_user.__wrapped__(_fake_request(), body, Response())
 
@@ -198,8 +198,8 @@ class TestRegisterEndpoint:
         sync_mock.assert_not_awaited()
 
     async def test_register_with_self_service_plan_creates_subscription(self):
-        from app.api.routers.public import RegisterRequest, register_user
         from app.models.plan import Subscription
+        from spectra_api.ui.public import RegisterRequest, register_user
 
         superuser_result = MagicMock()
         superuser_result.scalar_one_or_none.return_value = "admin-id"
@@ -215,12 +215,12 @@ class TestRegisterEndpoint:
 
         body = RegisterRequest(username="assigned", email="assigned@example.com", password="StrongP4ss!")
         with (
-            patch("app.api.routers.public.async_session_maker", maker),
+            patch("spectra_api.ui.public.async_session_maker", maker),
             patch(
-                "app.api.routers.public.PlanRepository.get_self_service_registration_plan",
+                "spectra_api.ui.public.PlanRepository.get_self_service_registration_plan",
                 new=AsyncMock(return_value=plan),
             ),
-            patch("app.api.routers.public.sync_user_plan_mirror", new=AsyncMock()) as sync_mock,
+            patch("spectra_api.ui.public.sync_user_plan_mirror", new=AsyncMock()) as sync_mock,
         ):
             await register_user.__wrapped__(_fake_request(), body, Response())
 
@@ -234,7 +234,7 @@ class TestRegisterEndpoint:
     async def test_register_duplicate(self):
         from fastapi import HTTPException
 
-        from app.api.routers.public import RegisterRequest, register_user
+        from spectra_api.ui.public import RegisterRequest, register_user
 
         superuser_result = MagicMock()
         superuser_result.scalar_one_or_none.return_value = "admin-id"
@@ -243,7 +243,7 @@ class TestRegisterEndpoint:
         maker, _ = _mock_session_ctx([superuser_result, uniq])
 
         body = RegisterRequest(username="taken", email="taken@example.com", password="StrongP4ss!")
-        with patch("app.api.routers.public.async_session_maker", maker), pytest.raises(HTTPException) as exc_info:
+        with patch("spectra_api.ui.public.async_session_maker", maker), pytest.raises(HTTPException) as exc_info:
             await register_user.__wrapped__(_fake_request(), body, Response())
         assert exc_info.value.status_code == 409
 
@@ -258,7 +258,7 @@ class TestRegisterEndpoint:
     async def test_register_weak_password_validation(self):
         from pydantic import ValidationError
 
-        from app.api.routers.public import RegisterRequest
+        from spectra_api.ui.public import RegisterRequest
 
         with pytest.raises(ValidationError):
             RegisterRequest(username="user1", email="u@example.com", password="short")
@@ -270,7 +270,7 @@ class TestPublicPlans:
         plan_result = MagicMock()
         plan_result.scalars.return_value.all.return_value = []
         maker, _ = _mock_session_ctx([plan_result])
-        with patch("app.api.routers.public.async_session_maker", maker):
+        with patch("spectra_api.ui.public.async_session_maker", maker):
             resp = await client.get("/api/public/plans")
         assert resp.status_code == 200
         assert resp.json() == []

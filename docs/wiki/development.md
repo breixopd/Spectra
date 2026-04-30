@@ -185,19 +185,10 @@ packages/
 └── tools-core/         # spectra_tools_core registry contracts
 
 services/
-├── api/                # `spectra_api` FastAPI bootstrap (`services/api/src/spectra_api/`); uvicorn `spectra_api.main:app`
+├── api/                # `spectra_api` FastAPI bootstrap plus UI static/templates
 ├── ai/                 # spectra_ai HTTP service entry point
 ├── scheduler/          # spectra_scheduler background service entry point
 └── worker/             # spectra_worker job queue consumer
-
-static/                 # CSS, JS, vendor libs (project root)
-├── css/                # Tailwind input.css + built output.css
-└── js/                 # Page modules + shared JS
-
-templates/              # Jinja2 HTML templates (project root)
-├── macros/             # Reusable Jinja2 macros (feature_gate, etc.)
-├── partials/           # Reusable partials (modal, etc.)
-└── ...                 # Page templates
 
 docker/
 ├── compose.yaml             # Dev / test / targets via `--profile` (`app`, `test`, `targets`, …)
@@ -229,7 +220,7 @@ config/                      # Build configs (tailwind, postcss)
 - **Caching**: Dual-layer — PostgreSQL `CacheService` for persistent cache, Redis `RedisCache` for rate limiting and ephemeral data
 - **Rate limiting**: Redis-backed distributed rate limiting (falls back to in-memory when Redis is unavailable)
 - **Event delegation**: CSP-safe `data-action` / `data-on-submit` / `data-on-change` / `data-on-input` attributes (see [Frontend Patterns](frontend-patterns.md))
-- **Design tokens**: CSS custom properties in `static/css/input.css` (see [Design Tokens](design-tokens.md))
+- **Design tokens**: CSS custom properties in `services/api/static/css/input.css` (see [Design Tokens](design-tokens.md))
 
 ---
 

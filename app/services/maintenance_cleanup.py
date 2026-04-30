@@ -9,9 +9,9 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import delete, select
 
 from app.core.config import get_settings as _get_settings
-from app.infrastructure.paths import data_path
 from app.models.audit_log import AuditLog
 from app.models.infrastructure import CacheEntry, JobQueue, SystemCache
+from spectra_common.paths import data_path
 
 logger = logging.getLogger(__name__)
 

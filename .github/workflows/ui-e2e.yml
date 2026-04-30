@@ -7,8 +7,8 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - "templates/**"
-      - "static/**"
+      - "services/api/templates/**"
+      - "services/api/static/**"
       - "tests/e2e/**"
       - "tests/run_ui_tests.sh"
       - "docker/Dockerfile.playwright"
@@ -17,8 +17,8 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - "templates/**"
-      - "static/**"
+      - "services/api/templates/**"
+      - "services/api/static/**"
       - "tests/e2e/**"
       - "tests/run_ui_tests.sh"
       - "docker/Dockerfile.playwright"

@@ -48,18 +48,22 @@ if [[ -f "/run/secrets/redis_password" ]] && [[ -z "${RATE_LIMIT_STORAGE:-}" ]];
     export RATE_LIMIT_STORAGE="redis://:$(cat /run/secrets/redis_password)@redis:6379/0"
 fi
 
-# Fix Docker socket permissions if mounted (needed for sandbox container management)
+# Align container group membership with mounted Docker socket. Never mutate the
+# socket itself: it is a host-owned bind mount, and chown/chmod here can break
+# the developer's Docker permissions after `docker compose up`.
 if [ -S /var/run/docker.sock ]; then
     DOCKER_GID=$(stat -c '%g' /var/run/docker.sock 2>/dev/null || echo "")
     if [ -n "$DOCKER_GID" ] && [ "$DOCKER_GID" != "0" ]; then
-        # Check if spectra is already in a group matching the socket GID
-        if ! id -G spectra 2>/dev/null | tr ' ' '\n' | grep -q "^${DOCKER_GID}$"; then
-            # Try to change socket group to the docker group spectra is already in
-            chown :docker /var/run/docker.sock 2>/dev/null \
-                || chown :spectra /var/run/docker.sock 2>/dev/null \
-                || chmod 666 /var/run/docker.sock 2>/dev/null \
-                || true
+        SOCKET_GROUP=$(getent group "$DOCKER_GID" | cut -d: -f1 || true)
+        if [ -z "$SOCKET_GROUP" ]; then
+            if getent group docker >/dev/null; then
+                groupmod -o -g "$DOCKER_GID" docker 2>/dev/null || true
+            else
+                groupadd -o -g "$DOCKER_GID" docker 2>/dev/null || true
+            fi
+            SOCKET_GROUP="docker"
         fi
+        usermod -aG "$SOCKET_GROUP" spectra 2>/dev/null || true
     fi
 fi
 
@@ -140,13 +144,4 @@ fi
 
 # Drop privileges and start application
 echo "Starting application..."
-if [ "${SERVICE_MODE:-}" = "scheduler" ]; then
-    # Grant docker socket access to spectra group (graceful on read-only mounts)
-    if [ -S /var/run/docker.sock ]; then
-        chown root:docker /var/run/docker.sock 2>/dev/null || true
-        chmod 660 /var/run/docker.sock 2>/dev/null || true
-    fi
-    exec gosu spectra "$@"
-else
-    exec gosu spectra "$@"
-fi
+exec gosu spectra "$@"

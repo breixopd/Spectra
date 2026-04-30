@@ -19,7 +19,6 @@ from app.api.dependencies import (
 )
 from app.api.schemas.system import SettingsUpdate
 from app.auth.rbac import Permission, has_permission, require_permission
-from app.bootstrap.templates import templates
 from app.core.config import settings
 from app.core.database import async_session_maker, get_async_session
 from app.models.user import User
@@ -30,6 +29,7 @@ from app.services.system.settings_service import (
     get_ai_status_snapshot,
     get_current_settings,
 )
+from spectra_api.templates import templates
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -385,7 +385,15 @@ async def observability_page(request: Request):
         return RedirectResponse(url="/login", status_code=303)
     user = await _get_ui_db_user(user_payload.get("sub"))
     if not user or not (_is_admin_user(user) or has_permission(user.role, Permission.MANAGE_SETTINGS)):
-        return HTMLResponse("Forbidden", status_code=403)
+        return templates.TemplateResponse(
+            request,
+            "errors/403.html",
+            {
+                "request": request,
+                "detail": "Observability is limited to administrators and users who can manage platform settings.",
+            },
+            status_code=403,
+        )
     return templates.TemplateResponse(
         request,
         "observability.html",

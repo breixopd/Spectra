@@ -7,7 +7,6 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any, ClassVar
 
-from app.infrastructure.paths import data_path
 from app.mission.core.enums import MissionStatus
 from app.mission.core.state_machine import MissionStateMachine
 from app.mission.core.websocket import manager as ws_manager
@@ -37,6 +36,7 @@ from app.services.mission.types import (
     VulnInfo,
 )
 from app.utils.geoip import GeoLocation
+from spectra_common.paths import data_path
 from spectra_common.tasks import create_safe_task
 
 logger = logging.getLogger(__name__)

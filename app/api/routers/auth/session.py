@@ -9,11 +9,12 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user
+from app.api.dependencies import _is_admin_user, get_current_active_user
 from app.api.routers.auth._helpers import _clear_auth_cookies
 from app.api.routers.auth.schemas import RestrictProcessingRequest, UpdateProfileRequest
 from app.api.schemas.system import DeleteAccountRequest
 from app.auth.rate_limit import RateLimits, limiter
+from app.auth.rbac import Permission, has_permission
 from app.auth.security import verify_password
 from app.core.database import get_async_session
 from app.models.audit_log import AuditEventType
@@ -58,6 +59,7 @@ async def get_current_profile(
         "email": user.email,
         "role": user.role,
         "is_superuser": user.is_superuser,
+        "can_access_observability": _is_admin_user(user) or has_permission(user.role, Permission.MANAGE_SETTINGS),
         "mfa_enabled": user.mfa_enabled,
         "processing_restricted": user.processing_restricted,
         "has_preferences": has_preferences,

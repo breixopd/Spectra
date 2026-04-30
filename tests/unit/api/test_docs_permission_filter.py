@@ -40,7 +40,7 @@ class TestDocsAdminVisibility:
 
     @pytest.mark.asyncio
     async def test_admin_sees_admin_route_group(self):
-        from app.api.routers.ui import api_docs_page
+        from spectra_api.ui.pages import api_docs_page
 
         mock_routes = [
             _make_mock_route("/api/v1/health", "health_check"),
@@ -51,15 +51,15 @@ class TestDocsAdminVisibility:
         mock_req.app = _mock_app_with_routes(mock_routes)
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "admin", "sub": "admin"}),
+            patch("spectra_api.ui.pages.get_ui_user", return_value={"id": 1, "role": "admin", "sub": "admin"}),
             patch(
-                "app.api.routers.ui._get_ui_db_user",
+                "spectra_api.ui.pages._get_ui_db_user",
                 new_callable=AsyncMock,
                 return_value=MagicMock(role="admin", is_superuser=True),
             ),
-            patch("app.api.routers.ui._is_admin_user", return_value=True),
-            patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="admin", is_superuser=True)),
-            patch("app.api.routers.ui.templates") as mock_tmpl,
+            patch("spectra_api.ui.pages._is_admin_user", return_value=True),
+            patch("spectra_api.ui.pages.require_feature", return_value=MagicMock(role="admin", is_superuser=True)),
+            patch("spectra_api.ui.pages.templates") as mock_tmpl,
         ):
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
             await api_docs_page(mock_req)
@@ -70,7 +70,7 @@ class TestDocsAdminVisibility:
 
     @pytest.mark.asyncio
     async def test_operator_does_not_see_admin_route_group(self):
-        from app.api.routers.ui import api_docs_page
+        from spectra_api.ui.pages import api_docs_page
 
         mock_routes = [
             _make_mock_route("/api/v1/health", "health_check"),
@@ -81,15 +81,15 @@ class TestDocsAdminVisibility:
         mock_req.app = _mock_app_with_routes(mock_routes)
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "user", "sub": "user"}),
+            patch("spectra_api.ui.pages.get_ui_user", return_value={"id": 1, "role": "user", "sub": "user"}),
             patch(
-                "app.api.routers.ui._get_ui_db_user",
+                "spectra_api.ui.pages._get_ui_db_user",
                 new_callable=AsyncMock,
                 return_value=MagicMock(role="user", is_superuser=False),
             ),
-            patch("app.api.routers.ui._is_admin_user", return_value=False),
-            patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="user", is_superuser=False)),
-            patch("app.api.routers.ui.templates") as mock_tmpl,
+            patch("spectra_api.ui.pages._is_admin_user", return_value=False),
+            patch("spectra_api.ui.pages.require_feature", return_value=MagicMock(role="user", is_superuser=False)),
+            patch("spectra_api.ui.pages.templates") as mock_tmpl,
         ):
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
             await api_docs_page(mock_req)
@@ -101,7 +101,7 @@ class TestDocsAdminVisibility:
 
     @pytest.mark.asyncio
     async def test_staff_does_not_see_admin_route_group(self):
-        from app.api.routers.ui import api_docs_page
+        from spectra_api.ui.pages import api_docs_page
 
         mock_routes = [
             _make_mock_route("/api/v1/findings", "list_findings"),
@@ -112,15 +112,15 @@ class TestDocsAdminVisibility:
         mock_req.app = _mock_app_with_routes(mock_routes)
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"id": 2, "role": "staff", "sub": "staff"}),
+            patch("spectra_api.ui.pages.get_ui_user", return_value={"id": 2, "role": "staff", "sub": "staff"}),
             patch(
-                "app.api.routers.ui._get_ui_db_user",
+                "spectra_api.ui.pages._get_ui_db_user",
                 new_callable=AsyncMock,
                 return_value=MagicMock(role="staff", is_superuser=False),
             ),
-            patch("app.api.routers.ui._is_admin_user", return_value=False),
-            patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="staff", is_superuser=False)),
-            patch("app.api.routers.ui.templates") as mock_tmpl,
+            patch("spectra_api.ui.pages._is_admin_user", return_value=False),
+            patch("spectra_api.ui.pages.require_feature", return_value=MagicMock(role="staff", is_superuser=False)),
+            patch("spectra_api.ui.pages.templates") as mock_tmpl,
         ):
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
             await api_docs_page(mock_req)
@@ -132,7 +132,7 @@ class TestDocsAdminVisibility:
     @pytest.mark.asyncio
     async def test_admin_sees_all_route_groups(self):
         """Admin can see both /api/v1/* and /api/admin/* groups simultaneously."""
-        from app.api.routers.ui import api_docs_page
+        from spectra_api.ui.pages import api_docs_page
 
         mock_routes = [
             _make_mock_route("/api/v1/missions", "list_missions"),
@@ -145,15 +145,15 @@ class TestDocsAdminVisibility:
         mock_req.app = _mock_app_with_routes(mock_routes)
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "admin", "sub": "admin"}),
+            patch("spectra_api.ui.pages.get_ui_user", return_value={"id": 1, "role": "admin", "sub": "admin"}),
             patch(
-                "app.api.routers.ui._get_ui_db_user",
+                "spectra_api.ui.pages._get_ui_db_user",
                 new_callable=AsyncMock,
                 return_value=MagicMock(role="admin", is_superuser=True),
             ),
-            patch("app.api.routers.ui._is_admin_user", return_value=True),
-            patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="admin", is_superuser=True)),
-            patch("app.api.routers.ui.templates") as mock_tmpl,
+            patch("spectra_api.ui.pages._is_admin_user", return_value=True),
+            patch("spectra_api.ui.pages.require_feature", return_value=MagicMock(role="admin", is_superuser=True)),
+            patch("spectra_api.ui.pages.templates") as mock_tmpl,
         ):
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
             await api_docs_page(mock_req)
@@ -166,11 +166,11 @@ class TestDocsAdminVisibility:
     @pytest.mark.asyncio
     async def test_unauthenticated_redirects_to_login(self):
         """Unauthenticated request to /docs/api redirects to /login."""
-        from app.api.routers.ui import api_docs_page
+        from spectra_api.ui.pages import api_docs_page
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value=None),
-            patch("app.api.routers.ui._is_admin_user", return_value=False),
+            patch("spectra_api.ui.pages.get_ui_user", return_value=None),
+            patch("spectra_api.ui.pages._is_admin_user", return_value=False),
         ):
             result = await api_docs_page(MagicMock())
 

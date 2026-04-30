@@ -18,7 +18,7 @@ class TestApiDocsRoute:
 
     @pytest.mark.asyncio
     async def test_docs_api_returns_200_when_authenticated(self):
-        from app.api.routers.ui import api_docs_page
+        from spectra_api.ui.pages import api_docs_page
 
         mock_request = MagicMock()
 
@@ -34,15 +34,15 @@ class TestApiDocsRoute:
         mock_request.app = mock_app
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "username": "admin", "sub": "admin"}),
+            patch("spectra_api.ui.pages.get_ui_user", return_value={"id": 1, "username": "admin", "sub": "admin"}),
             patch(
-                "app.api.routers.ui._get_ui_db_user",
+                "spectra_api.ui.pages._get_ui_db_user",
                 new_callable=AsyncMock,
                 return_value=MagicMock(role="admin", is_superuser=True),
             ),
-            patch("app.api.routers.ui._is_admin_user", return_value=True),
+            patch("spectra_api.ui.pages._is_admin_user", return_value=True),
         ):
-            with patch("app.api.routers.ui.templates") as mock_templates:
+            with patch("spectra_api.ui.pages.templates") as mock_templates:
                 mock_response = MagicMock()
                 mock_response.status_code = 200
                 mock_templates.TemplateResponse.return_value = mock_response
@@ -58,13 +58,13 @@ class TestApiDocsRoute:
 
     @pytest.mark.asyncio
     async def test_docs_api_redirects_when_unauthenticated(self):
-        from app.api.routers.ui import api_docs_page
+        from spectra_api.ui.pages import api_docs_page
 
         mock_request = MagicMock()
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value=None),
-            patch("app.api.routers.ui._is_admin_user", return_value=False),
+            patch("spectra_api.ui.pages.get_ui_user", return_value=None),
+            patch("spectra_api.ui.pages._is_admin_user", return_value=False),
         ):
             result = await api_docs_page(mock_request)
             assert result.status_code == 303
@@ -72,7 +72,7 @@ class TestApiDocsRoute:
 
     @pytest.mark.asyncio
     async def test_docs_page_groups_routes_by_path_segment(self):
-        from app.api.routers.ui import api_docs_page
+        from spectra_api.ui.pages import api_docs_page
 
         mock_request = MagicMock()
 
@@ -97,15 +97,15 @@ class TestApiDocsRoute:
         mock_request.app = mock_app
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "admin", "sub": "admin"}),
+            patch("spectra_api.ui.pages.get_ui_user", return_value={"id": 1, "role": "admin", "sub": "admin"}),
             patch(
-                "app.api.routers.ui._get_ui_db_user",
+                "spectra_api.ui.pages._get_ui_db_user",
                 new_callable=AsyncMock,
                 return_value=MagicMock(role="admin", is_superuser=True),
             ),
-            patch("app.api.routers.ui._is_admin_user", return_value=True),
-            patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="admin", is_superuser=True)),
-            patch("app.api.routers.ui.templates") as mock_templates,
+            patch("spectra_api.ui.pages._is_admin_user", return_value=True),
+            patch("spectra_api.ui.pages.require_feature", return_value=MagicMock(role="admin", is_superuser=True)),
+            patch("spectra_api.ui.pages.templates") as mock_templates,
         ):
             mock_templates.TemplateResponse.return_value = MagicMock(status_code=200)
             await api_docs_page(mock_request)
@@ -118,7 +118,7 @@ class TestApiDocsRoute:
     @pytest.mark.asyncio
     async def test_docs_page_hides_admin_routes_for_non_admin(self):
         """Non-admin users should not see admin route groups."""
-        from app.api.routers.ui import api_docs_page
+        from spectra_api.ui.pages import api_docs_page
 
         mock_request = MagicMock()
 
@@ -143,15 +143,15 @@ class TestApiDocsRoute:
         mock_request.app = mock_app
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "user", "sub": "user"}),
+            patch("spectra_api.ui.pages.get_ui_user", return_value={"id": 1, "role": "user", "sub": "user"}),
             patch(
-                "app.api.routers.ui._get_ui_db_user",
+                "spectra_api.ui.pages._get_ui_db_user",
                 new_callable=AsyncMock,
                 return_value=MagicMock(role="user", is_superuser=False),
             ),
-            patch("app.api.routers.ui._is_admin_user", return_value=False),
-            patch("app.api.routers.ui.require_feature", return_value=MagicMock(role="user", is_superuser=False)),
-            patch("app.api.routers.ui.templates") as mock_templates,
+            patch("spectra_api.ui.pages._is_admin_user", return_value=False),
+            patch("spectra_api.ui.pages.require_feature", return_value=MagicMock(role="user", is_superuser=False)),
+            patch("spectra_api.ui.pages.templates") as mock_templates,
         ):
             mock_templates.TemplateResponse.return_value = MagicMock(status_code=200)
             await api_docs_page(mock_request)
@@ -167,12 +167,12 @@ class TestHelpRoute:
 
     @pytest.mark.asyncio
     async def test_help_returns_200_when_authenticated(self):
-        from app.api.routers.ui import help_page
+        from spectra_api.ui.pages import help_page
 
         mock_request = MagicMock()
 
-        with patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "username": "admin"}):
-            with patch("app.api.routers.ui.templates") as mock_templates:
+        with patch("spectra_api.ui.pages.get_ui_user", return_value={"id": 1, "username": "admin"}):
+            with patch("spectra_api.ui.pages.templates") as mock_templates:
                 mock_response = MagicMock()
                 mock_response.status_code = 200
                 mock_templates.TemplateResponse.return_value = mock_response
@@ -186,10 +186,10 @@ class TestHelpRoute:
 
     @pytest.mark.asyncio
     async def test_help_redirects_when_unauthenticated(self):
-        from app.api.routers.ui import help_page
+        from spectra_api.ui.pages import help_page
 
         mock_request = MagicMock()
 
-        with patch("app.api.routers.ui.get_ui_user", return_value=None):
+        with patch("spectra_api.ui.pages.get_ui_user", return_value=None):
             result = await help_page(mock_request)
             assert result.status_code == 303
