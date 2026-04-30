@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import logging
+import json
 import re
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.mission import Mission
 from app.models.training import TrainingSample
+from app.models.user import User
+from app.models.user_preferences import UserPreferences
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +57,72 @@ async def create_training_sample(
     session.add(sample)
     await session.flush()
     return sample
+
+
+async def user_allows_training_data(session: AsyncSession, user_id: str) -> bool:
+    """Return True only when account restrictions and training consent allow ingestion."""
+    result = await session.execute(
+        select(User.processing_restricted, UserPreferences.share_training_data)
+        .join(UserPreferences, UserPreferences.user_id == User.id)
+        .where(User.id == user_id)
+    )
+    row = result.one_or_none()
+    if row is None:
+        return False
+    processing_restricted, share_training_data = row
+    return bool(share_training_data) and not bool(processing_restricted)
+
+
+async def create_mission_completion_sample(
+    session: AsyncSession,
+    mission: Mission,
+    runtime_state: dict[str, Any],
+) -> TrainingSample | None:
+    """Capture one approved, consent-gated sample after successful mission completion."""
+    if not mission.user_id or not await user_allows_training_data(session, str(mission.user_id)):
+        return None
+
+    existing = await session.execute(
+        select(TrainingSample.id).where(
+            and_(
+                TrainingSample.mission_id == mission.id,
+                TrainingSample.sample_type == "mission_completion",
+            )
+        )
+    )
+    if existing.scalar_one_or_none() is not None:
+        return None
+
+    findings = runtime_state.get("findings") or []
+    input_payload = {
+        "target": mission.target,
+        "description": mission.description,
+        "mission_type": mission.mission_type,
+        "runtime_target": runtime_state.get("target"),
+        "directive": runtime_state.get("directive"),
+        "requirements": runtime_state.get("requirements", []),
+    }
+    output_payload = {
+        "status": mission.status,
+        "tools_run": runtime_state.get("tools_run", []),
+        "findings": findings,
+        "attack_surface": runtime_state.get("attack_surface", {}),
+    }
+
+    return await create_training_sample(
+        session=session,
+        mission_id=str(mission.id),
+        user_id=str(mission.user_id),
+        sample_type="mission_completion",
+        input_text=json.dumps(input_payload, sort_keys=True),
+        output_text=json.dumps(output_payload, sort_keys=True),
+        quality_score=0.85 if findings else 0.65,
+        metadata={
+            "source": "mission_completion",
+            "finding_count": len(findings),
+            "tool_count": len(runtime_state.get("tools_run") or []),
+        },
+    )
 
 
 async def get_dataset_stats(session: AsyncSession) -> dict[str, Any]:

@@ -12,6 +12,7 @@ from app.auth.advisory_locks import stable_lock_id
 from app.core.database import async_session_maker
 from app.infrastructure.events import events
 from app.models.user import User
+from app.models.mission import Mission as MissionModel
 from app.repositories.mission import MissionRepository
 from app.services.ai.agents.base import AgentContext
 from app.services.ai.sanitizer import sanitize_for_prompt
@@ -20,6 +21,7 @@ from app.services.billing.quota_enforcer import QuotaEnforcer
 from app.services.billing.usage_tracker import UsageTracker
 from app.services.mission.mission import Mission
 from app.services.mission.state_store import MissionStateStore
+from app.services.training.dataset import create_mission_completion_sample
 from app.services.tools.output import cleanup_mission_workspace
 from app.utils.geoip import resolve_ip
 
@@ -219,14 +221,22 @@ class MissionLifecycleManager:
         try:
             async with async_session_maker() as session, session.begin():
                 repo = MissionRepository(session)
+                mission_summary = mission.to_dict()
                 await repo.update(
                     mission.id,
                     status=mission.status,
                     logs=mission.logs,
                     # Mission.summary is the persisted authoritative mission-output read model for API, report, and notification consumers.
-                    summary=mission.to_dict(),
+                    summary=mission_summary,
                     attack_surface=mission.attack_surface.model_dump(),
                 )
+                if mission.status == "completed":
+                    db_mission = await session.get(MissionModel, mission.id)
+                    if db_mission:
+                        try:
+                            await create_mission_completion_sample(session, db_mission, mission_summary)
+                        except Exception:
+                            logger.exception("Failed to capture training sample for mission %s", mission.id)
         except SQLAlchemyError as e:
             logger.error("Failed to update mission DB (DB error): %s", e)
         except (OSError, RuntimeError, TypeError, AttributeError) as e:

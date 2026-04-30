@@ -13,11 +13,14 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.rbac import Permission, require_permission
+from app.core.config import settings
 from app.core.database import get_async_session
+from app.infrastructure.queue import PostgresJobQueue
 from app.models.training import FineTuningJob, TrainingSample
 from app.models.user import User
 from app.services.training.backends import get_training_backend, list_training_backends
 from app.services.training.dataset import export_dataset, get_dataset_stats
+from spectra_domain.jobs import WorkerJobName
 
 logger = logging.getLogger(__name__)
 
@@ -234,12 +237,22 @@ async def create_job(
     session.add(job)
     await session.commit()
     await session.refresh(job)
+    try:
+        queue = PostgresJobQueue(settings.TOOL_QUEUE_NAME)
+        queue_job_id = await queue.enqueue_job(WorkerJobName.RUN_FINE_TUNING, job_id=job.id, _timeout=3600)
+    except (OSError, RuntimeError, ConnectionError) as exc:
+        logger.error("Failed to enqueue fine-tuning job %s: %s", job.id, exc)
+        job.status = "queue_failed"
+        job.metrics = {"error": str(exc)}
+        await session.commit()
+        raise HTTPException(status_code=503, detail="Fine-tuning job could not be enqueued") from exc
 
     return {
         "id": job.id,
         "name": job.name,
         "status": job.status,
         "sample_count": sample_count,
+        "queue_job_id": queue_job_id,
     }
 
 
