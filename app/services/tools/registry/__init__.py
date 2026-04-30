@@ -72,7 +72,12 @@ class ToolRegistry:
 
         # Initialize components
         self.validator = PluginValidator()
-        self.loader = PluginLoader(plugins_dir=self.plugins_dir, validator=self.validator)
+        bundled_plugins_dir = Path("bundled-plugins")
+        self.loader = PluginLoader(
+            plugins_dir=self.plugins_dir,
+            validator=self.validator,
+            bundled_plugins_dir=bundled_plugins_dir if bundled_plugins_dir != self.plugins_dir else None,
+        )
         self.installer = PluginInstaller()
 
     # --- Delegated Methods ---
