@@ -1,6 +1,6 @@
 """Advisory lock IDs and background task naming for scheduler coordination."""
 
-from app.auth.advisory_locks import stable_lock_id
+from spectra_common.advisory_locks import stable_lock_id
 
 # Stable advisory lock IDs for inter-replica coordination (PostgreSQL pg_advisory_lock)
 _BACKUP_LOCK_ID: int = stable_lock_id("spectra_backup")

@@ -9,11 +9,11 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.advisory_locks import stable_lock_id
 from app.core.database import async_session_maker
 from app.models.plan import Plan, Subscription, UsageRecord
 from app.models.user import User
 from app.services.billing.entitlements import ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES, get_user_entitlement_plan
+from spectra_common.advisory_locks import stable_lock_id
 
 
 @contextlib.asynccontextmanager

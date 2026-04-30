@@ -11,7 +11,7 @@ Covers:
 from fastapi import Request
 from fastapi.testclient import TestClient
 
-from app.auth.exceptions import (
+from spectra_common.errors import (
     AuthenticationError,
     AuthorizationError,
     ConfigurationError,

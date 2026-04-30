@@ -11,13 +11,13 @@ from unittest.mock import patch
 
 import pytest
 
-from app.auth.exceptions import MissionStateError
 from app.mission.core.enums import MissionStatus
 from app.mission.core.state_machine import (
     VALID_TRANSITIONS,
     MissionStateMachine,
     StateTransition,
 )
+from spectra_common.errors import MissionStateError
 
 
 class TestStateTransition:

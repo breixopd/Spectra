@@ -15,11 +15,11 @@ from jwt.exceptions import InvalidTokenError as JWTError
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.advisory_locks import stable_lock_id
 from app.auth.security import decode_token
 from app.core.database import async_session_maker, get_async_session
 from app.models.user import User
 from app.services.billing.entitlements import get_user_entitlement_plan
+from spectra_common.advisory_locks import stable_lock_id
 
 if TYPE_CHECKING:
     from app.repositories.exploit import ExploitRepository

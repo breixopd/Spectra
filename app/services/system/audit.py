@@ -10,9 +10,9 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.advisory_locks import stable_lock_id
 from app.models.audit_log import AuditEventType
 from app.repositories.audit_log import AuditLogRepository
+from spectra_common.advisory_locks import stable_lock_id
 
 logger = logging.getLogger(__name__)
 

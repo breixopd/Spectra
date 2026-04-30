@@ -24,7 +24,6 @@ except ImportError:
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.auth.advisory_locks import stable_lock_id
 from app.core.config import settings
 from app.core.database import async_session_maker, engine
 from app.infrastructure.cache import CacheService, set_cache
@@ -36,6 +35,7 @@ from app.infrastructure.system_status import (
 )
 from app.services.system.runtime_settings import hydrate_runtime_settings_from_db
 from app.telemetry.telemetry import telemetry
+from spectra_common.advisory_locks import stable_lock_id
 from spectra_common.paths import data_root
 from spectra_common.tasks import create_safe_task
 
