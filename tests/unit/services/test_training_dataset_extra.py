@@ -2,7 +2,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.services.training.dataset import create_training_sample, export_dataset, get_dataset_stats
+from app.services.training.dataset import (
+    create_mission_completion_sample,
+    create_training_sample,
+    export_dataset,
+    get_dataset_stats,
+    user_allows_training_data,
+)
 from app.services.training.backends import (
     TrainingBackendDefinition,
     get_training_backend,
@@ -14,6 +20,7 @@ from app.services.training.backends import (
 @pytest.mark.asyncio
 async def test_create_training_sample():
     mock_session = AsyncMock()
+    mock_session.add = MagicMock()
     mock_session.flush = AsyncMock()
 
     sample = await create_training_sample(
@@ -30,6 +37,71 @@ async def test_create_training_sample():
     assert sample.quality_score == 0.9
     mock_session.add.assert_called_once()
     mock_session.flush.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_user_allows_training_data_requires_consent_and_unrestricted_account():
+    mock_session = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.one_or_none.return_value = (False, True)
+    mock_session.execute = AsyncMock(return_value=mock_result)
+
+    assert await user_allows_training_data(mock_session, "u1") is True
+
+    mock_result.one_or_none.return_value = (True, True)
+    assert await user_allows_training_data(mock_session, "u1") is False
+
+    mock_result.one_or_none.return_value = (False, False)
+    assert await user_allows_training_data(mock_session, "u1") is False
+
+
+@pytest.mark.asyncio
+async def test_create_mission_completion_sample_is_consent_gated_and_deduplicated():
+    mock_session = AsyncMock()
+    mock_session.add = MagicMock()
+    consent_result = MagicMock()
+    consent_result.one_or_none.return_value = (False, True)
+    existing_result = MagicMock()
+    existing_result.scalar_one_or_none.return_value = None
+    mock_session.execute = AsyncMock(side_effect=[consent_result, existing_result])
+    mock_session.flush = AsyncMock()
+
+    mission = MagicMock()
+    mission.id = "m1"
+    mission.user_id = "u1"
+    mission.target = "192.168.1.1"
+    mission.description = "Internal scan"
+    mission.mission_type = "assessment"
+    mission.status = "completed"
+
+    sample = await create_mission_completion_sample(
+        mock_session,
+        mission,
+        {"target": "192.168.1.1", "directive": "scan", "findings": [{"severity": "high"}], "tools_run": ["nmap"]},
+    )
+
+    assert sample is not None
+    assert sample.sample_type == "mission_completion"
+    assert sample.quality_score == 0.85
+    assert "<IP_ADDR>" in sample.input_text
+    mock_session.add.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_create_mission_completion_sample_skips_existing_sample():
+    mock_session = AsyncMock()
+    consent_result = MagicMock()
+    consent_result.one_or_none.return_value = (False, True)
+    existing_result = MagicMock()
+    existing_result.scalar_one_or_none.return_value = "sample-1"
+    mock_session.execute = AsyncMock(side_effect=[consent_result, existing_result])
+
+    mission = MagicMock(id="m1", user_id="u1")
+
+    sample = await create_mission_completion_sample(mock_session, mission, {})
+
+    assert sample is None
+    mock_session.add.assert_not_called()
 
 
 @pytest.mark.asyncio

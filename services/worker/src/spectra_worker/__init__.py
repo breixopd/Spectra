@@ -36,6 +36,7 @@ from spectra_worker.tool_jobs import (
     sync_all_status_job,
     uninstall_tool_job,
 )
+from spectra_worker.training_jobs import run_fine_tuning_job
 from spectra_worker.vpn_jobs import (
     vpn_connect_job,
     vpn_disconnect_job,
@@ -67,6 +68,8 @@ _WORKER_FUNCTIONS = [
     # Reports
     generate_mission_report,
     generate_executive_summary,
+    # Training
+    run_fine_tuning_job,
 ]
 
 __all__ = [
@@ -83,6 +86,7 @@ __all__ = [
     "reload_plugins_job",
     "run_all_cleanup",
     "run_command_job",
+    "run_fine_tuning_job",
     "send_critical_finding_alert",
     "send_mission_completion_notification",
     "send_webhook_notification",

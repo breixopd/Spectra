@@ -20,3 +20,4 @@ class WorkerJobName(StrEnum):
     VPN_DISCONNECT = "vpn_disconnect_job"
     VPN_STATUS = "vpn_status_job"
     VPN_TEST = "vpn_test_job"
+    RUN_FINE_TUNING = "run_fine_tuning_job"
