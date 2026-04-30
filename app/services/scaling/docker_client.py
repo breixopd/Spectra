@@ -25,7 +25,10 @@ class ServiceInfo:
     desired_replicas: int
     image: str
     image_digest: str  # sha256:... or empty
+    # running_tasks: replicas Swarm reports with Status.State == "running"
     running_tasks: int
+    # failed_tasks: Status failed/rejected — not (desired_replicas - running); avoids false heals on rollouts
+    failed_tasks: int = 0
     nodes: list[str] = field(default_factory=list)
 
 
@@ -71,6 +74,50 @@ async def _run_sync(func, *args, **kwargs) -> Any:
 # --- Service operations ---
 
 
+def _task_as_dict(task: Any) -> dict[str, Any]:
+    attrs = getattr(task, "attrs", None)
+    if isinstance(attrs, dict):
+        return attrs
+    if isinstance(task, dict):
+        return task
+    return {}
+
+
+def _failed_tasks_from_swarm(svc) -> int:
+    """Count Swarm tasks in failed/rejected states (not replica gaps during updates)."""
+    failed = 0
+    try:
+        for task in svc.tasks(filters={"desired-state": "running"}):
+            state = (_task_as_dict(task).get("Status") or {}).get("State", "")
+            if state in ("failed", "rejected"):
+                failed += 1
+    except Exception:
+        logger.debug("Failed-task scan (desired-state=running) for %s", svc.name, exc_info=True)
+        return 0
+    if failed:
+        return failed
+
+    try:
+        all_tasks = list(svc.tasks())
+    except Exception:
+        logger.debug("Failed-task scan (all tasks) for %s", svc.name, exc_info=True)
+        return 0
+
+    def _version_index(task: Any) -> int:
+        try:
+            return int((_task_as_dict(task).get("Version") or {}).get("Index", 0))
+        except (TypeError, ValueError):
+            return 0
+
+    all_tasks.sort(key=_version_index, reverse=True)
+    tail_failed = 0
+    for task in all_tasks[:80]:
+        state = (_task_as_dict(task).get("Status") or {}).get("State", "")
+        if state in ("failed", "rejected"):
+            tail_failed += 1
+    return tail_failed
+
+
 def _parse_service(svc) -> ServiceInfo:
     """Extract ServiceInfo from a docker SDK service object."""
     attrs = svc.attrs
@@ -93,14 +140,17 @@ def _parse_service(svc) -> ServiceInfo:
     try:
         tasks = svc.tasks(filters={"desired-state": "running"})
         for task in tasks:
-            task_status = task.get("Status", {}).get("State", "")
+            td = _task_as_dict(task)
+            task_status = (td.get("Status") or {}).get("State", "")
             if task_status == "running":
                 running_tasks += 1
-                node_id = task.get("NodeID", "")
+                node_id = td.get("NodeID", "")
                 if node_id:
                     task_nodes.append(node_id)
     except Exception:
         logger.debug("Failed to enumerate tasks for service %s", svc.name, exc_info=True)
+
+    failed_tasks = _failed_tasks_from_swarm(svc)
 
     return ServiceInfo(
         name=svc.name,
@@ -109,6 +159,7 @@ def _parse_service(svc) -> ServiceInfo:
         image=image_ref,
         image_digest=image_digest,
         running_tasks=running_tasks,
+        failed_tasks=failed_tasks,
         nodes=task_nodes,
     )
 

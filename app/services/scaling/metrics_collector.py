@@ -136,8 +136,10 @@ class MetricsCollector:
                     replicas=svc.running_tasks,
                     desired_replicas=svc.desired_replicas,
                     running_tasks=svc.running_tasks,
-                    healthy=(svc.running_tasks == svc.desired_replicas),
-                    failed_tasks=max(0, svc.desired_replicas - svc.running_tasks),
+                    healthy=(
+                        svc.running_tasks == svc.desired_replicas and svc.failed_tasks == 0
+                    ),
+                    failed_tasks=svc.failed_tasks,
                 )
 
             if not services:

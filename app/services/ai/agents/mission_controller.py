@@ -32,6 +32,7 @@ from spectra_ai.errors import AgentError, LLMParseError, LLMTimeoutError
 from spectra_ai.prompts import (
     MISSION_PLAN_PROMPT,
 )
+from spectra_ai.sanitizer import sanitize_for_prompt
 
 if TYPE_CHECKING:
     from spectra_ai.llm import LLMClient
@@ -233,7 +234,6 @@ class MissionController(Agent[MissionInput, MissionPlan | PhaseTransition | Stee
             logger.debug("Could not fetch debrief lessons from memory", exc_info=True)
 
         from app.services.ai.context import ContextManager, ContextSection, Priority
-        from spectra_ai.sanitizer import sanitize_for_prompt
 
         sanitized_directive = sanitize_for_prompt(input_data.directive, field_name="directive")
         sanitized_requirements = sanitize_for_prompt(input_data.requirements or "None", field_name="requirements")
@@ -436,11 +436,17 @@ IMPORTANT OPERATIONAL GUIDELINES:
         input_data: MissionInput,
     ) -> SteeringAction:
         """Use LLM to interpret ambiguous steering commands."""
+        directive_safe = sanitize_for_prompt(input_data.directive, field_name="steering_directive")
+        mission_safe = sanitize_for_prompt(
+            context.mission or "Standard assessment",
+            max_length=2000,
+            field_name="mission",
+        )
         prompt = f"""Interpret this steering command for an ongoing security assessment.
 
-Command: "{input_data.directive}"
+Command: "{directive_safe}"
 Current Phase: {context.phase}
-Mission: {context.mission or "Standard assessment"}
+Mission: {mission_safe}
 
 Determine:
 1. What changes should be made to the assessment direction
@@ -459,6 +465,6 @@ Determine:
             return SteeringAction(
                 confidence=0.5,
                 risk_level=ActionRisk.LOW,
-                reasoning=f"Could not interpret steering command: {input_data.directive}",
+                reasoning=f"Could not interpret steering command: {directive_safe}",
                 new_phase=context.phase,
             )
