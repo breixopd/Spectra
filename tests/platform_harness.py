@@ -7,11 +7,9 @@ import time
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
-import jwt
 import pytest
 
 
@@ -179,19 +177,10 @@ async def ensure_admin_setup(client: httpx.AsyncClient) -> None:
 
 
 async def get_admin_access_token(client: httpx.AsyncClient) -> str:
-    await ensure_admin_setup(client)
-    now = datetime.now(UTC)
-    return jwt.encode(
-        {
-            "sub": get_admin_username(),
-            "role": "user",
-            "is_superuser": True,
-            "exp": now + timedelta(minutes=30),
-            "iat": now,
-            "type": "access",
-        },
-        os.getenv("LOAD_TEST_JWT_SECRET_KEY", "test-secret-key-for-testing"),
-        algorithm=os.getenv("JWT_ALGORITHM", "HS256"),
+    return await get_access_token_for_credentials(
+        client,
+        username=get_admin_username(),
+        password=get_admin_password(),
     )
 
 

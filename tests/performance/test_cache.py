@@ -8,11 +8,27 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 import pytest
+import pytest_asyncio
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.core.config import settings
 from app.infrastructure.cache import CacheService
 from app.infrastructure.redis_client import RedisCache, RedisConnectionPool
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.live, pytest.mark.performance]
+
+
+@pytest_asyncio.fixture
+async def db_session_maker():
+    """Use the live stack database session maker for cache performance tests."""
+    database_url = settings.DATABASE_URL
+    if hasattr(database_url, "get_secret_value"):
+        database_url = database_url.get_secret_value()
+    engine = create_async_engine(str(database_url), pool_pre_ping=False)
+    try:
+        yield async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    finally:
+        await engine.dispose()
 
 
 async def _warm_cache_pg(cache: CacheService, keys: list[str]) -> None:

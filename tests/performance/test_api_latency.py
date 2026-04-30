@@ -52,6 +52,7 @@ async def test_core_routes_meet_lenient_latency_thresholds(prefix: str, path: st
     async with httpx.AsyncClient(base_url=get_app_base_url(), timeout=15.0) as client:
         await ensure_admin_setup(client)
         headers = await get_admin_auth_headers(client) if requires_auth else {}
+        await client.get(path, headers=headers)
 
         summary = await collect_latency_summary(
             lambda _: client.get(path, headers=headers),

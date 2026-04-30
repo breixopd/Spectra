@@ -109,6 +109,7 @@ esac
 trap cleanup EXIT
 
 echo "Starting the Docker test stack for ${MODE} validation"
+cleanup
 docker compose -f "${COMPOSE_FILE}" up -d --build db garage redis >/dev/null
 
 bootstrap_garage
