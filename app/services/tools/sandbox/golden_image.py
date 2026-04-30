@@ -179,7 +179,6 @@ class GoldenImageBuilder:
             "    iputils-ping iproute2 netcat-openbsd iptables \\",
             "    wireguard-tools openvpn \\",
             "    golang \\",
-            "    seclists \\",
         ]
 
         if apt_packages:
