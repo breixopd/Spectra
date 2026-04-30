@@ -17,7 +17,6 @@ from sqlalchemy import select
 from app.api.dependencies import check_feature_allowed, get_current_active_user, validate_websocket_token
 from app.auth.rate_limit import RateLimits, limiter
 from app.core.database import async_session_maker
-from app.infrastructure.tasks import create_safe_task
 from app.models.audit_log import AuditEventType
 from app.models.finding import Finding
 from app.models.mission import Mission
@@ -26,6 +25,7 @@ from app.services.shell.relay_client import shell_relay_client
 from app.services.shell.session_manager import shell_manager
 from app.services.system.audit import log_event as audit_log_event
 from spectra_common.constants import WS_KEEPALIVE_INTERVAL, WS_MAX_MESSAGE_SIZE, WS_MAX_MESSAGES_PER_SECOND
+from spectra_common.tasks import create_safe_task
 
 router = APIRouter(prefix="/shell", tags=["Shell"])
 logger = logging.getLogger(__name__)

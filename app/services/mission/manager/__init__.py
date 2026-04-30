@@ -49,7 +49,7 @@ class MissionManager:
         self._mission_llm_semaphores[mission_id] = asyncio.Semaphore(1)
 
     def _schedule_mission_task(self, coroutine: Coroutine[Any, Any, None]) -> None:
-        from app.infrastructure.tasks import create_safe_task
+        from spectra_common.tasks import create_safe_task
 
         create_safe_task(coroutine, name="mission-task")
 

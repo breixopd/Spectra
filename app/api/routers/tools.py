@@ -175,7 +175,7 @@ def _get_tool_or_404(registry: ToolRegistry, tool_id: str) -> RegisteredTool:
 
 def _queue_background_job(
     background_tasks: BackgroundTasks,
-    job_name: str,
+    job_name: WorkerJobName,
     *,
     success_log: str,
     failure_log: str,
@@ -229,7 +229,7 @@ async def _write_tool_audit_event(
 
 async def _queue_tool_job_with_audit(
     background_tasks: BackgroundTasks,
-    job_name: str,
+    job_name: WorkerJobName,
     *,
     success_log: str,
     failure_log: str,

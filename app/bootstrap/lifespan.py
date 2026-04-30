@@ -35,9 +35,9 @@ from app.infrastructure.system_status import (
     remove_system_operation,
     set_system_status,
 )
-from app.infrastructure.tasks import create_safe_task
 from app.services.system.runtime_settings import hydrate_runtime_settings_from_db
 from app.telemetry.telemetry import telemetry
+from spectra_common.tasks import create_safe_task
 
 logger = logging.getLogger(__name__)
 

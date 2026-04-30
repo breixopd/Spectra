@@ -43,6 +43,12 @@ def test_training_job_name_is_registered_with_worker():
     assert run_fine_tuning_job.__name__ in worker_names
 
 
+def test_worker_job_name_enum_covers_all_registered_functions() -> None:
+    worker_names = {fn.__name__ for fn in _WORKER_FUNCTIONS}
+    enum_values = {member.value for member in WorkerJobName}
+    assert worker_names == enum_values
+
+
 @pytest.mark.asyncio
 async def test_run_fine_tuning_job_completes_local_dataset_preparation():
     job = _job()

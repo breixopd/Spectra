@@ -22,8 +22,8 @@ from sqlalchemy import text
 from app.auth.advisory_locks import advisory_lock_owner, stable_lock_id
 from app.auth.rate_limit import RateLimits, limiter
 from app.core.database import advisory_lock_connection, async_session_maker
-from app.infrastructure.tasks import create_safe_task
 from spectra_common.constants import SECONDS_PER_HOUR
+from spectra_common.tasks import create_safe_task
 
 logger = logging.getLogger(__name__)
 

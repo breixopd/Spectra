@@ -9,7 +9,7 @@ MOVE_MAP = {
     "cache": "app.infrastructure.cache",
     "queue": "app.infrastructure.queue",
     "events": "app.infrastructure.events",
-    "tasks": "app.infrastructure.tasks",
+    "tasks": "spectra_common.tasks",
     "redis_client": "app.infrastructure.redis_client",
     "background_tasks": "app.infrastructure.background_tasks",
     "system_status": "app.infrastructure.system_status",
