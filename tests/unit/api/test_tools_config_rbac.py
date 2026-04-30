@@ -6,9 +6,9 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
+from app.auth.rate_limit import limiter
 from spectra_api.api.dependencies import get_current_active_user
 from spectra_api.api.routers import tools as tools_mod
-from app.auth.rate_limit import limiter
 from spectra_tools_core.models import RegisteredTool, ToolConfig, ToolStatus
 
 _MINIMAL_TOOL = {

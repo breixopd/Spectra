@@ -10,9 +10,9 @@ import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from spectra_api.api.routers.findings import router
 from app.mission.core.enums import Severity
 from app.models.finding import FindingStatus
+from spectra_api.api.routers.findings import router
 
 
 def _fake_user(is_superuser: bool = False, user_id: str = "00000000-0000-4000-a000-000000000001", role: str = "user"):
@@ -70,8 +70,8 @@ def _make_app() -> FastAPI:
 @pytest_asyncio.fixture
 async def client():
     app = _make_app()
-    from spectra_api.api.dependencies import get_current_active_user
     from app.core.database import get_async_session
+    from spectra_api.api.dependencies import get_current_active_user
 
     user = _fake_user()
     app.dependency_overrides[get_current_active_user] = lambda: user
@@ -457,9 +457,9 @@ class TestFindingExportsAndStatusPaths:
 
     async def test_confirm_finding_keeps_generic_500_when_update_is_falsy(self):
         app = _make_app()
-        from spectra_api.api.dependencies import get_current_active_user
         from app.core.database import get_async_session
         from app.repositories.finding import FindingRepository
+        from spectra_api.api.dependencies import get_current_active_user
 
         user = _fake_user()
         app.dependency_overrides[get_current_active_user] = lambda: user

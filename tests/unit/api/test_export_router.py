@@ -171,8 +171,8 @@ async def client():
     app = _make_app()
 
     # Override auth dependency
-    from spectra_api.api.dependencies import get_current_active_user
     from app.core.database import get_async_session
+    from spectra_api.api.dependencies import get_current_active_user
 
     user = _fake_user()
     app.dependency_overrides[get_current_active_user] = lambda: user

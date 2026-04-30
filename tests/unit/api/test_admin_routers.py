@@ -9,9 +9,9 @@ import pytest
 from fastapi import FastAPI, HTTPException
 from httpx import ASGITransport, AsyncClient
 
+from app.models.audit_log import AuditEventType
 from spectra_api.api.routers.admin.plans import router as plans_router
 from spectra_api.api.routers.admin.users import router as users_router
-from app.models.audit_log import AuditEventType
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -452,8 +452,8 @@ class TestSubscriptionBackedAssignments:
 
     @pytest.mark.asyncio
     async def test_sync_user_subscription_assignment_creates_active_subscription(self):
-        from spectra_api.api.routers.admin.users import _sync_user_subscription_assignment
         from app.models.plan import Subscription
+        from spectra_api.api.routers.admin.users import _sync_user_subscription_assignment
 
         user = _make_user("user", user_id="00000000-0000-4000-a000-000000000010")
         mock_sess = _mock_session()

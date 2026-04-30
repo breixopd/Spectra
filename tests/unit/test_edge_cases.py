@@ -6,12 +6,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi import HTTPException
 
-from spectra_api.api.routers.auth._helpers import (
-    LOCKOUT_THRESHOLD_1,
-    LOCKOUT_THRESHOLD_2,
-    _check_lockout,
-    _record_failure,
-)
 from app.auth.encryption import (
     decrypt_field,
     decrypt_sensitive_fields,
@@ -19,7 +13,6 @@ from app.auth.encryption import (
     encrypt_sensitive_fields,
     is_sensitive_key,
 )
-from spectra_api.authz import ROLE_PERMISSIONS, Permission, has_permission
 from app.auth.security import (
     _blacklisted_tokens,
     _user_token_blacklist,
@@ -27,6 +20,13 @@ from app.auth.security import (
     invalidate_token,
     is_token_blacklisted,
 )
+from spectra_api.api.routers.auth._helpers import (
+    LOCKOUT_THRESHOLD_1,
+    LOCKOUT_THRESHOLD_2,
+    _check_lockout,
+    _record_failure,
+)
+from spectra_api.authz import ROLE_PERMISSIONS, Permission, has_permission
 
 # --- RBAC Permission Tests ---
 

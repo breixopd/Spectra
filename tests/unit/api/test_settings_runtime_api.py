@@ -6,8 +6,8 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from spectra_api.api.dependencies import get_current_active_user
 from app.core.database import get_async_session
+from spectra_api.api.dependencies import get_current_active_user
 from spectra_api.services.system import settings_service as _svc
 from spectra_api.ui import pages as ui
 

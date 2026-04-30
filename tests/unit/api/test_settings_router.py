@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from spectra_api.api.dependencies import get_current_active_user
 from app.core.database import get_async_session
 from app.models.user import User
+from spectra_api.api.dependencies import get_current_active_user
 from spectra_api.ui.pages import router
 
 

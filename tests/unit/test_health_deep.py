@@ -6,13 +6,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import app.services.system.health as _health_module
-from spectra_api.api.routers.health import health_check, readiness_check, service_health
 from app.services.system.health import (
     _health_cache,
     _is_control_plane_health_url,
     collect_platform_health,
     probe_http_health,
 )
+from spectra_api.api.routers.health import health_check, readiness_check, service_health
 
 
 @pytest.fixture(autouse=True)
