@@ -180,7 +180,7 @@ cp .env.example .env
 alembic upgrade head
 
 # Start the development server
-uvicorn app.main:app --reload --port 5000
+uvicorn spectra_api.main:app --reload --port 5000
 ```
 
 ### Running tests

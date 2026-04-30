@@ -18,7 +18,7 @@ API_AUTH_PREFIX = "/api/v1/auth"
 @pytest_asyncio.fixture
 async def client():
     """Provide an async test client against the FastAPI app."""
-    from app.main import app
+    from spectra_api.main import app
 
     transport = ASGITransport(app=app)
     with (

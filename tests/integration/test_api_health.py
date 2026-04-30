@@ -13,7 +13,7 @@ from httpx import ASGITransport, AsyncClient
 async def client():
     """Provide an async test client against the FastAPI app."""
     # Lazy import so module-level side effects don't interfere with collection
-    from app.main import app
+    from spectra_api.main import app
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:

@@ -185,7 +185,7 @@ packages/
 └── tools-core/         # spectra_tools_core registry contracts
 
 services/
-├── api/                # spectra_api entry point for app.main
+├── api/                # `spectra_api` FastAPI bootstrap (`services/api/src/spectra_api/`); uvicorn `spectra_api.main:app`
 ├── ai/                 # spectra_ai HTTP service entry point
 ├── scheduler/          # spectra_scheduler background service entry point
 └── worker/             # spectra_worker job queue consumer

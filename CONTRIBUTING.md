@@ -107,7 +107,7 @@ docker compose -f docker/compose.yaml up -d
 alembic upgrade head
 
 # Start the dev server
-uvicorn app.main:app --reload --port 5000
+uvicorn spectra_api.main:app --reload --port 5000
 ```
 
 ## Architecture Overview
@@ -138,7 +138,7 @@ packages/
 └── tools-core/       # spectra_tools_core registry contracts
 
 services/
-├── api/              # spectra_api entry point for app.main
+├── api/              # `spectra_api` package (`services/api/`); uvicorn targets `spectra_api.main:app`
 ├── ai/               # spectra_ai HTTP service entry point
 ├── scheduler/        # spectra_scheduler background service entry point
 └── worker/           # spectra_worker job queue consumer

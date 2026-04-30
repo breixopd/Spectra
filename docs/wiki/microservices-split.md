@@ -112,7 +112,7 @@ The main service handling all user-facing functionality.
 
 | Attribute | Value |
 |-----------|-------|
-| **Source** | `app/main.py` with `SERVICE_MODE=api` |
+| **Source** | `services/api/src/spectra_api/` + `SERVICE_MODE=api` (`spectra_api.main:app`) |
 | **Dockerfile** | `docker/Dockerfile.api` |
 | **Requirements** | `requirements/app.txt` |
 | **Port** | 5000 |
