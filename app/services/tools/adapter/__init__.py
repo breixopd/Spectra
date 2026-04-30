@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 from app.services.tools.adapter.base import ToolAdapter, ToolExecutionError
 from app.services.tools.adapter.builder import CommandBuilder
-from app.services.tools.adapter.parser import OutputParser
+from app.services.tools.adapter.parser import UniversalParser
 from app.services.tools.models import (
     ToolConfig,
     ToolExecutionRequest,
@@ -34,8 +34,8 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "CommandBuilder",
     "CommandToolAdapter",
-    "OutputParser",
     "ToolExecutionError",
+    "UniversalParser",
     "create_adapter",
 ]
 
@@ -54,7 +54,7 @@ class CommandToolAdapter(ToolAdapter):
     def __init__(self, config: ToolConfig) -> None:
         super().__init__(config)
         self.builder = CommandBuilder(config)
-        self.parser = OutputParser(config)
+        self.parser = UniversalParser(config)
 
     def build_command(
         self,

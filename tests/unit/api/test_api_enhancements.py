@@ -134,7 +134,8 @@ class TestBulkUpdateSchema:
     """API-002: Bulk update schemas."""
 
     def test_bulk_update_request_schema(self):
-        from app.api.routers.findings import BulkUpdateRequest, FindingUpdate
+        from app.api.routers.findings.bulk import BulkUpdateRequest
+        from app.api.routers.findings.core import FindingUpdate
 
         req = BulkUpdateRequest(
             finding_ids=["id1", "id2"],
@@ -144,7 +145,7 @@ class TestBulkUpdateSchema:
         assert req.update.status == FindingStatus.VERIFIED
 
     def test_bulk_update_response_schema(self):
-        from app.api.routers.findings import BulkUpdateResponse
+        from app.api.routers.findings.bulk import BulkUpdateResponse
 
         resp = BulkUpdateResponse(updated=5)
         assert resp.updated == 5
@@ -176,7 +177,7 @@ class TestMissionFilterImports:
         assert any(r == "" or "/{mission_id}" in r for r in routes)
 
     def test_create_chain_request_schema(self):
-        from app.api.routers.missions import CreateChainRequest
+        from app.api.routers.missions.mission_catalog import CreateChainRequest
 
         req = CreateChainRequest(
             name="My Chain",

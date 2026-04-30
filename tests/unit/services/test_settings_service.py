@@ -1,7 +1,7 @@
 """Tests for app/services/system/settings_service.py.
 
-Uses sys.modules pre-population to break the circular import chain
-(settings_service → schemas → api.__init__ → routers → ui → settings_service).
+Uses sys.modules pre-population to break remaining circular imports via
+heavy ``app.api`` / router stubs where needed.
 """
 
 import sys
@@ -17,7 +17,6 @@ def _break_circular_import():
     stubs = {}
     for mod_name in (
         "app.api",
-        "app.api.schemas",
         "app.api.routers",
         "app.api.routers.ui",
     ):

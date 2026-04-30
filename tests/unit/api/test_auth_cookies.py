@@ -23,7 +23,7 @@ class TestLoginCookieAttributes:
     """Verify auth cookies are written with the expected header attributes."""
 
     def test_set_access_cookie_header_https(self):
-        from app.api.routers.auth import (
+        from app.api.routers.auth._helpers import (
             ACCESS_COOKIE_KEY,
             ACCESS_COOKIE_PATH,
             _set_auth_cookies,
@@ -43,7 +43,7 @@ class TestLoginCookieAttributes:
         assert "samesite=strict" in header.lower()
 
     def test_set_refresh_cookie_header_http(self):
-        from app.api.routers.auth import (
+        from app.api.routers.auth._helpers import (
             REFRESH_COOKIE_KEY,
             REFRESH_COOKIE_PATH,
             REFRESH_TOKEN_MAX_AGE,
@@ -63,7 +63,7 @@ class TestLoginCookieAttributes:
         assert "samesite=strict" in header.lower()
 
     def test_set_cookie_header_prefers_forwarded_proto(self):
-        from app.api.routers.auth import ACCESS_COOKIE_KEY, _set_auth_cookies
+        from app.api.routers.auth._helpers import ACCESS_COOKIE_KEY, _set_auth_cookies
 
         request = _make_request(
             "http",
@@ -80,7 +80,7 @@ class TestLogoutCookieClear:
     """Verify auth cookies are cleared with matching header attributes."""
 
     def test_clear_access_cookie_header_https(self):
-        from app.api.routers.auth import (
+        from app.api.routers.auth._helpers import (
             ACCESS_COOKIE_KEY,
             ACCESS_COOKIE_PATH,
             _clear_auth_cookies,
@@ -98,7 +98,7 @@ class TestLogoutCookieClear:
         assert "samesite=strict" in header.lower()
 
     def test_clear_refresh_cookie_header_http(self):
-        from app.api.routers.auth import (
+        from app.api.routers.auth._helpers import (
             REFRESH_COOKIE_KEY,
             REFRESH_COOKIE_PATH,
             _clear_auth_cookies,

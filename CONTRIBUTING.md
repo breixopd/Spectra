@@ -161,7 +161,7 @@ tests/                # Unit, integration, e2e, load tests
 
 ### Key patterns
 
-- **Repository pattern**: All database access goes through `app/repositories/`. Routers and services never query the DB directly (except legacy admin endpoints being migrated).
+- **Repository pattern**: All database access goes through `app/repositories/`. Routers and services never query the DB directly.
 - **Service layer**: Business logic lives in `app/services/`. Routers are thin — they validate input, call services, and format output.
 - **Dependency injection**: FastAPI's `Depends()` for database sessions, auth, and permissions.
 - **Plugin system**: Security tools are defined as JSON files in `plugins/`. The registry loads, validates, and manages them.
@@ -405,7 +405,7 @@ We will acknowledge receipt within 48 hours and provide a timeline for resolutio
 ### Adding a new API endpoint
 
 1. Add the route handler in the appropriate router under `app/api/routers/`
-2. Define request/response schemas in `app/api/schemas.py`
+2. Define request/response schemas under `app/api/schemas/` (or the router-local `schemas` module)
 3. Implement business logic in the relevant service
 4. Add database access through a repository if needed
 5. Add permission checks via `require_permission()`

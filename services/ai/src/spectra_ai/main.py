@@ -10,6 +10,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+
 from spectra_domain.ai import ChatRequest, ChatResponse, EmbeddingRequest, EmbeddingResponse, RAGRequest, RAGResponse
 
 logger = logging.getLogger(__name__)

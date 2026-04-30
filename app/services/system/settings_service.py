@@ -9,7 +9,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas import SettingsUpdate
+from app.api.schemas.system import SettingsUpdate
 from app.core.config import settings
 from app.services.system.runtime_settings import (
     hydrate_runtime_settings_from_db,

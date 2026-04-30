@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas import PaginatedResponse
+from app.api.schemas.common import PaginatedResponse
 from app.auth.rate_limit import RateLimits, limiter
 from app.auth.rbac import Permission, require_permission
 from app.core.config import settings

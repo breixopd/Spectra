@@ -30,7 +30,7 @@ docker compose up -d
 - Create your admin account at `/setup`
 - Configure your AI provider through the web UI
 
-The tools container auto-installs security tools on first boot.
+Tool binaries land in sandboxes via the golden-image pipeline and on-demand installs from plugin definitions — nothing bulk-installs all plugins at arbitrary container boot by default.
 
 ### Pre-commit Hooks
 
@@ -134,14 +134,16 @@ No project-specific linter config exists. CI runs `ruff check` and Bandit securi
 
 ### Type Checking
 
-Run `pyright` for static type analysis:
+CI runs **Pyright** in the `type-check` job (`pyright` at repo root after installing deps). Repo defaults are in `pyproject.toml` under `[tool.pyright]` (`typeCheckingMode = "off"`).
+
+Locally:
 
 ```bash
 pip install pyright
-pyright app/
+pyright
 ```
 
-Type checking is not enforced in CI but is recommended for new code. Use `from __future__ import annotations` at the top of new files for modern type hint syntax.
+Use `from __future__ import annotations` at the top of new files for modern type hint syntax.
 
 ---
 
@@ -235,7 +237,7 @@ config/                      # Build configs (tailwind, postcss)
 
 - Docker socket (`/var/run/docker.sock`) is mounted read-only into the app container
 - The app auto-runs Alembic migrations on startup
-- Tool plugins auto-install in sandbox containers on first boot
+- Sandboxes use golden images built from `plugins/*.json`; leftover installs are on-demand when a tool runs
 - `xhtml2pdf` requires system packages `libcairo2-dev`, `pkg-config`, `python3-dev`
 - Adding a new `.json` file to `plugins/` is all that is needed for a new tool
 - Human-in-the-loop tests: patch `settings.REQUIRE_APPROVAL` only when covering the env kill-switch branch

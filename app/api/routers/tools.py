@@ -27,7 +27,7 @@ from fastapi import (
 )
 
 from app.api.dependencies import get_current_active_user, get_current_superuser
-from app.api.schemas import (
+from app.api.schemas.tool import (
     CommandInfoResponse,
     InstallToolResponse,
     PluginUploadResponse,

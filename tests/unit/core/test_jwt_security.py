@@ -281,7 +281,7 @@ async def test_validate_websocket_token_rejects_user_invalidated_before():
 
 def test_login_response_sets_httponly_secure_cookie():
     """The auth helper writes both cookies with secure, strict headers."""
-    from app.api.routers.auth import (
+    from app.api.routers.auth._helpers import (
         ACCESS_COOKIE_KEY,
         REFRESH_COOKIE_KEY,
         _set_auth_cookies,
@@ -302,7 +302,7 @@ def test_login_response_sets_httponly_secure_cookie():
 
 def test_logout_deletes_cookie_with_secure_flags():
     """The auth helper clears both cookies with secure deletion headers."""
-    from app.api.routers.auth import (
+    from app.api.routers.auth._helpers import (
         ACCESS_COOKIE_PATH,
         REFRESH_COOKIE_PATH,
         _clear_auth_cookies,

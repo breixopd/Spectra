@@ -20,7 +20,3 @@ from app.api.routers.missions.mission_lifecycle import router as _lifecycle
 # preserves the original monolithic-file semantics exactly.
 for _sub in (_catalog, _core, _lifecycle, _export, _feedback, _artifacts):
     router.routes.extend(_sub.routes)
-
-# Re-export schemas used by tests for backward compatibility
-from app.api.routers.missions.feedback import SteerMissionRequest
-from app.api.routers.missions.mission_catalog import CreateChainRequest

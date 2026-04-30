@@ -19,4 +19,4 @@ async def init_script_services() -> RAGService:
     return rag
 
 
-__all__ = ["init_script_services", "get_registry"]
+__all__ = ["get_registry", "init_script_services"]

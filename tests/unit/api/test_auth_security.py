@@ -89,7 +89,7 @@ class TestLogoutRevokesRefreshToken:
 
     @pytest.mark.asyncio
     async def test_logout_sets_invalidated_before_on_user(self):
-        from app.api.routers.auth import logout
+        from app.api.routers.auth.login import logout
 
         token = create_access_token({"sub": "user-logout-invalidated"})
         user = MagicMock()
@@ -110,7 +110,7 @@ class TestLogoutRevokesRefreshToken:
     @pytest.mark.asyncio
     async def test_logout_blacklists_access_token(self):
         """logout calls invalidate_token, which places the token in the blacklist."""
-        from app.api.routers.auth import logout
+        from app.api.routers.auth.login import logout
 
         # Use a unique sub to guarantee a distinct token from other tests
         token = create_access_token({"sub": "user-logout-blacklist"})
@@ -129,7 +129,7 @@ class TestLogoutRevokesRefreshToken:
 
     @pytest.mark.asyncio
     async def test_logout_uses_access_token_cookie_when_bearer_missing(self):
-        from app.api.routers.auth import logout
+        from app.api.routers.auth.login import logout
 
         token = create_access_token({"sub": "user-logout-cookie"})
         user = MagicMock()
@@ -149,7 +149,7 @@ class TestLogoutRevokesRefreshToken:
     @pytest.mark.asyncio
     async def test_refresh_rejected_when_issued_before_invalidation(self):
         """Refresh token whose iat predates user.invalidated_before → 401."""
-        from app.api.routers.auth import refresh_token as refresh_endpoint
+        from app.api.routers.auth.login import refresh_token as refresh_endpoint
 
         rt = create_refresh_token({"sub": "bob"})
 
@@ -191,7 +191,7 @@ class TestMfaCancelBlocklist:
 
     @pytest.mark.asyncio
     async def test_cancel_mfa_blacklists_pending_token(self):
-        from app.api.routers.auth import cancel_mfa
+        from app.api.routers.auth.totp import cancel_mfa
 
         token = create_access_token(
             {"sub": "alice", "mfa_pending": True},
@@ -206,7 +206,7 @@ class TestMfaCancelBlocklist:
     @pytest.mark.asyncio
     async def test_cancel_mfa_does_not_blacklist_normal_token(self):
         """A regular access token (no mfa_pending) is not blacklisted by cancel."""
-        from app.api.routers.auth import cancel_mfa
+        from app.api.routers.auth.totp import cancel_mfa
 
         token = create_access_token({"sub": "alice"})
         request = _make_request({"authorization": f"Bearer {token}"})
@@ -218,7 +218,7 @@ class TestMfaCancelBlocklist:
     @pytest.mark.asyncio
     async def test_cancel_mfa_without_token_returns_204(self):
         """Missing Authorization header returns 204 without error."""
-        from app.api.routers.auth import cancel_mfa
+        from app.api.routers.auth.totp import cancel_mfa
 
         request = _make_request()
         result = await cancel_mfa.__wrapped__(request)

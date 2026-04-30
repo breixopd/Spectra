@@ -380,6 +380,3 @@ Extract all findings (services, vulnerabilities, credentials, etc.) as structure
 
         return result
 
-
-# Backwards compatibility alias
-OutputParser = UniversalParser

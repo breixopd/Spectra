@@ -274,11 +274,11 @@ class TestCommandBuilder:
             assert payload in command
 
 
-# --- OutputParser Tests ---
+# --- UniversalParser Tests ---
 
 
-class TestOutputParser:
-    """Tests for the OutputParser."""
+class TestUniversalParser:
+    """Tests for the UniversalParser."""
 
     @pytest.fixture
     def config(self):
@@ -286,9 +286,9 @@ class TestOutputParser:
 
     @pytest.fixture
     def parser(self, config):
-        from app.services.tools.adapter.parser import OutputParser
+        from app.services.tools.adapter.parser import UniversalParser
 
-        return OutputParser(config)
+        return UniversalParser(config)
 
     @pytest.mark.asyncio
     async def test_parse_json_output(self, parser):

@@ -26,7 +26,7 @@ from app.api.routers.auth._helpers import (
     _token_response_payload,
     _validate_refresh_token_payload,
 )
-from app.api.schemas import Token
+from app.api.schemas.auth import Token
 from app.auth.rate_limit import RateLimits, limiter
 from app.auth.security import (
     create_access_token,

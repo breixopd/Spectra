@@ -150,7 +150,7 @@ See [Configuration Guide](docs/wiki/configuration.md) for the full reference.
 
 ## API Overview
 
-All API endpoints are under `/api/v1/` with a deprecated alias at `/api/`.
+Versioned REST endpoints are under `/api/v1/`. `/api/` is reserved for non-versioned routes (for example `/api/health` for probes), not a mirror of `/api/v1/`.
 
 | Endpoint Group | Path                | Description                       |
 | -------------- | ------------------- | --------------------------------- |
@@ -238,7 +238,7 @@ Full documentation is in the [Wiki](docs/wiki/home.md):
 | Pentest Workflow | [docs/wiki/pentest-workflow.md](docs/wiki/pentest-workflow.md) |
 | Sandboxes        | [docs/wiki/sandboxes.md](docs/wiki/sandboxes.md)               |
 | Security         | [docs/wiki/security.md](docs/wiki/security.md)                 |
-| Authentication   | [docs/wiki/authentication.md](docs/wiki/authentication.md)     |
+| Authentication   | [docs/wiki/security.md#authentication](docs/wiki/security.md#authentication) |
 | Worker System    | [docs/wiki/worker-system.md](docs/wiki/worker-system.md)       |
 | Deployment Guide | [docs/wiki/deployment-guide.md](docs/wiki/deployment-guide.md) |
 | Development      | [docs/wiki/development.md](docs/wiki/development.md)           |

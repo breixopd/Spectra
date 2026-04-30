@@ -54,7 +54,7 @@ async def test_delete_account_wrong_password(mock_user, mock_session):
     """Should return 400 when password is incorrect."""
     from fastapi import HTTPException
 
-    from app.api.routers.auth import delete_account
+    from app.api.routers.auth.session import delete_account
 
     body = DeleteAccountRequest(password="wrongpass")
     request = MagicMock()
@@ -78,7 +78,7 @@ async def test_delete_account_last_superuser_blocked(mock_user, mock_session):
     """Should return 400 when trying to delete the last superuser."""
     from fastapi import HTTPException
 
-    from app.api.routers.auth import delete_account
+    from app.api.routers.auth.session import delete_account
 
     mock_user.is_superuser = True
     body = DeleteAccountRequest(password="correct")
@@ -106,7 +106,7 @@ async def test_delete_account_last_superuser_blocked(mock_user, mock_session):
 @pytest.mark.asyncio
 async def test_delete_account_success(mock_user, mock_session):
     """Should delete user and return success message."""
-    from app.api.routers.auth import delete_account
+    from app.api.routers.auth.session import delete_account
 
     body = DeleteAccountRequest(password="correct")
     request = MagicMock()
@@ -132,7 +132,7 @@ async def test_delete_account_success(mock_user, mock_session):
 @pytest.mark.asyncio
 async def test_delete_account_superuser_with_others_succeeds(mock_user, mock_session):
     """Superuser deletion should succeed when other superusers exist."""
-    from app.api.routers.auth import delete_account
+    from app.api.routers.auth.session import delete_account
 
     mock_user.is_superuser = True
     body = DeleteAccountRequest(password="correct")

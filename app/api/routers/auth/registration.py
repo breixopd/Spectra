@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas import SystemSetupRequest, UserResponse
+from app.api.schemas.auth import UserResponse
+from app.api.schemas.system import SystemSetupRequest
 from app.auth.rate_limit import RateLimits, limiter
 from app.core.database import get_async_session
 from app.models.user import User

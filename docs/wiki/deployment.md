@@ -91,7 +91,7 @@ The AI service can also be scaled for high LLM throughput. The scheduler should 
 |---------|-------|---------|
 | **db** | `pgvector/pgvector:pg16` | PostgreSQL + pgvector (persistent state, PostgreSQL-backed app cache, job queue, LISTEN/NOTIFY backbone, RAG) |
 | **redis** | `redis:7-alpine` | Shared distributed rate-limiting backend |
-| **caddy** | `caddy:2-alpine` | Reverse proxy — TLS, security headers, WebSocket |
+| **caddy** | `ghcr.io/breixopd14/spectra-caddy` | Custom Caddy image from `docker/Dockerfile.caddy` (TLS, security headers, WebSocket, bundled rate-limit module) |
 | **app** | `ghcr.io/breixopd14/spectra-app` | FastAPI backend (internal port 5000) |
 | **ai-svc** | `ghcr.io/breixopd14/spectra-ai-svc` | AI/LLM service (internal port 5010) |
 | **scheduler** | `ghcr.io/breixopd14/spectra-scheduler` | Background tasks (internal port 5011) |
@@ -317,11 +317,15 @@ Triggered on every push/PR to `main` or `develop`.
 
 | Job | Purpose |
 |-----|---------|
-| **lint** | `ruff check` on app code |
-| **test** | Containerized validation (`docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner`) |
+| **lint** | `ruff check` + import boundary check in Docker |
+| **type-check** | Pyright (`pyright`) on app/services/packages |
+| **test** | Unit tests + coverage + settings runner in Docker |
+| **integration-test** | Integration pytest suite in Docker (Garage bootstrapped) |
 | **security** | Bandit security scan (HIGH severity gate) |
-| **docker-build** | Builds runtime images and validates both Compose and Swarm config with `.env.example` |
-| **deps** | Dependency audit |
+| **docker-build** | Builds runtime images, Trivy CRITICAL gate on images, validates Compose + Swarm config |
+| **deps** | `pip-audit` dependency audit |
+| **version-check** | Verifies version metadata in `app/_meta/version.py` |
+| **compose-smoke** | Push-only: full compose stack + selected e2e/health/performance smoke tests |
 
 ### `release.yml` — Build, Push & Deploy
 

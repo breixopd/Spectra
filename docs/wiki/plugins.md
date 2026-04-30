@@ -13,7 +13,7 @@ Spectra uses a **Dynamic Plugin System** to integrate security tools. Each tool 
 - **Hot Loading**: Drop a `.json` file into `plugins/` to instantly register a new tool
 - **AI-Driven Selection**: Rich metadata helps the AI choose the right tool for each situation
 - **Stealth Profiles**: Per-tool configurations for stealthy operation
-- **Auto-Installation**: Tools are installed in sandbox containers on first boot
+- **Golden image**: Plugin `installation` blocks drive rebuilds of `spectra-tools:latest`; changing plugins emits `PLUGIN_UPDATED` and regenerates the Dockerfile layers from `plugins/*.json`
 
 ---
 
@@ -316,5 +316,5 @@ Spectra ships with 25+ tool plugins:
 ### Adding a New Tool
 
 1. Create `plugins/my-tool.json` following the schema above.
-2. Restart or reload the registry: `docker compose restart tools app`.
-3. The tool appears in the registry. Installation is on-demand from the admin UI/API or first execution in the tools container.
+2. Restart app/worker or reload plugins via the API so the registry picks up the file; golden-image rebuild follows plugin updates.
+3. The tool appears in the registry. Execution installs into sandboxes as needed (see [Sandboxes](sandboxes.md#golden-image-system)).

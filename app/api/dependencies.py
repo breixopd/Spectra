@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 logger = __import__("logging").getLogger(__name__)
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token", auto_error=False)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)
 
 
 def validate_uuid_param(value: str, param_name: str = "id") -> str:

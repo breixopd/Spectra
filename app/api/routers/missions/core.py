@@ -15,12 +15,8 @@ from app.api.dependencies import (
     validate_uuid_param,
     verify_api_quota_for_user,
 )
-from app.api.schemas import (
-    MissionFindingSummary,
-    MissionResponse,
-    PaginatedResponse,
-    StartMissionRequest,
-)
+from app.api.schemas.common import PaginatedResponse
+from app.api.schemas.mission import MissionFindingSummary, MissionResponse, StartMissionRequest
 from app.auth.rate_limit import RateLimits, limiter
 from app.auth.rbac import Permission, require_permission
 from app.core.database import get_async_session

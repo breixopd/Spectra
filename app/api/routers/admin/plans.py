@@ -8,11 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas import (
-    PlanCreate,
-    PlanResponse,
-    PlanUpdate,
-)
+from app.api.schemas.system import PlanCreate, PlanResponse, PlanUpdate
 from app.auth.rbac import Permission, require_permission
 from app.core.database import get_async_session
 from app.models.audit_log import AuditEventType
