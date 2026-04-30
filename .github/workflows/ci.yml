@@ -187,6 +187,8 @@ jobs:
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+      - name: Free Docker cache after API scan
+        run: docker rmi spectra-api:ci || true; docker builder prune -af || true; docker system prune -f || true
       - name: Scan AI image for critical CVEs
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
@@ -194,6 +196,8 @@ jobs:
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+      - name: Free Docker cache after AI scan
+        run: docker rmi spectra-ai:ci || true; docker builder prune -af || true; docker system prune -f || true
       - name: Scan scheduler image for critical CVEs
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
@@ -201,6 +205,8 @@ jobs:
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+      - name: Free Docker cache after scheduler scan
+        run: docker rmi spectra-scheduler:ci || true; docker builder prune -af || true; docker system prune -f || true
       - name: Scan worker image for critical CVEs
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
@@ -208,6 +214,8 @@ jobs:
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+      - name: Free Docker cache after worker scan
+        run: docker rmi spectra-worker:ci || true; docker builder prune -af || true; docker system prune -f || true
       - name: Scan Caddy image for critical CVEs
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
