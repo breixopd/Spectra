@@ -53,18 +53,18 @@ from app.infrastructure.events import EventType, events
 from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.services.system.audit import log_event as audit_log_event
-from app.services.tools.models import (
-    RegisteredTool,
-    ToolCategory,
-    ToolConfig,
-    ToolStatus,
-)
 from app.services.tools.registry import (
     PluginValidationError,
     ToolRegistry,
     get_registry,
 )
 from spectra_domain.jobs import WorkerJobName
+from spectra_tools_core.models import (
+    RegisteredTool,
+    ToolCategory,
+    ToolConfig,
+    ToolStatus,
+)
 
 logger = logging.getLogger(__name__)
 

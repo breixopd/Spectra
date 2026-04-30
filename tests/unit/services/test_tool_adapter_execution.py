@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.services.tools.adapter import CommandToolAdapter
-from app.services.tools.models import (
+from spectra_tools_core.models import (
     ToolExecutionRequest,
 )
 

@@ -15,16 +15,19 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from app.services.tools.adapter.base import ToolAdapter, ToolExecutionError
-from app.services.tools.adapter.builder import CommandBuilder
-from app.services.tools.adapter.parser import UniversalParser
-from app.services.tools.models import (
+from app.telemetry.telemetry import record_tool_execution
+from spectra_common.constants import MAX_HOSTS_DEFAULT
+from spectra_tools_core.adapter import (
+    CommandBuilder,
+    ToolAdapter,
+    ToolExecutionError,
+    UniversalParser,
+)
+from spectra_tools_core.models import (
     ToolConfig,
     ToolExecutionRequest,
     ToolExecutionResult,
 )
-from app.telemetry.telemetry import record_tool_execution
-from spectra_common.constants import MAX_HOSTS_DEFAULT
 
 if TYPE_CHECKING:
     pass

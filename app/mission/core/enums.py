@@ -7,6 +7,13 @@ Follows the DRY (Don't Repeat Yourself) principle.
 
 from enum import StrEnum
 
+__all__ = [
+    "AssessmentPhase",
+    "EntityStatus",
+    "MissionStatus",
+    "Severity",
+]
+
 
 class AssessmentPhase(StrEnum):
     """
@@ -75,20 +82,3 @@ class Severity(StrEnum):
     MEDIUM = "medium"
     LOW = "low"
     INFO = "info"
-
-
-class RiskLevel(StrEnum):
-    """
-    Risk level for actions and operations.
-
-    Used by:
-    - Agent actions
-    - Tool risk assessment
-    - Consensus voting thresholds
-    """
-
-    PASSIVE = "passive"
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"

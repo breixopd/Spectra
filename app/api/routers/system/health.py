@@ -15,8 +15,8 @@ from app.auth.rate_limit import limiter
 from app.core.database import get_async_session
 from app.models.user import User
 from app.services.system.health import collect_platform_health
-from app.services.tools.models import ToolStatus
 from app.services.tools.registry import ToolRegistry
+from spectra_tools_core.models import ToolStatus
 
 from .schemas import (
     ComponentStatus,

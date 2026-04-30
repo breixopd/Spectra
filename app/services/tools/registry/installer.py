@@ -2,19 +2,19 @@ import logging
 import re
 from typing import TYPE_CHECKING, Any
 
-from app.services.tools.models import (
+from app.services.tools.registry.executor import run_command_safe
+from spectra_tools_core.models import (
     InstallationMethod,
     ToolConfig,
     ToolStatus,
 )
-from app.services.tools.registry.executor import run_command_safe
 from spectra_tools_core.registry_constants import MAX_OUTPUT_SIZE, MAX_REGEX_LENGTH
 from spectra_tools_core.registry_exceptions import PluginInstallationError
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
-    from app.services.tools.models import RegisteredTool
+    from spectra_tools_core.models import RegisteredTool
 
 logger = logging.getLogger(__name__)
 

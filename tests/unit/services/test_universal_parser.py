@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.services.tools.adapter.parser import UniversalParser
-from app.services.tools.models import OutputFormat
+from spectra_tools_core.adapter.parser import UniversalParser
+from spectra_tools_core.models import OutputFormat
 
 # ---------------------------------------------------------------------------
 # Helpers

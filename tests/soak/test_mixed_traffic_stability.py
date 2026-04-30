@@ -94,7 +94,7 @@ async def test_mixed_traffic_soak_stays_within_error_budget() -> None:
                 total_operations += 1
                 worker_runs += 1
                 worker_response = await app_client.post(
-                    f"/api/tools/{worker_tool}/test",
+                    f"/api/v1/tools/{worker_tool}/test",
                     headers=auth_headers,
                     json={
                         "target": worker_target,

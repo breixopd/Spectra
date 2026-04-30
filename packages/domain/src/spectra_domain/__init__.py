@@ -8,6 +8,7 @@ from spectra_domain.ai import (
     RAGRequest,
     RAGResponse,
 )
+from spectra_domain.enums import RiskLevel
 from spectra_domain.jobs import WorkerJobName
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "EmbeddingResponse",
     "RAGRequest",
     "RAGResponse",
+    "RiskLevel",
     "WorkerJobName",
 ]

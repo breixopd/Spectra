@@ -6,7 +6,7 @@ import asyncio
 import logging
 import os
 
-from app.services.tools.models import ToolStatus
+from spectra_tools_core.models import ToolStatus
 
 from .helpers import _is_tool_installed, _sync_tool_status
 

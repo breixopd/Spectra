@@ -6,7 +6,7 @@ from app.services.ai.agents.base import AgentContext
 from app.services.ai.agents.tool_selector import (
     ToolSelectorAgent,
 )
-from app.services.tools.models import (
+from spectra_tools_core.models import (
     RegisteredTool,
     ToolCapability,
     ToolCategory,

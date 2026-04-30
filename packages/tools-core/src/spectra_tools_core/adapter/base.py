@@ -4,7 +4,7 @@ import logging
 from abc import ABC
 from pathlib import Path
 
-from app.services.tools.models import (
+from spectra_tools_core.models import (
     ToolConfig,
     ToolExecutionRequest,
 )
@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 class ToolExecutionError(Exception):
     """Raised when tool execution fails."""
-
 
 
 class ToolAdapter(ABC):

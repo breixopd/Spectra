@@ -8,6 +8,7 @@ dependencies = [
     "spectra-domain",
     "jsonschema",
     "defusedxml",
+    "pydantic",
 ]
 
 [build-system]

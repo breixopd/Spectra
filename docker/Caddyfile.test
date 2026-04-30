@@ -33,7 +33,7 @@ import Caddyfile.snippets
 		rate_limit {
 			zone setup_status_edge {
 				match {
-					path /api/v1/auth/setup-status
+					path /api/v1/auth/setup/status
 				}
 				key {remote_host}
 				events 10000

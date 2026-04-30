@@ -5,9 +5,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from app.services.tools.models import ToolExecutionResult
 from app.services.tools.output import create_error_result
 from spectra_domain.jobs import WorkerJobName
+from spectra_tools_core.models import ToolExecutionResult
 
 logger = logging.getLogger(__name__)
 
@@ -117,8 +117,8 @@ async def ensure_tool_installed(tool_id: str, install_timeout: int) -> bool:
         result = await job.result(timeout=install_timeout)
 
         if result and result.get("status") == "success":
-            from app.services.tools.models import ToolStatus
             from app.services.tools.registry import get_registry
+            from spectra_tools_core.models import ToolStatus
 
             registry = get_registry()
             tool = registry.get_tool(tool_id)

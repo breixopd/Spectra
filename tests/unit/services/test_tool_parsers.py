@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
 
-from app.services.tools.parsers import parse_nmap_xml, xml_to_dict
+from spectra_tools_core.parsers import parse_nmap_xml, xml_to_dict
 
 
 def test_xml_to_dict_simple():

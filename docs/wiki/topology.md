@@ -221,7 +221,7 @@ sequenceDiagram
     participant AI as AI Service
     participant WS as WebSocket
 
-    User->>Caddy: POST /api/missions (HTTPS)
+    User->>Caddy: POST /api/v1/missions (HTTPS)
     Caddy->>App: Forward request
     App->>PG: INSERT mission + job_queue
     App->>User: 202 Accepted (mission_id)

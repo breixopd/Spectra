@@ -13,7 +13,7 @@ from app.infrastructure.paths import data_path
 
 if TYPE_CHECKING:
     from app.services.mission.mission import Mission
-    from app.services.tools.models import ToolExecutionResult
+    from spectra_tools_core.models import ToolExecutionResult
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +99,7 @@ def cleanup_mission_workspace(mission_id: str) -> None:
 
 
 def create_error_result(tool_id: str, target: str, error: str) -> ToolExecutionResult:
-    from app.services.tools.models import ToolExecutionResult as _TER
+    from spectra_tools_core.models import ToolExecutionResult as _TER
 
     return _TER(
         tool_id=tool_id,

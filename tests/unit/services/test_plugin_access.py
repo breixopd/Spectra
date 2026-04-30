@@ -207,7 +207,7 @@ class TestPluginReadAccess:
     """Regular users can list plugins (get_current_active_user, not superuser)."""
 
     def test_list_tools_endpoint_does_not_require_superuser(self):
-        """The GET /api/tools/ route uses get_current_active_user, not get_current_superuser."""
+        """The GET /api/v1/tools/ route uses get_current_active_user, not get_current_superuser."""
         from app.api.routers.tools import router
 
         # The route path is "/tools" (prefix) with path "" → full path "/tools"
@@ -216,7 +216,7 @@ class TestPluginReadAccess:
             for r in router.routes
             if "GET" in getattr(r, "methods", set()) and getattr(r, "path", "").rstrip("/") in ("", "/tools")
         ]
-        assert list_routes, "No GET /api/tools route found"
+        assert list_routes, "No GET /api/v1/tools route found"
 
         route = list_routes[0]
         dep_names = [getattr(d.call, "__name__", str(d.call)) for d in route.dependant.dependencies]  # type: ignore[union-attr]

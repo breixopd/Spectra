@@ -68,7 +68,7 @@ async def test_list_snapshots_as_admin(mock_get_all):
     _override_deps(app, _fake_user("admin"), mock_session)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.get("/rollback/snapshots")
+        resp = await client.get("/api/admin/rollback/snapshots")
 
     assert resp.status_code == 200
     data = resp.json()
@@ -85,7 +85,7 @@ async def test_list_snapshots_as_user_forbidden():
     _override_deps(app, _fake_user("user"), mock_session)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.get("/rollback/snapshots")
+        resp = await client.get("/api/admin/rollback/snapshots")
 
     assert resp.status_code == 403
 
@@ -97,7 +97,7 @@ async def test_list_snapshots_as_operator_forbidden():
     _override_deps(app, _fake_user("user"), mock_session)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.get("/rollback/snapshots")
+        resp = await client.get("/api/admin/rollback/snapshots")
 
     assert resp.status_code == 403
 
@@ -112,7 +112,7 @@ async def test_apply_rollback_success(mock_rollback):
     _override_deps(app, _fake_user("admin"), mock_session)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.post("/rollback/snapshots/snap-1/rollback")
+        resp = await client.post("/api/admin/rollback/snapshots/snap-1/rollback")
 
     assert resp.status_code == 200
     body = resp.json()
@@ -131,7 +131,7 @@ async def test_apply_rollback_value_error(mock_rollback):
     _override_deps(app, _fake_user("admin"), mock_session)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.post("/rollback/snapshots/snap-bad/rollback")
+        resp = await client.post("/api/admin/rollback/snapshots/snap-bad/rollback")
 
     assert resp.status_code == 409
     assert "cannot recreate" in resp.json()["detail"].lower()
@@ -147,7 +147,7 @@ async def test_apply_rollback_unexpected_error(mock_rollback):
     _override_deps(app, _fake_user("admin"), mock_session)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.post("/rollback/snapshots/snap-1/rollback")
+        resp = await client.post("/api/admin/rollback/snapshots/snap-1/rollback")
 
     assert resp.status_code == 500
 
@@ -159,7 +159,7 @@ async def test_apply_rollback_without_admin_forbidden():
     _override_deps(app, _fake_user("user"), mock_session)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.post("/rollback/snapshots/snap-1/rollback")
+        resp = await client.post("/api/admin/rollback/snapshots/snap-1/rollback")
 
     assert resp.status_code == 403
 
@@ -174,7 +174,7 @@ async def test_list_snapshots_custom_limit(mock_get_all):
     _override_deps(app, _fake_user("admin"), mock_session)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.get("/rollback/snapshots?limit=10")
+        resp = await client.get("/api/admin/rollback/snapshots?limit=10")
 
     assert resp.status_code == 200
     mock_get_all.assert_awaited_once_with(mock_session, limit=10)
@@ -192,7 +192,7 @@ async def test_list_snapshots_marks_remote_stripe_restore_as_non_restorable(mock
     _override_deps(app, _fake_user("admin"), mock_session)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.get("/rollback/snapshots")
+        resp = await client.get("/api/admin/rollback/snapshots")
 
     assert resp.status_code == 200
     body = resp.json()
@@ -222,7 +222,7 @@ async def test_list_snapshots_limit_exceeds_max():
     _override_deps(app, _fake_user("admin"), mock_session)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.get("/rollback/snapshots?limit=999")
+        resp = await client.get("/api/admin/rollback/snapshots?limit=999")
 
     assert resp.status_code == 422
 

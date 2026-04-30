@@ -11,13 +11,13 @@ from app.services.ai.agents.base import (
 from app.services.ai.agents.mission_controller import AssessmentPhase, Task
 from app.services.mission.executor import MissionExecutor
 from app.services.mission.mission import Mission
-from app.services.tools.models import (
+from app.services.tools.registry import RegisteredTool, ToolRegistry
+from spectra_tools_core.models import (
     ExecutionConfig,
     ToolCategory,
     ToolConfig,
     ToolStatus,
 )
-from app.services.tools.registry import RegisteredTool, ToolRegistry
 
 # --- Dummy Tool Config ---
 DUMMY_TOOL_CONFIG = ToolConfig(

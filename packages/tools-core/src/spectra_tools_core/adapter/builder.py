@@ -6,7 +6,7 @@ import shlex
 from pathlib import Path
 from typing import Any
 
-from app.services.tools.models import ToolConfig, ToolExecutionRequest
+from spectra_tools_core.models import ToolConfig, ToolExecutionRequest
 
 logger = logging.getLogger(__name__)
 

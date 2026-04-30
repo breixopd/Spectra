@@ -279,7 +279,8 @@ async def get_target_findings(
     await _get_owned_target_or_404(target_repo, target_id, _current_user)
 
     finding_repo = FindingRepository(db)
-    findings = await finding_repo.find_many_by(target_id=target_id)
+    scope_user_id = None if _current_user.is_superuser else str(_current_user.id)
+    findings = await finding_repo.find_by_target(target_id=target_id, user_id=scope_user_id)
 
     return [
         FindingResponse(

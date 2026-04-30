@@ -204,3 +204,43 @@ class TestDeleteTarget:
             resp = await ac.delete("/api/v1/targets/00000000-0000-4000-a000-100000000099")
 
         assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+class TestTargetFindings:
+    async def test_list_findings_scoped_to_current_user(self, client):
+        ac, _session, _user = client
+        from app.repositories.finding import FindingRepository
+        from app.repositories.target import TargetRepository
+
+        target = _fake_target()
+        mock_find = AsyncMock(return_value=[])
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=target))
+            mp.setattr(FindingRepository, "find_by_target", mock_find)
+            resp = await ac.get("/api/v1/targets/00000000-0000-4000-a000-100000000001/findings")
+
+        assert resp.status_code == 200
+        mock_find.assert_awaited_once()
+        assert mock_find.await_args.kwargs["target_id"] == "00000000-0000-4000-a000-100000000001"
+        assert mock_find.await_args.kwargs["user_id"] == str(_user.id)
+
+    async def test_superuser_list_findings_passes_no_user_filter(self, client):
+        ac, _session, _user = client
+        _user.is_superuser = True
+        from app.repositories.finding import FindingRepository
+        from app.repositories.target import TargetRepository
+
+        target = _fake_target()
+        mock_find = AsyncMock(return_value=[])
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=target))
+            mp.setattr(FindingRepository, "find_by_target", mock_find)
+            resp = await ac.get("/api/v1/targets/00000000-0000-4000-a000-100000000001/findings")
+
+        assert resp.status_code == 200
+        mock_find.assert_awaited_once()
+        assert mock_find.await_args.kwargs["target_id"] == "00000000-0000-4000-a000-100000000001"
+        assert mock_find.await_args.kwargs["user_id"] is None

@@ -5,9 +5,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.services.tools.models import RegisteredTool, ToolStatus
 from app.services.tools.registry.loader import PluginLoader
 from app.services.tools.registry.validator import PluginValidator
+from spectra_tools_core.models import RegisteredTool, ToolStatus
 
 
 def _minimal_plugin(plugin_id: str = "test-tool", **overrides) -> dict:

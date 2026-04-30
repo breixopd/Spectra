@@ -16,18 +16,18 @@ from pathlib import Path
 import pytest
 
 from app.services.tools.adapter import CommandToolAdapter
-from app.services.tools.models import (
+from app.services.tools.registry import get_registry, initialize_registry
+from spectra_domain.enums import RiskLevel
+from spectra_tools_core.models import (
     ExecutionConfig,
     OutputFormat,
     ParsingConfig,
-    RiskLevel,
     ToolCapability,
     ToolCategory,
     ToolConfig,
     ToolExecutionRequest,
     ToolMetadata,
 )
-from app.services.tools.registry import get_registry, initialize_registry
 
 pytestmark = [
     pytest.mark.e2e,
@@ -417,7 +417,7 @@ class TestToolIntegrationWithMission:
 
     async def test_findings_parsed_from_tool_output(self):
         """Test that findings are extracted from tool output."""
-        from app.services.tools.models import OutputFormat
+        from spectra_tools_core.models import OutputFormat
 
         # Create a config that mimics nuclei output
         config = ToolConfig(

@@ -20,7 +20,6 @@ from app.services.ai.agents.safety import SafetySupervisorAgent
 from app.services.ai.consensus import VotingSystem
 from app.services.tools.consensus import perform_consensus_check
 from app.services.tools.dispatch import build_execution_request, dispatch_and_process_result
-from app.services.tools.models import ToolExecutionResult
 from app.services.tools.output import (
     create_error_result,
     normalize_tool_name,
@@ -44,6 +43,7 @@ from spectra_common.constants import (
     TOOL_MAX_STDOUT_CHARS,
 )
 from spectra_domain.jobs import WorkerJobName
+from spectra_tools_core.models import ToolExecutionResult
 
 if TYPE_CHECKING:
     from app.services.ai.llm import LLMClient

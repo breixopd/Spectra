@@ -75,6 +75,18 @@ ignore = [
 # `import docker` must precede `from docker.errors` (docker-py); isort I001 reorders unsafely.
 "app/services/scaling/docker_client.py" = ["I001"]
 
+[tool.ruff.lint.isort]
+known-first-party = [
+    "app",
+    "scripts",
+    "spectra_ai",
+    "spectra_common",
+    "spectra_domain",
+    "spectra_scheduler",
+    "spectra_tools_core",
+    "spectra_worker",
+]
+
 [tool.pyright]
 pythonVersion = "3.11"
 typeCheckingMode = "off"

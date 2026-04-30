@@ -65,26 +65,26 @@ Rate-limited with IP-based lockout after repeated failures.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/missions` | Create and start a new mission |
-| GET | `/api/missions` | List all missions |
-| GET | `/api/missions/presets` | List mission presets |
-| GET | `/api/missions/attack-summary` | Global attack summary across missions |
-| GET | `/api/missions/adversary-playbooks` | List adversary playbooks |
-| GET | `/api/missions/adversary-playbooks/{id}` | Get playbook details |
-| GET | `/api/missions/exploit-chains` | List exploit chains |
-| POST | `/api/missions/exploit-chains` | Create exploit chain |
-| GET | `/api/missions/{id}` | Get mission details |
-| POST | `/api/missions/{id}/stop` | Stop a running mission |
-| POST | `/api/missions/{id}/pause` | Pause a mission |
-| POST | `/api/missions/{id}/resume` | Resume a paused mission |
-| POST | `/api/missions/{id}/steer` | Steer a running mission (modify objectives) |
-| GET | `/api/missions/{id}/progress` | Get mission progress |
-| GET | `/api/missions/{id}/task-tree` | Get mission task tree |
-| GET | `/api/missions/{id}/diff/{other_id}` | Compare two missions |
-| GET | `/api/missions/{id}/report/pdf` | Download PDF report |
-| GET | `/api/missions/{id}/export/json` | Export mission as JSON |
+| POST | `/api/v1/missions` | Create and start a new mission |
+| GET | `/api/v1/missions` | List all missions |
+| GET | `/api/v1/missions/presets` | List mission presets |
+| GET | `/api/v1/missions/attack-summary` | Global attack summary across missions |
+| GET | `/api/v1/missions/adversary-playbooks` | List adversary playbooks |
+| GET | `/api/v1/missions/adversary-playbooks/{id}` | Get playbook details |
+| GET | `/api/v1/missions/exploit-chains` | List exploit chains |
+| POST | `/api/v1/missions/exploit-chains` | Create exploit chain |
+| GET | `/api/v1/missions/{id}` | Get mission details |
+| POST | `/api/v1/missions/{id}/stop` | Stop a running mission |
+| POST | `/api/v1/missions/{id}/pause` | Pause a mission |
+| POST | `/api/v1/missions/{id}/resume` | Resume a paused mission |
+| POST | `/api/v1/missions/{id}/steer` | Steer a running mission (modify objectives) |
+| GET | `/api/v1/missions/{id}/progress` | Get mission progress |
+| GET | `/api/v1/missions/{id}/task-tree` | Get mission task tree |
+| GET | `/api/v1/missions/{id}/diff/{other_id}` | Compare two missions |
+| GET | `/api/v1/missions/{id}/report/pdf` | Download PDF report |
+| GET | `/api/v1/missions/{id}/export/json` | Export mission as JSON |
 
-### POST `/api/missions`
+### POST `/api/v1/missions`
 
 ```json
 {
@@ -93,7 +93,7 @@ Rate-limited with IP-based lockout after repeated failures.
 }
 ```
 
-### POST `/api/missions/{id}/steer`
+### POST `/api/v1/missions/{id}/steer`
 
 ```json
 {
@@ -107,14 +107,14 @@ Rate-limited with IP-based lockout after repeated failures.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/targets` | Add a target |
-| GET | `/api/targets` | List all targets |
-| GET | `/api/targets/{id}` | Get target details |
-| PATCH | `/api/targets/{id}` | Update target |
-| DELETE | `/api/targets/{id}` | Delete a target |
-| GET | `/api/targets/{id}/findings` | Get findings for a target |
-| POST | `/api/targets/bulk-import` | Import multiple targets |
-| POST | `/api/targets/bulk-delete` | Delete multiple targets |
+| POST | `/api/v1/targets` | Add a target |
+| GET | `/api/v1/targets` | List all targets |
+| GET | `/api/v1/targets/{id}` | Get target details |
+| PATCH | `/api/v1/targets/{id}` | Update target |
+| DELETE | `/api/v1/targets/{id}` | Delete a target |
+| GET | `/api/v1/targets/{id}/findings` | Get findings for a target |
+| POST | `/api/v1/targets/bulk-import` | Import multiple targets |
+| POST | `/api/v1/targets/bulk-delete` | Delete multiple targets |
 
 ---
 
@@ -122,19 +122,19 @@ Rate-limited with IP-based lockout after repeated failures.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/findings` | Create a finding |
-| GET | `/api/findings` | List findings (filterable) |
-| GET | `/api/findings/{id}` | Get finding details |
-| PATCH | `/api/findings/{id}` | Update a finding |
-| DELETE | `/api/findings/{id}` | Delete a finding |
-| POST | `/api/findings/{id}/verify` | Mark finding as verified |
-| POST | `/api/findings/{id}/confirm` | Confirm a finding |
-| POST | `/api/findings/{id}/dismiss` | Dismiss a finding |
-| POST | `/api/findings/{id}/false-positive` | Mark as false positive |
-| POST | `/api/findings/{id}/retest` | Queue finding for retest |
-| POST | `/api/findings/bulk-update` | Bulk update findings |
-| GET | `/api/findings/export/csv` | Export findings as CSV |
-| GET | `/api/findings/export/json` | Export findings as JSON |
+| POST | `/api/v1/findings` | Create a finding |
+| GET | `/api/v1/findings` | List findings (filterable) |
+| GET | `/api/v1/findings/{id}` | Get finding details |
+| PATCH | `/api/v1/findings/{id}` | Update a finding |
+| DELETE | `/api/v1/findings/{id}` | Delete a finding |
+| POST | `/api/v1/findings/{id}/verify` | Mark finding as verified |
+| POST | `/api/v1/findings/{id}/confirm` | Confirm a finding |
+| POST | `/api/v1/findings/{id}/dismiss` | Dismiss a finding |
+| POST | `/api/v1/findings/{id}/false-positive` | Mark as false positive |
+| POST | `/api/v1/findings/{id}/retest` | Queue finding for retest |
+| POST | `/api/v1/findings/bulk-update` | Bulk update findings |
+| GET | `/api/v1/findings/export/csv` | Export findings as CSV |
+| GET | `/api/v1/findings/export/json` | Export findings as JSON |
 
 ---
 
@@ -142,19 +142,19 @@ Rate-limited with IP-based lockout after repeated failures.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/tools` | List all registered tools |
-| GET | `/api/tools/available` | List installed/available tools |
-| GET | `/api/tools/for-ai` | Tool list formatted for AI agents |
-| GET | `/api/tools/{id}` | Get tool details |
-| GET | `/api/tools/{id}/config` | Get tool configuration |
-| POST | `/api/tools/{id}/test` | Test-run a tool |
-| POST | `/api/tools/{id}/install` | Install a specific tool |
-| DELETE | `/api/tools/{id}` | Remove a tool plugin |
-| POST | `/api/tools/validate` | Validate a plugin JSON |
-| POST | `/api/tools/sign` | Sign a plugin |
-| POST | `/api/tools/save-unsigned` | Save unsigned plugin |
-| POST | `/api/tools/upload` | Upload a plugin file |
-| POST | `/api/tools/install-all` | Install all registered tools |
+| GET | `/api/v1/tools` | List all registered tools |
+| GET | `/api/v1/tools/available` | List installed/available tools |
+| GET | `/api/v1/tools/for-ai` | Tool list formatted for AI agents |
+| GET | `/api/v1/tools/{id}` | Get tool details |
+| GET | `/api/v1/tools/{id}/config` | Get tool configuration |
+| POST | `/api/v1/tools/{id}/test` | Test-run a tool |
+| POST | `/api/v1/tools/{id}/install` | Install a specific tool |
+| DELETE | `/api/v1/tools/{id}` | Remove a tool plugin |
+| POST | `/api/v1/tools/validate` | Validate a plugin JSON |
+| POST | `/api/v1/tools/sign` | Sign a plugin |
+| POST | `/api/v1/tools/save-unsigned` | Save unsigned plugin |
+| POST | `/api/v1/tools/upload` | Upload a plugin file |
+| POST | `/api/v1/tools/install-all` | Install all registered tools |
 
 See [Plugins](plugins.md) for the plugin JSON schema.
 
@@ -164,11 +164,11 @@ See [Plugins](plugins.md) for the plugin JSON schema.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/exploits` | List exploit attempts |
-| GET | `/api/exploits/recent` | Recent exploit attempts |
-| GET | `/api/exploits/stats` | Exploit statistics |
-| GET | `/api/exploits/{id}` | Get exploit details |
-| GET | `/api/exploits/by-name/{name}` | Search exploits by name |
+| GET | `/api/v1/exploits` | List exploit attempts |
+| GET | `/api/v1/exploits/recent` | Recent exploit attempts |
+| GET | `/api/v1/exploits/stats` | Exploit statistics |
+| GET | `/api/v1/exploits/{id}` | Get exploit details |
+| GET | `/api/v1/exploits/by-name/{name}` | Search exploits by name |
 
 ---
 
@@ -176,10 +176,10 @@ See [Plugins](plugins.md) for the plugin JSON schema.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/cve/lookup` | Lookup CVEs by service/version |
-| GET | `/api/cve/cve/{cve_id}/exploits` | Get exploits for a CVE |
-| GET | `/api/cve/cve/{cve_id}/enriched` | Get enriched CVE data |
-| GET | `/api/cve/searchsploit/{query}` | Search ExploitDB |
+| GET | `/api/v1/cve/lookup` | Lookup CVEs by service/version |
+| GET | `/api/v1/cve/cve/{cve_id}/exploits` | Get exploits for a CVE |
+| GET | `/api/v1/cve/cve/{cve_id}/enriched` | Get enriched CVE data |
+| GET | `/api/v1/cve/searchsploit/{query}` | Search ExploitDB |
 
 ---
 
@@ -208,7 +208,7 @@ See [Plugins](plugins.md) for the plugin JSON schema.
 | GET | `/api/settings` | Get current runtime settings |
 | POST | `/api/settings` | Update runtime settings |
 | GET | `/api/ai/status` | AI provider connection status |
-| POST | `/test-llm` | Test LLM connectivity |
+| POST | `/test-llm` | Test LLM connectivity (requires `manage_settings`; active session) |
 
 See [Configuration](configuration.md) for all setting details.
 

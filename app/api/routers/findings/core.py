@@ -19,6 +19,7 @@ from app.models.audit_log import AuditEventType
 from app.models.finding import FindingStatus, Severity
 from app.models.user import User
 from app.repositories.finding import FindingRepository
+from app.repositories.target import TargetRepository
 from app.services.system.audit import log_event as audit_log_event
 from spectra_common.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from spectra_common.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
@@ -221,6 +222,16 @@ async def create_finding(
     _current_user: User = require_permission(Permission.MANAGE_FINDINGS),
 ) -> FindingDetailResponse:
     """Create a new finding."""
+    validate_uuid_param(finding_in.target_id, "target_id")
+    target_repo = TargetRepository(db)
+    target = await target_repo.get_by_id(finding_in.target_id)
+    if not target:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Target not found",
+        )
+    check_resource_owner(target, _current_user, "target")
+
     repo = FindingRepository(db)
 
     finding = await repo.create(

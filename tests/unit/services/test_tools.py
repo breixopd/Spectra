@@ -17,17 +17,17 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.services.tools.adapter import CommandToolAdapter
-from app.services.tools.models import (
+from app.services.tools.registry import (
+    PluginValidationError,
+    ToolRegistry,
+)
+from spectra_tools_core.models import (
     InstallationMethod,
     OutputFormat,
     ToolCategory,
     ToolConfig,
     ToolExecutionRequest,
     ToolStatus,
-)
-from app.services.tools.registry import (
-    PluginValidationError,
-    ToolRegistry,
 )
 from spectra_tools_core.registry_constants import DANGEROUS_PATTERNS
 
@@ -183,7 +183,7 @@ class TestToolRegistry:
         """Test getting tools formatted for AI agents."""
         # Add a tool first
         config = ToolConfig.model_validate(VALID_PLUGIN_DATA)
-        from app.services.tools.models import RegisteredTool
+        from spectra_tools_core.models import RegisteredTool
 
         registry._tools["test-tool"] = RegisteredTool(
             config=config,
@@ -212,7 +212,7 @@ class TestCommandBuilder:
     @pytest.fixture
     def builder(self, config):
         """Create a command builder."""
-        from app.services.tools.adapter.builder import CommandBuilder
+        from spectra_tools_core.adapter.builder import CommandBuilder
 
         return CommandBuilder(config)
 
@@ -286,7 +286,7 @@ class TestUniversalParser:
 
     @pytest.fixture
     def parser(self, config):
-        from app.services.tools.adapter.parser import UniversalParser
+        from spectra_tools_core.adapter.parser import UniversalParser
 
         return UniversalParser(config)
 

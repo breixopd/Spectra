@@ -9,8 +9,8 @@ import pytest
 import pytest_asyncio
 
 from app.infrastructure.queue import Job
-from app.services.tools.models import ToolStatus
 from app.services.tools.registry import get_registry
+from spectra_tools_core.models import ToolStatus
 
 pytestmark = [
     pytest.mark.asyncio,

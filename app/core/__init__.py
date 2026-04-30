@@ -52,7 +52,6 @@ _SUBMODULE_MAP: dict[str, str] = {
     "AssessmentPhase": "app.mission.core.enums",
     "EntityStatus": "app.mission.core.enums",
     "MissionStatus": "app.mission.core.enums",
-    "RiskLevel": "app.mission.core.enums",
     "Severity": "app.mission.core.enums",
     # events
     "Event": "app.infrastructure.events",

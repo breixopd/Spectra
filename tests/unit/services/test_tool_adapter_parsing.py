@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from app.services.tools.adapter import CommandToolAdapter
-from app.services.tools.models import ToolConfig
+from spectra_tools_core.models import ToolConfig
 
 
 class TestToolAdapterParsing:

@@ -1,7 +1,7 @@
 import pytest
 
 from app.services.tools.adapter import CommandToolAdapter
-from app.services.tools.models import ToolCategory, ToolConfig, ToolExecutionRequest
+from spectra_tools_core.models import ToolCategory, ToolConfig, ToolExecutionRequest
 
 
 @pytest.fixture

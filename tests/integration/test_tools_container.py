@@ -50,7 +50,7 @@ async def test_load_all_plugins(tool_registry: ToolRegistry) -> None:
 @pytest.mark.asyncio
 async def test_execute_tool_version(tool_registry: ToolRegistry) -> None:
     """Test executing a simple command (version check) for available tools."""
-    from app.services.tools.models import (
+    from spectra_tools_core.models import (
         ExecutionConfig,
         InstallationConfig,
         InstallationMethod,

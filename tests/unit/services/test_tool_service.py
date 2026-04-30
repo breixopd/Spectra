@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.services.ai.agents.base import ToolAction
-from app.services.tools.models import ToolExecutionResult
 from app.services.tools.output import create_error_result, normalize_tool_name, validate_tool_name
 from app.services.tools.service import StandaloneMissionAdapter, ToolExecutionService
+from spectra_tools_core.models import ToolExecutionResult
 
 
 @pytest.fixture

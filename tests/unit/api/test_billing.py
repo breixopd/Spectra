@@ -254,7 +254,7 @@ class TestBillingRouter:
         session.execute = AsyncMock(return_value=mock_result)
 
         with patch("app.api.routers.billing.get_settings", return_value=MagicMock(PAYMENT_PROVIDER="stripe")):
-            payload = await list_available_plans.__wrapped__(request=MagicMock(), session=session)
+            payload = await list_available_plans.__wrapped__(request=MagicMock(), session=session, _user=MagicMock())
 
         assert payload[0]["checkout_available"] is True
         assert payload[0]["checkout_provider"] == "stripe"
@@ -281,7 +281,7 @@ class TestBillingRouter:
         session.execute = AsyncMock(return_value=mock_result)
 
         with patch("app.api.routers.billing.get_settings", return_value=MagicMock(PAYMENT_PROVIDER="crypto")):
-            payload = await list_available_plans.__wrapped__(request=MagicMock(), session=session)
+            payload = await list_available_plans.__wrapped__(request=MagicMock(), session=session, _user=MagicMock())
 
         assert payload[0]["checkout_available"] is True
         assert payload[0]["checkout_provider"] == "crypto"

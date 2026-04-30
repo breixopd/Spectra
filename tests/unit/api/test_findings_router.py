@@ -23,6 +23,18 @@ def _fake_user(is_superuser: bool = False, user_id: str = "00000000-0000-4000-a0
     return user
 
 
+def _fake_target_owned(**overrides):
+    defaults = {
+        "id": "00000000-0000-4000-a000-100000000001",
+        "user_id": "00000000-0000-4000-a000-000000000001",
+    }
+    defaults.update(overrides)
+    obj = MagicMock()
+    for k, v in defaults.items():
+        setattr(obj, k, v)
+    return obj
+
+
 def _fake_finding(**overrides):
     defaults = {
         "id": "00000000-0000-4000-a000-f00000000001",
@@ -200,14 +212,16 @@ class TestCreateFinding:
     async def test_create_finding_valid(self, client):
         ac, _session, _user = client
         from app.repositories.finding import FindingRepository
+        from app.repositories.target import TargetRepository
 
         finding = _fake_finding()
         with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=_fake_target_owned()))
             mp.setattr(FindingRepository, "create", AsyncMock(return_value=finding))
             resp = await ac.post(
                 "/api/v1/findings",
                 json={
-                    "target_id": "t-1",
+                    "target_id": "00000000-0000-4000-a000-100000000001",
                     "title": "SQL Injection",
                     "severity": "high",
                     "tool_source": "sqlmap",
@@ -225,31 +239,75 @@ class TestCreateFinding:
 
     async def test_create_finding_rejects_oversized_evidence_map(self, client):
         ac, _session, _user = client
-        resp = await ac.post(
-            "/api/v1/findings",
-            json={
-                "target_id": "t-1",
-                "title": "SQL Injection",
-                "severity": "high",
-                "tool_source": "sqlmap",
-                "evidence": {f"k{i}": "value" for i in range(26)},
-            },
-        )
+        from app.repositories.target import TargetRepository
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=_fake_target_owned()))
+            resp = await ac.post(
+                "/api/v1/findings",
+                json={
+                    "target_id": "00000000-0000-4000-a000-100000000001",
+                    "title": "SQL Injection",
+                    "severity": "high",
+                    "tool_source": "sqlmap",
+                    "evidence": {f"k{i}": "value" for i in range(26)},
+                },
+            )
         assert resp.status_code == 422
 
     async def test_create_finding_rejects_oversized_evidence_value(self, client):
         ac, _session, _user = client
-        resp = await ac.post(
-            "/api/v1/findings",
-            json={
-                "target_id": "t-1",
-                "title": "SQL Injection",
-                "severity": "high",
-                "tool_source": "sqlmap",
-                "evidence": {"request": "x" * 5001},
-            },
-        )
+        from app.repositories.target import TargetRepository
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=_fake_target_owned()))
+            resp = await ac.post(
+                "/api/v1/findings",
+                json={
+                    "target_id": "00000000-0000-4000-a000-100000000001",
+                    "title": "SQL Injection",
+                    "severity": "high",
+                    "tool_source": "sqlmap",
+                    "evidence": {"request": "x" * 5001},
+                },
+            )
         assert resp.status_code == 422
+
+    async def test_create_finding_target_not_found(self, client):
+        ac, _session, _user = client
+        from app.repositories.target import TargetRepository
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=None))
+            resp = await ac.post(
+                "/api/v1/findings",
+                json={
+                    "target_id": "00000000-0000-4000-a000-199999999999",
+                    "title": "X",
+                    "severity": "low",
+                    "tool_source": "manual",
+                },
+            )
+        assert resp.status_code == 404
+
+    async def test_create_finding_forbidden_other_owner(self, client):
+        ac, _session, _user = client
+        from app.repositories.finding import FindingRepository
+        from app.repositories.target import TargetRepository
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=_fake_target_owned(user_id="other-user")))
+            mp.setattr(FindingRepository, "create", AsyncMock(return_value=_fake_finding()))
+            resp = await ac.post(
+                "/api/v1/findings",
+                json={
+                    "target_id": "00000000-0000-4000-a000-100000000001",
+                    "title": "X",
+                    "severity": "low",
+                    "tool_source": "manual",
+                },
+            )
+        assert resp.status_code == 403
 
 
 # ---------------------------------------------------------------------------

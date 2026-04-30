@@ -12,7 +12,7 @@ from app.services.ai.agents.tool_selector import (
     ToolSelectorInput,
     ToolSelectorOutput,
 )
-from app.services.tools.models import RiskLevel
+from spectra_domain.enums import RiskLevel
 from tests.mocks.llm import MockLLMClient
 
 
@@ -179,7 +179,7 @@ class TestToolSelectorExecution:
     @pytest.mark.asyncio
     async def test_execute_returns_result(self, mock_llm, context):
         """Execute should return a valid result."""
-        from app.services.tools.models import ToolCapability
+        from spectra_tools_core.models import ToolCapability
 
         agent = ToolSelectorAgent(mock_llm)
 
