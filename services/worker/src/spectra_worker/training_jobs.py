@@ -21,6 +21,7 @@ async def run_fine_tuning_job(job_id: str) -> dict[str, Any]:
             return {"status": "cancelled", "job_id": job_id}
 
         job.status = "preparing"
+        job.error_message = None
         job.started_at = datetime.now(UTC)
         await session.commit()
 
@@ -34,8 +35,10 @@ async def run_fine_tuning_job(job_id: str) -> dict[str, Any]:
         job.sample_count = len(samples)
 
         if not samples:
+            error_message = "No approved training samples matched this job"
             job.status = "failed"
-            job.metrics = {"error": "No approved training samples matched this job"}
+            job.error_message = error_message
+            job.metrics = {"error": error_message}
             job.completed_at = datetime.now(UTC)
             await session.commit()
             return {"status": job.status, "job_id": job_id, "sample_count": 0}
