@@ -333,8 +333,9 @@ async def list_available_tools(
     registry: ToolRegistry = Depends(get_tool_registry),
     _current_user: User = Depends(get_current_active_user),
 ):
-    """List only tools that are ready to use."""
-    tools = registry.get_available_tools()
+    """List tools that can be selected for execution."""
+    await _sync_registry_status_from_cache(registry)
+    tools = [tool for tool in registry.list_tools() if tool.config.enabled]
 
     summaries = [_to_summary(t) for t in tools]
 

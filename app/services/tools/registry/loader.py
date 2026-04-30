@@ -17,8 +17,9 @@ logger = logging.getLogger(__name__)
 class PluginLoader:
     """Handles loading of plugin files from disk."""
 
-    def __init__(self, plugins_dir: Path, validator: PluginValidator):
+    def __init__(self, plugins_dir: Path, validator: PluginValidator, bundled_plugins_dir: Path | None = None):
         self.plugins_dir = plugins_dir
+        self.bundled_plugins_dir = bundled_plugins_dir
         self.validator = validator
 
     async def load_plugins(self, existing_tools: dict[str, RegisteredTool]) -> dict[str, RegisteredTool]:
@@ -30,28 +31,30 @@ class PluginLoader:
         Returns:
             Updated dictionary of tool_id -> RegisteredTool.
         """
-        if not self.plugins_dir.exists():
-            logger.warning("Plugins directory does not exist: %s", self.plugins_dir)
+        plugin_dirs = [path for path in (self.bundled_plugins_dir, self.plugins_dir) if path and path.exists()]
+        if not plugin_dirs:
+            logger.warning("Plugin directories do not exist: %s", self.plugins_dir)
             return existing_tools
 
         loaded_ids = set()
         tools = existing_tools.copy()
 
-        for json_file in self.plugins_dir.glob("*.json"):
-            try:
-                tool_id = await self._load_plugin_file(json_file, tools)
+        for plugins_dir in plugin_dirs:
+            for json_file in plugins_dir.glob("*.json"):
+                try:
+                    tool_id = await self._load_plugin_file(json_file, tools)
 
-                # Enforce consistency between filename and ID
-                if json_file.stem != tool_id:
-                    logger.warning(
-                        "Plugin ID '%s' does not match filename '%s'. This may cause issues.",
-                        tool_id,
-                        json_file.name,
-                    )
+                    # Enforce consistency between filename and ID
+                    if json_file.stem != tool_id:
+                        logger.warning(
+                            "Plugin ID '%s' does not match filename '%s'. This may cause issues.",
+                            tool_id,
+                            json_file.name,
+                        )
 
-                loaded_ids.add(tool_id)
-            except (OSError, ValueError, KeyError, PluginValidationError) as e:
-                logger.error("Failed to load plugin %s: %s", json_file.name, e)
+                    loaded_ids.add(tool_id)
+                except (OSError, ValueError, KeyError, PluginValidationError) as e:
+                    logger.error("Failed to load plugin %s: %s", json_file.name, e)
 
         # Remove tools that are no longer on disk
         current_tool_ids = list(tools.keys())
