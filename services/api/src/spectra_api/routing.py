@@ -43,6 +43,12 @@ from spectra_api.ui import public
 
 logger = logging.getLogger(__name__)
 
+# ``SERVICE_MODE`` values that select the full Core API graph in this process.
+# Other images set ``SERVICE_MODE`` for ``app.core.config`` only; they do not
+# use ``include_routers``. Keep ``spectra_api.factory`` in sync by importing
+# this constant instead of duplicating the tuple.
+CORE_API_FULL_ROUTER_MODES: frozenset[str] = frozenset(("", "all", "api"))
+
 
 def include_routers(app: FastAPI, mode: str | None = None) -> None:
     """Include routers for the Core API process.
@@ -54,9 +60,8 @@ def include_routers(app: FastAPI, mode: str | None = None) -> None:
     """
     if mode is None:
         mode = settings.SERVICE_MODE
-    _full_modes = ("", "all", "api")
 
-    if mode in _full_modes:
+    if mode in CORE_API_FULL_ROUTER_MODES:
         api_v1 = APIRouter(prefix="/api/v1")
         api_v1.include_router(health.router, tags=["Health"])
         api_v1.include_router(auth.router, prefix="/auth", tags=["Auth"])
