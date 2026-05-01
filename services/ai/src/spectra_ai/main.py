@@ -100,7 +100,7 @@ async def healthz():
 
 
 @app.get("/health", response_model=None)
-async def health(response = None):
+async def health(response: Response):
     import httpx
 
     result = {"status": "healthy", "service": "ai"}
@@ -113,13 +113,11 @@ async def health(response = None):
             else:
                 result["tensorzero"] = "degraded"
                 result["status"] = "degraded"
-                if response is not None:
-                    response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+                response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     except Exception:
         result["tensorzero"] = "unreachable"
         result["status"] = "degraded"
-        if response is not None:
-            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return result
 
 
@@ -268,7 +266,8 @@ async def rag_query(req: RAGRequest):
                 {
                     "content": r.document.content,
                     "score": r.score,
-                    "metadata": r.document.metadata,
+                    "metadata": r.document.metadata or {},
+                    "doc_type": r.document.doc_type,
                 }
                 for r in results
             ],
