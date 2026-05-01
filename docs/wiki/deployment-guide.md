@@ -187,7 +187,7 @@ After initial configuration, scaling is fully hands-off. The scheduler's capacit
 
 ### Resource Calculations
 
-The `ResourceManager` (`app/services/resource_manager.py`) calculates how many sandbox containers each node can support based on available memory, CPU, and configured resource tiers. The capacity monitor uses these calculations for utilization alerts and auto-scaling decisions.
+The `ResourceManager` (`spectra_platform/services/resource_manager.py`) calculates how many sandbox containers each node can support based on available memory, CPU, and configured resource tiers. The capacity monitor uses these calculations for utilization alerts and auto-scaling decisions.
 
 ---
 
@@ -663,7 +663,7 @@ curl -X POST http://localhost:5000/api/admin/backups \
 # Restore from a backup
 curl -X POST http://localhost:5000/api/admin/backups/restore \
   -H "Authorization: Bearer <TOKEN>" \
-  -d '{"backup_path": "/app/data/backups/backup_20260313_120000.dump"}'
+  -d '{"backup_path": "/spectra_platform/data/backups/backup_20260313_120000.dump"}'
 ```
 
 ### Manual PostgreSQL Backup

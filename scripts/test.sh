@@ -95,7 +95,7 @@ run_in_docker() {
         -e COVERAGE_FILE=/tmp/spectra-coverage/.coverage \
         --tmpfs /tmp:rw,nosuid,nodev,size=512m \
         --tmpfs /app/data:rw,nosuid,nodev,size=256m \
-        -v "$PROJECT_ROOT/app:/app/app:ro" \
+        -v "$PROJECT_ROOT/spectra_platform:/app/spectra_platform:ro" \
         -v "$PROJECT_ROOT/tests:/app/tests:ro" \
         -v "$PROJECT_ROOT/docker:/app/docker:ro" \
         -v "$PROJECT_ROOT/pyproject.toml:/app/pyproject.toml:ro" \
@@ -171,7 +171,7 @@ case "$CMD" in
         fi
         run_in_docker tests/unit/ \
             --override-ini=addopts= \
-            --cov=app --cov-report=term-missing --cov-report=html:"${coverage_report}"
+            --cov=spectra_platform --cov-report=term-missing --cov-report=html:"${coverage_report}"
         if [[ "${SPECTRA_KEEP_TEST_ARTIFACTS:-0}" == "1" ]]; then
             echo -e "${GREEN}Coverage report: reports/coverage/index.html${NC}"
         else

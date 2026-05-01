@@ -19,10 +19,10 @@ import httpx
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
-from app.core.config import settings
-from app.models.user import User
 from spectra_api.authz import Permission, require_permission
 from spectra_common.constants import API_DEFAULT_PAGE_SIZE, API_MAX_PAGE_SIZE
+from spectra_platform.core.config import settings
+from spectra_platform.models.user import User
 
 logger = logging.getLogger(__name__)
 

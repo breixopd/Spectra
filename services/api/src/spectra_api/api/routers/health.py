@@ -12,16 +12,16 @@ from fastapi.params import Query as QueryParam
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app._meta.version import __version__
-from app.core.config import get_settings as _get_settings
-from app.core.database import get_async_session
-from app.services.system.health import collect_platform_health, probe_http_health, readiness_from_health
 from spectra_api.api.dependencies import (
     _decode_access_payload,
     _extract_request_token,
     _load_active_user_from_payload_with_session,
     get_current_active_user,
 )
+from spectra_platform._meta.version import __version__
+from spectra_platform.core.config import get_settings as _get_settings
+from spectra_platform.core.database import get_async_session
+from spectra_platform.services.system.health import collect_platform_health, probe_http_health, readiness_from_health
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +204,7 @@ async def deep_health_check(
 
     start = time.monotonic()
     try:
-        from app.services.gateway.ai_gateway import get_ai_gateway
+        from spectra_platform.services.gateway.ai_gateway import get_ai_gateway
 
         gw = get_ai_gateway()
         chat_resp = await gw.chat([{"role": "user", "content": "say ok"}], tier=1, max_tokens=1)
@@ -237,7 +237,7 @@ async def deep_health_check(
 
     start = time.monotonic()
     try:
-        from app.services.storage import get_storage_service
+        from spectra_platform.services.storage import get_storage_service
 
         storage = get_storage_service()
         bucket = _get_settings().S3_BUCKET_MISSIONS
@@ -257,7 +257,7 @@ async def deep_health_check(
 
     start = time.monotonic()
     try:
-        from app.services.tools.sandbox import get_sandbox_pool
+        from spectra_platform.services.tools.sandbox import get_sandbox_pool
 
         pool = get_sandbox_pool()
         if pool and pool.available:

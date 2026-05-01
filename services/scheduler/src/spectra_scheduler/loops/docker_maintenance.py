@@ -3,7 +3,7 @@
 import logging
 
 import spectra_scheduler.locking as _sched_lock
-from app.core.database import advisory_lock_connection
+from spectra_platform.core.database import advisory_lock_connection
 from spectra_scheduler import async_ops
 from spectra_scheduler.locks import _DOCKER_CLEANUP_LOCK_ID, _IMAGE_UPDATE_LOCK_ID
 
@@ -13,7 +13,7 @@ logger = logging.getLogger("spectra_scheduler")
 class SchedulerDockerMaintenanceMixin:
     async def _docker_cleanup(self):
         """Weekly Docker resource cleanup — prune dangling images and exited containers."""
-        from app.core.config import get_settings
+        from spectra_platform.core.config import get_settings
 
         while self.running:
             settings = get_settings()
@@ -29,7 +29,7 @@ class SchedulerDockerMaintenanceMixin:
                         logger.debug("Docker cleanup lock not acquired — skipping")
                         continue
 
-                    from app.services.scaling.docker_client import (
+                    from spectra_platform.services.scaling.docker_client import (
                         prune_containers,
                         prune_images,
                         prune_volumes,
@@ -52,7 +52,7 @@ class SchedulerDockerMaintenanceMixin:
 
     async def _image_update_check(self):
         """Check for new image versions and trigger rolling updates."""
-        from app.core.config import get_settings
+        from spectra_platform.core.config import get_settings
 
         while self.running:
             settings = get_settings()
@@ -71,7 +71,7 @@ class SchedulerDockerMaintenanceMixin:
                         logger.debug("Image update lock not acquired — skipping")
                         continue
 
-                    from app.services.scaling.image_updater import check_and_update_services
+                    from spectra_platform.services.scaling.image_updater import check_and_update_services
 
                     results = await check_and_update_services(apply=settings.IMAGE_AUTO_UPDATE)
                     if results:
@@ -96,7 +96,7 @@ class SchedulerDockerMaintenanceMixin:
     async def _send_update_notification(self, title: str, message: str, *, level: str = "info") -> None:
         """Send image update notification via configured channels."""
         try:
-            from app.services.notifications import send_notification
+            from spectra_platform.services.notifications import send_notification
 
             await send_notification(
                 title=title,

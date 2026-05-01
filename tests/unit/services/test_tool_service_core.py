@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.tools.service import ToolExecutionResult, ToolExecutionService
+from spectra_platform.services.tools.service import ToolExecutionResult, ToolExecutionService
 
 
 @pytest.fixture
@@ -35,10 +35,10 @@ async def test_execute_tool_success(service_and_mission):
 
     with (
         patch(
-            "app.services.tools.service.build_execution_request",
+            "spectra_platform.services.tools.service.build_execution_request",
             return_value=(MagicMock(), MagicMock(), "nmap -p 80 127.0.0.1", "/tmp/out"),
         ),
-        patch("app.services.tools.service.record_to_memory"),
+        patch("spectra_platform.services.tools.service.record_to_memory"),
     ):
         result = await service.execute_request(mission=mission, tool_name="nmap", target="127.0.0.1")
 
@@ -75,7 +75,7 @@ async def test_execute_tool_safety_block(service_and_mission):
     service._apply_safety_and_consensus = AsyncMock(return_value=("cmd", blocked))
 
     with patch(
-        "app.services.tools.service.build_execution_request", return_value=(MagicMock(), MagicMock(), "cmd", "/tmp/out")
+        "spectra_platform.services.tools.service.build_execution_request", return_value=(MagicMock(), MagicMock(), "cmd", "/tmp/out")
     ):
         result = await service.execute_request(mission, "nmap", "127.0.0.1")
     assert result.success is False
@@ -100,7 +100,7 @@ async def test_execute_tool_consensus_block(service_and_mission):
     service._apply_safety_and_consensus = AsyncMock(return_value=("cmd", blocked))
 
     with patch(
-        "app.services.tools.service.build_execution_request", return_value=(MagicMock(), MagicMock(), "cmd", "/tmp/out")
+        "spectra_platform.services.tools.service.build_execution_request", return_value=(MagicMock(), MagicMock(), "cmd", "/tmp/out")
     ):
         result = await service.execute_request(mission, "nmap", "127.0.0.1", risk_level="high")
     assert result.success is False

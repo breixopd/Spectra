@@ -9,19 +9,19 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.rate_limit import RateLimits, limiter
-from app.auth.security import verify_password
-from app.core.database import get_async_session
-from app.models.audit_log import AuditEventType
-from app.models.plan import Plan, Subscription
-from app.models.user import User
-from app.services.billing.entitlements import get_user_entitlement, subscription_allows_billing_portal
-from app.services.system.audit import log_event as audit_log_event
 from spectra_api.api.dependencies import _is_admin_user, get_current_active_user
 from spectra_api.api.routers.auth._helpers import _clear_auth_cookies
 from spectra_api.api.routers.auth.schemas import RestrictProcessingRequest, UpdateProfileRequest
 from spectra_api.api.schemas.system import DeleteAccountRequest
 from spectra_api.authz import Permission, has_permission
+from spectra_platform.auth.rate_limit import RateLimits, limiter
+from spectra_platform.auth.security import verify_password
+from spectra_platform.core.database import get_async_session
+from spectra_platform.models.audit_log import AuditEventType
+from spectra_platform.models.plan import Plan, Subscription
+from spectra_platform.models.user import User
+from spectra_platform.services.billing.entitlements import get_user_entitlement, subscription_allows_billing_portal
+from spectra_platform.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ async def get_current_profile(
     subscription_plan_name = subscription_row[1] if subscription_row is not None else None
 
     # Check if user has preferences configured
-    from app.models.user_preferences import UserPreferences
+    from spectra_platform.models.user_preferences import UserPreferences
 
     prefs_result = await session.execute(select(UserPreferences.id).where(UserPreferences.user_id == str(user.id)))
     has_preferences = prefs_result.scalar_one_or_none() is not None
@@ -141,10 +141,10 @@ async def export_user_data(
     session: AsyncSession = Depends(get_async_session),
 ) -> JSONResponse:
     """Export all user data for GDPR Article 20 compliance."""
-    from app.models.audit_log import AuditLog
-    from app.models.finding import Finding
-    from app.models.mission import Mission
-    from app.models.target import Target
+    from spectra_platform.models.audit_log import AuditLog
+    from spectra_platform.models.finding import Finding
+    from spectra_platform.models.mission import Mission
+    from spectra_platform.models.target import Target
 
     user_id = current_user.id
 
@@ -315,7 +315,7 @@ async def list_api_keys(
     session: AsyncSession = Depends(get_async_session),
 ):
     """List current user's active API keys."""
-    from app.models.plan import ApiKey
+    from spectra_platform.models.plan import ApiKey
 
     stmt = (
         select(ApiKey)
@@ -349,7 +349,7 @@ async def create_api_key(
     """Create a new API key for the current user."""
     import secrets
 
-    from app.models.plan import ApiKey
+    from spectra_platform.models.plan import ApiKey
 
     name = body.get("name", "Unnamed Key")
     scopes = body.get("scopes", [])
@@ -390,7 +390,7 @@ async def revoke_api_key(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Revoke an API key belonging to the current user."""
-    from app.models.plan import ApiKey
+    from spectra_platform.models.plan import ApiKey
 
     stmt = select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == str(user.id))
     result = await session.execute(stmt)
@@ -424,7 +424,7 @@ async def get_user_activity(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Return recent audit log entries for the current user."""
-    from app.models.audit_log import AuditLog
+    from spectra_platform.models.audit_log import AuditLog
 
     stmt = (
         select(AuditLog)

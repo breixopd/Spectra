@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import SecretStr
 
-from app.services.system.secret_bootstrap import _apply_secret, ensure_persistent_secrets
+from spectra_platform.services.system.secret_bootstrap import _apply_secret, ensure_persistent_secrets
 
 
 class TestApplySecret:
@@ -15,14 +15,14 @@ class TestApplySecret:
     def test_apply_secret_str(self):
         mock_settings = MagicMock()
         mock_settings.JWT_SECRET_KEY = SecretStr("")
-        with patch("app.services.system.secret_bootstrap.settings", mock_settings):
+        with patch("spectra_platform.services.system.secret_bootstrap.settings", mock_settings):
             _apply_secret("JWT_SECRET_KEY", "test-secret")
         assert mock_settings.JWT_SECRET_KEY.get_secret_value() == "test-secret"
 
     def test_apply_nonsecret_str(self):
         mock_settings = MagicMock()
         mock_settings.SOME_FIELD = "old"
-        with patch("app.services.system.secret_bootstrap.settings", mock_settings):
+        with patch("spectra_platform.services.system.secret_bootstrap.settings", mock_settings):
             _apply_secret("SOME_FIELD", "new-val")
         assert mock_settings.SOME_FIELD == "new-val"
 
@@ -44,7 +44,7 @@ class TestEnsurePersistentSecrets:
         mock_settings.SECRET_KEY = SecretStr("auto-generated-secret")
         mock_settings.SERVICE_AUTH_SECRET = SecretStr("auto-generated-service")
 
-        with patch("app.services.system.secret_bootstrap.settings", mock_settings), \
+        with patch("spectra_platform.services.system.secret_bootstrap.settings", mock_settings), \
              patch.dict(os.environ, {}, clear=False):
             # Remove any existing env vars for managed secrets
             for key in ["JWT_SECRET_KEY", "SECRET_KEY", "SERVICE_AUTH_SECRET",
@@ -74,7 +74,7 @@ class TestEnsurePersistentSecrets:
         mock_settings.SECRET_KEY = SecretStr("")
         mock_settings.SERVICE_AUTH_SECRET = SecretStr("")
 
-        with patch("app.services.system.secret_bootstrap.settings", mock_settings), \
+        with patch("spectra_platform.services.system.secret_bootstrap.settings", mock_settings), \
              patch.dict(os.environ, {}, clear=False):
             for key in ["JWT_SECRET_KEY", "SECRET_KEY", "SERVICE_AUTH_SECRET",
                         "JWT_SECRET_KEY_FILE", "SECRET_KEY_FILE", "SERVICE_AUTH_SECRET_FILE"]:
@@ -103,7 +103,7 @@ class TestEnsurePersistentSecrets:
         mock_settings.SECRET_KEY = SecretStr("")
         mock_settings.SERVICE_AUTH_SECRET = SecretStr("")
 
-        with patch("app.services.system.secret_bootstrap.settings", mock_settings), \
+        with patch("spectra_platform.services.system.secret_bootstrap.settings", mock_settings), \
              patch.dict(os.environ, {"JWT_SECRET_KEY": "from-env-override"}, clear=False):
             for key in ["SECRET_KEY", "SERVICE_AUTH_SECRET",
                         "JWT_SECRET_KEY_FILE", "SECRET_KEY_FILE", "SERVICE_AUTH_SECRET_FILE"]:

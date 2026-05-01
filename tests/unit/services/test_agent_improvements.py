@@ -2,8 +2,8 @@
 
 import pytest
 
-from app.mission.core.enums import MissionStatus
-from app.services.ai.agents.base import (
+from spectra_platform.mission.core.enums import MissionStatus
+from spectra_platform.services.ai.agents.base import (
     ActionRisk,
     Agent,
     AgentAction,
@@ -11,16 +11,16 @@ from app.services.ai.agents.base import (
     AgentResult,
     AgentRole,
 )
-from app.services.ai.agents.exploit_verifier import (
+from spectra_platform.services.ai.agents.exploit_verifier import (
     FAILURE_PATTERNS,
     SUCCESS_PATTERNS,
     ExploitVerifierAgent,
     ExploitVerifierInput,
 )
-from app.services.ai.agents.reporter import ReporterAgent
-from app.services.ai.blackboard import MissionBlackboard, _blackboards, get_blackboard, remove_blackboard
-from app.services.ai.consensus import VotingConfig, VotingSystem
-from app.services.mission.task_tree import PentestTaskTree, TaskStatus
+from spectra_platform.services.ai.agents.reporter import ReporterAgent
+from spectra_platform.services.ai.blackboard import MissionBlackboard, _blackboards, get_blackboard, remove_blackboard
+from spectra_platform.services.ai.consensus import VotingConfig, VotingSystem
+from spectra_platform.services.mission.task_tree import PentestTaskTree, TaskStatus
 from tests.mocks.llm import MockLLMClient
 
 # ---- Fixtures ----
@@ -512,19 +512,19 @@ class TestMissionFSMIntegration:
     @pytest.fixture(autouse=True)
     def _writable_data_root(self, tmp_path, monkeypatch):
         monkeypatch.setattr(
-            "app.services.mission.mission.data_path",
+            "spectra_platform.services.mission.mission.data_path",
             lambda *parts: tmp_path / "data" / "/".join(str(p) for p in parts),
         )
 
     def test_mission_has_fsm(self):
-        from app.services.mission.mission import Mission
+        from spectra_platform.services.mission.mission import Mission
 
         m = Mission("10.0.0.1", "test")
         assert hasattr(m, "fsm")
         assert m.fsm.state == MissionStatus.CREATED
 
     def test_set_status_valid_transition(self):
-        from app.services.mission.mission import Mission
+        from spectra_platform.services.mission.mission import Mission
 
         m = Mission("10.0.0.1", "test")
         m.set_status("initializing")
@@ -532,7 +532,7 @@ class TestMissionFSMIntegration:
         assert m.fsm.state == MissionStatus.INITIALIZING
 
     def test_set_status_invalid_transition_still_sets_raw(self):
-        from app.services.mission.mission import Mission
+        from spectra_platform.services.mission.mission import Mission
 
         m = Mission("10.0.0.1", "test")
         # CREATED -> COMPLETED is invalid, but raw status still updates
@@ -542,7 +542,7 @@ class TestMissionFSMIntegration:
         assert m.fsm.state == MissionStatus.CREATED
 
     def test_set_status_unknown_value(self):
-        from app.services.mission.mission import Mission
+        from spectra_platform.services.mission.mission import Mission
 
         m = Mission("10.0.0.1", "test")
         # "running" is not a direct FSM enum label for CREATED→…

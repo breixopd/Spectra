@@ -7,9 +7,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.tools.cache import ToolResultCache
+from spectra_platform.services.tools.cache import ToolResultCache
 
-PATCH_SESSION_MAKER = "app.core.database.async_session_maker"
+PATCH_SESSION_MAKER = "spectra_platform.core.database.async_session_maker"
 
 
 class TestMakeKey:

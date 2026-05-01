@@ -16,13 +16,14 @@ def _safe_create_task(coro, **kwargs):
 @pytest.fixture(autouse=True)
 def _mission_runtime_isolation(tmp_path):
     with (
-        patch("app.services.mission.mission.data_path", side_effect=tmp_path.joinpath),
-        patch("app.services.mission.mission.asyncio.create_task", side_effect=_safe_create_task),
+        patch("spectra_platform.services.mission.mission.data_path", side_effect=tmp_path.joinpath),
+        patch("spectra_platform.services.mission.mission.asyncio.create_task", side_effect=_safe_create_task),
     ):
         yield
 
 
-from app.auth.encryption import (
+from spectra_api.authz import ROLE_PERMISSIONS, Permission, has_permission, require_permission
+from spectra_platform.auth.encryption import (
     _derive_fernet_key,
     decrypt_field,
     decrypt_sensitive_fields,
@@ -30,16 +31,15 @@ from app.auth.encryption import (
     encrypt_sensitive_fields,
     is_sensitive_key,
 )
-from app.models.user import User
-from app.services.ai.agents.post_exploitation import (
+from spectra_platform.models.user import User
+from spectra_platform.services.ai.agents.post_exploitation import (
     POST_EXPLOIT_TOOLS,
     PostExploitAction,
     PostExploitationAgent,
     PostExploitInput,
     _detect_os,
 )
-from app.services.mission.mission import Mission
-from spectra_api.authz import ROLE_PERMISSIONS, Permission, has_permission, require_permission
+from spectra_platform.services.mission.mission import Mission
 
 # ============================================================================
 # SEC-001: RBAC Tests
@@ -312,7 +312,7 @@ class TestPostExploitAgent:
 
     @pytest.mark.asyncio
     async def test_execute_queues_linux_tools(self, mock_llm):
-        from app.services.ai.agents.base import AgentContext
+        from spectra_platform.services.ai.agents.base import AgentContext
 
         agent = PostExploitationAgent(mock_llm)
         ctx = AgentContext(mission_id="test-1", target="10.0.0.1")
@@ -325,7 +325,7 @@ class TestPostExploitAgent:
 
     @pytest.mark.asyncio
     async def test_execute_queues_windows_tools(self, mock_llm):
-        from app.services.ai.agents.base import AgentContext
+        from spectra_platform.services.ai.agents.base import AgentContext
 
         agent = PostExploitationAgent(mock_llm)
         ctx = AgentContext(mission_id="test-1", target="10.0.0.1")
@@ -457,7 +457,7 @@ class TestPentestSessionModel:
     """Tests for the PentestSession DB model."""
 
     def test_model_has_required_columns(self):
-        from app.models.pentest_session import PentestSession
+        from spectra_platform.models.pentest_session import PentestSession
 
         columns = {c.name for c in PentestSession.__table__.columns}
         assert "id" in columns
@@ -470,11 +470,11 @@ class TestPentestSessionModel:
         assert "updated_at" in columns
 
     def test_model_tablename(self):
-        from app.models.pentest_session import PentestSession
+        from spectra_platform.models.pentest_session import PentestSession
 
         assert PentestSession.__tablename__ == "pentest_sessions"
 
     def test_model_in_models_package(self):
-        from app.models import PentestSession
+        from spectra_platform.models import PentestSession
 
         assert PentestSession is not None

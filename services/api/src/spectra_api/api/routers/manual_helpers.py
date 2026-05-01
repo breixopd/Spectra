@@ -13,24 +13,24 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.rate_limit import RateLimits, limiter
-from app.core.database import get_async_session
-from app.models.user import User
-from app.repositories.mission import MissionRepository
-from app.services.mission.output_model import (
+from spectra_api.api.dependencies import check_feature_allowed, check_resource_owner, get_current_active_user
+from spectra_common.errors import NotFoundError, ValidationError
+from spectra_platform.auth.rate_limit import RateLimits, limiter
+from spectra_platform.core.database import get_async_session
+from spectra_platform.models.user import User
+from spectra_platform.repositories.mission import MissionRepository
+from spectra_platform.services.mission.output_model import (
     get_mission_findings,
     get_mission_summary_dict,
 )
-from app.services.system.checklists import get_checklist, list_checklists
-from app.services.system.cvss import calculate_cvss31
-from app.services.system.gtfobins import search_gtfobins
-from app.services.system.payloads import get_payloads, list_payload_types
-from app.services.system.report_templates import (
+from spectra_platform.services.system.checklists import get_checklist, list_checklists
+from spectra_platform.services.system.cvss import calculate_cvss31
+from spectra_platform.services.system.gtfobins import search_gtfobins
+from spectra_platform.services.system.payloads import get_payloads, list_payload_types
+from spectra_platform.services.system.report_templates import (
     build_report_data,
     list_report_templates,
 )
-from spectra_api.api.dependencies import check_feature_allowed, check_resource_owner, get_current_active_user
-from spectra_common.errors import NotFoundError, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -187,7 +187,7 @@ async def api_generate_report(
             report_data["source_type"] = "mission"
             return report_data
 
-        from app.services.pentest.session_loader import load_session
+        from spectra_platform.services.pentest.session_loader import load_session
 
         session = await load_session(req.session_id)
         if session.get("owner_id") != str(_current_user.id) and not getattr(_current_user, "is_superuser", False):

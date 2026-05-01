@@ -8,8 +8,8 @@ from httpx import ASGITransport, AsyncClient
 
 
 def _make_app():
-    from app.auth.rate_limit import limiter
     from spectra_api.api.routers.admin.monitoring import router
+    from spectra_platform.auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter
@@ -19,8 +19,8 @@ def _make_app():
 
 
 def _override_deps(app, role="admin"):
-    from app.core.database import get_async_session
     from spectra_api.api.dependencies import get_current_active_user
+    from spectra_platform.core.database import get_async_session
 
     user = MagicMock()
     user.id = "u-1"

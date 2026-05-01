@@ -77,7 +77,7 @@ async def test_start_schedules_expected_background_tasks():
 
 @pytest.mark.asyncio
 async def test_postgres_pool_pressure_alerts_when_threshold_exceeded():
-    import app.core.database as database
+    import spectra_platform.core.database as database
     import spectra_scheduler.main as scheduler_service
 
     class FakePool:
@@ -156,8 +156,8 @@ async def test_sandbox_watchdog_loop_runs_single_iteration():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.infrastructure.background_tasks",
-            make_module("app.infrastructure.background_tasks", sandbox_watchdog_loop=watchdog),
+            "spectra_platform.infrastructure.background_tasks",
+            make_module("spectra_platform.infrastructure.background_tasks", sandbox_watchdog_loop=watchdog),
         )
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
@@ -184,8 +184,8 @@ async def test_sandbox_watchdog_loop_handles_errors_and_continues():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.infrastructure.background_tasks",
-            make_module("app.infrastructure.background_tasks", sandbox_watchdog_loop=watchdog),
+            "spectra_platform.infrastructure.background_tasks",
+            make_module("spectra_platform.infrastructure.background_tasks", sandbox_watchdog_loop=watchdog),
         )
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock(side_effect=stop_after_sleep))
@@ -212,8 +212,8 @@ async def test_sandbox_watchdog_skips_work_when_lock_not_acquired():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.infrastructure.background_tasks",
-            make_module("app.infrastructure.background_tasks", sandbox_watchdog_loop=watchdog),
+            "spectra_platform.infrastructure.background_tasks",
+            make_module("spectra_platform.infrastructure.background_tasks", sandbox_watchdog_loop=watchdog),
         )
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock(side_effect=stop_after_sleep))
@@ -242,8 +242,8 @@ async def test_quota_reset_runs_single_iteration():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.billing.usage_tracker",
-            make_module("app.services.billing.usage_tracker", UsageTracker=lambda: tracker),
+            "spectra_platform.services.billing.usage_tracker",
+            make_module("spectra_platform.services.billing.usage_tracker", UsageTracker=lambda: tracker),
         )
         mp.setattr(scheduler_core_loops, "datetime", _FakeDateTime)
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
@@ -278,8 +278,8 @@ async def test_quota_reset_handles_reset_errors():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.billing.usage_tracker",
-            make_module("app.services.billing.usage_tracker", UsageTracker=lambda: tracker),
+            "spectra_platform.services.billing.usage_tracker",
+            make_module("spectra_platform.services.billing.usage_tracker", UsageTracker=lambda: tracker),
         )
         mp.setattr(scheduler_core_loops, "datetime", _FakeDateTime)
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
@@ -304,8 +304,8 @@ async def test_metrics_collector_runs_single_iteration():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.infrastructure.metrics_store",
-            make_module("app.infrastructure.metrics_store", get_metrics_store=lambda: store),
+            "spectra_platform.infrastructure.metrics_store",
+            make_module("spectra_platform.infrastructure.metrics_store", get_metrics_store=lambda: store),
         )
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
@@ -334,8 +334,8 @@ async def test_metrics_collector_handles_collection_errors():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.infrastructure.metrics_store",
-            make_module("app.infrastructure.metrics_store", get_metrics_store=lambda: store),
+            "spectra_platform.infrastructure.metrics_store",
+            make_module("spectra_platform.infrastructure.metrics_store", get_metrics_store=lambda: store),
         )
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
@@ -359,8 +359,8 @@ async def test_health_reporter_runs_single_iteration():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.infrastructure.cache",
-            make_module("app.infrastructure.cache", get_cache=lambda: cache),
+            "spectra_platform.infrastructure.cache",
+            make_module("spectra_platform.infrastructure.cache", get_cache=lambda: cache),
         )
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
@@ -387,8 +387,8 @@ async def test_health_reporter_swallows_cache_errors():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.infrastructure.cache",
-            make_module("app.infrastructure.cache", get_cache=lambda: cache),
+            "spectra_platform.infrastructure.cache",
+            make_module("spectra_platform.infrastructure.cache", get_cache=lambda: cache),
         )
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock(side_effect=stop_after_sleep))
@@ -415,13 +415,13 @@ async def test_backup_scheduler_runs_single_iteration():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.config",
-            make_module("app.core.config", get_settings=lambda: settings),
+            "spectra_platform.core.config",
+            make_module("spectra_platform.core.config", get_settings=lambda: settings),
         )
         mp.setitem(
             sys.modules,
-            "app.services.infrastructure.backup",
-            make_module("app.services.infrastructure.backup", BackupService=lambda: backup_service),
+            "spectra_platform.services.infrastructure.backup",
+            make_module("spectra_platform.services.infrastructure.backup", BackupService=lambda: backup_service),
         )
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
@@ -446,8 +446,8 @@ async def test_backup_scheduler_skips_work_when_backups_disabled():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.config",
-            make_module("app.core.config", get_settings=lambda: settings),
+            "spectra_platform.core.config",
+            make_module("spectra_platform.core.config", get_settings=lambda: settings),
         )
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock(side_effect=record_sleep))
         await service._backup_scheduler()
@@ -476,13 +476,13 @@ async def test_backup_scheduler_handles_backup_errors():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.config",
-            make_module("app.core.config", get_settings=lambda: settings),
+            "spectra_platform.core.config",
+            make_module("spectra_platform.core.config", get_settings=lambda: settings),
         )
         mp.setitem(
             sys.modules,
-            "app.services.infrastructure.backup",
-            make_module("app.services.infrastructure.backup", BackupService=lambda: backup_service),
+            "spectra_platform.services.infrastructure.backup",
+            make_module("spectra_platform.services.infrastructure.backup", BackupService=lambda: backup_service),
         )
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
@@ -510,13 +510,13 @@ async def test_image_update_check_skips_registry_when_auto_update_disabled():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.config",
-            make_module("app.core.config", get_settings=lambda: settings),
+            "spectra_platform.core.config",
+            make_module("spectra_platform.core.config", get_settings=lambda: settings),
         )
         mp.setitem(
             sys.modules,
-            "app.services.scaling.image_updater",
-            make_module("app.services.scaling.image_updater", check_and_update_services=image_updater.check_and_update_services),
+            "spectra_platform.services.scaling.image_updater",
+            make_module("spectra_platform.services.scaling.image_updater", check_and_update_services=image_updater.check_and_update_services),
         )
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock(side_effect=stop_after_sleep))
@@ -543,13 +543,13 @@ async def test_image_update_check_runs_when_auto_update_enabled():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.config",
-            make_module("app.core.config", get_settings=lambda: settings),
+            "spectra_platform.core.config",
+            make_module("spectra_platform.core.config", get_settings=lambda: settings),
         )
         mp.setitem(
             sys.modules,
-            "app.services.scaling.image_updater",
-            make_module("app.services.scaling.image_updater", check_and_update_services=image_updater.check_and_update_services),
+            "spectra_platform.services.scaling.image_updater",
+            make_module("spectra_platform.services.scaling.image_updater", check_and_update_services=image_updater.check_and_update_services),
         )
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock())

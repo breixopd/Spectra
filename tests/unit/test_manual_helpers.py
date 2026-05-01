@@ -5,29 +5,29 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 
-from app.services.system.checklists import (
+from spectra_api.api.routers.manual_helpers import (
+    GenerateReportRequest,
+    _build_report_source_from_mission,
+)
+from spectra_platform.services.system.checklists import (
     BUILTIN_CHECKLISTS,
     get_checklist,
     list_checklists,
 )
-from app.services.system.cvss import calculate_cvss31
-from app.services.system.gtfobins import GTFOBINS, search_gtfobins
-from app.services.system.payloads import (
+from spectra_platform.services.system.cvss import calculate_cvss31
+from spectra_platform.services.system.gtfobins import GTFOBINS, search_gtfobins
+from spectra_platform.services.system.payloads import (
     LFI_PAYLOADS,
     SQLI_PAYLOADS,
     XSS_PAYLOADS,
     get_payloads,
     list_payload_types,
 )
-from app.services.system.report_templates import (
+from spectra_platform.services.system.report_templates import (
     REPORT_TEMPLATES,
     build_report_data,
     get_report_template,
     list_report_templates,
-)
-from spectra_api.api.routers.manual_helpers import (
-    GenerateReportRequest,
-    _build_report_source_from_mission,
 )
 
 # ===== Checklists =====

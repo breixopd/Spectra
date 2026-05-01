@@ -32,8 +32,8 @@ async def test_worker_startup_initializes_registry_and_auto_install():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.tools.registry",
-            make_module("app.services.tools.registry", initialize_registry=AsyncMock(return_value=registry)),
+            "spectra_platform.services.tools.registry",
+            make_module("spectra_platform.services.tools.registry", initialize_registry=AsyncMock(return_value=registry)),
         )
         mp.setattr(lifecycle, "_auto_install_pending", auto_install)
         await lifecycle.startup()
@@ -50,8 +50,8 @@ async def test_worker_startup_returns_when_registry_init_fails():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.tools.registry",
-            make_module("app.services.tools.registry", initialize_registry=AsyncMock(side_effect=ImportError("bad"))),
+            "spectra_platform.services.tools.registry",
+            make_module("spectra_platform.services.tools.registry", initialize_registry=AsyncMock(side_effect=ImportError("bad"))),
         )
         mp.setattr(lifecycle, "_auto_install_pending", auto_install)
         await lifecycle.startup()
@@ -73,13 +73,13 @@ async def test_auto_install_pending_syncs_detected_status_without_installing():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.tools.registry",
-            make_module("app.services.tools.registry", get_registry=lambda: registry),
+            "spectra_platform.services.tools.registry",
+            make_module("spectra_platform.services.tools.registry", get_registry=lambda: registry),
         )
         mp.setitem(
             sys.modules,
-            "app.services.tools.installer",
-            make_module("app.services.tools.installer", ToolInstaller=installer_factory),
+            "spectra_platform.services.tools.installer",
+            make_module("spectra_platform.services.tools.installer", ToolInstaller=installer_factory),
         )
         mp.setattr(lifecycle, "_is_tool_installed", MagicMock(side_effect=[True, False]))
         mp.setattr(lifecycle, "_sync_tool_status", sync_status)
@@ -97,7 +97,7 @@ async def test_worker_shutdown_disposes_database_engine():
     engine = SimpleNamespace(dispose=AsyncMock())
 
     with pytest.MonkeyPatch.context() as mp:
-        mp.setitem(sys.modules, "app.core.database", make_module("app.core.database", engine=engine))
+        mp.setitem(sys.modules, "spectra_platform.core.database", make_module("spectra_platform.core.database", engine=engine))
         await lifecycle.shutdown()
 
     engine.dispose.assert_awaited_once()
@@ -110,7 +110,7 @@ async def test_worker_shutdown_ignores_dispose_errors():
     engine = SimpleNamespace(dispose=AsyncMock(side_effect=OSError("db busy")))
 
     with pytest.MonkeyPatch.context() as mp:
-        mp.setitem(sys.modules, "app.core.database", make_module("app.core.database", engine=engine))
+        mp.setitem(sys.modules, "spectra_platform.core.database", make_module("spectra_platform.core.database", engine=engine))
         await lifecycle.shutdown()
 
     engine.dispose.assert_awaited_once()
@@ -138,13 +138,13 @@ async def test_heartbeat_loop_updates_db_before_cancellation():
         mp.setattr("sqlalchemy.update", lambda *args, **kwargs: _FakeUpdate())
         mp.setitem(
             sys.modules,
-            "app.core.database",
-            make_module("app.core.database", async_session_maker=MagicMock(return_value=session_ctx)),
+            "spectra_platform.core.database",
+            make_module("spectra_platform.core.database", async_session_maker=MagicMock(return_value=session_ctx)),
         )
         mp.setitem(
             sys.modules,
-            "app.models.infrastructure",
-            make_module("app.models.infrastructure", Sandbox=sandbox_model),
+            "spectra_platform.models.infrastructure",
+            make_module("spectra_platform.models.infrastructure", Sandbox=sandbox_model),
         )
         mp.setattr(lifecycle.asyncio, "sleep", AsyncMock(side_effect=asyncio.CancelledError()))
         with pytest.raises(asyncio.CancelledError):
@@ -176,13 +176,13 @@ async def test_heartbeat_loop_logs_and_retries_after_db_error():
         mp.setattr("sqlalchemy.update", lambda *args, **kwargs: _FakeUpdate())
         mp.setitem(
             sys.modules,
-            "app.core.database",
-            make_module("app.core.database", async_session_maker=MagicMock(return_value=session_ctx)),
+            "spectra_platform.core.database",
+            make_module("spectra_platform.core.database", async_session_maker=MagicMock(return_value=session_ctx)),
         )
         mp.setitem(
             sys.modules,
-            "app.models.infrastructure",
-            make_module("app.models.infrastructure", Sandbox=sandbox_model),
+            "spectra_platform.models.infrastructure",
+            make_module("spectra_platform.models.infrastructure", Sandbox=sandbox_model),
         )
         mp.setattr(lifecycle.asyncio, "sleep", AsyncMock(side_effect=asyncio.CancelledError()))
         with pytest.raises(asyncio.CancelledError):
@@ -204,8 +204,8 @@ async def test_run_command_job_blocks_unsafe_commands():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.ai.agents.safety",
-            make_module("app.services.ai.agents.safety", SafetySupervisorAgent=_SafetySupervisorAgent),
+            "spectra_platform.services.ai.agents.safety",
+            make_module("spectra_platform.services.ai.agents.safety", SafetySupervisorAgent=_SafetySupervisorAgent),
         )
         run_command = AsyncMock()
         mp.setattr(command_jobs, "_run_command", run_command)
@@ -234,8 +234,8 @@ async def test_run_command_job_wraps_command_with_timeout():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.ai.agents.safety",
-            make_module("app.services.ai.agents.safety", SafetySupervisorAgent=_SafetySupervisorAgent),
+            "spectra_platform.services.ai.agents.safety",
+            make_module("spectra_platform.services.ai.agents.safety", SafetySupervisorAgent=_SafetySupervisorAgent),
         )
         mp.setattr(command_jobs, "_run_command", run_command)
         result = await command_jobs.run_command_job("echo hi", timeout=10, cwd="/tmp/work")
@@ -380,8 +380,8 @@ async def test_vpn_disconnect_job_handles_supported_unknown_and_error_cases():
         mp.setattr(vpn_jobs.os, "kill", MagicMock())
         mp.setitem(
             sys.modules,
-            "app.core.config",
-            make_module("app.core.config", settings=SimpleNamespace(VPN_CONFIG_DIR="/vpn")),
+            "spectra_platform.core.config",
+            make_module("spectra_platform.core.config", settings=SimpleNamespace(VPN_CONFIG_DIR="/vpn")),
         )
         wireguard = await vpn_jobs.vpn_disconnect_job("client", "wireguard")
         openvpn = await vpn_jobs.vpn_disconnect_job("client", "openvpn")

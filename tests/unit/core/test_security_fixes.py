@@ -19,8 +19,8 @@ def _safe_create_task(coro, **kwargs):
 @pytest.fixture(autouse=True)
 def _mission_runtime_isolation(tmp_path):
     with (
-        patch("app.services.mission.mission.data_path", side_effect=tmp_path.joinpath),
-        patch("app.services.mission.mission.asyncio.create_task", side_effect=_safe_create_task),
+        patch("spectra_platform.services.mission.mission.data_path", side_effect=tmp_path.joinpath),
+        patch("spectra_platform.services.mission.mission.asyncio.create_task", side_effect=_safe_create_task),
     ):
         yield
 
@@ -118,7 +118,7 @@ class TestPersistentTokenBlacklist:
 
     def setup_method(self):
         """Reset blacklist state before each test."""
-        import app.auth.security as sec
+        import spectra_platform.auth.security as sec
 
         sec._blacklisted_tokens.clear()
         sec._user_token_blacklist.clear()
@@ -126,7 +126,7 @@ class TestPersistentTokenBlacklist:
 
     @pytest.mark.asyncio
     async def test_invalidate_token_adds_with_expiry(self):
-        import app.auth.security as sec
+        import spectra_platform.auth.security as sec
 
         token = "test-token-123"
         with patch.object(sec, "_persist_blacklist"):
@@ -138,7 +138,7 @@ class TestPersistentTokenBlacklist:
 
     @pytest.mark.asyncio
     async def test_is_token_blacklisted_checks_expiry(self):
-        import app.auth.security as sec
+        import spectra_platform.auth.security as sec
 
         token = "expired-token"
         token_h = sec._token_hash(token)
@@ -148,7 +148,7 @@ class TestPersistentTokenBlacklist:
 
     @pytest.mark.asyncio
     async def test_is_token_blacklisted_valid_entry(self):
-        import app.auth.security as sec
+        import spectra_platform.auth.security as sec
 
         token = "valid-blacklisted-token"
         token_h = sec._token_hash(token)
@@ -156,7 +156,7 @@ class TestPersistentTokenBlacklist:
         assert await sec.is_token_blacklisted(token) is True
 
     def test_persist_blacklist_calls_db(self):
-        import app.auth.security as sec
+        import spectra_platform.auth.security as sec
 
         with patch.object(sec, "_persist_to_db") as mock_db:
             # Provide a running loop so create_task works
@@ -175,7 +175,7 @@ class TestPersistentTokenBlacklist:
 
     @pytest.mark.asyncio
     async def test_ensure_blacklist_loaded_awaits_load(self):
-        import app.auth.security as sec
+        import spectra_platform.auth.security as sec
 
         sec._blacklist_ready.clear()
         sec._blacklist_load_started = False
@@ -191,7 +191,7 @@ class TestPersistentTokenBlacklist:
 
     @pytest.mark.asyncio
     async def test_invalidate_all_user_tokens_persists(self):
-        import app.auth.security as sec
+        import spectra_platform.auth.security as sec
 
         with patch.object(sec, "_persist_blacklist") as mock_persist:
             await sec.invalidate_all_user_tokens("testuser")
@@ -294,34 +294,34 @@ class TestSafetyStatsAuth:
 class TestMissionBlackboardWired:
     """Tests that Mission creates and uses blackboard."""
 
-    @patch("app.services.mission.mission.ws_manager")
+    @patch("spectra_platform.services.mission.mission.ws_manager")
     def test_mission_has_blackboard(self, _ws):
-        from app.services.mission.mission import Mission
+        from spectra_platform.services.mission.mission import Mission
 
         m = Mission("10.0.0.1", "test")
         assert m.blackboard is not None
         assert m.blackboard.mission_id == m.id
 
-    @patch("app.services.mission.mission.ws_manager")
+    @patch("spectra_platform.services.mission.mission.ws_manager")
     def test_mission_has_task_tree(self, _ws):
-        from app.services.mission.mission import Mission
+        from spectra_platform.services.mission.mission import Mission
 
         m = Mission("10.0.0.1", "test")
         assert m.task_tree is not None
         assert m.task_tree.mission_id == m.id
 
-    @patch("app.services.mission.mission.ws_manager")
+    @patch("spectra_platform.services.mission.mission.ws_manager")
     def test_to_dict_includes_task_tree(self, _ws):
-        from app.services.mission.mission import Mission
+        from spectra_platform.services.mission.mission import Mission
 
         m = Mission("10.0.0.1", "test")
         d = m.to_dict()
         assert "task_tree" in d
         assert "blackboard" in d
 
-    @patch("app.services.mission.mission.ws_manager")
+    @patch("spectra_platform.services.mission.mission.ws_manager")
     def test_save_checkpoint_includes_task_tree(self, _ws):
-        from app.services.mission.mission import Mission
+        from spectra_platform.services.mission.mission import Mission
 
         m = Mission("10.0.0.1", "test")
         m.task_tree.add_task("scan-1", "Port Scan", "recon/port_scan")
@@ -329,9 +329,9 @@ class TestMissionBlackboardWired:
         assert "task_tree" in cp
         assert "scan-1" in cp["task_tree"]["nodes"]
 
-    @patch("app.services.mission.mission.ws_manager")
+    @patch("spectra_platform.services.mission.mission.ws_manager")
     def test_from_checkpoint_restores_task_tree(self, _ws):
-        from app.services.mission.mission import Mission
+        from spectra_platform.services.mission.mission import Mission
 
         m = Mission("10.0.0.1", "test")
         m.task_tree.add_task("scan-1", "Port Scan", "recon/port_scan")
@@ -352,7 +352,7 @@ class TestAuditLoggingWired:
 
     def test_auth_login_wires_audit_log_event(self):
         import spectra_api.api.routers.auth.login as login_mod
-        from app.services.system.audit import log_event
+        from spectra_platform.services.system.audit import log_event
 
         assert login_mod.audit_log_event is log_event
 
@@ -377,7 +377,7 @@ class TestCveIntelTimeout:
         assert "/" not in key
 
     def test_infer_vuln_type(self):
-        from app.services.ai.cve_intel import _infer_vuln_type
+        from spectra_platform.services.ai.cve_intel import _infer_vuln_type
 
         assert _infer_vuln_type("Remote code execution via buffer overflow") == "rce"
         assert _infer_vuln_type("SQL injection in login form") == "sqli"

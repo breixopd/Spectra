@@ -11,8 +11,8 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.infrastructure.cache import CacheService, _json_dumps, get_cache, set_cache
-from app.models.infrastructure import CacheEntry, InfrastructureBase
+from spectra_platform.infrastructure.cache import CacheService, _json_dumps, get_cache, set_cache
+from spectra_platform.models.infrastructure import CacheEntry, InfrastructureBase
 
 
 @pytest_asyncio.fixture
@@ -280,14 +280,14 @@ class TestGetCacheSingleton:
 
     def test_get_cache_returns_none_by_default(self):
         """get_cache() returns None before set_cache() is called."""
-        with patch("app.infrastructure.cache._cache", None):
+        with patch("spectra_platform.infrastructure.cache._cache", None):
             assert get_cache() is None
 
     def test_set_and_get_cache(self):
         """set_cache() stores instance retrievable by get_cache()."""
         mock_svc = MagicMock(spec=CacheService)
-        with patch("app.infrastructure.cache._cache", None):
+        with patch("spectra_platform.infrastructure.cache._cache", None):
             set_cache(mock_svc)
-            from app.infrastructure.cache import _cache
+            from spectra_platform.infrastructure.cache import _cache
 
             assert _cache is mock_svc

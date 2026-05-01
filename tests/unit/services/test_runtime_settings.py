@@ -6,7 +6,7 @@ import pytest
 from fastapi import FastAPI
 from pydantic import SecretStr
 
-from app.services.system.runtime_settings import (
+from spectra_platform.services.system.runtime_settings import (
     BOOTSTRAP_ONLY_VARS,
     GENERAL_RUNTIME_FIELD_MAP,
     _apply_general_runtime_settings,
@@ -24,7 +24,7 @@ def test_apply_general_runtime_settings_sets_expected_fields():
         "NOTIFICATION_WEBHOOK": "https://example.test/hook",
     }
 
-    with patch("app.services.system.runtime_settings.settings") as mock_settings:
+    with patch("spectra_platform.services.system.runtime_settings.settings") as mock_settings:
         _apply_general_runtime_settings(rows)
 
     assert mock_settings.TENSORZERO_GATEWAY_URL == "http://tensorzero:3000"
@@ -40,7 +40,7 @@ def test_apply_general_runtime_settings_handles_nullable_and_invalid_ints():
         "SANDBOX_MAX_CONTAINERS": "not-an-int",
     }
 
-    with patch("app.services.system.runtime_settings.settings") as mock_settings:
+    with patch("spectra_platform.services.system.runtime_settings.settings") as mock_settings:
         mock_settings.SANDBOX_MAX_CONTAINERS = 4
         _apply_general_runtime_settings(rows)
 
@@ -64,9 +64,9 @@ async def test_hydrate_runtime_settings_applies_rows_and_resets_caches(monkeypat
     monkeypatch.delenv("SANDBOX_MAX_CONTAINERS", raising=False)
 
     with (
-        patch("app.services.system.runtime_settings.settings") as mock_settings,
+        patch("spectra_platform.services.system.runtime_settings.settings") as mock_settings,
         patch(
-            "app.services.system.runtime_settings.reset_runtime_ai_caches",
+            "spectra_platform.services.system.runtime_settings.reset_runtime_ai_caches",
             new_callable=AsyncMock,
         ) as mock_reset,
     ):
@@ -138,7 +138,7 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.remove_system_operation", new_callable=AsyncMock))
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.telemetry.update_service_status"))
         mock_init_registry = stack.enter_context(
-            patch("app.services.tools.registry.initialize_registry", new_callable=AsyncMock)
+            patch("spectra_platform.services.tools.registry.initialize_registry", new_callable=AsyncMock)
         )
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.events.emit", new_callable=AsyncMock))
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.run_startup_tasks"))
@@ -152,21 +152,21 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         mock_hydrate = stack.enter_context(
             patch("spectra_api.bootstrap.lifespan.hydrate_runtime_settings_from_db", new_callable=AsyncMock)
         )
-        stack.enter_context(patch("app.services.storage.close_storage_service", new_callable=AsyncMock))
+        stack.enter_context(patch("spectra_platform.services.storage.close_storage_service", new_callable=AsyncMock))
         stack.enter_context(patch("spectra_ai.embeddings.EmbeddingService", FakeEmbeddingService))
-        stack.enter_context(patch("app.mission.core.bridge.EventWebSocketBridge", return_value=FakeBridge()))
+        stack.enter_context(patch("spectra_platform.mission.core.bridge.EventWebSocketBridge", return_value=FakeBridge()))
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.run_startup_checks", new_callable=AsyncMock))
         stack.enter_context(patch("spectra_api.bootstrap.lifespan._validate_rate_limit_storage"))
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.seed_default_plans", new_callable=AsyncMock))
         stack.enter_context(
-            patch("app.services.system.secret_bootstrap.ensure_persistent_secrets", new_callable=AsyncMock)
+            patch("spectra_platform.services.system.secret_bootstrap.ensure_persistent_secrets", new_callable=AsyncMock)
         )
         stack.enter_context(
-            patch("app.infrastructure.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock()))
+            patch("spectra_platform.infrastructure.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock()))
         )
         stack.enter_context(
             patch(
-                "app.services.storage.get_storage_service",
+                "spectra_platform.services.storage.get_storage_service",
                 return_value=MagicMock(
                     is_s3=True,
                     start=AsyncMock(),
@@ -175,18 +175,18 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
             )
         )
         stack.enter_context(
-            patch("app.services.gateway.service_registry.get_service_registry", return_value=MagicMock())
+            patch("spectra_platform.services.gateway.service_registry.get_service_registry", return_value=MagicMock())
         )
         stack.enter_context(
             patch(
-                "app.services.scaling.get_pool_manager",
+                "spectra_platform.services.scaling.get_pool_manager",
                 return_value=MagicMock(start_health_loop=AsyncMock(), stop_health_loop=AsyncMock()),
             )
         )
         stack.enter_context(
-            patch("app.services.tools.sandbox.pool.SandboxPool", return_value=MagicMock(available=False))
+            patch("spectra_platform.services.tools.sandbox.pool.SandboxPool", return_value=MagicMock(available=False))
         )
-        stack.enter_context(patch("app.services.tools.sandbox.SandboxPool", return_value=MagicMock(available=False)))
+        stack.enter_context(patch("spectra_platform.services.tools.sandbox.SandboxPool", return_value=MagicMock(available=False)))
 
         mock_settings = stack.enter_context(patch("spectra_api.bootstrap.lifespan.settings"))
         mock_settings.AI_SERVICE_URL = ""
@@ -307,9 +307,9 @@ async def test_hydrate_env_override_takes_precedence_over_db():
     session.execute.return_value = result
 
     with (
-        patch("app.services.system.runtime_settings.settings") as mock_settings,
+        patch("spectra_platform.services.system.runtime_settings.settings") as mock_settings,
         patch(
-            "app.services.system.runtime_settings.reset_runtime_ai_caches",
+            "spectra_platform.services.system.runtime_settings.reset_runtime_ai_caches",
             new_callable=AsyncMock,
         ),
         patch.dict(os.environ, {"PLATFORM_DOMAIN": "from-env.example.com"}),
@@ -337,9 +337,9 @@ async def test_hydrate_bootstrap_only_vars_skip_env_override():
     session.execute.return_value = result
 
     with (
-        patch("app.services.system.runtime_settings.settings"),
+        patch("spectra_platform.services.system.runtime_settings.settings"),
         patch(
-            "app.services.system.runtime_settings.reset_runtime_ai_caches",
+            "spectra_platform.services.system.runtime_settings.reset_runtime_ai_caches",
             new_callable=AsyncMock,
         ),
         patch.dict(os.environ, {"DATABASE_URL": "from-env"}),

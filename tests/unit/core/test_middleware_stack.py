@@ -128,7 +128,7 @@ class TestSecurityHeadersMiddleware:
         """HSTS should NOT be set when DEBUG=True (default in tests)."""
         resp = await client.get("/ok")
         # In test env DEBUG may vary; this just checks consistency
-        from app.core.config import settings
+        from spectra_platform.core.config import settings
 
         if settings.DEBUG:
             assert "Strict-Transport-Security" not in resp.headers
@@ -307,7 +307,7 @@ class TestBodySizeLimiterMiddleware:
     @pytest.mark.asyncio
     async def test_oversized_body_rejected(self, client):
         """Content-Length exceeding MAX_REQUEST_BODY_SIZE yields 413."""
-        from app.core.config import settings
+        from spectra_platform.core.config import settings
 
         oversized = settings.MAX_REQUEST_BODY_SIZE + 1
         resp = await client.post(
@@ -326,7 +326,7 @@ class TestBodySizeLimiterMiddleware:
     @pytest.mark.asyncio
     async def test_exact_limit_passes(self, client):
         """Body at exactly the limit is allowed."""
-        from app.core.config import settings
+        from spectra_platform.core.config import settings
 
         resp = await client.post(
             "/api/v1/health",

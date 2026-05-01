@@ -6,21 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response,
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.rate_limit import RateLimits, limiter
-from app.core.database import get_async_session
-from app.models.audit_log import AuditEventType
-from app.models.user import User
-from app.models.user_preferences import UserPreferences
-from app.repositories.mission import MissionRepository
-from app.services.compliance.mission_abuse import evaluate_mission_abuse
-from app.services.mission.manager import mission_manager
-from app.services.mission.output_model import (
-    get_mission_findings as get_mission_output_findings,
-)
-from app.services.mission.output_model import (
-    get_mission_summary_dict,
-)
-from app.services.system.audit import log_event as audit_log_event
 from spectra_api.api.dependencies import (
     check_feature_allowed,
     check_mission_limit,
@@ -35,6 +20,21 @@ from spectra_api.api.schemas.mission import MissionFindingSummary, MissionRespon
 from spectra_api.authz import Permission, require_permission
 from spectra_common.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from spectra_common.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
+from spectra_platform.auth.rate_limit import RateLimits, limiter
+from spectra_platform.core.database import get_async_session
+from spectra_platform.models.audit_log import AuditEventType
+from spectra_platform.models.user import User
+from spectra_platform.models.user_preferences import UserPreferences
+from spectra_platform.repositories.mission import MissionRepository
+from spectra_platform.services.compliance.mission_abuse import evaluate_mission_abuse
+from spectra_platform.services.mission.manager import mission_manager
+from spectra_platform.services.mission.output_model import (
+    get_mission_findings as get_mission_output_findings,
+)
+from spectra_platform.services.mission.output_model import (
+    get_mission_summary_dict,
+)
+from spectra_platform.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +200,7 @@ async def list_missions(
 
     from sqlalchemy import func, select
 
-    from app.models.mission import Mission
+    from spectra_platform.models.mission import Mission
 
     base = select(Mission)
 

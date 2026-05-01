@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.telemetry.telemetry import TelemetryCollector
+from spectra_platform.telemetry.telemetry import TelemetryCollector
 
 
 @pytest.fixture
@@ -187,7 +187,7 @@ class TestOtelPushExporter:
     @pytest.mark.asyncio
     async def test_push_disabled_when_no_endpoint(self):
         collector = TelemetryCollector()
-        with patch("app.core.config.get_settings") as mock_settings:
+        with patch("spectra_platform.core.config.get_settings") as mock_settings:
             mock_settings.return_value.OTEL_EXPORTER_ENDPOINT = ""
             result = await collector.push_to_collector()
             assert result is False
@@ -197,7 +197,7 @@ class TestOtelPushExporter:
         collector = TelemetryCollector()
         collector.increment_counter("test_counter")
 
-        with patch("app.core.config.get_settings") as mock_settings:
+        with patch("spectra_platform.core.config.get_settings") as mock_settings:
             mock_settings.return_value.OTEL_EXPORTER_ENDPOINT = "http://collector:4318"
             mock_settings.return_value.OTEL_SERVICE_NAME = "spectra"
 
@@ -218,7 +218,7 @@ class TestOtelPushExporter:
         collector = TelemetryCollector()
         collector.increment_counter("test_counter")
 
-        with patch("app.core.config.get_settings") as mock_settings:
+        with patch("spectra_platform.core.config.get_settings") as mock_settings:
             mock_settings.return_value.OTEL_EXPORTER_ENDPOINT = "http://bad-host:4318"
 
             with patch("httpx.AsyncClient") as mock_client:

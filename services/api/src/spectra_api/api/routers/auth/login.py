@@ -8,18 +8,6 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, 
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.rate_limit import RateLimits, limiter
-from app.auth.security import (
-    create_access_token,
-    invalidate_token,
-    verify_password,
-)
-from app.core.config import settings
-from app.core.database import get_async_session
-from app.infrastructure.events import EventType, events
-from app.models.audit_log import AuditEventType
-from app.services.system.audit import log_event as audit_log_event
-from app.telemetry.telemetry import telemetry
 from spectra_api.api.routers.auth._helpers import (
     ACCESS_COOKIE_KEY,
     DUMMY_PASSWORD_HASH,
@@ -39,6 +27,18 @@ from spectra_api.api.routers.auth._helpers import (
     _validate_refresh_token_payload,
 )
 from spectra_api.api.schemas.auth import Token
+from spectra_platform.auth.rate_limit import RateLimits, limiter
+from spectra_platform.auth.security import (
+    create_access_token,
+    invalidate_token,
+    verify_password,
+)
+from spectra_platform.core.config import settings
+from spectra_platform.core.database import get_async_session
+from spectra_platform.infrastructure.events import EventType, events
+from spectra_platform.models.audit_log import AuditEventType
+from spectra_platform.services.system.audit import log_event as audit_log_event
+from spectra_platform.telemetry.telemetry import telemetry
 
 logger = logging.getLogger(__name__)
 

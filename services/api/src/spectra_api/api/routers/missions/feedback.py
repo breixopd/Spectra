@@ -7,14 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.rate_limit import RateLimits, limiter
-from app.core.database import get_async_session
-from app.models.user import User
-from app.repositories.mission import MissionRepository
-from app.services.mission.manager import mission_manager
-from app.services.mission.types import MissionProgress
 from spectra_api.api.dependencies import check_resource_owner, get_current_active_user, validate_uuid_param
 from spectra_api.api.schemas.mission import ActionApprovalResponse
+from spectra_platform.auth.rate_limit import RateLimits, limiter
+from spectra_platform.core.database import get_async_session
+from spectra_platform.models.user import User
+from spectra_platform.repositories.mission import MissionRepository
+from spectra_platform.services.mission.manager import mission_manager
+from spectra_platform.services.mission.types import MissionProgress
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +126,7 @@ async def approve_action(
     if not getattr(mission, "requires_approval", False):
         raise HTTPException(status_code=400, detail="Mission does not require approval")
 
-    from app.mission.core.websocket import manager
+    from spectra_platform.mission.core.websocket import manager
 
     await manager.broadcast_to_room_json(
         f"mission:{mission_id}",

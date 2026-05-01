@@ -7,7 +7,7 @@ import pytest
 from fastapi import Response
 from starlette.requests import Request
 
-from app.auth.security import decrypt_mfa_secret, encrypt_mfa_secret, verify_totp
+from spectra_platform.auth.security import decrypt_mfa_secret, encrypt_mfa_secret, verify_totp
 
 # --- Security helper tests ---
 
@@ -159,7 +159,7 @@ async def test_login_with_mfa_requires_code():
     """When MFA is enabled, login should return mfa_required=True."""
     from datetime import timedelta
 
-    from app.auth.security import create_access_token
+    from spectra_platform.auth.security import create_access_token
 
     secret = pyotp.random_base32()
     encrypted = encrypt_mfa_secret(secret)
@@ -174,7 +174,7 @@ async def test_login_with_mfa_requires_code():
     )
 
     # The token should be a valid JWT with mfa_pending claim
-    from app.auth.security import decode_token
+    from spectra_platform.auth.security import decode_token
 
     payload = await decode_token(mfa_token)
     assert payload["mfa_pending"] is True
@@ -186,9 +186,9 @@ async def test_login_with_mfa_returns_token_after_verify(mock_session):
     """After MFA verify, a full access token should be returned."""
     from datetime import timedelta
 
-    from app.auth.security import create_access_token, decode_token
     from spectra_api.api.routers.auth.totp import mfa_verify_login
     from spectra_api.api.schemas.auth import MFAVerifyRequest
+    from spectra_platform.auth.security import create_access_token, decode_token
 
     secret = pyotp.random_base32()
     encrypted = encrypt_mfa_secret(secret)
@@ -312,10 +312,10 @@ async def test_mfa_verify_login_rejects_replayed_code(mock_session):
 
     from fastapi import HTTPException
 
-    from app.auth.security import create_access_token
     from spectra_api.api.routers.auth._helpers import _used_totp_codes
     from spectra_api.api.routers.auth.totp import mfa_verify_login
     from spectra_api.api.schemas.auth import MFAVerifyRequest
+    from spectra_platform.auth.security import create_access_token
 
     _used_totp_codes.clear()
     secret = pyotp.random_base32()

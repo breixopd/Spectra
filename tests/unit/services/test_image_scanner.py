@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.tools.sandbox.image_scanner import ImageScanner, ScanResult
+from spectra_platform.services.tools.sandbox.image_scanner import ImageScanner, ScanResult
 
 
 def test_scan_result_to_dict():
@@ -123,7 +123,7 @@ async def test_get_last_scan_found():
     mock_session = AsyncMock()
     mock_session.execute = AsyncMock(return_value=mock_result)
 
-    with patch("app.core.database.async_session_maker", return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False))):
+    with patch("spectra_platform.core.database.async_session_maker", return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False))):
         result = await scanner.get_last_scan()
 
     assert result == {"image": "test", "status": "clean"}
@@ -140,7 +140,7 @@ async def test_get_last_scan_not_found():
     mock_session = AsyncMock()
     mock_session.execute = AsyncMock(return_value=mock_result)
 
-    with patch("app.core.database.async_session_maker", return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False))):
+    with patch("spectra_platform.core.database.async_session_maker", return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False))):
         result = await scanner.get_last_scan()
 
     assert result is None
@@ -151,7 +151,7 @@ async def test_get_last_scan_exception():
     with patch("shutil.which", return_value="/usr/bin/grype"):
         scanner = ImageScanner()
 
-    with patch("app.core.database.async_session_maker", side_effect=RuntimeError("db error")):
+    with patch("spectra_platform.core.database.async_session_maker", side_effect=RuntimeError("db error")):
         result = await scanner.get_last_scan()
 
     assert result is None

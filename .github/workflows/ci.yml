@@ -23,13 +23,13 @@ jobs:
       - name: Build Docker test runner
         run: docker build -f docker/Dockerfile.test -t spectra-test-ci .
       - name: Ruff
-        run: docker run --rm spectra-test-ci python -m ruff check app/ tests/ services/ packages/
+        run: docker run --rm spectra-test-ci python -m ruff check spectra_platform/ tests/ services/ packages/
       - name: Import boundaries
         run: docker run --rm spectra-test-ci python scripts/check_import_boundaries.py
       - name: Pyright
         run: docker run --rm spectra-test-ci sh -c "pip install --no-cache-dir pyright >/dev/null && pyright"
       - name: Bandit
-        run: docker run --rm spectra-test-ci bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high
+        run: docker run --rm spectra-test-ci bandit -r spectra_platform/ -c pyproject.toml --severity-level high --confidence-level high
 
   test:
     name: Unit Tests
@@ -49,7 +49,7 @@ jobs:
         run: |
           set +e
           docker compose -f docker/compose.yaml --profile test run --name spectra-unit-coverage unit-test-runner \
-            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=app --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=70"
+            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_platform --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=70"
           status=$?
           docker cp spectra-unit-coverage:/tmp/coverage.xml coverage.xml 2>/dev/null || true
           docker rm -f spectra-unit-coverage >/dev/null 2>&1 || true
@@ -233,9 +233,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Verify app/_meta/version.py exists and has __version__
+      - name: Verify spectra_platform/_meta/version.py exists and has __version__
         run: |
-          python3 -c "exec(open('app/_meta/version.py').read()); print('Version:', __version__)"
+          python3 -c "exec(open('spectra_platform/_meta/version.py').read()); print('Version:', __version__)"
 
   compose-smoke:
     name: Compose Smoke Tests

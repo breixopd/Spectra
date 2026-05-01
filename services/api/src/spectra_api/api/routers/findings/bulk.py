@@ -12,15 +12,15 @@ from fastapi.responses import Response as FastAPIResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.rate_limit import RateLimits, limiter
-from app.core.database import get_async_session
-from app.models.audit_log import AuditEventType
-from app.models.user import User
-from app.repositories.finding import FindingRepository
-from app.services.system.audit import log_event as audit_log_event
 from spectra_api.api.dependencies import get_current_active_user
 from spectra_api.api.routers.findings.core import FindingUpdate
 from spectra_common.constants import MAX_BULK_FINDINGS, MAX_EXPORT_ROWS
+from spectra_platform.auth.rate_limit import RateLimits, limiter
+from spectra_platform.core.database import get_async_session
+from spectra_platform.models.audit_log import AuditEventType
+from spectra_platform.models.user import User
+from spectra_platform.repositories.finding import FindingRepository
+from spectra_platform.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,7 @@ def _build_export_response(
     response_filename = filename
 
     if encrypted:
-        from app.auth.encryption import encrypt_data_with_password
+        from spectra_platform.auth.encryption import encrypt_data_with_password
 
         payload = encrypt_data_with_password(
             payload,
@@ -221,7 +221,7 @@ async def bulk_update_findings(
     """Bulk update multiple findings. Max 100 per request."""
     from sqlalchemy import func, update
 
-    from app.models.finding import Finding
+    from spectra_platform.models.finding import Finding
 
     if len(request.finding_ids) > MAX_BULK_FINDINGS:
         raise HTTPException(

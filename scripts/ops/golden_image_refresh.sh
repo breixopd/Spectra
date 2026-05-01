@@ -130,8 +130,8 @@ command -v docker >/dev/null 2>&1 || die "docker not found in PATH"
 docker info >/dev/null 2>&1       || die "Cannot connect to Docker daemon"
 [[ -f "$DOCKERFILE" ]]            || die "Dockerfile not found: ${DOCKERFILE}"
 
-# Read version from app/_meta/version.py
-VERSION_FILE="${PROJECT_DIR}/app/_meta/version.py"
+# Read version from spectra_platform/_meta/version.py
+VERSION_FILE="${PROJECT_DIR}/spectra_platform/_meta/version.py"
 if [[ -f "$VERSION_FILE" ]]; then
     APP_VERSION=$(grep -oP '__version__\s*=\s*"\K[^"]+' "$VERSION_FILE" 2>/dev/null || echo "dev")
 else

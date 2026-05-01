@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.services.rag.service import RAGFacade, get_rag_facade
 from spectra_ai.rag import Document, SearchResult
+from spectra_platform.services.rag.service import RAGFacade, get_rag_facade
 
 
 @pytest.fixture
@@ -140,7 +140,7 @@ class TestRAGFacadeIndexFinding:
 
 class TestGetRagFacade:
     def test_singleton(self):
-        import app.services.rag.service as mod
+        import spectra_platform.services.rag.service as mod
 
         mod._facade = None  # Reset singleton
         f1 = get_rag_facade()

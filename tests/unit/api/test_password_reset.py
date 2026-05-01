@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 class TestCreatePasswordResetToken:
     def test_generates_valid_jwt(self):
-        from app.auth.security import create_password_reset_token, verify_password_reset_token
+        from spectra_platform.auth.security import create_password_reset_token, verify_password_reset_token
 
         token = create_password_reset_token("user-123")
         assert isinstance(token, str)
@@ -18,25 +18,25 @@ class TestCreatePasswordResetToken:
 
 class TestVerifyPasswordResetToken:
     def test_returns_user_id_for_valid_token(self):
-        from app.auth.security import create_password_reset_token, verify_password_reset_token
+        from spectra_platform.auth.security import create_password_reset_token, verify_password_reset_token
 
         token = create_password_reset_token("user-456")
         assert verify_password_reset_token(token) == "user-456"
 
     def test_returns_none_for_expired_token(self):
-        from app.auth.security import create_password_reset_token, verify_password_reset_token
+        from spectra_platform.auth.security import create_password_reset_token, verify_password_reset_token
 
         token = create_password_reset_token("user-789", expires_minutes=-1)
         assert verify_password_reset_token(token) is None
 
     def test_returns_none_for_wrong_token_type(self):
-        from app.auth.security import create_access_token, verify_password_reset_token
+        from spectra_platform.auth.security import create_access_token, verify_password_reset_token
 
         access_token = create_access_token({"sub": "user-000"})
         assert verify_password_reset_token(access_token) is None
 
     def test_returns_none_for_invalid_token(self):
-        from app.auth.security import verify_password_reset_token
+        from spectra_platform.auth.security import verify_password_reset_token
 
         assert verify_password_reset_token("not-a-jwt") is None
         assert verify_password_reset_token("") is None
@@ -57,8 +57,8 @@ def _build_test_client():
     """Return a TestClient with DB dependency overridden."""
     from fastapi.testclient import TestClient
 
-    from app.core.database import get_async_session
     from spectra_api.main import app
+    from spectra_platform.core.database import get_async_session
 
     mock_session = _mock_async_session()
 
@@ -82,7 +82,7 @@ class TestForgotPasswordEndpoint:
             with (
                 patch("spectra_api.api.routers.auth.password.limiter") as mock_limiter,
                 patch(
-                    "app.repositories.user.UserRepository.get_by_email", new_callable=AsyncMock, return_value=fake_user
+                    "spectra_platform.repositories.user.UserRepository.get_by_email", new_callable=AsyncMock, return_value=fake_user
                 ),
             ):
                 mock_limiter.limit.return_value = lambda f: f
@@ -101,7 +101,7 @@ class TestForgotPasswordEndpoint:
         try:
             with (
                 patch("spectra_api.api.routers.auth.password.limiter") as mock_limiter,
-                patch("app.repositories.user.UserRepository.get_by_email", new_callable=AsyncMock, return_value=None),
+                patch("spectra_platform.repositories.user.UserRepository.get_by_email", new_callable=AsyncMock, return_value=None),
             ):
                 mock_limiter.limit.return_value = lambda f: f
                 resp = client.post(
@@ -119,7 +119,7 @@ class TestResetPasswordEndpoint:
     """POST /api/v1/auth/reset-password."""
 
     def test_valid_token_resets_password(self):
-        from app.auth.security import create_password_reset_token
+        from spectra_platform.auth.security import create_password_reset_token
 
         token = create_password_reset_token("user-reset")
         client, _mock_session = _build_test_client()
@@ -130,7 +130,7 @@ class TestResetPasswordEndpoint:
 
             with (
                 patch("spectra_api.api.routers.auth.password.limiter") as mock_limiter,
-                patch("app.repositories.user.UserRepository.get_by_id", new_callable=AsyncMock, return_value=fake_user),
+                patch("spectra_platform.repositories.user.UserRepository.get_by_id", new_callable=AsyncMock, return_value=fake_user),
             ):
                 mock_limiter.limit.return_value = lambda f: f
                 resp = client.post(
@@ -160,7 +160,7 @@ class TestResetPasswordEndpoint:
             app.dependency_overrides.clear()
 
     def test_expired_token_returns_400(self):
-        from app.auth.security import create_password_reset_token
+        from spectra_platform.auth.security import create_password_reset_token
 
         expired_token = create_password_reset_token("user-exp", expires_minutes=-1)
         client, _ = _build_test_client()

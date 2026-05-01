@@ -139,7 +139,7 @@ async def execute_tool_job(
     output_dir: str | None = None,
 ) -> dict[str, Any]:
     """Execute a security tool locally in the tools container."""
-    from app.services.tools.registry import get_registry
+    from spectra_platform.services.tools.registry import get_registry
     from spectra_tools_core.adapter.builder import CommandBuilder
     from spectra_tools_core.adapter.parser import UniversalParser
 
@@ -231,8 +231,8 @@ async def build_golden_image_job(
     plugins_dir: str = "plugins",
 ) -> dict[str, Any]:
     """Build, verify, scan, and promote the golden worker image from plugins."""
-    from app.core.config import get_settings
-    from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+    from spectra_platform.core.config import get_settings
+    from spectra_platform.services.tools.sandbox.golden_image import GoldenImageBuilder
 
     settings = get_settings()
     image_tag = target_tag or settings.SANDBOX_IMAGE
@@ -258,7 +258,7 @@ async def install_tool_job(
     result = await build_golden_image_job(plugins_dir=plugins_dir)
     result["tool_id"] = tool_id
     result["success"] = result.get("status") == "success"
-    from app.services.tools.registry import get_registry
+    from spectra_platform.services.tools.registry import get_registry
 
     tool = get_registry().get_tool(tool_id)
     available_here = bool(tool and _is_tool_installed(tool))
@@ -286,7 +286,7 @@ async def uninstall_tool_job(
     tool_id: str,
 ) -> dict[str, Any]:
     """Disable/remove plugin from image through registry, then rebuild golden image."""
-    from app.services.tools.installer import ToolInstaller
+    from spectra_platform.services.tools.installer import ToolInstaller
 
     logger.info("Removing tool plugin and rebuilding golden image: %s", tool_id)
     installer = ToolInstaller()
@@ -309,7 +309,7 @@ async def install_all_tools_job(
     force: bool = False,
 ) -> dict[str, Any]:
     """Rebuild/verify the golden image that contains all registered tools."""
-    from app.services.tools.registry import get_registry
+    from spectra_platform.services.tools.registry import get_registry
 
     registry = get_registry()
     tools = registry.list_tools()
@@ -342,7 +342,7 @@ async def reload_plugins_job(
     install_new: bool = True,
 ) -> dict[str, Any]:
     """Reload plugins from disk and optionally rebuild the golden image."""
-    from app.services.tools.registry import get_registry
+    from spectra_platform.services.tools.registry import get_registry
 
     logger.info("Reloading plugins from disk...")
     registry = get_registry()
@@ -376,7 +376,7 @@ async def get_tool_status_job(
     tool_id: str,
 ) -> dict[str, Any]:
     """Get the current status of a tool."""
-    from app.services.tools.registry import get_registry
+    from spectra_platform.services.tools.registry import get_registry
 
     registry = get_registry()
     tool = registry.get_tool(tool_id)
@@ -397,7 +397,7 @@ async def get_tool_status_job(
 
 async def sync_all_status_job() -> dict[str, Any]:
     """Sync status of all tools to cache."""
-    from app.services.tools.registry import get_registry
+    from spectra_platform.services.tools.registry import get_registry
 
     registry = get_registry()
     tools = registry.list_tools()

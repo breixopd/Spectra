@@ -42,7 +42,7 @@ build_ci_image() {
 
 lint_ruff_and_boundaries() {
   echo "==> Ruff"
-  docker run --rm "$IMAGE" python -m ruff check app/ tests/ services/ packages/
+  docker run --rm "$IMAGE" python -m ruff check spectra_platform/ tests/ services/ packages/
   echo "==> Import boundaries"
   docker run --rm "$IMAGE" python scripts/check_import_boundaries.py
 }
@@ -62,7 +62,7 @@ bandit_job() {
     return 0
   fi
   echo "==> Bandit"
-  docker run --rm "$IMAGE" bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high
+  docker run --rm "$IMAGE" bandit -r spectra_platform/ -c pyproject.toml --severity-level high --confidence-level high
 }
 
 static_analysis_job() {
@@ -85,7 +85,7 @@ unit_coverage_job() {
   echo "==> Unit tests + coverage (fail-under 70%, matches CI)"
   set +e
   "${COMPOSE[@]}" --profile test run --name spectra-unit-local unit-test-runner \
-    "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=app --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=70"
+    "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_platform --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=70"
   st=$?
   docker rm -f spectra-unit-local >/dev/null 2>&1 || true
   set -e

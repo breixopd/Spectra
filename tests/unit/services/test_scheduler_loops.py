@@ -13,7 +13,7 @@ import sqlalchemy.ext.asyncio as sa_asyncio
 import spectra_scheduler.async_ops as scheduler_async_ops
 import spectra_scheduler.locking as scheduler_locking
 import spectra_scheduler.service as scheduler_service_mod
-from app.services.scaling.image_updater import ImageUpdateResult
+from spectra_platform.services.scaling.image_updater import ImageUpdateResult
 from tests.helpers import make_module
 
 
@@ -53,8 +53,8 @@ async def test_db_maintenance_runs_vacuum_when_lock_acquired():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.config",
-            make_module("app.core.config", get_settings=lambda: settings_ns),
+            "spectra_platform.core.config",
+            make_module("spectra_platform.core.config", get_settings=lambda: settings_ns),
         )
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock(side_effect=sleep_then_stop_after_second_iteration))
@@ -90,8 +90,8 @@ async def test_db_maintenance_skips_when_lock_not_acquired():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.config",
-            make_module("app.core.config", get_settings=lambda: settings_ns),
+            "spectra_platform.core.config",
+            make_module("spectra_platform.core.config", get_settings=lambda: settings_ns),
         )
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock(side_effect=sleep_then_stop_after_second_iteration))
@@ -136,8 +136,8 @@ async def test_db_maintenance_handles_vacuum_errors():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.config",
-            make_module("app.core.config", get_settings=lambda: settings_ns),
+            "spectra_platform.core.config",
+            make_module("spectra_platform.core.config", get_settings=lambda: settings_ns),
         )
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock(side_effect=sleep_then_stop_after_second_iteration))
@@ -172,8 +172,8 @@ async def test_db_maintenance_handles_engine_creation_errors():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.config",
-            make_module("app.core.config", get_settings=lambda: settings_ns),
+            "spectra_platform.core.config",
+            make_module("spectra_platform.core.config", get_settings=lambda: settings_ns),
         )
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock(side_effect=sleep_then_stop_after_second_iteration))
@@ -209,14 +209,14 @@ async def test_docker_cleanup_runs_prune_sequence_when_lock_acquired():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.config",
-            make_module("app.core.config", get_settings=lambda: settings_ns),
+            "spectra_platform.core.config",
+            make_module("spectra_platform.core.config", get_settings=lambda: settings_ns),
         )
         mp.setitem(
             sys.modules,
-            "app.services.scaling.docker_client",
+            "spectra_platform.services.scaling.docker_client",
             make_module(
-                "app.services.scaling.docker_client",
+                "spectra_platform.services.scaling.docker_client",
                 prune_containers=prune_containers,
                 prune_images=prune_images,
                 prune_volumes=prune_volumes,
@@ -260,14 +260,14 @@ async def test_docker_cleanup_skips_when_lock_not_acquired():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.config",
-            make_module("app.core.config", get_settings=lambda: settings_ns),
+            "spectra_platform.core.config",
+            make_module("spectra_platform.core.config", get_settings=lambda: settings_ns),
         )
         mp.setitem(
             sys.modules,
-            "app.services.scaling.docker_client",
+            "spectra_platform.services.scaling.docker_client",
             make_module(
-                "app.services.scaling.docker_client",
+                "spectra_platform.services.scaling.docker_client",
                 prune_containers=prune_containers,
                 prune_images=AsyncMock(),
                 prune_volumes=AsyncMock(),
@@ -302,14 +302,14 @@ async def test_docker_cleanup_handles_prune_errors():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.core.config",
-            make_module("app.core.config", get_settings=lambda: settings_ns),
+            "spectra_platform.core.config",
+            make_module("spectra_platform.core.config", get_settings=lambda: settings_ns),
         )
         mp.setitem(
             sys.modules,
-            "app.services.scaling.docker_client",
+            "spectra_platform.services.scaling.docker_client",
             make_module(
-                "app.services.scaling.docker_client",
+                "spectra_platform.services.scaling.docker_client",
                 prune_containers=prune_containers,
                 prune_images=AsyncMock(),
                 prune_volumes=AsyncMock(),
@@ -343,14 +343,14 @@ async def test_image_update_check_skips_when_lock_not_acquired(monkeypatch):
 
     monkeypatch.setitem(
         sys.modules,
-        "app.core.config",
-        make_module("app.core.config", get_settings=lambda: settings_ns),
+        "spectra_platform.core.config",
+        make_module("spectra_platform.core.config", get_settings=lambda: settings_ns),
     )
     monkeypatch.setitem(
         sys.modules,
-        "app.services.scaling.image_updater",
+        "spectra_platform.services.scaling.image_updater",
         make_module(
-            "app.services.scaling.image_updater",
+            "spectra_platform.services.scaling.image_updater",
             check_and_update_services=check_and_update,
         ),
     )
@@ -387,14 +387,14 @@ async def test_image_update_check_handles_inner_exceptions(monkeypatch):
 
     monkeypatch.setitem(
         sys.modules,
-        "app.core.config",
-        make_module("app.core.config", get_settings=lambda: settings_ns),
+        "spectra_platform.core.config",
+        make_module("spectra_platform.core.config", get_settings=lambda: settings_ns),
     )
     monkeypatch.setitem(
         sys.modules,
-        "app.services.scaling.image_updater",
+        "spectra_platform.services.scaling.image_updater",
         make_module(
-            "app.services.scaling.image_updater",
+            "spectra_platform.services.scaling.image_updater",
             check_and_update_services=check_and_update,
         ),
     )
@@ -427,14 +427,14 @@ async def test_image_update_check_skips_when_auto_update_disabled(monkeypatch):
 
     monkeypatch.setitem(
         sys.modules,
-        "app.core.config",
-        make_module("app.core.config", get_settings=lambda: settings_ns),
+        "spectra_platform.core.config",
+        make_module("spectra_platform.core.config", get_settings=lambda: settings_ns),
     )
     monkeypatch.setitem(
         sys.modules,
-        "app.services.scaling.image_updater",
+        "spectra_platform.services.scaling.image_updater",
         make_module(
-            "app.services.scaling.image_updater",
+            "spectra_platform.services.scaling.image_updater",
             check_and_update_services=check_and_update,
         ),
     )
@@ -472,14 +472,14 @@ async def test_image_update_check_success_notifies(monkeypatch):
 
     monkeypatch.setitem(
         sys.modules,
-        "app.core.config",
-        make_module("app.core.config", get_settings=lambda: settings_ns),
+        "spectra_platform.core.config",
+        make_module("spectra_platform.core.config", get_settings=lambda: settings_ns),
     )
     monkeypatch.setitem(
         sys.modules,
-        "app.services.scaling.image_updater",
+        "spectra_platform.services.scaling.image_updater",
         make_module(
-            "app.services.scaling.image_updater",
+            "spectra_platform.services.scaling.image_updater",
             check_and_update_services=check_and_update,
         ),
     )
@@ -519,14 +519,14 @@ async def test_image_update_check_failure_notifies(monkeypatch):
 
     monkeypatch.setitem(
         sys.modules,
-        "app.core.config",
-        make_module("app.core.config", get_settings=lambda: settings_ns),
+        "spectra_platform.core.config",
+        make_module("spectra_platform.core.config", get_settings=lambda: settings_ns),
     )
     monkeypatch.setitem(
         sys.modules,
-        "app.services.scaling.image_updater",
+        "spectra_platform.services.scaling.image_updater",
         make_module(
-            "app.services.scaling.image_updater",
+            "spectra_platform.services.scaling.image_updater",
             check_and_update_services=check_and_update,
         ),
     )
@@ -551,8 +551,8 @@ async def test_send_update_notification_swallows_errors(monkeypatch):
 
     monkeypatch.setitem(
         sys.modules,
-        "app.services.notifications",
-        make_module("app.services.notifications", send_notification=boom),
+        "spectra_platform.services.notifications",
+        make_module("spectra_platform.services.notifications", send_notification=boom),
     )
 
     await service._send_update_notification("t", "m", level="info")

@@ -6,7 +6,7 @@ from datetime import datetime
 
 import pytest
 
-from app.models.attack_surface import (
+from spectra_platform.models.attack_surface import (
     AttackSurface,
     AttackVector,
     DiscoveredService,

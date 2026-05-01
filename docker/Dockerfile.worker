@@ -51,18 +51,18 @@ COPY services/ai/src/spectra_ai/ ./spectra_ai/
 COPY packages/tools-core/src/spectra_tools_core/ ./spectra_tools_core/
 COPY packages/common/src/spectra_common/ ./spectra_common/
 COPY packages/domain/src/spectra_domain/ ./spectra_domain/
-COPY app/__init__.py ./app/
-COPY app/_meta/ ./app/_meta/
-COPY app/auth/ ./app/auth/
-COPY app/core/ ./app/core/
-COPY app/di/ ./app/di/
-COPY app/infrastructure/ ./app/infrastructure/
-COPY app/mission/ ./app/mission/
-COPY app/models/ ./app/models/
-COPY app/repositories/ ./app/repositories/
-COPY app/services/ ./app/services/
-COPY app/telemetry/ ./app/telemetry/
-COPY app/utils/ ./app/utils/
+COPY spectra_platform/__init__.py ./spectra_platform/
+COPY spectra_platform/_meta/ ./spectra_platform/_meta/
+COPY spectra_platform/auth/ ./spectra_platform/auth/
+COPY spectra_platform/core/ ./spectra_platform/core/
+COPY spectra_platform/di/ ./spectra_platform/di/
+COPY spectra_platform/infrastructure/ ./spectra_platform/infrastructure/
+COPY spectra_platform/mission/ ./spectra_platform/mission/
+COPY spectra_platform/models/ ./spectra_platform/models/
+COPY spectra_platform/repositories/ ./spectra_platform/repositories/
+COPY spectra_platform/services/ ./spectra_platform/services/
+COPY spectra_platform/telemetry/ ./spectra_platform/telemetry/
+COPY spectra_platform/utils/ ./spectra_platform/utils/
 COPY plugins/ ./plugins/
 
 RUN useradd --create-home --shell /bin/bash spectra && \

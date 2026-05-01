@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.infrastructure.backup import BackupService
+from spectra_platform.services.infrastructure.backup import BackupService
 
-STORAGE_PATCH = "app.services.storage.service.get_storage_service"
+STORAGE_PATCH = "spectra_platform.services.storage.service.get_storage_service"
 
 
 def _wait_for_wrapper(recorded_timeouts: list[int | None]):
@@ -27,7 +27,7 @@ def backup_svc(tmp_path):
     temp_root = tmp_path / "runtime" / "tmp"
 
     with (
-        patch("app.services.infrastructure.backup.BackupService.__init__", return_value=None),
+        patch("spectra_platform.services.infrastructure.backup.BackupService.__init__", return_value=None),
         patch("spectra_common.paths.data_path", return_value=temp_root),
     ):
         svc = BackupService()

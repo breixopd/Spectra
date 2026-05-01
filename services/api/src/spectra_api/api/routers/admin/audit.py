@@ -10,17 +10,17 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.rate_limit import RateLimits, limiter
-from app.core.config import settings
-from app.core.database import get_async_session
-from app.models.audit_log import AuditLog
-from app.models.mission import Mission
-from app.models.plan import Plan
-from app.models.user import User
-from app.repositories.audit_log import AuditLogRepository
-from app.telemetry.telemetry import telemetry
 from spectra_api.api.schemas.common import PaginatedResponse
 from spectra_api.authz import Permission, require_permission
+from spectra_platform.auth.rate_limit import RateLimits, limiter
+from spectra_platform.core.config import settings
+from spectra_platform.core.database import get_async_session
+from spectra_platform.models.audit_log import AuditLog
+from spectra_platform.models.mission import Mission
+from spectra_platform.models.plan import Plan
+from spectra_platform.models.user import User
+from spectra_platform.repositories.audit_log import AuditLogRepository
+from spectra_platform.telemetry.telemetry import telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ async def admin_stats(
             role_counts[role_name] = cnt
 
     # Service topology
-    from app.services.gateway.service_registry import get_service_registry
+    from spectra_platform.services.gateway.service_registry import get_service_registry
 
     svc_registry = get_service_registry()
     topology = svc_registry.get_service_topology()

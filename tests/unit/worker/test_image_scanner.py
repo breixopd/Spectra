@@ -11,7 +11,7 @@ class TestImageScanConfig:
     """Image scan policy (block promotion on critical CVEs)."""
 
     def test_block_critical_default_false(self):
-        from app.core.config import Settings
+        from spectra_platform.core.config import Settings
 
         s = Settings(DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"))
         assert s.SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL is False
@@ -21,7 +21,7 @@ class TestScanResult:
     """ScanResult data class."""
 
     def test_to_dict(self):
-        from app.services.tools.sandbox.image_scanner import ScanResult
+        from spectra_platform.services.tools.sandbox.image_scanner import ScanResult
 
         r = ScanResult(
             image="spectra-tools:latest",
@@ -40,7 +40,7 @@ class TestScanResult:
         assert d["blocked"] is False
 
     def test_blocked_flag(self):
-        from app.services.tools.sandbox.image_scanner import ScanResult
+        from spectra_platform.services.tools.sandbox.image_scanner import ScanResult
 
         r = ScanResult(
             image="img",
@@ -56,19 +56,19 @@ class TestImageScanner:
     """ImageScanner class tests."""
 
     def test_import(self):
-        from app.services.tools.sandbox.image_scanner import ImageScanner
+        from spectra_platform.services.tools.sandbox.image_scanner import ImageScanner
 
         assert ImageScanner is not None
 
     def test_unavailable_without_grype(self):
-        from app.services.tools.sandbox.image_scanner import ImageScanner
+        from spectra_platform.services.tools.sandbox.image_scanner import ImageScanner
 
         with patch("shutil.which", return_value=None):
             scanner = ImageScanner()
             assert scanner.available is False
 
     def test_available_with_grype(self):
-        from app.services.tools.sandbox.image_scanner import ImageScanner
+        from spectra_platform.services.tools.sandbox.image_scanner import ImageScanner
 
         with patch("shutil.which", return_value="/usr/bin/grype"):
             scanner = ImageScanner()
@@ -76,7 +76,7 @@ class TestImageScanner:
 
     @pytest.mark.asyncio
     async def test_scan_returns_unavailable_without_grype(self):
-        from app.services.tools.sandbox.image_scanner import ImageScanner
+        from spectra_platform.services.tools.sandbox.image_scanner import ImageScanner
 
         with patch("shutil.which", return_value=None):
             scanner = ImageScanner()
@@ -85,7 +85,7 @@ class TestImageScanner:
 
     @pytest.mark.asyncio
     async def test_scan_parses_grype_output(self):
-        from app.services.tools.sandbox.image_scanner import ImageScanner
+        from spectra_platform.services.tools.sandbox.image_scanner import ImageScanner
 
         grype_output = json.dumps(
             {
@@ -127,7 +127,7 @@ class TestImageScanner:
 
     @pytest.mark.asyncio
     async def test_scan_blocks_when_critical_and_configured(self):
-        from app.services.tools.sandbox.image_scanner import ImageScanner
+        from spectra_platform.services.tools.sandbox.image_scanner import ImageScanner
 
         grype_output = {
             "matches": [
@@ -151,7 +151,7 @@ class TestImageScanner:
 
     @pytest.mark.asyncio
     async def test_scan_does_not_block_when_no_critical(self):
-        from app.services.tools.sandbox.image_scanner import ImageScanner
+        from spectra_platform.services.tools.sandbox.image_scanner import ImageScanner
 
         grype_output = {
             "matches": [

@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.shell.session_manager import ShellSession, ShellSessionManager
+from spectra_platform.services.shell.session_manager import ShellSession, ShellSessionManager
 
 
 @pytest.fixture

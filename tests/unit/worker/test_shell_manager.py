@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services.shell.session_manager import ShellSession, ShellSessionManager
+from spectra_platform.services.shell.session_manager import ShellSession, ShellSessionManager
 
 
 @pytest.fixture
@@ -45,7 +45,7 @@ async def test_start_listener(shell_manager):
 
         # Mock threading to not actually start thread but just setup
         with (
-            patch("app.services.shell.session_manager._get_service_mode", return_value="worker"),
+            patch("spectra_platform.services.shell.session_manager._get_service_mode", return_value="worker"),
             patch("threading.Thread") as mock_thread,
             patch("threading.Timer") as mock_timer,
         ):

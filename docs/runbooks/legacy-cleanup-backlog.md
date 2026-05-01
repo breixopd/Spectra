@@ -16,8 +16,8 @@ _(empty — last P0 items were cleared 2026-05-01: worker startup env switch, ex
 
 ## What is already clean
 
-- No `app/api/` tree; no duplicate `templates/` / `static/` at repo root (canonical under `services/api/`).
-- No `sys.modules` import shims in `app/`, `services/`, `packages/`.
+- Domain code lives in **`spectra_platform/`** (Python package rename from **`app`**, May 2026); HTTP surface is **`services/api/src/spectra_api/`** only — no duplicate `templates/` / `static/` at repo root.
+- No `sys.modules` import shims in `spectra_platform/`, `services/`, `packages/`.
 - Worker startup does not read **`WORKER_SKIP_STARTUP_AUTO_INSTALL`**; tools container only syncs registry tool status on boot.
 
 When an item is completed, delete or shrink its section here and point to the PR in the changelog.

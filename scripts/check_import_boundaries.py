@@ -4,7 +4,7 @@
 Shared packages must not depend on:
 - spectra_api.api.*
 - spectra_worker.* (worker implementation package)
-- app.services.ai.* (except via lazy imports inside functions)
+- spectra_platform.services.ai.* (except via lazy imports inside functions)
 - spectra_ai / spectra_scheduler (deployable service packages)
 - spectra_worker.__main__
 
@@ -21,11 +21,11 @@ import ast
 import sys
 from pathlib import Path
 
-SHARED_PACKAGES = ["app/core", "app/models", "packages/common/src", "packages/domain/src", "packages/tools-core/src"]
+SHARED_PACKAGES = ["spectra_platform/core", "spectra_platform/models", "packages/common/src", "packages/domain/src", "packages/tools-core/src"]
 FORBIDDEN_IMPORTS = [
     "spectra_api.api",
     "spectra_worker",
-    "app.services.ai",
+    "spectra_platform.services.ai",
     "spectra_scheduler",
     "spectra_ai",
     "spectra_worker.__main__",
@@ -41,9 +41,9 @@ SERVICE_BOUNDARIES: dict[str, list[str]] = {
 }
 
 # Known cross-service couplings (lazy imports) — emitted as warnings, not failures.
-# worker → app.services.ai: tool jobs use AI service for RAG/LLM features at runtime.
+# worker → spectra_platform.services.ai: tool jobs use AI service for RAG/LLM features at runtime.
 WARN_LAZY_IMPORTS: dict[str, list[str]] = {
-    "services/worker/src": ["app.services.ai"],
+    "services/worker/src": ["spectra_platform.services.ai"],
 }
 
 # Allowed exceptions (lazy imports inside functions are OK)

@@ -1,6 +1,6 @@
 """Tests for OsintSanitizer privacy safeguards."""
 
-from app.services.ai.agents.recon_intel import OsintSanitizer
+from spectra_platform.services.ai.agents.recon_intel import OsintSanitizer
 
 
 def test_sanitize_ips():

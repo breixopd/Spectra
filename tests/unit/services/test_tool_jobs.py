@@ -46,8 +46,8 @@ async def test_reload_plugins_rebuilds_golden_image_when_plugins_removed():
     ):
         mp.setitem(
             sys.modules,
-            "app.services.tools.registry",
-            make_module("app.services.tools.registry", get_registry=lambda: registry),
+            "spectra_platform.services.tools.registry",
+            make_module("spectra_platform.services.tools.registry", get_registry=lambda: registry),
         )
         result = await tool_jobs.reload_plugins_job()
 
@@ -66,8 +66,8 @@ async def test_execute_tool_job_returns_not_found_error():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.tools.registry",
-            make_module("app.services.tools.registry", get_registry=lambda: registry),
+            "spectra_platform.services.tools.registry",
+            make_module("spectra_platform.services.tools.registry", get_registry=lambda: registry),
         )
         result = await tool_jobs.execute_tool_job("missing", "example.com")
 
@@ -84,8 +84,8 @@ async def test_execute_tool_job_fails_fast_when_tool_missing_from_image():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.tools.registry",
-            make_module("app.services.tools.registry", get_registry=lambda: registry),
+            "spectra_platform.services.tools.registry",
+            make_module("spectra_platform.services.tools.registry", get_registry=lambda: registry),
         )
         result = await tool_jobs.execute_tool_job("nmap", "example.com")
 
@@ -114,8 +114,8 @@ async def test_execute_tool_job_handles_command_build_failure():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.tools.registry",
-            make_module("app.services.tools.registry", get_registry=lambda: registry),
+            "spectra_platform.services.tools.registry",
+            make_module("spectra_platform.services.tools.registry", get_registry=lambda: registry),
         )
         mp.setitem(
             sys.modules,
@@ -162,8 +162,8 @@ async def test_execute_tool_job_adjusts_cidr_timeout_and_marks_timeout_with_pars
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.tools.registry",
-            make_module("app.services.tools.registry", get_registry=lambda: registry),
+            "spectra_platform.services.tools.registry",
+            make_module("spectra_platform.services.tools.registry", get_registry=lambda: registry),
         )
         mp.setitem(
             sys.modules,
@@ -222,8 +222,8 @@ async def test_execute_tool_job_flags_oom_results_and_returns_parsed_findings(tm
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.tools.registry",
-            make_module("app.services.tools.registry", get_registry=lambda: registry),
+            "spectra_platform.services.tools.registry",
+            make_module("spectra_platform.services.tools.registry", get_registry=lambda: registry),
         )
         mp.setitem(
             sys.modules,
@@ -256,8 +256,8 @@ async def test_install_tool_job_rebuilds_golden_image_and_syncs_status():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.tools.registry",
-            make_module("app.services.tools.registry", get_registry=lambda: registry),
+            "spectra_platform.services.tools.registry",
+            make_module("spectra_platform.services.tools.registry", get_registry=lambda: registry),
         )
         mp.setattr(tool_jobs, "build_golden_image_job", build)
         mp.setattr(tool_jobs, "_is_tool_installed", MagicMock(return_value=True))
@@ -285,8 +285,8 @@ async def test_uninstall_tool_job_syncs_progress_and_pending_status_on_success()
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.tools.installer",
-            make_module("app.services.tools.installer", ToolInstaller=lambda: installer),
+            "spectra_platform.services.tools.installer",
+            make_module("spectra_platform.services.tools.installer", ToolInstaller=lambda: installer),
         )
         mp.setattr(tool_jobs, "build_golden_image_job", AsyncMock(return_value={"status": "success"}))
         mp.setattr(tool_jobs, "_sync_tool_status", sync_status)
@@ -311,8 +311,8 @@ async def test_install_all_tools_job_rebuilds_golden_image_for_all_tools():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.tools.registry",
-            make_module("app.services.tools.registry", get_registry=lambda: registry),
+            "spectra_platform.services.tools.registry",
+            make_module("spectra_platform.services.tools.registry", get_registry=lambda: registry),
         )
         mp.setattr(tool_jobs, "_sync_tool_status", sync_status)
         mp.setattr(tool_jobs, "build_golden_image_job", build)
@@ -340,8 +340,8 @@ async def test_reload_plugins_job_syncs_status_and_rebuilds_for_new_tools():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.tools.registry",
-            make_module("app.services.tools.registry", get_registry=lambda: registry),
+            "spectra_platform.services.tools.registry",
+            make_module("spectra_platform.services.tools.registry", get_registry=lambda: registry),
         )
         mp.setattr(tool_jobs, "sync_all_status_job", sync_all)
         mp.setattr(tool_jobs, "build_golden_image_job", build)
@@ -362,8 +362,8 @@ async def test_get_tool_status_job_reports_missing_and_installed_tools():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.tools.registry",
-            make_module("app.services.tools.registry", get_registry=lambda: registry),
+            "spectra_platform.services.tools.registry",
+            make_module("spectra_platform.services.tools.registry", get_registry=lambda: registry),
         )
         missing = await tool_jobs.get_tool_status_job("missing")
         mp.setattr(tool_jobs, "_is_tool_installed", MagicMock(return_value=True))
@@ -392,8 +392,8 @@ async def test_sync_all_status_job_updates_every_registered_tool():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.services.tools.registry",
-            make_module("app.services.tools.registry", get_registry=lambda: registry),
+            "spectra_platform.services.tools.registry",
+            make_module("spectra_platform.services.tools.registry", get_registry=lambda: registry),
         )
         mp.setattr(tool_jobs, "_is_tool_installed", MagicMock(side_effect=[True, False]))
         mp.setattr(tool_jobs, "_sync_tool_status", sync_status)

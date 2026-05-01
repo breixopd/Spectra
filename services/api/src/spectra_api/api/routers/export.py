@@ -19,15 +19,15 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.rate_limit import RateLimits, limiter
-from app.core.database import get_async_session
-from app.models.exploit import Exploit
-from app.models.finding import Finding, FindingStatus
-from app.models.mission import Mission, MissionStatus
-from app.models.target import Target, TargetStatus
-from app.models.user import User
 from spectra_api.api.dependencies import get_current_active_user
 from spectra_common.constants import MAX_EXPORT_ROWS
+from spectra_platform.auth.rate_limit import RateLimits, limiter
+from spectra_platform.core.database import get_async_session
+from spectra_platform.models.exploit import Exploit
+from spectra_platform.models.finding import Finding, FindingStatus
+from spectra_platform.models.mission import Mission, MissionStatus
+from spectra_platform.models.target import Target, TargetStatus
+from spectra_platform.models.user import User
 
 logger = logging.getLogger(__name__)
 

@@ -3,11 +3,11 @@ from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.config import SystemConfig
-from app.models.user import User
 from spectra_api.api.schemas.auth import UserCreate
 from spectra_api.api.schemas.system import SystemSetupRequest
 from spectra_api.services.system.setup import SystemSetupService
+from spectra_platform.models.config import SystemConfig
+from spectra_platform.models.user import User
 
 
 @pytest.fixture

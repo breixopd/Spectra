@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.telemetry.telemetry import TelemetryCollector
+from spectra_platform.telemetry.telemetry import TelemetryCollector
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -7,11 +7,11 @@ import pytest
 
 def _make_s3_storage():
     """Create a StorageService with fully mocked S3 deps, patching the right target."""
-    from app.services.storage.service import StorageService
+    from spectra_platform.services.storage.service import StorageService
 
     with (
-        patch("app.core.config.settings") as mock_settings,
-        patch("app.services.storage.service._import_s3_deps") as mock_deps,
+        patch("spectra_platform.core.config.settings") as mock_settings,
+        patch("spectra_platform.services.storage.service._import_s3_deps") as mock_deps,
     ):
         mock_settings.S3_ENDPOINT_URL = "http://garage:3900"
         mock_settings.S3_ACCESS_KEY = MagicMock()
@@ -38,9 +38,9 @@ class TestStorageServiceInit:
         assert svc.is_s3 is True
 
     def test_missing_endpoint_raises_runtime_error(self):
-        from app.services.storage.service import StorageService
+        from spectra_platform.services.storage.service import StorageService
 
-        with patch("app.core.config.settings") as s:
+        with patch("spectra_platform.core.config.settings") as s:
             s.S3_ENDPOINT_URL = ""
             s.S3_ACCESS_KEY = MagicMock()
             s.S3_SECRET_KEY = MagicMock()
@@ -48,9 +48,9 @@ class TestStorageServiceInit:
                 StorageService()
 
     def test_missing_access_key_raises(self):
-        from app.services.storage.service import StorageService
+        from spectra_platform.services.storage.service import StorageService
 
-        with patch("app.core.config.settings") as s:
+        with patch("spectra_platform.core.config.settings") as s:
             s.S3_ENDPOINT_URL = "http://garage:3900"
             s.S3_ACCESS_KEY = MagicMock()
             s.S3_ACCESS_KEY.get_secret_value.return_value = ""
@@ -60,9 +60,9 @@ class TestStorageServiceInit:
                 StorageService()
 
     def test_missing_secret_key_raises(self):
-        from app.services.storage.service import StorageService
+        from spectra_platform.services.storage.service import StorageService
 
-        with patch("app.core.config.settings") as s:
+        with patch("spectra_platform.core.config.settings") as s:
             s.S3_ENDPOINT_URL = "http://garage:3900"
             s.S3_ACCESS_KEY = MagicMock()
             s.S3_ACCESS_KEY.get_secret_value.return_value = "key"
@@ -101,7 +101,7 @@ class TestStorageServiceS3Mode:
         mock_cm.__aexit__ = AsyncMock(return_value=False)
         svc._session.client.return_value = mock_cm
 
-        with patch("app.core.config.settings") as ms:
+        with patch("spectra_platform.core.config.settings") as ms:
             ms.S3_ENDPOINT_URL = "http://minio:9000"
             ms.S3_REGION = "us-east-1"
             ms.S3_ACCESS_KEY = MagicMock()
@@ -120,7 +120,7 @@ class TestStorageServiceS3Mode:
         mock_cm.__aexit__ = AsyncMock(return_value=False)
         svc._session.client.return_value = mock_cm
 
-        with patch("app.core.config.settings") as ms:
+        with patch("spectra_platform.core.config.settings") as ms:
             ms.S3_ENDPOINT_URL = "http://minio:9000"
             ms.S3_REGION = "us-east-1"
             ms.S3_ACCESS_KEY = MagicMock()
@@ -140,7 +140,7 @@ class TestStorageServiceS3Mode:
         mock_cm.__aexit__ = AsyncMock(return_value=False)
         svc._session.client.return_value = mock_cm
 
-        with patch("app.core.config.settings") as ms:
+        with patch("spectra_platform.core.config.settings") as ms:
             ms.S3_ENDPOINT_URL = "http://minio:9000"
             ms.S3_REGION = "us-east-1"
             ms.S3_ACCESS_KEY = MagicMock()
@@ -158,7 +158,7 @@ class TestStorageServiceS3Mode:
         mock_cm.__aexit__ = AsyncMock(return_value=False)
         svc._session.client.return_value = mock_cm
 
-        with patch("app.core.config.settings") as ms:
+        with patch("spectra_platform.core.config.settings") as ms:
             ms.S3_ENDPOINT_URL = "http://minio:9000"
             ms.S3_REGION = "us-east-1"
             ms.S3_ACCESS_KEY = MagicMock()
@@ -173,15 +173,15 @@ class TestStorageServiceSingleton:
     """Test get_storage_service singleton behavior."""
 
     def test_get_storage_service_returns_mock_in_unit_tests(self, mock_storage_for_unit_tests):
-        from app.services.storage import get_storage_service
+        from spectra_platform.services.storage import get_storage_service
 
         svc = get_storage_service()
         assert svc is mock_storage_for_unit_tests
 
     @pytest.mark.asyncio
     async def test_close_storage_service(self):
-        import app.services.storage.service as svc_mod
-        from app.services.storage.service import close_storage_service
+        import spectra_platform.services.storage.service as svc_mod
+        from spectra_platform.services.storage.service import close_storage_service
 
         mock = MagicMock()
         mock.stop = AsyncMock()
@@ -192,8 +192,8 @@ class TestStorageServiceSingleton:
 
     @pytest.mark.asyncio
     async def test_close_storage_service_when_none(self):
-        import app.services.storage.service as svc_mod
-        from app.services.storage.service import close_storage_service
+        import spectra_platform.services.storage.service as svc_mod
+        from spectra_platform.services.storage.service import close_storage_service
 
         svc_mod._storage_service = None
         await close_storage_service()  # Should not raise

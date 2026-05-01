@@ -7,13 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_async_session
-from app.models.audit_log import AuditEventType
-from app.models.user import User
-from app.models.user_preferences import UserPreferences
-from app.services.system.audit import log_event as audit_log_event
 from spectra_api.api.dependencies import check_feature_allowed, get_current_active_user
 from spectra_api.api.schemas.user_settings import UserSettingsResponse, UserSettingsUpdate
+from spectra_platform.core.database import get_async_session
+from spectra_platform.models.audit_log import AuditEventType
+from spectra_platform.models.user import User
+from spectra_platform.models.user_preferences import UserPreferences
+from spectra_platform.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 

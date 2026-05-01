@@ -28,7 +28,7 @@ RUN grep -v -E 'pytest-asyncio|pytest==' requirements/base.txt > /tmp/base-filte
     && pip install --no-cache-dir pytest-cov pytest-timeout httpx redis websockets ruff "bandit[toml]"
 
 # Copy source
-COPY app/ app/
+COPY spectra_platform/ spectra_platform/
 COPY services/api/src/spectra_api/ spectra_api/
 COPY services/ai/src/spectra_ai/ spectra_ai/
 COPY services/scheduler/src/spectra_scheduler/ spectra_scheduler/

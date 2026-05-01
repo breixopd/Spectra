@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.tools.registry import (
+from spectra_platform.services.tools.registry import (
     PluginValidationError,
     ToolRegistry,
 )

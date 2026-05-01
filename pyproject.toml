@@ -73,11 +73,11 @@ ignore = [
 "tests/**" = ["S101", "S106", "S107", "S603", "S607", "SIM117"]
 "**/__init__.py" = ["F401"]  # re-exports
 # `import docker` must precede `from docker.errors` (docker-py); isort I001 reorders unsafely.
-"app/services/scaling/docker_client.py" = ["I001"]
+"spectra_platform/services/scaling/docker_client.py" = ["I001"]
 
 [tool.ruff.lint.isort]
 known-first-party = [
-    "app",
+    "spectra_platform",
     "scripts",
     "spectra_api",
     "spectra_ai",
@@ -91,7 +91,7 @@ known-first-party = [
 [tool.pyright]
 pythonVersion = "3.11"
 typeCheckingMode = "off"
-include = ["app", "services", "packages"]
+include = ["spectra_platform", "services", "packages"]
 exclude = ["tests"]
 reportMissingImports = "none"
 reportMissingModuleSource = "none"
@@ -124,7 +124,7 @@ addopts = [
     "--verbose",
     "--tb=short",
     "--strict-markers",
-    "--cov=app",
+    "--cov=spectra_platform",
     "--cov=spectra_api",
     "--cov=spectra_worker",
     "--cov=spectra_ai",
@@ -144,10 +144,10 @@ asyncio_default_fixture_loop_scope = "function"
 # coverage configuration (merged from .coveragerc)
 # =============================================================================
 [tool.coverage.run]
-source = ["app", "spectra_api", "spectra_worker", "spectra_ai", "spectra_scheduler"]
+source = ["spectra_platform", "spectra_api", "spectra_worker", "spectra_ai", "spectra_scheduler"]
 data_file = "/tmp/spectra-coverage/.coverage"
 omit = [
-    "app/*/migrations/*",
+    "spectra_platform/*/migrations/*",
     "alembic/*",
     "tests/*",
     "scripts/*",

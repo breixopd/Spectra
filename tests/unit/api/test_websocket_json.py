@@ -4,7 +4,7 @@ from enum import StrEnum
 
 import pytest
 
-from app.mission.core.websocket import ConnectionManager
+from spectra_platform.mission.core.websocket import ConnectionManager
 
 
 class _TestEnum(StrEnum):

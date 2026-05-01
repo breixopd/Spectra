@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services.tools.registry.installer import PluginInstaller
+from spectra_platform.services.tools.registry.installer import PluginInstaller
 from spectra_tools_core.models import (
     InstallationConfig,
     InstallationMethod,
@@ -35,7 +35,7 @@ def mock_tool():
 
 
 @pytest.mark.asyncio
-@patch("app.services.tools.registry.installer.run_command_safe")
+@patch("spectra_platform.services.tools.registry.installer.run_command_safe")
 async def test_install_tool_success(mock_run, installer, mock_tool):
     mock_run.return_value = (0, "output", "")
 
@@ -63,7 +63,7 @@ async def test_install_tool_method_none(installer, mock_tool):
 
 
 @pytest.mark.asyncio
-@patch("app.services.tools.registry.installer.run_command_safe")
+@patch("spectra_platform.services.tools.registry.installer.run_command_safe")
 async def test_install_tool_failure(mock_run, installer, mock_tool):
     mock_run.return_value = (1, "", "error")
 
@@ -75,7 +75,7 @@ async def test_install_tool_failure(mock_run, installer, mock_tool):
 
 
 @pytest.mark.asyncio
-@patch("app.services.tools.registry.installer.run_command_safe")
+@patch("spectra_platform.services.tools.registry.installer.run_command_safe")
 async def test_verify_installation_success(mock_run, installer, mock_tool):
     mock_tool.config.installation.verification_command = "echo verify"
     mock_run.side_effect = [
@@ -88,7 +88,7 @@ async def test_verify_installation_success(mock_run, installer, mock_tool):
 
 
 @pytest.mark.asyncio
-@patch("app.services.tools.registry.installer.run_command_safe")
+@patch("spectra_platform.services.tools.registry.installer.run_command_safe")
 async def test_verify_installation_regex_match(mock_run, installer, mock_tool):
     mock_tool.config.installation.verification_command = "echo verify"
     mock_tool.config.installation.verification_regex = "success"
@@ -105,7 +105,7 @@ async def test_verify_installation_regex_match(mock_run, installer, mock_tool):
 
 
 @pytest.mark.asyncio
-@patch("app.services.tools.registry.installer.run_command_safe")
+@patch("spectra_platform.services.tools.registry.installer.run_command_safe")
 async def test_verify_installation_regex_fail(mock_run, installer, mock_tool):
     mock_tool.config.installation.verification_command = "echo verify"
     mock_tool.config.installation.verification_regex = "success"
@@ -131,7 +131,7 @@ async def test_verify_installation_regex_fail(mock_run, installer, mock_tool):
 
 
 @pytest.mark.asyncio
-@patch("app.services.tools.registry.installer.run_command_safe")
+@patch("spectra_platform.services.tools.registry.installer.run_command_safe")
 async def test_uninstall_tool_success(mock_run, installer, mock_tool):
     mock_run.return_value = (0, "ok", "")
     result = await installer.uninstall_tool(mock_tool, "plugins_dir")
@@ -140,7 +140,7 @@ async def test_uninstall_tool_success(mock_run, installer, mock_tool):
 
 
 @pytest.mark.asyncio
-@patch("app.services.tools.registry.installer.run_command_safe")
+@patch("spectra_platform.services.tools.registry.installer.run_command_safe")
 async def test_uninstall_tool_failure(mock_run, installer, mock_tool):
     mock_run.return_value = (1, "", "fail")
     # Should catch exception and return True (pass)

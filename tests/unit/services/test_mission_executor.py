@@ -14,26 +14,26 @@ def _safe_create_task(coro, **kwargs):
 @pytest.fixture(autouse=True)
 def _mission_runtime_isolation(tmp_path):
     with (
-        patch("app.services.mission.mission.data_path", side_effect=tmp_path.joinpath),
-        patch("app.services.mission.mission.asyncio.create_task", side_effect=_safe_create_task),
+        patch("spectra_platform.services.mission.mission.data_path", side_effect=tmp_path.joinpath),
+        patch("spectra_platform.services.mission.mission.asyncio.create_task", side_effect=_safe_create_task),
     ):
         yield
 
 
-from app.services.ai.agents.base import AgentContext, ToolAction
-from app.services.ai.agents.mission_controller import AssessmentPhase, Task
-from app.services.mission.executor import MissionExecutor
-from app.services.mission.mission import Mission
+from spectra_platform.services.ai.agents.base import AgentContext, ToolAction
+from spectra_platform.services.ai.agents.mission_controller import AssessmentPhase, Task
+from spectra_platform.services.mission.executor import MissionExecutor
+from spectra_platform.services.mission.mission import Mission
 
 
 @pytest.fixture
 def mock_executor_context():
     # Use source paths for patching to reliability
     with (
-        patch("app.services.tools.service.ToolExecutionService") as MockToolService,
-        patch("app.services.mission.exploitation.ExploitationManager") as MockExploitManager,
-        patch("app.services.ai.agents.tool_selector.ToolSelectorAgent") as MockToolSelector,
-        patch("app.services.ai.consensus.VotingSystem") as MockVoting,
+        patch("spectra_platform.services.tools.service.ToolExecutionService") as MockToolService,
+        patch("spectra_platform.services.mission.exploitation.ExploitationManager") as MockExploitManager,
+        patch("spectra_platform.services.ai.agents.tool_selector.ToolSelectorAgent") as MockToolSelector,
+        patch("spectra_platform.services.ai.consensus.VotingSystem") as MockVoting,
     ):
         # Mocks
         mock_llm = AsyncMock()

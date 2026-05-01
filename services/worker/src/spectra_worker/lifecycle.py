@@ -61,7 +61,7 @@ async def startup() -> None:
     _log_startup_banner()
 
     try:
-        from app.services.tools.registry import initialize_registry
+        from spectra_platform.services.tools.registry import initialize_registry
 
         registry = await initialize_registry(
             plugins_dir="plugins",
@@ -76,7 +76,7 @@ async def startup() -> None:
 
 async def _auto_install_pending() -> None:
     """Sync tool availability on startup without mutating the container image."""
-    from app.services.tools.registry import get_registry
+    from spectra_platform.services.tools.registry import get_registry
 
     registry = get_registry()
     pending = []
@@ -96,7 +96,7 @@ async def shutdown() -> None:
     """Worker shutdown hook — release resources."""
     logger.info("Spectra PostgreSQL Worker shutting down...")
     try:
-        from app.core.database import engine
+        from spectra_platform.core.database import engine
 
         if engine is not None:
             await engine.dispose()
@@ -111,8 +111,8 @@ async def heartbeat_loop(queue_name: str, interval: int = 30) -> None:
 
     from sqlalchemy import update
 
-    from app.core.database import async_session_maker
-    from app.models.infrastructure import Sandbox
+    from spectra_platform.core.database import async_session_maker
+    from spectra_platform.models.infrastructure import Sandbox
 
     logger.info("Starting heartbeat loop (interval=%ds, queue=%s)", interval, queue_name)
     while True:

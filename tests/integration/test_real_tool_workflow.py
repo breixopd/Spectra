@@ -17,7 +17,8 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 
-from app.models.attack_surface import (
+from spectra_domain.enums import RiskLevel
+from spectra_platform.models.attack_surface import (
     AttackSurface,
     AttackVector,
     DiscoveredService,
@@ -27,10 +28,9 @@ from app.models.attack_surface import (
     VectorStatus,
     Vulnerability,
 )
-from app.services.mission.mission import Mission
-from app.services.tools.adapter import CommandToolAdapter
-from app.services.tools.registry import ToolRegistry, initialize_registry
-from spectra_domain.enums import RiskLevel
+from spectra_platform.services.mission.mission import Mission
+from spectra_platform.services.tools.adapter import CommandToolAdapter
+from spectra_platform.services.tools.registry import ToolRegistry, initialize_registry
 from spectra_tools_core.models import (
     ExecutionConfig,
     OutputFormat,

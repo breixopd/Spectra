@@ -7,7 +7,7 @@ import pytest
 from fastapi import Response
 from starlette.requests import Request
 
-from app.auth.security import (
+from spectra_platform.auth.security import (
     _blacklisted_tokens,
     _user_token_blacklist,
     create_access_token,
@@ -19,7 +19,7 @@ from app.auth.security import (
 
 @pytest.fixture(autouse=True)
 def _clear_blacklist():
-    from app.auth.security import _blacklist_ready
+    from spectra_platform.auth.security import _blacklist_ready
 
     _blacklisted_tokens.clear()
     _user_token_blacklist.clear()
@@ -176,7 +176,7 @@ async def test_token_without_type_claim_still_decodes():
 
     import jwt
 
-    from app.core.config import settings
+    from spectra_platform.core.config import settings
 
     payload = {
         "sub": "legacyuser",
@@ -198,8 +198,8 @@ async def test_get_current_user_rejects_token_without_type():
     import jwt
     from fastapi import HTTPException
 
-    from app.core.config import settings
     from spectra_api.api.dependencies import get_current_user
+    from spectra_platform.core.config import settings
 
     payload = {
         "sub": "legacyuser",

@@ -2,8 +2,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.services.ai.agents.base import AgentContext
-from app.services.ai.agents.tool_selector import (
+from spectra_platform.services.ai.agents.base import AgentContext
+from spectra_platform.services.ai.agents.tool_selector import (
     ToolSelectorAgent,
 )
 from spectra_tools_core.models import (

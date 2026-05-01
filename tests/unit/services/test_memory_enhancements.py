@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from app.services.ai.memory import MissionMemory
+from spectra_platform.services.ai.memory import MissionMemory
 
 
 @pytest.fixture
@@ -121,7 +121,7 @@ class TestKnowledgeAggregation:
     @pytest.fixture(autouse=True)
     def _patch_data_path(self, tmp_path, monkeypatch):
         """Redirect data_path so aggregate_knowledge() can write files."""
-        import app.services.ai.memory as _mem_mod
+        import spectra_platform.services.ai.memory as _mem_mod
 
         monkeypatch.setattr(_mem_mod, "data_path", lambda *parts: tmp_path / "/".join(str(x) for x in parts))
         self._agg_path = tmp_path

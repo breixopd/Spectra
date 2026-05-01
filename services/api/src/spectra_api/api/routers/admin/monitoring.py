@@ -14,12 +14,12 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_async_session
-from app.infrastructure.metrics_store import get_metrics_store
-from app.models.mission import Mission
-from app.models.user import User
-from app.telemetry.telemetry import telemetry
 from spectra_api.authz import Permission, require_permission
+from spectra_platform.core.database import get_async_session
+from spectra_platform.infrastructure.metrics_store import get_metrics_store
+from spectra_platform.models.mission import Mission
+from spectra_platform.models.user import User
+from spectra_platform.telemetry.telemetry import telemetry
 
 logger = logging.getLogger(__name__)
 

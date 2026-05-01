@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock
 
-from app.services.mission.output_model import (
+from spectra_platform.services.mission.output_model import (
     get_mission_finding_counts,
     get_mission_findings,
     get_reporter_findings,

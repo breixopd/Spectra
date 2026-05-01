@@ -1,7 +1,7 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from app.services.tools.output import (
+from spectra_platform.services.tools.output import (
     cleanup_mission_workspace,
     cleanup_output_directory,
     create_error_result,
@@ -28,7 +28,7 @@ def test_validate_tool_name():
     assert validate_tool_name("") is False
 
 
-@patch("app.services.tools.output.data_path")
+@patch("spectra_platform.services.tools.output.data_path")
 def test_prepare_output_directory(mock_data_path, tmp_path):
     mock_data_path.side_effect = lambda *parts: tmp_path / Path(*parts)
     result = prepare_output_directory("mission-1", "run-1")
@@ -36,7 +36,7 @@ def test_prepare_output_directory(mock_data_path, tmp_path):
     assert result == tmp_path / "missions" / "mission-1" / "scans" / "run-1"
 
 
-@patch("app.services.tools.output.data_path")
+@patch("spectra_platform.services.tools.output.data_path")
 def test_cleanup_mission_workspace(mock_data_path, tmp_path):
     workspace = tmp_path / "missions" / "mission-1"
     workspace.mkdir(parents=True)

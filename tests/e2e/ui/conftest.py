@@ -9,7 +9,7 @@ import httpx
 import pytest
 from playwright.sync_api import Browser, BrowserContext, Page, expect
 
-from app.auth.security import get_password_hash
+from spectra_platform.auth.security import get_password_hash
 
 
 def pytest_configure(config):

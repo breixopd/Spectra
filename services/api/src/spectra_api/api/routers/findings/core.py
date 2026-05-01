@@ -9,20 +9,20 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth.rate_limit import RateLimits, limiter
-from app.core.database import get_async_session
-from app.models.audit_log import AuditEventType
-from app.models.finding import FindingStatus, Severity
-from app.models.user import User
-from app.repositories.finding import FindingRepository
-from app.repositories.target import TargetRepository
-from app.services.system.audit import log_event as audit_log_event
 from spectra_api.api.dependencies import check_resource_owner, get_current_active_user, validate_uuid_param
 from spectra_api.api.schemas.common import PaginatedResponse
 from spectra_api.api.schemas.finding import FindingResponse
 from spectra_api.authz import Permission, require_permission
 from spectra_common.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from spectra_common.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
+from spectra_platform.auth.rate_limit import RateLimits, limiter
+from spectra_platform.core.database import get_async_session
+from spectra_platform.models.audit_log import AuditEventType
+from spectra_platform.models.finding import FindingStatus, Severity
+from spectra_platform.models.user import User
+from spectra_platform.repositories.finding import FindingRepository
+from spectra_platform.repositories.target import TargetRepository
+from spectra_platform.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 
@@ -288,7 +288,7 @@ async def list_findings(
 
     Pagination: max 100 items per page.
     """
-    from app.models.finding import Finding
+    from spectra_platform.models.finding import Finding
 
     repo = FindingRepository(db)
     filters = _finding_filters(_current_user, severity=severity, status_filter=status_filter)

@@ -3,7 +3,7 @@ from unittest.mock import patch
 import httpx
 import pytest
 
-from app.services.scaling.docker_client import _get_registry_digest_v2
+from spectra_platform.services.scaling.docker_client import _get_registry_digest_v2
 
 
 class _FakeResponse:

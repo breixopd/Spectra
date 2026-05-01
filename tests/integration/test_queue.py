@@ -10,10 +10,10 @@ import pytest_asyncio
 from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-import app.infrastructure.queue
-from app.core.config import settings
-from app.infrastructure.queue import Job, PostgresJobQueue
-from app.models.infrastructure import InfrastructureBase, JobQueue
+import spectra_platform.infrastructure.queue as queue_module
+from spectra_platform.core.config import settings
+from spectra_platform.infrastructure.queue import Job, PostgresJobQueue
+from spectra_platform.models.infrastructure import InfrastructureBase, JobQueue
 
 
 def _queue_database_url() -> str:
@@ -61,7 +61,7 @@ async def db_session_maker(queue_engine):
 
 @pytest.fixture
 def mock_session_maker(db_session_maker, monkeypatch):
-    monkeypatch.setattr(app.infrastructure.queue, "async_session_maker", db_session_maker)
+    monkeypatch.setattr(queue_module, "async_session_maker", db_session_maker)
     return db_session_maker
 
 
@@ -131,7 +131,7 @@ async def test_postgres_job_queue_throughput(db_session_maker, mock_session_make
         return {"job_number": job_number}
 
     worker_task = asyncio.create_task(
-        app.infrastructure.queue.worker_loop([lightweight_job], queue_name=queue_name, poll_delay=0.01)
+        queue_module.worker_loop([lightweight_job], queue_name=queue_name, poll_delay=0.01)
     )
 
     try:

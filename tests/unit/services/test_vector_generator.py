@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.ai.agents.base import AgentContext
-from app.services.ai.agents.vector_generator import (
+from spectra_platform.services.ai.agents.base import AgentContext
+from spectra_platform.services.ai.agents.vector_generator import (
     VectorGeneratorAgent,
     VectorGeneratorInput,
 )
@@ -138,9 +138,9 @@ class TestVectorGeneratorAgent:
             target_data={"port": 80, "service": "http", "host": "192.168.1.1"},
         )
 
-        with patch("app.services.ai.knowledge.get_exploit_context", new_callable=AsyncMock, return_value=""):
+        with patch("spectra_platform.services.ai.knowledge.get_exploit_context", new_callable=AsyncMock, return_value=""):
             with patch(
-                "app.services.ai.knowledge.get_available_tools_context", new_callable=AsyncMock, return_value=""
+                "spectra_platform.services.ai.knowledge.get_available_tools_context", new_callable=AsyncMock, return_value=""
             ):
                 result = await agent.execute(context, input_data)
 
@@ -166,9 +166,9 @@ class TestVectorGeneratorAgent:
             target_data={"port": 9999, "service": "custom", "host": "192.168.1.1"},
         )
 
-        with patch("app.services.ai.knowledge.get_exploit_context", new_callable=AsyncMock, return_value=""):
+        with patch("spectra_platform.services.ai.knowledge.get_exploit_context", new_callable=AsyncMock, return_value=""):
             with patch(
-                "app.services.ai.knowledge.get_available_tools_context", new_callable=AsyncMock, return_value=""
+                "spectra_platform.services.ai.knowledge.get_available_tools_context", new_callable=AsyncMock, return_value=""
             ):
                 result = await agent.execute(context, input_data)
 
@@ -190,9 +190,9 @@ class TestVectorGeneratorAgent:
             target_data={"port": 80, "service": "http", "host": "192.168.1.1"},
         )
 
-        with patch("app.services.ai.knowledge.get_exploit_context", new_callable=AsyncMock, return_value=""):
+        with patch("spectra_platform.services.ai.knowledge.get_exploit_context", new_callable=AsyncMock, return_value=""):
             with patch(
-                "app.services.ai.knowledge.get_available_tools_context", new_callable=AsyncMock, return_value=""
+                "spectra_platform.services.ai.knowledge.get_available_tools_context", new_callable=AsyncMock, return_value=""
             ):
                 result = await agent.execute(context, input_data)
 

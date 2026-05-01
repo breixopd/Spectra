@@ -11,16 +11,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing_extensions import TypedDict
 
-from app.auth.rate_limit import RateLimits, limiter
-from app.core.database import get_async_session
-from app.infrastructure.cache import get_cache
-from app.infrastructure.circuit_breaker import circuit_breakers
-from app.infrastructure.events import events
-from app.models.user import User
-from app.services.system.health import collect_platform_health
-from app.telemetry.telemetry import telemetry
 from spectra_api.authz import Permission, require_permission
 from spectra_common.constants import API_MAX_PAGE_SIZE, OBSERVABILITY_MAX_RESULTS
+from spectra_platform.auth.rate_limit import RateLimits, limiter
+from spectra_platform.core.database import get_async_session
+from spectra_platform.infrastructure.cache import get_cache
+from spectra_platform.infrastructure.circuit_breaker import circuit_breakers
+from spectra_platform.infrastructure.events import events
+from spectra_platform.models.user import User
+from spectra_platform.services.system.health import collect_platform_health
+from spectra_platform.telemetry.telemetry import telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -245,7 +245,7 @@ async def get_metrics_history(
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> list[dict[str, Any]]:
     """Get historical metric snapshots for dashboards."""
-    from app.infrastructure.metrics_store import get_metrics_store
+    from spectra_platform.infrastructure.metrics_store import get_metrics_store
 
     store = get_metrics_store()
     return store.get_history(minutes=minutes)

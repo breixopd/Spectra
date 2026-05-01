@@ -2,13 +2,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.services.training.backends import (
+from spectra_platform.services.training.backends import (
     TrainingBackendDefinition,
     get_training_backend,
     list_training_backends,
     register_training_backend,
 )
-from app.services.training.dataset import (
+from spectra_platform.services.training.dataset import (
     create_mission_completion_sample,
     create_training_sample,
     export_dataset,
@@ -164,7 +164,7 @@ def test_training_backend_registry_allows_new_backend_registration():
     try:
         assert get_training_backend("demo_backend") == definition
     finally:
-        from app.services.training import backends
+        from spectra_platform.services.training import backends
 
         backends._BACKENDS.pop("demo_backend", None)
 

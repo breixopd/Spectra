@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.infrastructure.events import EventType, events
-from app.mission.core.bridge import _USER_SCOPED_EVENTS, EventWebSocketBridge
+from spectra_platform.infrastructure.events import EventType, events
+from spectra_platform.mission.core.bridge import _USER_SCOPED_EVENTS, EventWebSocketBridge
 
 
 class TestWebSocketEventIsolation:
@@ -22,7 +22,7 @@ class TestWebSocketEventIsolation:
         bridge = EventWebSocketBridge()
         mock_ws = AsyncMock()
 
-        with patch("app.mission.core.bridge.ws_manager", mock_ws):
+        with patch("spectra_platform.mission.core.bridge.ws_manager", mock_ws):
             bridge.start()
             try:
                 await events.emit(
@@ -44,7 +44,7 @@ class TestWebSocketEventIsolation:
         bridge = EventWebSocketBridge()
         mock_ws = AsyncMock()
 
-        with patch("app.mission.core.bridge.ws_manager", mock_ws):
+        with patch("spectra_platform.mission.core.bridge.ws_manager", mock_ws):
             bridge.start()
             try:
                 await events.emit(
@@ -64,7 +64,7 @@ class TestWebSocketEventIsolation:
         bridge = EventWebSocketBridge()
         mock_ws = AsyncMock()
 
-        with patch("app.mission.core.bridge.ws_manager", mock_ws):
+        with patch("spectra_platform.mission.core.bridge.ws_manager", mock_ws):
             bridge.start()
             try:
                 await events.emit(EventType.MISSION_STARTED, "test", user_id="user-a")
@@ -84,7 +84,7 @@ class TestWebSocketEventIsolation:
         bridge = EventWebSocketBridge()
         mock_ws = AsyncMock()
 
-        with patch("app.mission.core.bridge.ws_manager", mock_ws):
+        with patch("spectra_platform.mission.core.bridge.ws_manager", mock_ws):
             bridge.start()
             try:
                 # Emit a user-scoped event type without user_id
@@ -105,7 +105,7 @@ class TestWebSocketEventIsolation:
         bridge = EventWebSocketBridge()
         mock_ws = AsyncMock()
 
-        with patch("app.mission.core.bridge.ws_manager", mock_ws):
+        with patch("spectra_platform.mission.core.bridge.ws_manager", mock_ws):
             bridge.start()
             try:
                 await events.emit(
@@ -126,7 +126,7 @@ class TestWebSocketEventIsolation:
         bridge = EventWebSocketBridge()
         mock_ws = AsyncMock()
 
-        with patch("app.mission.core.bridge.ws_manager", mock_ws):
+        with patch("spectra_platform.mission.core.bridge.ws_manager", mock_ws):
             bridge.start()
             try:
                 await events.emit(EventType.LOGIN_SUCCESS, "test", username="alice")

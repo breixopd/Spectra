@@ -16,8 +16,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.services.tools.adapter import CommandToolAdapter
-from app.services.tools.registry import (
+from spectra_platform.services.tools.adapter import CommandToolAdapter
+from spectra_platform.services.tools.registry import (
     PluginValidationError,
     ToolRegistry,
 )

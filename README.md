@@ -81,7 +81,7 @@ Built on the PTES (Penetration Testing Execution Standard) methodology, Spectra 
 - **Dead-letter queue** — failed jobs retry 3x with backoff, then move to dead letter for admin review
 - **Cleanup workers** — hourly automated cleanup of expired cache, orphaned sandboxes, and old jobs
 - **WebSocket reconnection** — client-side exponential backoff (1s → 30s max, 10 retries)
-- **DI container** — lightweight service container (`app/di/container.py`) for testable dependency injection
+- **DI container** — lightweight service container (`spectra_platform/di/container.py`) for testable dependency injection
 - **Notification jobs** — webhook delivery for mission completion, critical findings, and exploit success
 
 ## Documentation
@@ -219,7 +219,7 @@ For the full test matrix and release-gate guidance, see [Testing Strategy](docs/
 ### Linting
 
 ```bash
-ruff check app/
+ruff check spectra_platform/
 ```
 
 Pull request CI runs the full **`static-analysis`** job in Docker (Ruff, import boundaries, Pyright, Bandit). See [Development](docs/wiki/development.md) and [CI parity](docs/runbooks/ci-parity-local.md).

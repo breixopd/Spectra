@@ -133,7 +133,7 @@ make test-soak
 ## Linting and static analysis
 
 ```bash
-ruff check app/
+ruff check spectra_platform/
 ```
 
 CI runs one **`static-analysis`** job (`.github/workflows/ci.yml`): a single `Dockerfile.test` build, then Ruff, the import-boundary script, Pyright, and Bandit (HIGH severity / confidence gate). Ruff and Pyright defaults live in `pyproject.toml`.
@@ -156,7 +156,7 @@ Use `from __future__ import annotations` at the top of new files for modern type
 ## Code Structure
 
 ```text
-app/
+spectra_platform/
 ├── _meta/              # App metadata (version, build info)
 ├── api/                # FastAPI routes and schemas
 │   ├── routers/        # One module per domain

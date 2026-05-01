@@ -4,8 +4,8 @@ Tests for the Consensus system and Quality Gates.
 
 import pytest
 
-from app.services.ai.agents.base import ActionRisk, AgentAction, ToolAction
-from app.services.ai.consensus import (
+from spectra_platform.services.ai.agents.base import ActionRisk, AgentAction, ToolAction
+from spectra_platform.services.ai.consensus import (
     ConsensusResult,
     ConsensusStatus,
     QualityGate,

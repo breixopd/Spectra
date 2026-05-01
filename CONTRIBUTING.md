@@ -118,7 +118,7 @@ process (`spectra_api`) additionally uses it for router mounting — see
 `docs/wiki/microservices-split.md`.
 
 ```text
-app/
+spectra_platform/
 ├── _meta/            # App metadata (version, build info)
 ├── core/             # Infrastructure — config, DB, security, cache, redis
 ├── mission/          # Mission FSM, enums, mission-domain helpers
@@ -132,7 +132,7 @@ app/
 └── utils/            # Shared utilities
 
 services/api/src/spectra_api/   # HTTP FastAPI app + UI (routers, templates, static)
-│   ├── api/          # Routers, schemas, dependencies (not under app/)
+│   ├── api/          # Routers, schemas, dependencies (not under spectra_platform/)
 │   ├── bootstrap/    # Lifespan, startup wiring
 │   └── ui/           # Server-rendered pages, thin API used by templates
 
@@ -156,20 +156,20 @@ tests/                # Unit, integration, e2e, load tests
 
 ### Key patterns
 
-- **Repository pattern**: All database access goes through `app/repositories/`. Routers and services never query the DB directly.
-- **Service layer**: Business logic lives in `app/services/`. Routers are thin — they validate input, call services, and format output.
+- **Repository pattern**: All database access goes through `spectra_platform/repositories/`. Routers and services never query the DB directly.
+- **Service layer**: Business logic lives in `spectra_platform/services/`. Routers are thin — they validate input, call services, and format output.
 - **Dependency injection**: FastAPI's `Depends()` for database sessions, auth, and permissions.
 - **Plugin system**: Security tools are defined as JSON files in `plugins/`. The registry loads, validates, and manages them.
-- **Event-driven**: `app/infrastructure/events.py` provides pub/sub for decoupled communication.
+- **Event-driven**: `spectra_platform/infrastructure/events.py` provides pub/sub for decoupled communication.
 
 ### Architecture Boundaries
 
 Spectra runs as four microservices; `SERVICE_MODE` labels each container for shared config. Import boundaries between shared and service-specific code are enforced.
 
 **Shared packages** (used by all services — must NOT import service-specific code):
-- `app/core/` — config, database, security, cache, events, redis
-- `app/models/` — SQLAlchemy ORM models
-- `app/repositories/` — data access layer
+- `spectra_platform/core/` — config, database, security, cache, events, redis
+- `spectra_platform/models/` — SQLAlchemy ORM models
+- `spectra_platform/repositories/` — data access layer
 - `packages/common/src/spectra_common/` — shared primitives
 - `packages/domain/src/spectra_domain/` — integration contracts and DTOs
 - `packages/tools-core/src/spectra_tools_core/` — tool registry contracts
@@ -187,7 +187,7 @@ Spectra runs as four microservices; `SERVICE_MODE` labels each container for sha
 python3 scripts/check_import_boundaries.py
 ```
 
-This checks that `app/core/` and `app/models/` have no top-level imports of service-specific modules (`spectra_api.api`, `spectra_worker`, `spectra_ai`, `spectra_scheduler`, etc.). Lazy imports inside functions are allowed.
+This checks that `spectra_platform/core/` and `spectra_platform/models/` have no top-level imports of service-specific modules (`spectra_api.api`, `spectra_worker`, `spectra_ai`, `spectra_scheduler`, etc.). Lazy imports inside functions are allowed.
 
 The pre-commit hook also runs this check automatically on every commit (see [Pre-commit Hooks](#pre-commit-hooks)).
 
@@ -221,17 +221,17 @@ For **readability, modular boundaries, and when to split large modules**, see [R
 
 ```bash
 # Check for lint errors
-ruff check app/
+ruff check spectra_platform/
 
 # Auto-fix what ruff can fix
-ruff check app/ --fix
+ruff check spectra_platform/ --fix
 
 # Format code
-ruff format app/ tests/
+ruff format spectra_platform/ tests/
 
 # Or use the Makefile shortcuts
 make lint     # ruff check + import boundary check
-make format   # ruff format app/ tests/
+make format   # ruff format spectra_platform/ tests/
 ```
 
 ### CSS and Frontend
@@ -256,7 +256,7 @@ The source file is `services/api/static/css/input.css`. Custom properties (desig
 - **Files**: `snake_case.py`
 - **Classes**: `PascalCase`
 - **Functions/methods**: `snake_case`
-- **Constants**: `UPPER_SNAKE_CASE` (defined in `app/core/constants.py`)
+- **Constants**: `UPPER_SNAKE_CASE` (defined in `spectra_platform/core/constants.py`)
 - **Route handlers**: Named after their HTTP action (`list_users`, `create_plan`, `get_mission`)
 
 ### Commit messages
@@ -346,7 +346,7 @@ Key variables in `.env.test`:
 1. **Branch**: Create a feature branch from `main` (`feature/your-feature` or `fix/your-fix`)
 2. **Implement**: Make your changes following the code style guidelines
 3. **Test**: Ensure all existing tests pass and add tests for new functionality
-4. **Lint**: Run `ruff check app/` and fix any issues
+4. **Lint**: Run `ruff check spectra_platform/` and fix any issues
 5. **Commit**: Use clear commit messages
 6. **PR**: Open a pull request against `main` with:
    - A clear description of what changed and why
@@ -360,10 +360,10 @@ Use this checklist when reviewing pull requests:
 
 - [ ] **Code quality**: Follows project style, clear naming, no dead code
 - [ ] **Tests**: New functionality has tests; all existing tests pass
-- [ ] **Lint clean**: `ruff check app/` reports no errors
+- [ ] **Lint clean**: `ruff check spectra_platform/` reports no errors
 - [ ] **Import boundaries**: `python3 scripts/check_import_boundaries.py` passes
 - [ ] **Security**: No hardcoded secrets, no SQL injection, no XSS vectors
-- [ ] **Constants**: No magic numbers — constants go in `app/core/constants.py`
+- [ ] **Constants**: No magic numbers — constants go in `spectra_platform/core/constants.py`
 - [ ] **Type hints**: Function signatures include type hints
 - [ ] **Documentation**: Docstrings for public APIs; wiki updated if needed
 - [ ] **Migrations**: Schema changes have an Alembic migration
@@ -394,7 +394,7 @@ We will acknowledge receipt within 48 hours and provide a timeline for resolutio
 - All user input must be validated at API boundaries (Pydantic schemas)
 - Use parameterized queries — never concatenate user input into SQL
 - Follow the OWASP Top 10 guidelines
-- Run `ruff check app/` to catch common security anti-patterns
+- Run `ruff check spectra_platform/` to catch common security anti-patterns
 - Test authentication/authorization paths in your changes
 
 ## Project Conventions
@@ -425,7 +425,7 @@ alembic upgrade head
 
 ### Environment variables
 
-- All configuration goes through `app/core/config.py` (the `settings` object)
+- All configuration goes through `spectra_platform/core/config.py` (the `settings` object)
 - Never hardcode configuration values
 - New settings need a default value and documentation in the wiki
 

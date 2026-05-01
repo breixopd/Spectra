@@ -9,50 +9,50 @@ class TestGetTierLimits:
     """Tests for SandboxPool.get_tier_limits()."""
 
     def test_light_tier_returns_correct_limits(self):
-        from app.services.tools.sandbox.pool import SandboxPool
+        from spectra_platform.services.tools.sandbox.pool import SandboxPool
 
         default_tiers = '{"light": {"memory": "512m", "cpu_shares": 256}, "medium": {"memory": "2g", "cpu_shares": 512}, "heavy": {"memory": "4g", "cpu_shares": 1024}, "extreme": {"memory": "8g", "cpu_shares": 2048}}'
-        with patch("app.services.tools.sandbox.pool.get_settings") as mock_settings:
+        with patch("spectra_platform.services.tools.sandbox.pool.get_settings") as mock_settings:
             mock_settings.return_value = MagicMock(SANDBOX_RESOURCE_TIERS=default_tiers)
             memory, cpu = SandboxPool.get_tier_limits("light")
             assert memory == "512m"
             assert cpu == 256
 
     def test_heavy_tier_returns_correct_limits(self):
-        from app.services.tools.sandbox.pool import SandboxPool
+        from spectra_platform.services.tools.sandbox.pool import SandboxPool
 
         default_tiers = '{"light": {"memory": "512m", "cpu_shares": 256}, "medium": {"memory": "2g", "cpu_shares": 512}, "heavy": {"memory": "4g", "cpu_shares": 1024}, "extreme": {"memory": "8g", "cpu_shares": 2048}}'
-        with patch("app.services.tools.sandbox.pool.get_settings") as mock_settings:
+        with patch("spectra_platform.services.tools.sandbox.pool.get_settings") as mock_settings:
             mock_settings.return_value = MagicMock(SANDBOX_RESOURCE_TIERS=default_tiers)
             memory, cpu = SandboxPool.get_tier_limits("heavy")
             assert memory == "4g"
             assert cpu == 1024
 
     def test_unknown_tier_falls_back_to_medium(self):
-        from app.services.tools.sandbox.pool import SandboxPool
+        from spectra_platform.services.tools.sandbox.pool import SandboxPool
 
         default_tiers = '{"light": {"memory": "512m", "cpu_shares": 256}, "medium": {"memory": "2g", "cpu_shares": 512}, "heavy": {"memory": "4g", "cpu_shares": 1024}, "extreme": {"memory": "8g", "cpu_shares": 2048}}'
-        with patch("app.services.tools.sandbox.pool.get_settings") as mock_settings:
+        with patch("spectra_platform.services.tools.sandbox.pool.get_settings") as mock_settings:
             mock_settings.return_value = MagicMock(SANDBOX_RESOURCE_TIERS=default_tiers)
             memory, cpu = SandboxPool.get_tier_limits("nonexistent")
             assert memory == "2g"
             assert cpu == 512
 
     def test_extreme_tier(self):
-        from app.services.tools.sandbox.pool import SandboxPool
+        from spectra_platform.services.tools.sandbox.pool import SandboxPool
 
         default_tiers = '{"light": {"memory": "512m", "cpu_shares": 256}, "medium": {"memory": "2g", "cpu_shares": 512}, "heavy": {"memory": "4g", "cpu_shares": 1024}, "extreme": {"memory": "8g", "cpu_shares": 2048}}'
-        with patch("app.services.tools.sandbox.pool.get_settings") as mock_settings:
+        with patch("spectra_platform.services.tools.sandbox.pool.get_settings") as mock_settings:
             mock_settings.return_value = MagicMock(SANDBOX_RESOURCE_TIERS=default_tiers)
             memory, cpu = SandboxPool.get_tier_limits("extreme")
             assert memory == "8g"
             assert cpu == 2048
 
     def test_custom_tiers_from_settings(self):
-        from app.services.tools.sandbox.pool import SandboxPool
+        from spectra_platform.services.tools.sandbox.pool import SandboxPool
 
         custom = '{"medium": {"memory": "16g", "cpu_shares": 4096}}'
-        with patch("app.services.tools.sandbox.pool.get_settings") as mock_settings:
+        with patch("spectra_platform.services.tools.sandbox.pool.get_settings") as mock_settings:
             mock_settings.return_value = MagicMock(SANDBOX_RESOURCE_TIERS=custom)
             memory, cpu = SandboxPool.get_tier_limits("medium")
             assert memory == "16g"
@@ -84,7 +84,7 @@ class TestSandboxInfoResourceTier:
 
     def test_sandbox_info_has_resource_tier(self):
 
-        from app.services.tools.sandbox.models import SandboxInfo
+        from spectra_platform.services.tools.sandbox.models import SandboxInfo
 
         info = SandboxInfo(
             container_id="abc",
@@ -98,7 +98,7 @@ class TestSandboxInfoResourceTier:
         assert info.resource_tier == "heavy"
 
     def test_sandbox_info_default_resource_tier(self):
-        from app.services.tools.sandbox.models import SandboxInfo
+        from spectra_platform.services.tools.sandbox.models import SandboxInfo
 
         info = SandboxInfo(
             container_id="abc",

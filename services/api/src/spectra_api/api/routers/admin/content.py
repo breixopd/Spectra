@@ -9,12 +9,12 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.rate_limit import limiter
-from app.core.database import get_async_session
-from app.models.infrastructure import SystemContent
-from app.models.user import User
-from app.utils.html_sanitization import is_legal_content_type, sanitize_legal_html
 from spectra_api.authz import Permission, require_permission
+from spectra_platform.auth.rate_limit import limiter
+from spectra_platform.core.database import get_async_session
+from spectra_platform.models.infrastructure import SystemContent
+from spectra_platform.models.user import User
+from spectra_platform.utils.html_sanitization import is_legal_content_type, sanitize_legal_html
 
 logger = logging.getLogger(__name__)
 

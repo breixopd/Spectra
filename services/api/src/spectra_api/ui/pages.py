@@ -10,12 +10,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.routing import Route
 
-from app.core.config import settings
-from app.core.database import async_session_maker, get_async_session
-from app.models.user import User
-from app.services.billing.entitlements import ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES
-from app.services.shell.session_manager import shell_manager
-from app.services.system.runtime_settings import get_runtime_setting_bool, get_runtime_setting_str
 from spectra_api.api.dependencies import (
     _is_admin_user,
     get_current_active_user,
@@ -31,6 +25,12 @@ from spectra_api.services.system.settings_service import (
     get_current_settings,
 )
 from spectra_api.templates import templates
+from spectra_platform.core.config import settings
+from spectra_platform.core.database import async_session_maker, get_async_session
+from spectra_platform.models.user import User
+from spectra_platform.services.billing.entitlements import ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES
+from spectra_platform.services.shell.session_manager import shell_manager
+from spectra_platform.services.system.runtime_settings import get_runtime_setting_bool, get_runtime_setting_str
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -59,8 +59,8 @@ async def _get_user_features_dict(username: str | None) -> dict[str, bool]:
     if not username:
         return {}
     try:
-        from app.models.plan import Plan, Subscription
-        from app.models.user import User
+        from spectra_platform.models.plan import Plan, Subscription
+        from spectra_platform.models.user import User
 
         async with async_session_maker() as session:
             user_result = await session.execute(select(User).where(User.username == username))

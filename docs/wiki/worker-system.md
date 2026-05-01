@@ -19,7 +19,7 @@ On startup, the worker:
 
 Tool binaries otherwise arrive via sandbox golden-image rebuilds and per-job installs. When plugins are updated via the API, a `PLUGIN_UPDATED` event triggers a golden image rebuild (always-on platform behaviour).
 
-The queue is implemented in `app/infrastructure/queue.py` using the `job_queue` database table. Jobs are claimed via `SELECT ... FOR UPDATE SKIP LOCKED` for safe concurrent processing.
+The queue is implemented in `spectra_platform/infrastructure/queue.py` using the `job_queue` database table. Jobs are claimed via `SELECT ... FOR UPDATE SKIP LOCKED` for safe concurrent processing.
 
 ### Job Lifecycle
 
@@ -77,7 +77,7 @@ Dead-letter jobs older than 30 days are automatically purged by the cleanup syst
 
 ## Cleanup Jobs
 
-Periodic cleanup runs every **hour** via `periodic_cleanup_loop()` in `app/infrastructure/background_tasks.py`. The **scheduler** service runs that loop under a PostgreSQL advisory lock (see `services/scheduler/src/spectra_scheduler/loops/core_loops.py`). It calls `run_all_cleanup()` which executes four tasks:
+Periodic cleanup runs every **hour** via `periodic_cleanup_loop()` in `spectra_platform/infrastructure/background_tasks.py`. The **scheduler** service runs that loop under a PostgreSQL advisory lock (see `services/scheduler/src/spectra_scheduler/loops/core_loops.py`). It calls `run_all_cleanup()` which executes four tasks:
 
 | Task | Function | Description |
 |------|----------|-------------|

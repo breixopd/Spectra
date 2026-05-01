@@ -99,11 +99,11 @@ async def test_internal_scaling_action_scale_up_invokes_scale_service():
     fake_svc = SimpleNamespace(desired_replicas=2)
     with (
         patch(
-            "app.services.scaling.docker_client.get_service",
+            "spectra_platform.services.scaling.docker_client.get_service",
             AsyncMock(return_value=fake_svc),
         ),
         patch(
-            "app.services.scaling.docker_client.scale_service",
+            "spectra_platform.services.scaling.docker_client.scale_service",
             AsyncMock(return_value=True),
         ) as scale_mock,
     ):
@@ -124,7 +124,7 @@ async def test_internal_updates_apply_unknown_service():
 @pytest.mark.asyncio
 async def test_internal_update_status_returns_cached_payload():
     stub = {"services": [], "checked_at": "2026-05-01T00:00:00"}
-    with patch("app.services.scaling.image_updater.get_update_status", return_value=stub):
+    with patch("spectra_platform.services.scaling.image_updater.get_update_status", return_value=stub):
         body = await scheduler_routes.internal_update_status()
     assert body == stub
 
@@ -133,7 +133,7 @@ async def test_internal_update_status_returns_cached_payload():
 async def test_internal_rollback_candidates_returns_wrapper():
     candidates = [{"service": "spectra_app", "previous": "sha256:abc"}]
     with patch(
-        "app.services.scaling.image_updater.get_rollback_candidates",
+        "spectra_platform.services.scaling.image_updater.get_rollback_candidates",
         return_value=candidates,
     ):
         body = await scheduler_routes.internal_rollback_candidates()

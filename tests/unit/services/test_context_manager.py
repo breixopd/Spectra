@@ -1,6 +1,6 @@
 """Tests for ContextManager."""
 
-from app.services.ai.context import ContextManager, ContextSection, Priority
+from spectra_platform.services.ai.context import ContextManager, ContextSection, Priority
 
 
 class TestContextManager:

@@ -10,13 +10,13 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.rate_limit import RateLimits, limiter
-from app.core.config import settings
-from app.core.database import get_async_session
-from app.models.user import User
-from app.services.tools.vpn import VPNManager
 from spectra_api.api.dependencies import check_feature_allowed, get_current_active_user
 from spectra_api.authz import Permission, require_permission
+from spectra_platform.auth.rate_limit import RateLimits, limiter
+from spectra_platform.core.config import settings
+from spectra_platform.core.database import get_async_session
+from spectra_platform.models.user import User
+from spectra_platform.services.tools.vpn import VPNManager
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.utils.geoip import GeoLocation, _is_private_ip, resolve_batch, resolve_ip
+from spectra_platform.utils.geoip import GeoLocation, _is_private_ip, resolve_batch, resolve_ip
 
 
 def test_is_private_ip_localhost():
@@ -60,7 +60,7 @@ async def test_resolve_ip_success():
     mock_session.closed = False
     mock_session.get = MagicMock(return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_response), __aexit__=AsyncMock(return_value=False)))
 
-    with patch("app.utils.geoip._session", mock_session):
+    with patch("spectra_platform.utils.geoip._session", mock_session):
         result = await resolve_ip("1.2.3.4")
 
     assert result is not None
@@ -80,7 +80,7 @@ async def test_resolve_ip_api_failure():
     mock_session.closed = False
     mock_session.get = MagicMock(return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_response), __aexit__=AsyncMock(return_value=False)))
 
-    with patch("app.utils.geoip._session", mock_session):
+    with patch("spectra_platform.utils.geoip._session", mock_session):
         result = await resolve_ip("1.2.3.4")
 
     assert result is None
@@ -95,7 +95,7 @@ async def test_resolve_ip_rate_limit():
     mock_session.closed = False
     mock_session.get = MagicMock(return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_response), __aexit__=AsyncMock(return_value=False)))
 
-    with patch("app.utils.geoip._session", mock_session):
+    with patch("spectra_platform.utils.geoip._session", mock_session):
         result = await resolve_ip("1.2.3.4")
 
     assert result is None
@@ -117,7 +117,7 @@ async def test_resolve_batch():
     mock_session.closed = False
     mock_session.get = MagicMock(return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_response), __aexit__=AsyncMock(return_value=False)))
 
-    with patch("app.utils.geoip._session", mock_session):
+    with patch("spectra_platform.utils.geoip._session", mock_session):
         with patch("asyncio.sleep", new_callable=AsyncMock):
             results = await resolve_batch(["8.8.8.8", "127.0.0.1"], delay=0)
 

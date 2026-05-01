@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.tools.registry.validator import PluginValidator
+from spectra_platform.services.tools.registry.validator import PluginValidator
 from spectra_tools_core.registry_exceptions import PluginValidationError
 
 

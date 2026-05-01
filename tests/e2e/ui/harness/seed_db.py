@@ -7,7 +7,7 @@ import os
 
 import asyncpg
 
-from app.auth.security import get_password_hash
+from spectra_platform.auth.security import get_password_hash
 
 
 def plain_dsn() -> str:
