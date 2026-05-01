@@ -12,10 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-try:
-    import asyncssh as _asyncssh
-except ModuleNotFoundError:
-    _asyncssh = None
+import asyncssh
 
 from app.core.config import settings
 from app.services.provisioning.recipes import CONTAINER_NAMES, PROVISIONING_RECIPES
@@ -26,30 +23,6 @@ logger = logging.getLogger(__name__)
 _VALID_HOSTNAME_RE = re.compile(
     r"^(?=.{1,253}\.?$)(?!-)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.(?!-)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\.?$"
 )
-
-_MISSING_ASYNCSSH_MESSAGE = (
-    "Missing optional dependency 'asyncssh'; install it to use remote provisioning operations"
-)
-
-
-class _AsyncSSHShim:
-    """Patchable fallback when asyncssh is unavailable."""
-
-    class DisconnectError(Exception):
-        """Fallback disconnect error type used by tests and exception handlers."""
-
-    @staticmethod
-    def connect(*args: Any, **kwargs: Any) -> Any:
-        raise RuntimeError(_MISSING_ASYNCSSH_MESSAGE)
-
-    @staticmethod
-    def import_private_key(*args: Any, **kwargs: Any) -> Any:
-        raise RuntimeError(_MISSING_ASYNCSSH_MESSAGE)
-
-
-asyncssh = _asyncssh if _asyncssh is not None else _AsyncSSHShim()
-ASYNCSSH_AVAILABLE = _asyncssh is not None
-
 
 @dataclass
 class ServerConfig:
@@ -81,11 +54,6 @@ class ProvisioningResult:
 
 class ServerProvisioner:
     """Auto-provisions remote servers over SSH for Spectra services."""
-
-    @staticmethod
-    def _require_asyncssh() -> None:
-        if not ASYNCSSH_AVAILABLE:
-            raise RuntimeError(_MISSING_ASYNCSSH_MESSAGE)
 
     async def provision(self, config: ServerConfig) -> ProvisioningResult:
         """Provision a remote server with the specified service.
@@ -121,7 +89,6 @@ class ServerProvisioner:
             return result
 
         try:
-            self._require_asyncssh()
             result.logs.append(f"Connecting to {config.host}:{config.port} as {config.username}...")
             async with asyncssh.connect(**conn_kwargs) as conn:
                 result.logs.append("Connected successfully")
@@ -227,7 +194,6 @@ class ServerProvisioner:
             return {"connected": False, "error": "No auth method"}
 
         try:
-            self._require_asyncssh()
             async with asyncssh.connect(**conn_kwargs) as conn:  # type: ignore[arg-type]
                 result = await conn.run(
                     "uname -a && docker --version 2>/dev/null || echo 'docker_not_installed'",
@@ -263,7 +229,6 @@ class ServerProvisioner:
             return result
 
         try:
-            self._require_asyncssh()
             async with asyncssh.connect(**conn_kwargs) as conn:  # type: ignore[arg-type]
                 result.logs.append("Connected, stopping Spectra services...")
                 container = CONTAINER_NAMES.get(config.service_type, "spectra-sandbox-worker")

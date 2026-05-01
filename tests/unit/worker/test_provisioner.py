@@ -1,20 +1,9 @@
 """Tests for the server provisioner — env-var sanitisation and connection building."""
 
 import asyncio
-import sys
-from types import ModuleType
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-try:
-    import asyncssh  # type: ignore
-except ModuleNotFoundError:
-    asyncssh = ModuleType("asyncssh")
-    asyncssh.connect = MagicMock()
-    asyncssh.import_private_key = MagicMock(side_effect=lambda key: key)
-    asyncssh.DisconnectError = type("DisconnectError", (Exception,), {})
-    sys.modules["asyncssh"] = asyncssh
 
 from app.services.provisioning.provisioner import ServerConfig, ServerProvisioner
 
@@ -256,45 +245,3 @@ class TestVerifyConnection:
             result = await provisioner.verify_connection(config)
 
         assert result == {"connected": False, "error": "ssh-keyscan failed"}
-
-    async def test_verify_returns_clear_error_when_asyncssh_missing(self, provisioner: ServerProvisioner):
-        with (
-            patch("app.services.provisioning.provisioner.ASYNCSSH_AVAILABLE", False),
-            patch.object(provisioner, "_ensure_known_host", new_callable=AsyncMock, return_value="/tmp/known_hosts"),
-        ):
-            config = ServerConfig(host="10.0.0.1", password="pw")
-            result = await provisioner.verify_connection(config)
-
-        assert result == {
-            "connected": False,
-            "error": "Missing optional dependency 'asyncssh'; install it to use remote provisioning operations",
-        }
-
-
-@pytest.mark.asyncio
-class TestMissingAsyncSSH:
-    async def test_provision_returns_clear_error_when_asyncssh_missing(self, provisioner: ServerProvisioner):
-        with (
-            patch("app.services.provisioning.provisioner.ASYNCSSH_AVAILABLE", False),
-            patch.object(provisioner, "_ensure_known_host", new_callable=AsyncMock, return_value="/tmp/known_hosts"),
-        ):
-            result = await provisioner.provision(
-                ServerConfig(host="10.0.0.1", password="pw", service_type="sandbox_worker")
-            )
-
-        assert result.success is False
-        assert result.error == (
-            "Unexpected error: Missing optional dependency 'asyncssh'; install it to use remote provisioning operations"
-        )
-
-    async def test_deprovision_returns_clear_error_when_asyncssh_missing(self, provisioner: ServerProvisioner):
-        with (
-            patch("app.services.provisioning.provisioner.ASYNCSSH_AVAILABLE", False),
-            patch.object(provisioner, "_ensure_known_host", new_callable=AsyncMock, return_value="/tmp/known_hosts"),
-        ):
-            result = await provisioner.deprovision(ServerConfig(host="10.0.0.1", password="pw"))
-
-        assert result.success is False
-        assert result.error == (
-            "Missing optional dependency 'asyncssh'; install it to use remote provisioning operations"
-        )

@@ -85,7 +85,10 @@ class TestAddServerNode:
         mock_node = MagicMock()
         mock_node.to_dict.return_value = _mock_node_dict(name="new-worker")
 
-        with patch("app.models.server_node.ServerNode", return_value=mock_node):
+        with (
+            patch("app.models.server_node.ServerNode", return_value=mock_node),
+            patch.object(pool, "_auto_enable_autoscale", new_callable=AsyncMock),
+        ):
             result = await pool.add_node(
                 session,
                 "sandbox_worker",
