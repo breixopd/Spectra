@@ -144,7 +144,7 @@ async def readiness_check(
 @router.get("/healthz", summary="Liveness probe")
 async def liveness_check() -> dict[str, Any]:
     """Always returns 200 if the process is alive."""
-    return {"status": "alive", "service": "app"}
+    return {"status": "alive", "service": "spectra-api"}
 
 
 @router.get(

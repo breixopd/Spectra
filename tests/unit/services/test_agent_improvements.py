@@ -3,7 +3,6 @@
 import pytest
 
 from app.mission.core.enums import MissionStatus
-from app.mission.core.state_machine import MissionState
 from app.services.ai.agents.base import (
     ActionRisk,
     Agent,
@@ -485,7 +484,7 @@ class TestPentestTaskTree:
 
 class TestConsolidatedStateEnums:
     def test_mission_status_has_all_states(self):
-        """MissionStatus should now include states from MissionState."""
+        """MissionStatus covers the FSM state set used by missions."""
         assert hasattr(MissionStatus, "CREATED")
         assert hasattr(MissionStatus, "INITIALIZING")
         assert hasattr(MissionStatus, "PLANNING")
@@ -496,12 +495,12 @@ class TestConsolidatedStateEnums:
         assert hasattr(MissionStatus, "CANCELLED")
         assert hasattr(MissionStatus, "PAUSED")
 
-    def test_mission_status_values_match_state(self):
-        """Key values should be consistent between enums."""
-        assert MissionStatus.CREATED.value == MissionState.CREATED.value
-        assert MissionStatus.COMPLETED.value == MissionState.COMPLETED.value
-        assert MissionStatus.FAILED.value == MissionState.FAILED.value
-        assert MissionStatus.PAUSED.value == MissionState.PAUSED.value
+    def test_mission_status_values_stable(self):
+        """Key API string values for mission status."""
+        assert MissionStatus.CREATED.value == "created"
+        assert MissionStatus.COMPLETED.value == "completed"
+        assert MissionStatus.FAILED.value == "failed"
+        assert MissionStatus.PAUSED.value == "paused"
 
 
 # ===========================================================================
@@ -522,7 +521,7 @@ class TestMissionFSMIntegration:
 
         m = Mission("10.0.0.1", "test")
         assert hasattr(m, "fsm")
-        assert m.fsm.state == MissionState.CREATED
+        assert m.fsm.state == MissionStatus.CREATED
 
     def test_set_status_valid_transition(self):
         from app.services.mission.mission import Mission
@@ -530,7 +529,7 @@ class TestMissionFSMIntegration:
         m = Mission("10.0.0.1", "test")
         m.set_status("initializing")
         assert m.status == "initializing"
-        assert m.fsm.state == MissionState.INITIALIZING
+        assert m.fsm.state == MissionStatus.INITIALIZING
 
     def test_set_status_invalid_transition_still_sets_raw(self):
         from app.services.mission.mission import Mission
@@ -540,12 +539,12 @@ class TestMissionFSMIntegration:
         m.set_status("completed")
         assert m.status == "completed"
         # FSM stays at CREATED since transition was invalid
-        assert m.fsm.state == MissionState.CREATED
+        assert m.fsm.state == MissionStatus.CREATED
 
     def test_set_status_unknown_value(self):
         from app.services.mission.mission import Mission
 
         m = Mission("10.0.0.1", "test")
-        # "running" is not in MissionState enum
+        # "running" is not a direct FSM enum label for CREATED→…
         m.set_status("running")
         assert m.status == "running"

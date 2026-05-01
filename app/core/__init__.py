@@ -80,7 +80,6 @@ _SUBMODULE_MAP: dict[str, str] = {
     "get_password_hash": "app.auth.security",
     "verify_password": "app.auth.security",
     # state_machine
-    "MissionState": "app.mission.core.state_machine",
     "MissionStateMachine": "app.mission.core.state_machine",
     # telemetry
     "telemetry": "app.telemetry.telemetry",
