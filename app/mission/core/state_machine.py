@@ -14,10 +14,6 @@ from app.mission.core.enums import MissionStatus
 from app.telemetry.telemetry import telemetry as _telemetry
 from spectra_common.errors import MissionStateError
 
-# Backward-compatible alias — new code should use MissionStatus directly.
-MissionState = MissionStatus
-
-
 # Valid state transitions
 VALID_TRANSITIONS: dict[MissionStatus, set[MissionStatus]] = {
     MissionStatus.CREATED: {
@@ -127,8 +123,8 @@ class MissionStateMachine:
 
     Usage:
         fsm = MissionStateMachine("mission-123")
-        fsm.transition_to(MissionState.INITIALIZING)
-        fsm.transition_to(MissionState.SCOPING)
+        fsm.transition_to(MissionStatus.INITIALIZING)
+        fsm.transition_to(MissionStatus.SCOPING)
         ...
     """
 
@@ -139,7 +135,7 @@ class MissionStateMachine:
         self._created_at = datetime.now(UTC)
 
     @property
-    def state(self) -> MissionState:
+    def state(self) -> MissionStatus:
         """Get current state."""
         return self._state
 
@@ -297,32 +293,31 @@ class MissionStateMachine:
 # --- Phase Mapping ---
 
 # Map old string phases to new states
-PHASE_TO_STATE: dict[str, MissionState] = {
-    "created": MissionState.CREATED,
-    "running": MissionState.EXECUTING,
-    "scope": MissionState.SCOPING,
-    "discovery": MissionState.EXECUTING,
-    "enumeration": MissionState.EXECUTING,
-    "vulnerability": MissionState.EXECUTING,
-    "exploitation": MissionState.EXPLOITING,
-    "post_exploitation": MissionState.EXPLOITING,
-    "reporting": MissionState.REPORTING,
-    "complete": MissionState.COMPLETED,
-    "completed": MissionState.COMPLETED,
-    "failed": MissionState.FAILED,
-    "cancelled": MissionState.CANCELLED,
-    "stopping": MissionState.CANCELLED,
+PHASE_TO_STATE: dict[str, MissionStatus] = {
+    "created": MissionStatus.CREATED,
+    "running": MissionStatus.EXECUTING,
+    "scope": MissionStatus.SCOPING,
+    "discovery": MissionStatus.EXECUTING,
+    "enumeration": MissionStatus.EXECUTING,
+    "vulnerability": MissionStatus.EXECUTING,
+    "exploitation": MissionStatus.EXPLOITING,
+    "post_exploitation": MissionStatus.EXPLOITING,
+    "reporting": MissionStatus.REPORTING,
+    "complete": MissionStatus.COMPLETED,
+    "completed": MissionStatus.COMPLETED,
+    "failed": MissionStatus.FAILED,
+    "cancelled": MissionStatus.CANCELLED,
+    "stopping": MissionStatus.CANCELLED,
 }
 
 
-def phase_to_state(phase: str) -> MissionState:
-    """Convert assessment phase string to MissionState."""
-    return PHASE_TO_STATE.get(phase.lower(), MissionState.EXECUTING)
+def phase_to_state(phase: str) -> MissionStatus:
+    """Convert assessment phase string to ``MissionStatus``."""
+    return PHASE_TO_STATE.get(phase.lower(), MissionStatus.EXECUTING)
 
 
 __all__ = [
     "VALID_TRANSITIONS",
-    "MissionState",
     "MissionStateMachine",
     "StateTransition",
     "phase_to_state",

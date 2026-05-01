@@ -7,7 +7,8 @@ import pytest
 
 from app.infrastructure.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState
 from app.infrastructure.events import Event, EventBus, EventType
-from app.mission.core.state_machine import VALID_TRANSITIONS, MissionState, MissionStateMachine
+from app.mission.core.enums import MissionStatus
+from app.mission.core.state_machine import VALID_TRANSITIONS, MissionStateMachine
 from app.telemetry.telemetry import TelemetryCollector
 from spectra_common.errors import (
     CircuitBreakerOpenError,
@@ -138,7 +139,7 @@ class TestMissionStateMachine:
     def test_initial_state(self):
         """Test initial state is CREATED."""
         fsm = MissionStateMachine("test-123")
-        assert fsm.state == MissionState.CREATED
+        assert fsm.state == MissionStatus.CREATED
         assert not fsm.is_terminal
         assert not fsm.is_active
 
@@ -146,17 +147,17 @@ class TestMissionStateMachine:
         """Test valid state transitions."""
         fsm = MissionStateMachine("test-123")
 
-        transition = fsm.transition_to(MissionState.INITIALIZING)
-        assert fsm.state == MissionState.INITIALIZING
-        assert transition.from_state == MissionState.CREATED
-        assert transition.to_state == MissionState.INITIALIZING
+        transition = fsm.transition_to(MissionStatus.INITIALIZING)
+        assert fsm.state == MissionStatus.INITIALIZING
+        assert transition.from_state == MissionStatus.CREATED
+        assert transition.to_state == MissionStatus.INITIALIZING
 
     def test_invalid_transition_raises(self):
         """Test invalid transitions raise MissionStateError."""
         fsm = MissionStateMachine("test-123")
 
         with pytest.raises(MissionStateError) as exc_info:
-            fsm.transition_to(MissionState.COMPLETED)
+            fsm.transition_to(MissionStatus.COMPLETED)
 
         assert exc_info.value.details["current_state"] == "created"
         assert exc_info.value.details["attempted_state"] == "completed"
@@ -164,9 +165,9 @@ class TestMissionStateMachine:
     def test_terminal_states(self):
         """Test terminal states have no valid transitions."""
         for terminal in [
-            MissionState.COMPLETED,
-            MissionState.FAILED,
-            MissionState.CANCELLED,
+            MissionStatus.COMPLETED,
+            MissionStatus.FAILED,
+            MissionStatus.CANCELLED,
         ]:
             assert VALID_TRANSITIONS[terminal] == set()
 
@@ -174,33 +175,33 @@ class TestMissionStateMachine:
         """Test can_transition_to check."""
         fsm = MissionStateMachine("test-123")
 
-        assert fsm.can_transition_to(MissionState.INITIALIZING)
-        assert fsm.can_transition_to(MissionState.CANCELLED)
-        assert not fsm.can_transition_to(MissionState.EXECUTING)
+        assert fsm.can_transition_to(MissionStatus.INITIALIZING)
+        assert fsm.can_transition_to(MissionStatus.CANCELLED)
+        assert not fsm.can_transition_to(MissionStatus.EXECUTING)
 
     def test_get_valid_transitions(self):
         """Test getting valid transitions."""
         fsm = MissionStateMachine("test-123")
 
         valid = fsm.get_valid_transitions()
-        assert MissionState.INITIALIZING in valid
-        assert MissionState.CANCELLED in valid
-        assert MissionState.EXECUTING not in valid
+        assert MissionStatus.INITIALIZING in valid
+        assert MissionStatus.CANCELLED in valid
+        assert MissionStatus.EXECUTING not in valid
 
     def test_force_transition(self):
         """Test forced transitions bypass validation."""
         fsm = MissionStateMachine("test-123")
 
-        transition = fsm.force_transition(MissionState.COMPLETED, "Emergency stop")
-        assert fsm.state == MissionState.COMPLETED
+        transition = fsm.force_transition(MissionStatus.COMPLETED, "Emergency stop")
+        assert fsm.state == MissionStatus.COMPLETED
         assert transition.reason is not None and "[FORCED]" in transition.reason
 
     def test_history_tracking(self):
         """Test state transition history."""
         fsm = MissionStateMachine("test-123")
 
-        fsm.transition_to(MissionState.INITIALIZING)
-        fsm.transition_to(MissionState.SCOPING)
+        fsm.transition_to(MissionStatus.INITIALIZING)
+        fsm.transition_to(MissionStatus.SCOPING)
 
         history = fsm.get_history()
         assert len(history) == 2
@@ -211,16 +212,16 @@ class TestMissionStateMachine:
         """Test is_active for running states."""
         fsm = MissionStateMachine("test-123")
 
-        fsm.transition_to(MissionState.INITIALIZING)
+        fsm.transition_to(MissionStatus.INITIALIZING)
         assert fsm.is_active
 
-        fsm.transition_to(MissionState.SCOPING)
+        fsm.transition_to(MissionStatus.SCOPING)
         assert fsm.is_active
 
     def test_to_dict(self):
         """Test serialization to dictionary."""
         fsm = MissionStateMachine("test-123")
-        fsm.transition_to(MissionState.INITIALIZING)
+        fsm.transition_to(MissionStatus.INITIALIZING)
 
         data = fsm.to_dict()
         assert data["mission_id"] == "test-123"

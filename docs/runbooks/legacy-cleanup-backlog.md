@@ -5,7 +5,6 @@ Last full pass: exploratory audit of the repo (not a guarantee nothing else exis
 ## P0 — Remove or replace when safe
 
 - **`WORKER_SKIP_STARTUP_AUTO_INSTALL`** — marked deprecated in `services/worker/src/spectra_worker/lifecycle.py`; still in `docker/compose.yaml`, tests, and `docs/wiki/worker-system.md`. Remove end-to-end once bulk install at startup is gone.
-- **`MissionState = MissionStatus` alias** — `app/mission/core/state_machine.py`; update tests/callers then delete.
 - **`ExploitInput` / `ExploitAction` aliases** — `app/services/ai/agents/exploit_crafter.py`; migrate `app/services/mission/exploitation.py` and drop aliases.
 
 ## P1 — Reduce surface area
