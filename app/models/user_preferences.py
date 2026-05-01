@@ -5,8 +5,8 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.auth.encryption import EncryptedString
-from app.models.base import Base
 from app.models.infrastructure import JSONBType
+from spectra_common.orm.base import Base
 
 
 class UserPreferences(Base):

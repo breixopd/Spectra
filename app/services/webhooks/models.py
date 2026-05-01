@@ -7,8 +7,8 @@ import logging
 from sqlalchemy import Boolean, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base
 from app.models.infrastructure import JSONBType
+from spectra_common.orm.base import Base
 
 logger = logging.getLogger(__name__)
 

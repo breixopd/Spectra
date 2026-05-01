@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import String as SAString
 
-from app.models.base import Base
+from spectra_common.orm.base import Base
 
 
 class InfrastructureBase(DeclarativeBase):

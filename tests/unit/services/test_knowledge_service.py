@@ -122,6 +122,30 @@ class TestGetExploitContext:
 
         assert result == ""
 
+    @pytest.mark.asyncio
+    async def test_with_user_id_splits_tenant_and_cve_queries(self, mock_rag_service):
+        mock_rag_service.get_context_for_prompt = AsyncMock(side_effect=["tenant-ctx", "cve-ctx"])
+
+        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+            result = await get_exploit_context(
+                "sqli",
+                max_tokens=1000,
+                user_id="user-1",
+                exclude_session_id="mission-9",
+            )
+
+        assert "tenant-ctx" in result
+        assert "cve-ctx" in result
+        assert mock_rag_service.get_context_for_prompt.await_count == 2
+        first = mock_rag_service.get_context_for_prompt.await_args_list[0].kwargs
+        second = mock_rag_service.get_context_for_prompt.await_args_list[1].kwargs
+        assert first["doc_types"] == ["exploit_success", "exploit_failure"]
+        assert first["user_id"] == "user-1"
+        assert first["exclude_session_id"] == "mission-9"
+        assert second["doc_types"] == ["cve"]
+        assert second["user_id"] is None
+        assert second["exclude_session_id"] is None
+
 
 class TestRAGBackendSelection:
     @pytest.mark.asyncio
@@ -663,3 +687,28 @@ class TestIndexExploitAttempt:
         assert doc_arg.metadata["tool"] == "nmap"
         assert doc_arg.metadata["mission_id"] == "m-42"
         assert doc_arg.metadata["success"] is True
+        assert "user_id" not in doc_arg.metadata
+
+    @pytest.mark.asyncio
+    async def test_user_id_in_metadata_when_passed(self, mock_rag_service):
+        mock_rag_service.index_document.return_value = True
+
+        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+            await index_exploit_attempt(
+                vector_name="test",
+                vector_type="exploit",
+                target_ref="ref",
+                tool_used="nmap",
+                payload=None,
+                success=True,
+                output="ok",
+                error=None,
+                blocked_by=None,
+                priority="low",
+                mission_id="m-42",
+                target="host",
+                user_id="owner-uuid",
+            )
+
+        doc_arg = mock_rag_service.index_document.call_args[0][0]
+        assert doc_arg.metadata["user_id"] == "owner-uuid"

@@ -124,16 +124,45 @@ async def get_exploit_context(
     query: str,
     _target: str | None = None,
     max_tokens: int = 1000,
+    *,
+    user_id: str | None = None,
+    exclude_session_id: str | None = None,
 ) -> str:
-    """Get relevant past exploits and CVEs from knowledge base."""
+    """Get relevant past exploits and CVEs from knowledge base.
+
+    When ``user_id`` is set, tenant-scoped rows (``exploit_success`` /
+    ``exploit_failure``) are filtered like tool/mission RAG. ``cve`` rows are
+    usually global (no per-user metadata), so they are merged from a separate
+    unscoped retrieval to avoid emptying CVE context.
+    """
     try:
         rag = await get_rag_service()
 
-        context = await rag.get_context_for_prompt(
-            query=query,
-            max_tokens=max_tokens,
-            doc_types=["exploit_success", "exploit_failure", "cve"],
-        )
+        if user_id:
+            tenant_budget = max(200, int(max_tokens * 0.55))
+            cve_budget = max(200, max_tokens - tenant_budget)
+            tenant_ctx = await rag.get_context_for_prompt(
+                query=query,
+                max_tokens=tenant_budget,
+                doc_types=["exploit_success", "exploit_failure"],
+                user_id=user_id,
+                exclude_session_id=exclude_session_id,
+            )
+            cve_ctx = await rag.get_context_for_prompt(
+                query=query,
+                max_tokens=cve_budget,
+                doc_types=["cve"],
+                user_id=None,
+                exclude_session_id=None,
+            )
+            parts = [p for p in (tenant_ctx, cve_ctx) if p]
+            context = "\n\n".join(parts) if parts else ""
+        else:
+            context = await rag.get_context_for_prompt(
+                query=query,
+                max_tokens=max_tokens,
+                doc_types=["exploit_success", "exploit_failure", "cve"],
+            )
 
         if context:
             return f"\n--- Past Exploits & CVEs ---\n{context}\n"
@@ -288,6 +317,8 @@ async def index_exploit_attempt(
     priority: str,
     mission_id: str,
     target: str,
+    *,
+    user_id: str | None = None,
 ) -> bool:
     """Save exploit attempt to knowledge base for learning."""
     try:
@@ -315,15 +346,19 @@ async def index_exploit_attempt(
             }
         )
 
+        meta: dict[str, Any] = {
+            "success": success,
+            "tool": tool_used,
+            "mission_id": mission_id,
+        }
+        if user_id:
+            meta["user_id"] = user_id
+
         doc = Document(
             id=f"{doc_type}-{vector_name.replace(' ', '-')}-{int(datetime.now(UTC).timestamp())}",
             content=content,
             doc_type=doc_type,
-            metadata={
-                "success": success,
-                "tool": tool_used,
-                "mission_id": mission_id,
-            },
+            metadata=meta,
             cve_id=None,
             severity=None,
             target=target,

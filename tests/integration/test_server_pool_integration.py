@@ -11,9 +11,9 @@ from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings
-from app.models.base import Base
 from app.models.server_node import ServerNode
 from app.services.scaling.pool_manager import ServerPoolManager
+from spectra_common.orm.base import Base
 
 pytestmark = [
     pytest.mark.asyncio,

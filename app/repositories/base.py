@@ -13,7 +13,7 @@ from uuid import UUID
 from sqlalchemy import delete, inspect, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.base import Base
+from spectra_common.orm.base import Base
 
 # Generic type for SQLAlchemy models
 ModelType = TypeVar("ModelType", bound=Base)

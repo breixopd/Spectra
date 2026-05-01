@@ -44,7 +44,7 @@ from app.models import (  # noqa: F401
     User,
     UserPreferences,
 )
-from app.models.base import Base
+from spectra_common.orm.base import Base
 
 # Infrastructure models share Base.metadata via InfrastructureBase
 from app.models.infrastructure import (  # noqa: F401

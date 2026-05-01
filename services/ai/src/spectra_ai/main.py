@@ -152,6 +152,7 @@ async def health_ready(response: Response):
     try:
         from spectra_ai.rag import RAGService
 
+        # Ephemeral probe: deep readiness does not share the monolith singleton.
         rag = RAGService()
         checks["rag"] = rag.is_functional
     except Exception:
@@ -250,7 +251,13 @@ async def generate_embeddings(req: EmbeddingRequest):
 
 @app.post("/api/v1/ai/rag", response_model=RAGResponse)
 async def rag_query(req: RAGRequest):
-    """Search the RAG vector store."""
+    """Search the RAG vector store.
+
+    Contract fields (``doc_type`` / ``doc_types`` / ``user_id`` /
+    ``exclude_session_id``) map via :meth:`spectra_domain.ai.RAGRequest.to_search_kwargs`
+    to :meth:`spectra_ai.rag.RAGService.search`. Each request uses a new
+    ``RAGService`` instance (AI worker has no long-lived monolith singleton).
+    """
     try:
         from spectra_ai.rag import RAGService
 

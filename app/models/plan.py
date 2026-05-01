@@ -6,8 +6,8 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Te
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base
 from app.models.infrastructure import JSONBType
+from spectra_common.orm.base import Base
 
 
 class Plan(Base):
