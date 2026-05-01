@@ -10,14 +10,14 @@ class TestGoldenImageBuilder:
     """GoldenImageBuilder class tests."""
 
     def test_import(self):
-        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+        from spectra_platform.services.tools.sandbox.golden_image import GoldenImageBuilder
 
         assert GoldenImageBuilder is not None
 
     def test_unavailable_without_docker(self):
-        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+        from spectra_platform.services.tools.sandbox.golden_image import GoldenImageBuilder
 
-        with patch("app.services.tools.sandbox.golden_image.docker", create=True) as mock_docker:
+        with patch("spectra_platform.services.tools.sandbox.golden_image.docker", create=True) as mock_docker:
             mock_docker.from_env.side_effect = Exception("No Docker")
             builder = GoldenImageBuilder.__new__(GoldenImageBuilder)
             builder._client = None
@@ -26,7 +26,7 @@ class TestGoldenImageBuilder:
             assert builder.available is False
 
     def test_parse_plugins_returns_list(self, tmp_path):
-        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+        from spectra_platform.services.tools.sandbox.golden_image import GoldenImageBuilder
 
         # Create a fake plugin
         plugin = {
@@ -50,7 +50,7 @@ class TestGoldenImageBuilder:
         assert plugins[0]["install_method"] == "apt"
 
     def test_parse_plugins_skips_malformed(self, tmp_path):
-        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+        from spectra_platform.services.tools.sandbox.golden_image import GoldenImageBuilder
 
         (tmp_path / "bad.json").write_text("not valid json{{{")
 
@@ -62,8 +62,8 @@ class TestGoldenImageBuilder:
         assert len(plugins) == 0
 
     def test_generate_dockerfile_contains_base_image(self, tmp_path):
-        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
         from spectra_common.constants import SANDBOX_BASE_IMAGE as BASE_IMAGE
+        from spectra_platform.services.tools.sandbox.golden_image import GoldenImageBuilder
 
         plugins = [
             {
@@ -83,7 +83,7 @@ class TestGoldenImageBuilder:
         assert "nmap" in dockerfile
 
     def test_generate_dockerfile_handles_pip_tools(self):
-        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+        from spectra_platform.services.tools.sandbox.golden_image import GoldenImageBuilder
 
         plugins = [
             {
@@ -103,7 +103,7 @@ class TestGoldenImageBuilder:
         assert "sqlmap" in dockerfile
 
     def test_generate_dockerfile_handles_go_tools(self):
-        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+        from spectra_platform.services.tools.sandbox.golden_image import GoldenImageBuilder
 
         plugins = [
             {
@@ -123,7 +123,7 @@ class TestGoldenImageBuilder:
 
     @pytest.mark.asyncio
     async def test_build_returns_error_when_unavailable(self):
-        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+        from spectra_platform.services.tools.sandbox.golden_image import GoldenImageBuilder
 
         builder = GoldenImageBuilder.__new__(GoldenImageBuilder)
         builder._client = None
@@ -139,7 +139,7 @@ class TestGoldenImageValidation:
 
     @pytest.mark.asyncio
     async def test_validate_image_unavailable(self):
-        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+        from spectra_platform.services.tools.sandbox.golden_image import GoldenImageBuilder
 
         builder = GoldenImageBuilder.__new__(GoldenImageBuilder)
         builder._client = None
@@ -151,7 +151,7 @@ class TestGoldenImageValidation:
 
     @pytest.mark.asyncio
     async def test_validate_image_all_pass(self, tmp_path):
-        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+        from spectra_platform.services.tools.sandbox.golden_image import GoldenImageBuilder
 
         plugin = {
             "id": "nmap",
@@ -180,7 +180,7 @@ class TestGoldenImageValidation:
 
     @pytest.mark.asyncio
     async def test_validate_image_tool_fails(self, tmp_path):
-        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+        from spectra_platform.services.tools.sandbox.golden_image import GoldenImageBuilder
 
         plugin = {
             "id": "nmap",
@@ -210,7 +210,7 @@ class TestGoldenImageValidation:
 
     @pytest.mark.asyncio
     async def test_validate_image_fallback_to_version_flag(self, tmp_path):
-        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+        from spectra_platform.services.tools.sandbox.golden_image import GoldenImageBuilder
 
         # Plugin with no verification_command — should fall back to --version/--help
         plugin = {
@@ -240,7 +240,7 @@ class TestGoldenImageValidation:
 
     @pytest.mark.asyncio
     async def test_validate_image_skips_parameterised_commands(self, tmp_path):
-        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+        from spectra_platform.services.tools.sandbox.golden_image import GoldenImageBuilder
 
         plugin = {
             "id": "impacket",
@@ -268,7 +268,7 @@ class TestGoldenImageValidation:
     """Singleton accessors."""
 
     def test_get_set_image_builder(self):
-        from app.services.tools.sandbox import get_image_builder, set_image_builder
+        from spectra_platform.services.tools.sandbox import get_image_builder, set_image_builder
 
         mock = MagicMock()
         set_image_builder(mock)  # type: ignore[arg-type]

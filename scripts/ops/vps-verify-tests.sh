@@ -31,5 +31,5 @@ COMPOSE=(docker compose -f docker/compose.yaml --profile test)
 "${COMPOSE[@]}" build unit-test-runner
 "${COMPOSE[@]}" run --rm unit-test-runner \
   "python -m pytest tests/unit/ -q --override-ini=addopts= \
-  --cov=app --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler \
+  --cov=spectra_platform --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler \
   --cov-fail-under=70"

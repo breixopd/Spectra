@@ -13,8 +13,8 @@ from typing import Any
 from fastapi import FastAPI, Request, Response, status
 from sqlalchemy import text
 
-from app.auth.rate_limit import RateLimits, limiter
 from spectra_common.tasks import create_safe_task
+from spectra_platform.auth.rate_limit import RateLimits, limiter
 from spectra_scheduler import state as scheduler_state
 from spectra_scheduler.leader import leader_election_loop
 from spectra_scheduler.locks import _SCHEDULER_TASK_SPECS
@@ -30,7 +30,7 @@ def latency_ms(start: float) -> float:
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI):
     try:
-        from app.services.scaling.pool_manager import get_pool_manager
+        from spectra_platform.services.scaling.pool_manager import get_pool_manager
 
         pool = get_pool_manager()
         node = await pool.register_local_node()
@@ -51,8 +51,8 @@ async def lifespan(fastapi_app: FastAPI):
 
 app = FastAPI(title="Spectra Scheduler", version="1.0.0", lifespan=lifespan)
 
-from app.core.config import settings as _settings
-from app.di.service_auth import ServiceAuthMiddleware
+from spectra_platform.core.config import settings as _settings
+from spectra_platform.di.service_auth import ServiceAuthMiddleware
 
 _secret = _settings.SERVICE_AUTH_SECRET.get_secret_value()
 app.add_middleware(ServiceAuthMiddleware, secret=_secret)
@@ -81,7 +81,7 @@ async def health_deep(response: Response):
 
     start = time.monotonic()
     try:
-        from app.core.database import async_session_maker
+        from spectra_platform.core.database import async_session_maker
 
         async with async_session_maker() as session:
             row = await session.execute(text("SELECT COUNT(*) FROM missions LIMIT 1"))
@@ -93,8 +93,8 @@ async def health_deep(response: Response):
 
     start = time.monotonic()
     try:
-        from app.core.database import advisory_lock_connection
         from spectra_common.advisory_locks import advisory_lock_owner, stable_lock_id
+        from spectra_platform.core.database import advisory_lock_connection
 
         test_lock_id = stable_lock_id("spectra_health_deep_test")
         async with advisory_lock_owner(test_lock_id, connection_factory=advisory_lock_connection) as lock_conn:
@@ -109,7 +109,7 @@ async def health_deep(response: Response):
 
     start = time.monotonic()
     try:
-        from app.infrastructure.cache import get_cache
+        from spectra_platform.infrastructure.cache import get_cache
 
         cache = get_cache()
         if cache:
@@ -143,7 +143,7 @@ async def health_deep(response: Response):
 
         start = time.monotonic()
         try:
-            from app.infrastructure.cache import get_cache
+            from spectra_platform.infrastructure.cache import get_cache
 
             cache = get_cache()
             if cache:
@@ -180,7 +180,7 @@ async def health_deep(response: Response):
 @limiter.limit(RateLimits.INTERNAL_METRICS)
 async def internal_node_metrics(request: Request):
     """Return local system metrics. Service auth enforced by middleware."""
-    from app.services.scaling.node_metrics import collect_node_metrics
+    from spectra_platform.services.scaling.node_metrics import collect_node_metrics
 
     metrics = collect_node_metrics("scheduler")
     return metrics.to_dict()
@@ -188,7 +188,7 @@ async def internal_node_metrics(request: Request):
 
 async def _scaling_metrics_payload() -> dict:
     """Return cluster metrics in the admin API response shape."""
-    from app.services.scaling.metrics_collector import MetricsCollector
+    from spectra_platform.services.scaling.metrics_collector import MetricsCollector
 
     collector = MetricsCollector()
     cluster = await collector.collect_all()
@@ -239,14 +239,14 @@ async def internal_scaling_metrics():
 @app.get("/internal/scaling/dashboard")
 async def internal_scaling_dashboard():
     """Comprehensive scaling dashboard data — cluster, services, nodes, autoscaler, alerts."""
-    from app.core.config import get_settings as _get_settings
-    from app.services.scaling.auto_scaler import AutoScaler, get_scaling_history
-    from app.services.scaling.backends import DockerSwarmBackend
-    from app.services.scaling.config import AutoScalerConfig
-    from app.services.scaling.docker_client import get_service_task_nodes
-    from app.services.scaling.image_updater import get_update_status
-    from app.services.scaling.metrics_collector import MetricsCollector
-    from app.services.scaling.notifiers import LogNotifier
+    from spectra_platform.core.config import get_settings as _get_settings
+    from spectra_platform.services.scaling.auto_scaler import AutoScaler, get_scaling_history
+    from spectra_platform.services.scaling.backends import DockerSwarmBackend
+    from spectra_platform.services.scaling.config import AutoScalerConfig
+    from spectra_platform.services.scaling.docker_client import get_service_task_nodes
+    from spectra_platform.services.scaling.image_updater import get_update_status
+    from spectra_platform.services.scaling.metrics_collector import MetricsCollector
+    from spectra_platform.services.scaling.notifiers import LogNotifier
 
     settings = _get_settings()
     collector = MetricsCollector()
@@ -344,7 +344,7 @@ async def internal_scaling_dashboard():
 @app.get("/internal/updates/status")
 async def internal_update_status():
     """Return service image versions and update availability."""
-    from app.services.scaling.image_updater import get_update_status
+    from spectra_platform.services.scaling.image_updater import get_update_status
 
     return get_update_status()
 
@@ -352,7 +352,7 @@ async def internal_update_status():
 @app.post("/internal/updates/apply")
 async def internal_update_apply(request_body: dict):
     """Trigger an image update for a specific service or all managed services."""
-    from app.services.scaling.image_updater import MANAGED_SERVICES, check_and_update_services
+    from spectra_platform.services.scaling.image_updater import MANAGED_SERVICES, check_and_update_services
 
     target = request_body.get("service")
     if target and target not in MANAGED_SERVICES:
@@ -360,7 +360,7 @@ async def internal_update_apply(request_body: dict):
 
     original = None
     if target:
-        import app.services.scaling.image_updater as _updater
+        import spectra_platform.services.scaling.image_updater as _updater
         original = _updater.MANAGED_SERVICES
         _updater.MANAGED_SERVICES = {target}
 
@@ -382,7 +382,7 @@ async def internal_update_apply(request_body: dict):
 @app.get("/internal/updates/rollback-candidates")
 async def internal_rollback_candidates():
     """Return services that have a previous version available for rollback."""
-    from app.services.scaling.image_updater import get_rollback_candidates
+    from spectra_platform.services.scaling.image_updater import get_rollback_candidates
 
     return {"candidates": get_rollback_candidates()}
 
@@ -390,8 +390,8 @@ async def internal_rollback_candidates():
 @app.post("/internal/updates/rollback")
 async def internal_rollback(request_body: dict):
     """Rollback a service using Swarm's PreviousSpec."""
-    from app.services.scaling.docker_client import rollback_service
-    from app.services.scaling.image_updater import MANAGED_SERVICES
+    from spectra_platform.services.scaling.docker_client import rollback_service
+    from spectra_platform.services.scaling.image_updater import MANAGED_SERVICES
 
     service_name = request_body.get("service", "")
     if not service_name:
@@ -420,7 +420,7 @@ async def internal_scaling_action(request_body: dict):
 
     if action not in ("scale_up", "scale_down", "restart"):
         return {"success": False, "action": action, "service": service_name, "error": "Invalid action"}
-    from app.services.scaling.docker_client import (
+    from spectra_platform.services.scaling.docker_client import (
         get_service,
         restart_service,
         scale_service,

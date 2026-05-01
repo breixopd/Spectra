@@ -10,7 +10,7 @@ import os
 
 import pytest
 
-from app.core.config import settings
+from spectra_platform.core.config import settings
 
 REQUIRED_S3_ENV_VARS = ("S3_ENDPOINT_URL", "S3_ACCESS_KEY", "S3_SECRET_KEY")
 TEST_BUCKET = settings.S3_BUCKET_MISSIONS
@@ -27,7 +27,7 @@ pytestmark = [
 
 async def test_upload_download_roundtrip():
     """Upload data and download it back."""
-    from app.services.storage import get_storage_service
+    from spectra_platform.services.storage import get_storage_service
 
     storage = get_storage_service()
 
@@ -48,7 +48,7 @@ async def test_upload_download_roundtrip():
 
 async def test_list_objects_with_prefix():
     """List objects filtered by prefix."""
-    from app.services.storage import get_storage_service
+    from spectra_platform.services.storage import get_storage_service
 
     storage = get_storage_service()
 
@@ -68,7 +68,7 @@ async def test_list_objects_with_prefix():
 
 async def test_health_check():
     """Health check when S3 is configured."""
-    from app.services.storage import get_storage_service
+    from spectra_platform.services.storage import get_storage_service
 
     storage = get_storage_service()
     result = await storage.health_check()

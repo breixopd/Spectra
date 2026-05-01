@@ -511,7 +511,7 @@ services:
     volumes:
       - spectra_data:/app/data
       - spectra_plugins:/app/plugins
-      - ../app:/app/app:ro
+      - ../spectra_platform:/app/spectra_platform:ro
       - ../alembic:/app/alembic:ro
       - ../config/alembic.ini:/app/config/alembic.ini:ro
       - ../plugins:/app/plugins
@@ -561,7 +561,7 @@ services:
     volumes:
       - spectra_plugins:/app/plugins
       - ../plugins:/app/plugins
-      - ../app:/app/app:ro
+      - ../spectra_platform:/app/spectra_platform:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       app:
@@ -618,7 +618,7 @@ services:
       - SERVICE_MODE=all
       - COVERAGE_FILE=/tmp/spectra-coverage/.coverage
     volumes:
-      - ../app:/app/app:ro
+      - ../spectra_platform:/app/spectra_platform:ro
       - ../tests:/app/tests:ro
       - ../plugins:/app/plugins
       - ../requirements:/app/requirements:ro
@@ -678,7 +678,7 @@ services:
       - LOAD_TEST_RESET_RATE_LIMIT_STATE=1
     volumes:
       - ../.env.test:/app/.env.test:ro
-      - ../app:/app/app:ro
+      - ../spectra_platform:/app/spectra_platform:ro
       - ../tests:/app/tests:ro
       - ../pyproject.toml:/app/pyproject.toml:ro
       - ../docker:/app/docker:ro
@@ -735,7 +735,7 @@ services:
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
     volumes:
       - ../.env.test:/app/.env.test:ro
-      - ../app:/app/app:ro
+      - ../spectra_platform:/app/spectra_platform:ro
       - ../tests:/app/tests:ro
       - ../pyproject.toml:/app/pyproject.toml:ro
       - ../docker:/app/docker:ro
@@ -773,7 +773,7 @@ services:
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
     volumes:
       - ../.env.test:/app/.env.test:ro
-      - ../app:/app/app:ro
+      - ../spectra_platform:/app/spectra_platform:ro
       - ../tests:/app/tests:ro
       - ../pyproject.toml:/app/pyproject.toml:ro
       - ../docker:/app/docker:ro
@@ -804,7 +804,7 @@ services:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
     volumes:
       - ../tests:/app/tests:ro
-      - ../app:/app/app:ro
+      - ../spectra_platform:/app/spectra_platform:ro
     depends_on:
       app:
         condition: service_healthy

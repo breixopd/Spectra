@@ -19,7 +19,7 @@ def _fake_user(role: str = "admin", user_id: str = "u-admin-1"):
 
 
 def _make_app() -> FastAPI:
-    from app.auth.rate_limit import limiter
+    from spectra_platform.auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter
@@ -29,8 +29,8 @@ def _make_app() -> FastAPI:
 
 
 def _override_deps(app: FastAPI, user, mock_session):
-    from app.core.database import get_async_session
     from spectra_api.api.dependencies import get_current_active_user
+    from spectra_platform.core.database import get_async_session
 
     app.dependency_overrides[get_current_active_user] = lambda: user
 
@@ -202,7 +202,7 @@ async def test_list_snapshots_marks_remote_stripe_restore_as_non_restorable(mock
 
 @pytest.mark.asyncio
 async def test_describe_snapshot_restorability_blocks_remote_stripe_restore():
-    from app.services.system.rollback import describe_snapshot_restorability
+    from spectra_platform.services.system.rollback import describe_snapshot_restorability
 
     snapshot = _make_snapshot()
     snapshot.before_state = '{"subscription": {"payment_provider": "stripe", "external_subscription_id": "sub_123"}}'
@@ -229,7 +229,7 @@ async def test_list_snapshots_limit_exceeds_max():
 
 @pytest.mark.asyncio
 async def test_rollback_user_restores_subscription_state():
-    from app.services.system.rollback import _rollback_user
+    from spectra_platform.services.system.rollback import _rollback_user
 
     user = MagicMock()
     user.id = "u-target-1"
@@ -277,7 +277,7 @@ async def test_rollback_user_restores_subscription_state():
         },
     }
 
-    with patch("app.services.system.rollback.sync_user_plan_mirror", new=AsyncMock()) as mirror_mock:
+    with patch("spectra_platform.services.system.rollback.sync_user_plan_mirror", new=AsyncMock()) as mirror_mock:
         await _rollback_user(session, "u-target-1", before_state)
 
     assert user.email == "original@example.com"
@@ -289,7 +289,7 @@ async def test_rollback_user_restores_subscription_state():
 
 @pytest.mark.asyncio
 async def test_rollback_user_removes_created_subscription_when_snapshot_had_none():
-    from app.services.system.rollback import _rollback_user
+    from spectra_platform.services.system.rollback import _rollback_user
 
     user = MagicMock()
     user.id = "u-target-2"
@@ -316,7 +316,7 @@ async def test_rollback_user_removes_created_subscription_when_snapshot_had_none
         "subscription": None,
     }
 
-    with patch("app.services.system.rollback.sync_user_plan_mirror", new=AsyncMock()) as mirror_mock:
+    with patch("spectra_platform.services.system.rollback.sync_user_plan_mirror", new=AsyncMock()) as mirror_mock:
         await _rollback_user(session, "u-target-2", before_state)
 
     delete_stmt = session.execute.await_args_list[2].args[0]

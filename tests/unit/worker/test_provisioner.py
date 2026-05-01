@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.provisioning.provisioner import ServerConfig, ServerProvisioner
+from spectra_platform.services.provisioning.provisioner import ServerConfig, ServerProvisioner
 
 
 @pytest.fixture
@@ -81,7 +81,7 @@ class TestBuildConnKwargs:
         # asyncssh.import_private_key requires a real key — mock it
         with (
             patch.object(provisioner, "_ensure_known_host", new_callable=AsyncMock, return_value="/tmp/known_hosts"),
-            patch("app.services.provisioning.provisioner.asyncssh.import_private_key") as mock_import,
+            patch("spectra_platform.services.provisioning.provisioner.asyncssh.import_private_key") as mock_import,
         ):
             mock_import.return_value = "fake-key-obj"
             config = ServerConfig(host="10.0.0.1", private_key="-----BEGIN RSA...")
@@ -211,7 +211,7 @@ class TestVerifyConnection:
 
         with (
             patch.object(provisioner, "_ensure_known_host", new_callable=AsyncMock, return_value="/tmp/known_hosts"),
-            patch("app.services.provisioning.provisioner.asyncssh.connect", return_value=mock_conn),
+            patch("spectra_platform.services.provisioning.provisioner.asyncssh.connect", return_value=mock_conn),
         ):
             config = ServerConfig(host="10.0.0.1", password="pw")
             result = await provisioner.verify_connection(config)
@@ -229,7 +229,7 @@ class TestVerifyConnection:
         with (
             patch.object(provisioner, "_ensure_known_host", new_callable=AsyncMock, return_value="/tmp/known_hosts"),
             patch(
-                "app.services.provisioning.provisioner.asyncssh.connect",
+                "spectra_platform.services.provisioning.provisioner.asyncssh.connect",
                 side_effect=OSError("Connection refused"),
             ),
         ):

@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.tools.output import persist_output_directory, record_to_memory
+from spectra_platform.services.tools.output import persist_output_directory, record_to_memory
 
 
 @pytest.mark.asyncio
@@ -17,8 +17,8 @@ async def test_persist_output_directory(tmp_path):
 
     mock_storage = AsyncMock()
 
-    with patch("app.services.storage.get_storage_service", return_value=mock_storage):
-        with patch("app.core.config.settings") as mock_settings:
+    with patch("spectra_platform.services.storage.get_storage_service", return_value=mock_storage):
+        with patch("spectra_platform.core.config.settings") as mock_settings:
             mock_settings.S3_BUCKET_MISSIONS = "missions"
             total = await persist_output_directory(mission_id, output_dir)
 
@@ -30,8 +30,8 @@ async def test_persist_output_directory(tmp_path):
 async def test_persist_output_directory_missing():
     mock_storage = AsyncMock()
 
-    with patch("app.services.storage.get_storage_service", return_value=mock_storage):
-        with patch("app.core.config.settings") as mock_settings:
+    with patch("spectra_platform.services.storage.get_storage_service", return_value=mock_storage):
+        with patch("spectra_platform.core.config.settings") as mock_settings:
             mock_settings.S3_BUCKET_MISSIONS = "missions"
             total = await persist_output_directory("m1", "/nonexistent")
 
@@ -55,8 +55,8 @@ async def test_record_to_memory():
 
     mock_memory = MagicMock()
 
-    with patch("app.services.ai.memory.get_memory", return_value=mock_memory):
-        with patch("app.services.ai.memory.detect_os_from_output", return_value="linux"):
+    with patch("spectra_platform.services.ai.memory.get_memory", return_value=mock_memory):
+        with patch("spectra_platform.services.ai.memory.detect_os_from_output", return_value="linux"):
             record_to_memory(mission, "nmap", "1.2.3.4", {"-p": "80"}, result)
 
     mock_memory.record_tool_result.assert_called_once()
@@ -79,8 +79,8 @@ async def test_record_to_memory_no_os():
 
     mock_memory = MagicMock()
 
-    with patch("app.services.ai.memory.get_memory", return_value=mock_memory):
-        with patch("app.services.ai.memory.detect_os_from_output", return_value="unknown"):
+    with patch("spectra_platform.services.ai.memory.get_memory", return_value=mock_memory):
+        with patch("spectra_platform.services.ai.memory.detect_os_from_output", return_value="unknown"):
             record_to_memory(mission, "nmap", "1.2.3.4", {}, result)
 
     mock_memory.record_tool_result.assert_called_once()

@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 from starlette.routing import Mount, WebSocketRoute
 
-from app.core.config import settings
 from spectra_api import factory
+from spectra_platform.core.config import settings
 
 
 def _mount_paths(app) -> set[str]:

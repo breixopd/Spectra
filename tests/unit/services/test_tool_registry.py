@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.services.tools.registry import ToolRegistry, ToolStatus
+from spectra_platform.services.tools.registry import ToolRegistry, ToolStatus
 from spectra_tools_core.models import ToolConfig
 
 

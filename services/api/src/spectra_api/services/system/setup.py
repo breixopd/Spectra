@@ -7,16 +7,16 @@ from pathlib import Path
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.security import get_password_hash
-from app.core.config import settings
-from app.models.user import User
-from app.services.system.runtime_settings import (
-    hydrate_runtime_settings_from_db,
-    upsert_system_config_values,
-)
 from spectra_api.api.schemas.system import SystemSetupRequest
 from spectra_common.errors import SpectraError
 from spectra_common.paths import data_path
+from spectra_platform.auth.security import get_password_hash
+from spectra_platform.core.config import settings
+from spectra_platform.models.user import User
+from spectra_platform.services.system.runtime_settings import (
+    hydrate_runtime_settings_from_db,
+    upsert_system_config_values,
+)
 
 logger = logging.getLogger(__name__)
 

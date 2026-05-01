@@ -10,9 +10,9 @@ from httpx import ASGITransport, AsyncClient
 
 
 def _make_app(role: str):
-    from app.auth.rate_limit import limiter
     from spectra_api.api.dependencies import get_current_active_user
     from spectra_api.api.routers.vpn import router
+    from spectra_platform.auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter

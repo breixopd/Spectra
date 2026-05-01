@@ -11,7 +11,7 @@ workers). The monolith and gateway should prefer ``get_rag_service()`` for a
 shared connection pool.
 """
 
-from app.services.tools.registry import get_registry
+from spectra_platform.services.tools.registry import get_registry
 from spectra_ai.rag import RAGService
 
 

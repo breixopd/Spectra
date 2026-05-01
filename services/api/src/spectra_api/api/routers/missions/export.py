@@ -7,17 +7,6 @@ from typing import Any
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_async_session
-from app.models.audit_log import AuditEventType
-from app.models.user import User
-from app.repositories.mission import MissionRepository
-from app.services.mission.output_model import (
-    get_mission_findings as get_mission_output_findings,
-)
-from app.services.mission.output_model import (
-    get_mission_summary_dict,
-)
-from app.services.system.audit import log_event as audit_log_event
 from spectra_api.api.dependencies import (
     _get_user_plan,
     _is_admin_user,
@@ -25,6 +14,17 @@ from spectra_api.api.dependencies import (
     get_current_active_user,
     validate_uuid_param,
 )
+from spectra_platform.core.database import get_async_session
+from spectra_platform.models.audit_log import AuditEventType
+from spectra_platform.models.user import User
+from spectra_platform.repositories.mission import MissionRepository
+from spectra_platform.services.mission.output_model import (
+    get_mission_findings as get_mission_output_findings,
+)
+from spectra_platform.services.mission.output_model import (
+    get_mission_summary_dict,
+)
+from spectra_platform.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ async def download_pdf_report(
     validate_uuid_param(mission_id, "mission_id")
     from fastapi.responses import Response as FastAPIResponse
 
-    from app.services.mission.report_generator import generate_pdf_report
+    from spectra_platform.services.mission.report_generator import generate_pdf_report
 
     repo = MissionRepository(session)
     mission = await repo.get_by_id(mission_id)
@@ -147,7 +147,7 @@ async def export_mission_json(
     if encrypted:
         if not password:
             raise HTTPException(status_code=400, detail="X-Export-Password header required when encrypted=true")
-        from app.auth.encryption import encrypt_data_with_password
+        from spectra_platform.auth.encryption import encrypt_data_with_password
 
         payload = encrypt_data_with_password(payload, password)
         return FastAPIResponse(
@@ -178,7 +178,7 @@ async def diff_missions(
     """
     validate_uuid_param(mission_id, "mission_id")
     validate_uuid_param(other_mission_id, "other_mission_id")
-    from app.services.mission.target_diff import compare_missions, generate_diff_report
+    from spectra_platform.services.mission.target_diff import compare_missions, generate_diff_report
 
     repo = MissionRepository(db)
 

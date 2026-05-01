@@ -1,11 +1,11 @@
 """Tests for parallel tool execution."""
 
-from app.services.ai.agents.base import (
+from spectra_platform.services.ai.agents.base import (
     AgentContext,
     ParallelToolAction,
     ToolAction,
 )
-from app.services.ai.agents.tool_selector import ToolSelectorAgent
+from spectra_platform.services.ai.agents.tool_selector import ToolSelectorAgent
 
 PARALLEL_TOOL_GROUPS = ToolSelectorAgent.PARALLEL_TOOL_GROUPS  # type: ignore[attr-defined]
 

@@ -35,7 +35,7 @@ def _fake_audit_row(**overrides):
 
 
 def _make_app() -> FastAPI:
-    from app.auth.rate_limit import limiter
+    from spectra_platform.auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter
@@ -45,8 +45,8 @@ def _make_app() -> FastAPI:
 
 
 def _override_deps(app: FastAPI, user, mock_session):
-    from app.core.database import get_async_session
     from spectra_api.api.dependencies import get_current_active_user
+    from spectra_platform.core.database import get_async_session
 
     app.dependency_overrides[get_current_active_user] = lambda: user
 
@@ -164,7 +164,7 @@ class TestAdminStats:
         _override_deps(app, user, mock_session)
 
         transport = ASGITransport(app=app)
-        with patch("app.services.gateway.service_registry.get_service_registry") as mock_reg:
+        with patch("spectra_platform.services.gateway.service_registry.get_service_registry") as mock_reg:
             mock_reg.return_value.get_service_topology.return_value = {}
             async with AsyncClient(transport=transport, base_url="http://test") as ac:
                 resp = await ac.get("/api/admin/stats")
@@ -203,7 +203,7 @@ class TestAdminStats:
         _override_deps(app, user, mock_session)
 
         transport = ASGITransport(app=app)
-        with patch("app.services.gateway.service_registry.get_service_registry") as mock_reg:
+        with patch("spectra_platform.services.gateway.service_registry.get_service_registry") as mock_reg:
             mock_reg.return_value.get_service_topology.return_value = {}
             async with AsyncClient(transport=transport, base_url="http://test") as ac:
                 resp = await ac.get("/api/admin/stats")
@@ -234,7 +234,7 @@ class TestAdminStats:
 class TestAuditNoAuth:
     async def test_audit_logs_no_token(self):
         app = _make_app()
-        from app.core.database import get_async_session
+        from spectra_platform.core.database import get_async_session
 
         mock_session = AsyncMock()
 
@@ -251,7 +251,7 @@ class TestAuditNoAuth:
 
     async def test_admin_stats_no_token(self):
         app = _make_app()
-        from app.core.database import get_async_session
+        from spectra_platform.core.database import get_async_session
 
         mock_session = AsyncMock()
 

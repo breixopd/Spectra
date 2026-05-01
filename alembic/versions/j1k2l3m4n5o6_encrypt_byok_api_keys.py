@@ -40,7 +40,7 @@ def upgrade() -> None:
     # Encrypt any plaintext values that pre-date service-layer encryption
     bind = op.get_bind()
     try:
-        from app.auth.security import encrypt_byok_key
+        from spectra_platform.auth.security import encrypt_byok_key
 
         rows = bind.execute(
             sa.text(

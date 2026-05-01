@@ -4,9 +4,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.ai.agents.base import AgentContext, AgentResult
-from app.services.poc.models import POCMetadata, POCRequest, POCResult
-from app.services.poc.service import POCService
+from spectra_platform.services.ai.agents.base import AgentContext, AgentResult
+from spectra_platform.services.poc.models import POCMetadata, POCRequest, POCResult
+from spectra_platform.services.poc.service import POCService
 
 
 @pytest.fixture
@@ -17,9 +17,9 @@ def mock_llm():
 @pytest.fixture
 def poc_service(mock_llm):
     with (
-        patch("app.services.poc.service.POCDeveloperAgent"),
-        patch("app.services.poc.service.VotingSystem") as MockVoting,
-        patch("app.services.poc.service.ToolExecutionService") as MockToolSvc,
+        patch("spectra_platform.services.poc.service.POCDeveloperAgent"),
+        patch("spectra_platform.services.poc.service.VotingSystem") as MockVoting,
+        patch("spectra_platform.services.poc.service.ToolExecutionService") as MockToolSvc,
     ):
         svc = POCService(mock_llm)
         svc.consensus = MockVoting.return_value
@@ -114,8 +114,8 @@ class TestPOCServiceGenerate:
         poc_service.tool_service.execute_custom_script = AsyncMock(return_value=mock_exec)
 
         with (
-            patch("app.services.poc.service.shell_relay_client") as mock_relay,
-            patch("app.services.poc.service.MissionArtifactWorkspace") as mock_workspace,
+            patch("spectra_platform.services.poc.service.shell_relay_client") as mock_relay,
+            patch("spectra_platform.services.poc.service.MissionArtifactWorkspace") as mock_workspace,
         ):
             mock_relay.start_listener = AsyncMock(return_value=4444)
             mock_workspace.return_value.put_artifact = AsyncMock(
@@ -132,7 +132,7 @@ class TestPOCServiceGenerate:
         poc_service.developer_agent = AsyncMock()
         poc_service.developer_agent.execute = AsyncMock(return_value=AgentResult(success=False, error="LLM timeout"))
 
-        with patch("app.services.poc.service.shell_relay_client") as mock_relay:
+        with patch("spectra_platform.services.poc.service.shell_relay_client") as mock_relay:
             mock_relay.start_listener = AsyncMock(return_value=4444)
             result = await poc_service.generate_and_execute_poc(agent_context, poc_request)
 
@@ -154,7 +154,7 @@ class TestPOCServiceGenerate:
         mock_vote.escalation_reason = "Too dangerous"
         poc_service.consensus.validate_at_gate = AsyncMock(return_value=mock_vote)
 
-        with patch("app.services.poc.service.shell_relay_client") as mock_relay:
+        with patch("spectra_platform.services.poc.service.shell_relay_client") as mock_relay:
             mock_relay.start_listener = AsyncMock(return_value=4444)
             result = await poc_service.generate_and_execute_poc(agent_context, poc_request)
 
@@ -180,7 +180,7 @@ class TestPOCServiceGenerate:
         mock_exec.stderr = "SyntaxError: invalid syntax"
         poc_service.tool_service.execute_custom_script = AsyncMock(return_value=mock_exec)
 
-        with patch("app.services.poc.service.shell_relay_client") as mock_relay:
+        with patch("spectra_platform.services.poc.service.shell_relay_client") as mock_relay:
             mock_relay.start_listener = AsyncMock(return_value=4444)
             result = await poc_service.generate_and_execute_poc(agent_context, poc_request)
 
@@ -192,7 +192,7 @@ class TestPOCServiceGenerate:
         poc_service.developer_agent = AsyncMock()
         poc_service.developer_agent.execute = AsyncMock(side_effect=RuntimeError("Unexpected"))
 
-        with patch("app.services.poc.service.shell_relay_client") as mock_relay:
+        with patch("spectra_platform.services.poc.service.shell_relay_client") as mock_relay:
             mock_relay.start_listener = AsyncMock(return_value=4444)
             result = await poc_service.generate_and_execute_poc(agent_context, poc_request)
 

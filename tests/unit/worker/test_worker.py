@@ -102,8 +102,8 @@ class TestToolStatusHelpers:
         with pytest.MonkeyPatch.context() as mp:
             mp.setitem(
                 sys.modules,
-                "app.infrastructure.cache",
-                make_module("app.infrastructure.cache", CacheService=lambda: cache),
+                "spectra_platform.infrastructure.cache",
+                make_module("spectra_platform.infrastructure.cache", CacheService=lambda: cache),
             )
             await _sync_tool_status("demo-tool", {"status": "running", "log_entry": "started"})
 

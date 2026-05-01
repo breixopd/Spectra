@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.mission.report_generator import (
+from spectra_platform.services.mission.report_generator import (
     SEVERITY_COLORS,
     SEVERITY_ORDER,
     _count_severities,
@@ -185,8 +185,8 @@ class TestSaveReport:
     async def test_save_creates_file(self, tmp_path):
         mock_storage = MagicMock()
         mock_storage.upload = AsyncMock(return_value="s3://spectra-missions/m1/reports/report.html")
-        with patch("app.services.mission.report_generator.get_storage_service", return_value=mock_storage):
-            with patch("app.services.mission.report_generator._get_default_secret", return_value="test-key"):
+        with patch("spectra_platform.services.mission.report_generator.get_storage_service", return_value=mock_storage):
+            with patch("spectra_platform.services.mission.report_generator._get_default_secret", return_value="test-key"):
                 path = await save_report("m1", "<html>test</html>")
                 assert isinstance(path, str)
                 assert "m1" in path

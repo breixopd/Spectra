@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from app.auth.security import create_password_reset_token
+from spectra_platform.auth.security import create_password_reset_token
 from tests.platform_harness import create_public_test_user, get_app_base_url, get_env_int
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.live, pytest.mark.load]

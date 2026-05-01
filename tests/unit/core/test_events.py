@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from app.infrastructure.events import Event, EventBus, EventType
+from spectra_platform.infrastructure.events import Event, EventBus, EventType
 
 
 class TestEventType:
@@ -197,7 +197,7 @@ class TestOnEventDecorator:
     @pytest.mark.asyncio
     async def test_decorator_registers_handler(self):
         # Use a fresh bus to avoid global state pollution
-        from app.infrastructure.events import events as global_bus
+        from spectra_platform.infrastructure.events import events as global_bus
 
         received = []
 

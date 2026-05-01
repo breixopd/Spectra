@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from pydantic import BaseModel
 
-from app.services.ai.agents.base import (
+from spectra_platform.services.ai.agents.base import (
     Agent,
     AgentAction,
     AgentContext,
@@ -161,6 +161,6 @@ async def test_reflection_max_iterations():
 
 def test_reflection_enabled_on_exploit_crafter():
     """Verify ExploitCrafter.enable_reflection is True."""
-    from app.services.ai.agents.exploit_crafter import ExploitCrafter
+    from spectra_platform.services.ai.agents.exploit_crafter import ExploitCrafter
 
     assert ExploitCrafter.enable_reflection is True

@@ -14,29 +14,29 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app._meta.version import __version__
-from app.auth.rate_limit import RateLimits, limiter
-from app.auth.security import (
+from spectra_api.paths import api_assets_root
+from spectra_api.templates import templates
+from spectra_platform._meta.version import __version__
+from spectra_platform.auth.rate_limit import RateLimits, limiter
+from spectra_platform.auth.security import (
     JWTError,
     decode_token,
     get_password_hash,
     invalidate_token,
 )
-from app.core.config import settings
-from app.core.database import async_session_maker
-from app.mission.core.enums import MissionStatus
-from app.models.finding import Finding
-from app.models.mission import Mission
-from app.models.plan import Plan, Subscription
-from app.models.user import User
-from app.repositories.plan import PlanRepository
-from app.services.auth.email_verification import (
+from spectra_platform.core.config import settings
+from spectra_platform.core.database import async_session_maker
+from spectra_platform.mission.core.enums import MissionStatus
+from spectra_platform.models.finding import Finding
+from spectra_platform.models.mission import Mission
+from spectra_platform.models.plan import Plan, Subscription
+from spectra_platform.models.user import User
+from spectra_platform.repositories.plan import PlanRepository
+from spectra_platform.services.auth.email_verification import (
     send_registration_verification_email as _send_registration_verification_email,
 )
-from app.services.billing.entitlements import sync_user_plan_mirror
-from app.utils.html_sanitization import sanitize_legal_html
-from spectra_api.paths import api_assets_root
-from spectra_api.templates import templates
+from spectra_platform.services.billing.entitlements import sync_user_plan_mirror
+from spectra_platform.utils.html_sanitization import sanitize_legal_html
 
 logger = logging.getLogger(__name__)
 
@@ -418,7 +418,7 @@ def _public_base_url(request: Request | None) -> str:
 
 async def _send_registration_welcome_email(username: str, email: str) -> None:
     try:
-        from app.services.email import EmailService
+        from spectra_platform.services.email import EmailService
 
         email_svc = EmailService()
         base_url = settings.PLATFORM_BASE_URL or "http://localhost:5000"
@@ -515,8 +515,8 @@ async def register_user(request: Request, body: RegisterRequest, response: Respo
 
         await session.commit()
 
-        from app.models.audit_log import AuditEventType
-        from app.services.system.audit import log_event as audit_log_event
+        from spectra_platform.models.audit_log import AuditEventType
+        from spectra_platform.services.system.audit import log_event as audit_log_event
 
         await audit_log_event(
             session,
@@ -538,7 +538,7 @@ async def register_user(request: Request, body: RegisterRequest, response: Respo
 @router.get("/verify-email", response_class=HTMLResponse, include_in_schema=False)
 async def verify_email_page(request: Request, token: str = ""):
     """Handle email verification link click."""
-    from app.auth.security import verify_email_verification_token
+    from spectra_platform.auth.security import verify_email_verification_token
 
     if not token:
         return _verify_email_template_response(request, success=False, message="Missing verification token.")

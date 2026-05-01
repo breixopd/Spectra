@@ -5,11 +5,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.infrastructure.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState
-from app.infrastructure.events import Event, EventBus, EventType
-from app.mission.core.enums import MissionStatus
-from app.mission.core.state_machine import VALID_TRANSITIONS, MissionStateMachine
-from app.telemetry.telemetry import TelemetryCollector
 from spectra_common.errors import (
     CircuitBreakerOpenError,
     LLMConnectionError,
@@ -18,6 +13,11 @@ from spectra_common.errors import (
     SpectraError,
     ToolExecutionError,
 )
+from spectra_platform.infrastructure.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState
+from spectra_platform.infrastructure.events import Event, EventBus, EventType
+from spectra_platform.mission.core.enums import MissionStatus
+from spectra_platform.mission.core.state_machine import VALID_TRANSITIONS, MissionStateMachine
+from spectra_platform.telemetry.telemetry import TelemetryCollector
 
 
 class TestExceptionHierarchy:

@@ -16,7 +16,7 @@ def _mock_execute_result(rowcount: int):
 
 @pytest.mark.asyncio
 async def test_cleanup_expired_cache_purges_entries():
-    from app.services.maintenance_cleanup import cleanup_expired_cache
+    from spectra_platform.services.maintenance_cleanup import cleanup_expired_cache
 
     session = AsyncMock()
     session.execute = AsyncMock(return_value=_mock_execute_result(5))
@@ -30,7 +30,7 @@ async def test_cleanup_expired_cache_purges_entries():
 
 @pytest.mark.asyncio
 async def test_cleanup_expired_cache_zero_when_none():
-    from app.services.maintenance_cleanup import cleanup_expired_cache
+    from spectra_platform.services.maintenance_cleanup import cleanup_expired_cache
 
     session = AsyncMock()
     session.execute = AsyncMock(return_value=_mock_execute_result(0))
@@ -45,7 +45,7 @@ async def test_cleanup_expired_cache_zero_when_none():
 
 @pytest.mark.asyncio
 async def test_cleanup_orphaned_sandboxes_finds_orphans():
-    from app.services.maintenance_cleanup import cleanup_orphaned_sandboxes
+    from spectra_platform.services.maintenance_cleanup import cleanup_orphaned_sandboxes
 
     pool = MagicMock()
     pool.available = True
@@ -58,7 +58,7 @@ async def test_cleanup_orphaned_sandboxes_finds_orphans():
 
 @pytest.mark.asyncio
 async def test_cleanup_orphaned_sandboxes_skips_when_unavailable():
-    from app.services.maintenance_cleanup import cleanup_orphaned_sandboxes
+    from spectra_platform.services.maintenance_cleanup import cleanup_orphaned_sandboxes
 
     pool = MagicMock()
     pool.available = False
@@ -69,7 +69,7 @@ async def test_cleanup_orphaned_sandboxes_skips_when_unavailable():
 
 @pytest.mark.asyncio
 async def test_cleanup_orphaned_sandboxes_skips_when_no_pool():
-    from app.services.maintenance_cleanup import cleanup_orphaned_sandboxes
+    from spectra_platform.services.maintenance_cleanup import cleanup_orphaned_sandboxes
 
     count = await cleanup_orphaned_sandboxes(None)
     assert count == 0
@@ -80,7 +80,7 @@ async def test_cleanup_orphaned_sandboxes_skips_when_no_pool():
 
 @pytest.mark.asyncio
 async def test_cleanup_completed_jobs_removes_old():
-    from app.services.maintenance_cleanup import cleanup_completed_jobs
+    from spectra_platform.services.maintenance_cleanup import cleanup_completed_jobs
 
     session = AsyncMock()
     session.execute = AsyncMock(return_value=_mock_execute_result(10))
@@ -97,7 +97,7 @@ async def test_cleanup_completed_jobs_removes_old():
 
 @pytest.mark.asyncio
 async def test_run_all_cleanup_calls_all_functions():
-    from app.services.maintenance import run_all_cleanup
+    from spectra_platform.services.maintenance import run_all_cleanup
 
     mock_session = AsyncMock()
     mock_session.execute = AsyncMock(return_value=_mock_execute_result(1))
@@ -116,9 +116,9 @@ async def test_run_all_cleanup_calls_all_functions():
     mock_storage.delete = AsyncMock(return_value=True)
 
     with (
-        patch("app.core.database.async_session_maker", return_value=ctx),
-        patch("app.services.tools.sandbox.get_sandbox_pool", return_value=mock_pool),
-        patch("app.services.storage.get_storage_service", return_value=mock_storage),
+        patch("spectra_platform.core.database.async_session_maker", return_value=ctx),
+        patch("spectra_platform.services.tools.sandbox.get_sandbox_pool", return_value=mock_pool),
+        patch("spectra_platform.services.storage.get_storage_service", return_value=mock_storage),
     ):
         results = await run_all_cleanup()
 

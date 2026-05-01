@@ -82,8 +82,8 @@ async def client():
     """Async test client with mocked auth and DB returning empty results."""
     app = _make_app()
 
-    from app.core.database import get_async_session
     from spectra_api.api.dependencies import get_current_active_user
+    from spectra_platform.core.database import get_async_session
 
     user = _fake_user()
     app.dependency_overrides[get_current_active_user] = lambda: user

@@ -4,14 +4,14 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.services.ai.agents.base import (
+from spectra_platform.services.ai.agents.base import (
     AgentContext,
     AgentResult,
     AgentRole,
 )
-from app.services.ai.agents.exploit_crafter import ExploitCrafter, ExploitCrafterInput
-from app.services.ai.agents.mission_controller import MissionController, MissionInput
-from app.services.ai.agents.post_exploitation import PostExploitationAgent, PostExploitInput
+from spectra_platform.services.ai.agents.exploit_crafter import ExploitCrafter, ExploitCrafterInput
+from spectra_platform.services.ai.agents.mission_controller import MissionController, MissionInput
+from spectra_platform.services.ai.agents.post_exploitation import PostExploitationAgent, PostExploitInput
 from tests.mocks.llm import MockLLMClient
 
 
@@ -332,7 +332,7 @@ class TestMissionControllerSubAgent:
         )
 
         with (
-            patch("app.services.ai.consensus.VotingSystem"),
+            patch("spectra_platform.services.ai.consensus.VotingSystem"),
             patch.object(
                 MissionController,
                 "_create_mission_plan",
@@ -345,7 +345,7 @@ class TestMissionControllerSubAgent:
                 return_value=safety_result,
             ) as mock_spawn,
         ):
-            from app.services.ai.agents.mission_controller import MissionPlan
+            from spectra_platform.services.ai.agents.mission_controller import MissionPlan
 
             mock_plan.return_value = MissionPlan(
                 confidence=0.85,
@@ -380,7 +380,7 @@ class TestMissionControllerSubAgent:
         )
 
         with (
-            patch("app.services.ai.consensus.VotingSystem"),
+            patch("spectra_platform.services.ai.consensus.VotingSystem"),
             patch.object(
                 MissionController,
                 "_create_mission_plan",
@@ -393,7 +393,7 @@ class TestMissionControllerSubAgent:
                 side_effect=RuntimeError("safety agent down"),
             ),
         ):
-            from app.services.ai.agents.mission_controller import MissionPlan
+            from spectra_platform.services.ai.agents.mission_controller import MissionPlan
 
             mock_plan.return_value = MissionPlan(
                 confidence=0.85,

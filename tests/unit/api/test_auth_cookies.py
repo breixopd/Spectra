@@ -23,12 +23,12 @@ class TestLoginCookieAttributes:
     """Verify auth cookies are written with the expected header attributes."""
 
     def test_set_access_cookie_header_https(self):
-        from app.core.config import settings
         from spectra_api.api.routers.auth._helpers import (
             ACCESS_COOKIE_KEY,
             ACCESS_COOKIE_PATH,
             _set_auth_cookies,
         )
+        from spectra_platform.core.config import settings
 
         request = _make_request("https")
         response = Response()

@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-from app.models.finding import FindingStatus
+from spectra_platform.models.finding import FindingStatus
 
 
 class TestFindingStatusEnum:
@@ -28,11 +28,11 @@ class TestExploitChainStorage:
     """API-005: Custom exploit chain persistence."""
 
     def test_load_custom_chains_empty(self, tmp_path):
-        from app.services.mission.chain_builder import load_custom_chains
+        from spectra_platform.services.mission.chain_builder import load_custom_chains
 
         # With no file, should return empty
-        with patch("app.services.mission.chain_builder.CUSTOM_CHAINS_PATH", tmp_path / "chains.json"):
-            from app.services.mission import chain_builder
+        with patch("spectra_platform.services.mission.chain_builder.CUSTOM_CHAINS_PATH", tmp_path / "chains.json"):
+            from spectra_platform.services.mission import chain_builder
 
             original = chain_builder.CUSTOM_CHAINS_PATH
             chain_builder.CUSTOM_CHAINS_PATH = tmp_path / "chains.json"
@@ -43,8 +43,8 @@ class TestExploitChainStorage:
                 chain_builder.CUSTOM_CHAINS_PATH = original
 
     def test_save_and_load_custom_chain(self, tmp_path):
-        import app.services.mission.chain_builder as cb_module
-        from app.services.mission.chain_builder import (
+        import spectra_platform.services.mission.chain_builder as cb_module
+        from spectra_platform.services.mission.chain_builder import (
             ChainBuilder,
             load_custom_chains,
             save_custom_chain,
@@ -69,7 +69,7 @@ class TestExploitChainStorage:
             cb_module.CUSTOM_CHAINS_PATH = original
 
     def test_get_builtin_chains(self):
-        from app.services.mission.chain_builder import get_builtin_chains
+        from spectra_platform.services.mission.chain_builder import get_builtin_chains
 
         chains = get_builtin_chains()
         assert len(chains) >= 2
@@ -83,7 +83,7 @@ class TestObservabilityGracefulDegradation:
 
     def test_cache_stats_returns_unavailable_when_no_cache(self):
         """Observability cache endpoint handles None cache gracefully."""
-        from app.infrastructure.cache import get_cache
+        from spectra_platform.infrastructure.cache import get_cache
 
         # get_cache returns None when not initialized — that's fine
         cache = get_cache()

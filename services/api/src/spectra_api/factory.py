@@ -17,14 +17,6 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from starlette.responses import Response as StarletteResponse
 
-from app._meta.version import __version__
-from app.auth.rate_limit import (
-    RateLimits,
-    limiter,
-    rate_limit_exceeded_handler_sync,
-)
-from app.core.config import settings
-from app.mission.core.websocket import manager
 from spectra_api.bootstrap.lifespan import lifespan
 from spectra_api.bootstrap.logging_config import CorrelationIdMiddleware, configure_logging
 from spectra_api.bootstrap.middleware import AdminIPAllowlistMiddleware, SecurityHeadersMiddleware
@@ -34,6 +26,14 @@ from spectra_api.routing import CORE_API_FULL_ROUTER_MODES, include_routers
 from spectra_api.telemetry_middleware import TelemetryMiddleware
 from spectra_api.templates import templates as shared_templates
 from spectra_common.constants import SECONDS_PER_DAY
+from spectra_platform._meta.version import __version__
+from spectra_platform.auth.rate_limit import (
+    RateLimits,
+    limiter,
+    rate_limit_exceeded_handler_sync,
+)
+from spectra_platform.core.config import settings
+from spectra_platform.mission.core.websocket import manager
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +109,7 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def maintenance_mode_check(request: Request, call_next):
         """Return 503 for authenticated UI when maintenance mode is on."""
-        from app.core.config import settings as _settings
+        from spectra_platform.core.config import settings as _settings
 
         path = request.url.path
         exempt = (
@@ -195,7 +195,7 @@ def create_app() -> FastAPI:
     @limiter.limit(RateLimits.INTERNAL_METRICS)
     async def internal_node_metrics(request: Request):
         """Return local system metrics. Requires service auth."""
-        from app.services.scaling.node_metrics import collect_node_metrics
+        from spectra_platform.services.scaling.node_metrics import collect_node_metrics
 
         auth = request.headers.get("X-Service-Auth", "")
         secret = settings.SERVICE_AUTH_SECRET.get_secret_value()

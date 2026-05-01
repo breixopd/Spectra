@@ -1,5 +1,10 @@
-from app.services.ai.agents.base import AgentContext
-from app.services.security.capabilities import Capability, CapabilityRequest, CapabilityVerdict, require_capability
+from spectra_platform.services.ai.agents.base import AgentContext
+from spectra_platform.services.security.capabilities import (
+    Capability,
+    CapabilityRequest,
+    CapabilityVerdict,
+    require_capability,
+)
 
 
 def _context(**overrides):

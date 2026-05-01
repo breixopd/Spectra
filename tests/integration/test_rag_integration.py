@@ -4,8 +4,8 @@ import os
 import pytest
 import pytest_asyncio
 
-from app.core.config import settings
 from spectra_ai.rag import Document, RAGService
+from spectra_platform.core.config import settings
 
 pytestmark = [
     pytest.mark.asyncio,

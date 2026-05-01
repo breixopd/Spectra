@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.services.tools.vpn import (
+from spectra_platform.services.tools.vpn import (
     VPNManager,
     _validate_config_name,
     _validate_openvpn_config,
@@ -132,7 +132,7 @@ class TestVPNManager:
 
     @pytest.fixture(autouse=True)
     def _patch_storage(self, mock_storage):
-        with patch("app.services.tools.vpn.get_storage_service", return_value=mock_storage):
+        with patch("spectra_platform.services.tools.vpn.get_storage_service", return_value=mock_storage):
             yield
 
     @pytest.fixture()

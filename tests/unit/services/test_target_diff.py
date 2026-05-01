@@ -1,6 +1,6 @@
 """Tests for the target diff / change detection service."""
 
-from app.services.mission.target_diff import (
+from spectra_platform.services.mission.target_diff import (
     compare_missions,
     generate_diff_report,
 )

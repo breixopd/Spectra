@@ -14,20 +14,20 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.mission.core.enums import AssessmentPhase
-from app.services.ai.agents.base import (
+from spectra_ai.errors import LLMParseError
+from spectra_platform.mission.core.enums import AssessmentPhase
+from spectra_platform.services.ai.agents.base import (
     ActionRisk,
     AgentContext,
     AgentResult,
     SteeringAction,
 )
-from app.services.ai.agents.mission_controller import (
+from spectra_platform.services.ai.agents.mission_controller import (
     MissionController,
     MissionInput,
     MissionPlan,
     PhaseTransition,
 )
-from spectra_ai.errors import LLMParseError
 from tests.mocks.llm import MockLLMClient
 
 # ---------------------------------------------------------------------------
@@ -74,7 +74,7 @@ def mock_llm():
 
 @pytest.fixture
 def controller(mock_llm):
-    with patch("app.services.ai.consensus.VotingSystem"):
+    with patch("spectra_platform.services.ai.consensus.VotingSystem"):
         ctrl = MissionController(mock_llm)
     return ctrl
 
@@ -308,17 +308,17 @@ class TestCreateMissionPlan:
 
         with (
             patch(
-                "app.services.ai.knowledge.get_available_tools_context",
+                "spectra_platform.services.ai.knowledge.get_available_tools_context",
                 new_callable=AsyncMock,
                 return_value="nmap, gobuster",
             ),
             patch(
-                "app.services.ai.knowledge.get_mission_context",
+                "spectra_platform.services.ai.knowledge.get_mission_context",
                 new_callable=AsyncMock,
                 return_value="No similar missions",
             ),
             patch(
-                "app.services.ai.knowledge.get_full_methodology",
+                "spectra_platform.services.ai.knowledge.get_full_methodology",
                 return_value="PTES methodology",
             ),
         ):
@@ -334,17 +334,17 @@ class TestCreateMissionPlan:
 
         with (
             patch(
-                "app.services.ai.knowledge.get_available_tools_context",
+                "spectra_platform.services.ai.knowledge.get_available_tools_context",
                 new_callable=AsyncMock,
                 return_value="tools",
             ) as mock_tools,
             patch(
-                "app.services.ai.knowledge.get_mission_context",
+                "spectra_platform.services.ai.knowledge.get_mission_context",
                 new_callable=AsyncMock,
                 return_value="context",
             ) as mock_mission_ctx,
             patch(
-                "app.services.ai.knowledge.get_full_methodology",
+                "spectra_platform.services.ai.knowledge.get_full_methodology",
                 return_value="methodology",
             ) as mock_method,
         ):
@@ -366,16 +366,16 @@ class TestCreateMissionPlan:
 
         with (
             patch(
-                "app.services.ai.knowledge.get_available_tools_context",
+                "spectra_platform.services.ai.knowledge.get_available_tools_context",
                 new_callable=AsyncMock,
                 return_value="tools",
             ),
             patch(
-                "app.services.ai.knowledge.get_mission_context",
+                "spectra_platform.services.ai.knowledge.get_mission_context",
                 new_callable=AsyncMock,
                 return_value="ctx",
             ),
-            patch("app.services.ai.knowledge.get_full_methodology", return_value="method"),
+            patch("spectra_platform.services.ai.knowledge.get_full_methodology", return_value="method"),
         ):
             with pytest.raises((RuntimeError, LLMParseError)):
                 await controller._create_mission_plan(context, input_data)
@@ -392,16 +392,16 @@ class TestCreateMissionPlan:
 
         with (
             patch(
-                "app.services.ai.knowledge.get_available_tools_context",
+                "spectra_platform.services.ai.knowledge.get_available_tools_context",
                 new_callable=AsyncMock,
                 return_value="tools",
             ),
             patch(
-                "app.services.ai.knowledge.get_mission_context",
+                "spectra_platform.services.ai.knowledge.get_mission_context",
                 new_callable=AsyncMock,
                 return_value="ctx",
             ),
-            patch("app.services.ai.knowledge.get_full_methodology", return_value="method"),
+            patch("spectra_platform.services.ai.knowledge.get_full_methodology", return_value="method"),
         ):
             with pytest.raises((RuntimeError, LLMParseError)):
                 await controller._create_mission_plan(context, input_data)
@@ -415,16 +415,16 @@ class TestCreateMissionPlan:
 
         with (
             patch(
-                "app.services.ai.knowledge.get_available_tools_context",
+                "spectra_platform.services.ai.knowledge.get_available_tools_context",
                 new_callable=AsyncMock,
                 return_value="tools",
             ),
             patch(
-                "app.services.ai.knowledge.get_mission_context",
+                "spectra_platform.services.ai.knowledge.get_mission_context",
                 new_callable=AsyncMock,
                 return_value="ctx",
             ),
-            patch("app.services.ai.knowledge.get_full_methodology", return_value="method"),
+            patch("spectra_platform.services.ai.knowledge.get_full_methodology", return_value="method"),
         ):
             with pytest.raises(LLMParseError):
                 await controller._create_mission_plan(context, input_data)

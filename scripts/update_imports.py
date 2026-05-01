@@ -1,76 +1,76 @@
 #!/usr/bin/env python3
-"""Bulk-update all imports after moving app/core/ modules to new homes."""
+"""Bulk-update imports after moving spectra_platform/core/ modules to new homes (legacy helper)."""
 import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 
 MOVE_MAP = {
-    "cache": "app.infrastructure.cache",
-    "queue": "app.infrastructure.queue",
-    "events": "app.infrastructure.events",
+    "cache": "spectra_platform.infrastructure.cache",
+    "queue": "spectra_platform.infrastructure.queue",
+    "events": "spectra_platform.infrastructure.events",
     "tasks": "spectra_common.tasks",
-    "redis_client": "app.infrastructure.redis_client",
-    "background_tasks": "app.infrastructure.background_tasks",
-    "system_status": "app.infrastructure.system_status",
-    "metrics_store": "app.infrastructure.metrics_store",
-    "circuit_breaker": "app.infrastructure.circuit_breaker",
+    "redis_client": "spectra_platform.infrastructure.redis_client",
+    "background_tasks": "spectra_platform.infrastructure.background_tasks",
+    "system_status": "spectra_platform.infrastructure.system_status",
+    "metrics_store": "spectra_platform.infrastructure.metrics_store",
+    "circuit_breaker": "spectra_platform.infrastructure.circuit_breaker",
     "paths": "spectra_common.paths",
-    "security": "app.auth.security",
+    "security": "spectra_platform.auth.security",
     "rbac": "spectra_api.authz",
-    "encryption": "app.auth.encryption",
+    "encryption": "spectra_platform.auth.encryption",
     "exceptions": "spectra_common.errors",
     "advisory_locks": "spectra_common.advisory_locks",
-    "rate_limit": "app.auth.rate_limit",
+    "rate_limit": "spectra_platform.auth.rate_limit",
     "lifespan": "spectra_api.bootstrap.lifespan",
     "middleware": "spectra_api.bootstrap.middleware",
     "logging_config": "spectra_api.bootstrap.logging_config",
     "templates": "spectra_api.templates",
-    "state_machine": "app.mission.core.state_machine",
-    "enums": "app.mission.core.enums",
-    "websocket": "app.mission.core.websocket",
-    "bridge": "app.mission.core.bridge",
-    "optimizations": "app.mission.core.optimizations",
-    "container": "app.di.container",
-    "protocols": "app.di.protocols",
-    "service_auth": "app.di.service_auth",
-    "telemetry": "app.telemetry.telemetry",
+    "state_machine": "spectra_platform.mission.core.state_machine",
+    "enums": "spectra_platform.mission.core.enums",
+    "websocket": "spectra_platform.mission.core.websocket",
+    "bridge": "spectra_platform.mission.core.bridge",
+    "optimizations": "spectra_platform.mission.core.optimizations",
+    "container": "spectra_platform.di.container",
+    "protocols": "spectra_platform.di.protocols",
+    "service_auth": "spectra_platform.di.service_auth",
+    "telemetry": "spectra_platform.telemetry.telemetry",
     "telemetry_middleware": "spectra_api.telemetry_middleware",
 }
 
-OLD_TO_NEW = {f"app.core.{k}": v for k, v in MOVE_MAP.items()}
+OLD_TO_NEW = {f"spectra_platform.core.{k}": v for k, v in MOVE_MAP.items()}
 
 NEW_PARENT = {
-    "cache": "app.infrastructure",
-    "queue": "app.infrastructure",
-    "events": "app.infrastructure",
-    "tasks": "app.infrastructure",
-    "redis_client": "app.infrastructure",
-    "background_tasks": "app.infrastructure",
-    "system_status": "app.infrastructure",
-    "metrics_store": "app.infrastructure",
-    "circuit_breaker": "app.infrastructure",
-    "paths": "app.infrastructure",
-    "security": "app.auth",
-    "rbac": "app.auth",
-    "encryption": "app.auth",
-    "exceptions": "app.auth",
-    "advisory_locks": "app.auth",
-    "rate_limit": "app.auth",
+    "cache": "spectra_platform.infrastructure",
+    "queue": "spectra_platform.infrastructure",
+    "events": "spectra_platform.infrastructure",
+    "tasks": "spectra_platform.infrastructure",
+    "redis_client": "spectra_platform.infrastructure",
+    "background_tasks": "spectra_platform.infrastructure",
+    "system_status": "spectra_platform.infrastructure",
+    "metrics_store": "spectra_platform.infrastructure",
+    "circuit_breaker": "spectra_platform.infrastructure",
+    "paths": "spectra_platform.infrastructure",
+    "security": "spectra_platform.auth",
+    "rbac": "spectra_platform.auth",
+    "encryption": "spectra_platform.auth",
+    "exceptions": "spectra_platform.auth",
+    "advisory_locks": "spectra_platform.auth",
+    "rate_limit": "spectra_platform.auth",
     "lifespan": "spectra_api.bootstrap",
     "middleware": "spectra_api.bootstrap",
     "logging_config": "spectra_api.bootstrap",
     "templates": "spectra_api.bootstrap",
-    "state_machine": "app.mission.core",
-    "enums": "app.mission.core",
-    "websocket": "app.mission.core",
-    "bridge": "app.mission.core",
-    "optimizations": "app.mission.core",
-    "container": "app.di",
-    "protocols": "app.di",
-    "service_auth": "app.di",
-    "telemetry": "app.telemetry",
-    "telemetry_middleware": "app.telemetry",
+    "state_machine": "spectra_platform.mission.core",
+    "enums": "spectra_platform.mission.core",
+    "websocket": "spectra_platform.mission.core",
+    "bridge": "spectra_platform.mission.core",
+    "optimizations": "spectra_platform.mission.core",
+    "container": "spectra_platform.di",
+    "protocols": "spectra_platform.di",
+    "service_auth": "spectra_platform.di",
+    "telemetry": "spectra_platform.telemetry",
+    "telemetry_middleware": "spectra_platform.telemetry",
 }
 
 
@@ -79,16 +79,16 @@ def replace_imports(content: str) -> str:
 
     for old, new in items:
         module = old.split(".")[-1]
-        content = re.sub(rf"from app\.core\.{module}\b", f"from {new}", content)
+        content = re.sub(rf"from spectra_platform\.core\.{module}\b", f"from {new}", content)
 
     for old, new in items:
         module = old.split(".")[-1]
-        content = re.sub(rf"import app\.core\.{module}\b", f"import {new}", content)
+        content = re.sub(rf"import spectra_platform\.core\.{module}\b", f"import {new}", content)
 
     lines = content.splitlines(keepends=True)
     new_lines = []
     for line in lines:
-        m = re.match(r"^(\s*from\s+app\.core\s+import\s+)(.+)$", line)
+        m = re.match(r"^(\s*from\s+spectra_platform\.core\s+import\s+)(.+)$", line)
         if m:
             prefix = m.group(1)
             rest = m.group(2)
@@ -108,7 +108,7 @@ def replace_imports(content: str) -> str:
             if all_moved and len(parents) == 1:
                 parent = parents.pop()
                 new_rest = ", ".join(items_in_line)
-                line = f"{prefix.replace('app.core', parent)}{new_rest}\n"
+                line = f"{prefix.replace('spectra_platform.core', parent)}{new_rest}\n"
             elif all_moved and len(parents) > 1:
                 replacements = []
                 for mod_name, item, _ in parsed_items:
@@ -125,7 +125,7 @@ def replace_imports(content: str) -> str:
                     else:
                         kept.append(item)
                 if kept:
-                    line = f"from app.core import {', '.join(kept)}\n"
+                    line = f"from spectra_platform.core import {', '.join(kept)}\n"
                     if replacements:
                         line = "\n".join(replacements) + "\n" + line
                 else:

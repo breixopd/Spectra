@@ -8,10 +8,6 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import async_session_maker, get_async_session
-from app.models.audit_log import AuditEventType
-from app.models.user import User
-from app.services.system.audit import log_event as audit_log_event
 from spectra_api.api.routers.admin.server_schemas import (
     DeprovisionRequest,
     ProvisionRequest,
@@ -19,6 +15,10 @@ from spectra_api.api.routers.admin.server_schemas import (
     UpdateServerNodeRequest,
 )
 from spectra_api.authz import Permission, require_permission
+from spectra_platform.core.database import async_session_maker, get_async_session
+from spectra_platform.models.audit_log import AuditEventType
+from spectra_platform.models.user import User
+from spectra_platform.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +31,8 @@ async def verify_server_connection(
     _perm: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Test SSH connectivity to a remote server without making changes."""
-    from app.services.provisioning import ServerProvisioner
-    from app.services.provisioning.provisioner import ServerConfig
+    from spectra_platform.services.provisioning import ServerProvisioner
+    from spectra_platform.services.provisioning.provisioner import ServerConfig
 
     config = ServerConfig(
         host=body.host,
@@ -56,8 +56,8 @@ async def provision_server(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Auto-install and configure a Spectra service on a remote server."""
-    from app.services.provisioning import ServerProvisioner
-    from app.services.provisioning.provisioner import ServerConfig
+    from spectra_platform.services.provisioning import ServerProvisioner
+    from spectra_platform.services.provisioning.provisioner import ServerConfig
 
     valid_types = {"sandbox_worker", "app_worker", "tools_worker", "db_replica", "db_backup"}
     if body.service_type not in valid_types:
@@ -111,8 +111,8 @@ async def deprovision_server(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Remove a Spectra service from a remote server."""
-    from app.services.provisioning import ServerProvisioner
-    from app.services.provisioning.provisioner import ServerConfig
+    from spectra_platform.services.provisioning import ServerProvisioner
+    from spectra_platform.services.provisioning.provisioner import ServerConfig
 
     config = ServerConfig(
         host=body.host,
@@ -153,7 +153,7 @@ async def list_server_nodes(
     _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """List all registered server nodes."""
-    from app.services.scaling import get_pool_manager
+    from spectra_platform.services.scaling import get_pool_manager
 
     pool = get_pool_manager()
     return await pool.list_nodes(session, service_type=service_type)
@@ -173,7 +173,7 @@ async def add_server_node(
     _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Register a new server node in the pool."""
-    from app.services.scaling import get_pool_manager
+    from spectra_platform.services.scaling import get_pool_manager
 
     pool = get_pool_manager()
     node = await pool.add_node(
@@ -208,7 +208,7 @@ async def remove_server_node(
     _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Remove a server node from the pool."""
-    from app.services.scaling import get_pool_manager
+    from spectra_platform.services.scaling import get_pool_manager
 
     pool = get_pool_manager()
     removed = await pool.remove_node(session, node_id)
@@ -245,7 +245,7 @@ async def _update_swarm_node_labels(
 
     Returns an error message on failure, or *None* on success / no-op.
     """
-    from app.services.scaling.docker_client import update_node_labels
+    from spectra_platform.services.scaling.docker_client import update_node_labels
 
     new_role = _SERVICE_TYPE_TO_SWARM_ROLE.get(new_service_type)
     if not new_role:
@@ -281,7 +281,7 @@ async def update_server_node(
     When *service_type* is changed the endpoint also attempts to update
     Docker Swarm placement labels so the node is scheduled correctly.
     """
-    from app.services.scaling import get_pool_manager
+    from spectra_platform.services.scaling import get_pool_manager
 
     filtered = dict(body.model_dump(exclude_unset=True).items())
     pool = get_pool_manager()
@@ -329,7 +329,7 @@ async def check_all_server_health(
     _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Run health checks on all active server nodes."""
-    from app.services.scaling import get_pool_manager
+    from spectra_platform.services.scaling import get_pool_manager
 
     pool = get_pool_manager()
     results = await pool.health_check_all()
@@ -345,7 +345,7 @@ async def create_backup(
     _perm: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Create a database backup."""
-    from app.services.infrastructure.backup import BackupService
+    from spectra_platform.services.infrastructure.backup import BackupService
 
     svc = BackupService()
     result = await svc.create_backup()
@@ -367,7 +367,7 @@ async def list_backups(
     _perm: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
     """List all available backups."""
-    from app.services.infrastructure.backup import BackupService
+    from spectra_platform.services.infrastructure.backup import BackupService
 
     svc = BackupService()
     return await svc.list_backups()
@@ -384,7 +384,7 @@ async def restore_backup(
     _perm: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Restore database from an S3 backup."""
-    from app.services.infrastructure.backup import BackupService
+    from spectra_platform.services.infrastructure.backup import BackupService
 
     svc = BackupService()
     result = await svc.restore_backup(body.backup_id)
@@ -410,7 +410,7 @@ async def list_services(
     _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """List all registered services and their health status."""
-    from app.services.system.health import collect_platform_health
+    from spectra_platform.services.system.health import collect_platform_health
 
     health = await collect_platform_health(session, detail="full", scope="services", include="nodes")
     service_types = {
@@ -447,7 +447,7 @@ async def list_service_nodes(
     """List all server nodes and their deployment status."""
     from sqlalchemy import select as sa_select
 
-    from app.models.server_node import ServerNode
+    from spectra_platform.models.server_node import ServerNode
 
     nodes = (await session.execute(sa_select(ServerNode).order_by(ServerNode.created_at.desc()).limit(1000))).scalars().all()
     return {"nodes": [n.to_dict() for n in nodes]}
@@ -465,8 +465,8 @@ async def deploy_to_node(
     """Deploy Spectra services to a remote server node."""
     from sqlalchemy import select as sa_select
 
-    from app.models.server_node import ServerNode
-    from app.services.infrastructure.deploy import ServerDeployer
+    from spectra_platform.models.server_node import ServerNode
+    from spectra_platform.services.infrastructure.deploy import ServerDeployer
 
     node = (await session.execute(sa_select(ServerNode).where(ServerNode.id == node_id))).scalar_one_or_none()
     if not node:
@@ -519,7 +519,7 @@ async def get_node_deployment_logs(
     _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Get deployment logs for a server node."""
-    from app.services.infrastructure.deploy import ServerDeployer
+    from spectra_platform.services.infrastructure.deploy import ServerDeployer
 
     deployer = ServerDeployer()
     logs = deployer.get_deployment_logs(str(node_id))
@@ -534,8 +534,8 @@ async def get_scaling_metrics(
     """Return full cluster metrics: per-service CPU/memory, system resources, queue stats, and node health."""
     import httpx
 
-    from app.core.config import get_settings as _gs
-    from app.services.scaling.metrics_collector import MetricsCollector
+    from spectra_platform.core.config import get_settings as _gs
+    from spectra_platform.services.scaling.metrics_collector import MetricsCollector
 
     settings = _gs()
     url = f"{settings.SCHEDULER_SERVICE_URL}/internal/scaling/metrics"
@@ -596,7 +596,7 @@ async def get_scaling_dashboard(
     """Comprehensive scaling dashboard — proxied to scheduler which has cluster-wide data."""
     import httpx
 
-    from app.core.config import get_settings as _gs
+    from spectra_platform.core.config import get_settings as _gs
 
     settings = _gs()
     url = f"{settings.SCHEDULER_SERVICE_URL}/internal/scaling/dashboard"
@@ -617,12 +617,12 @@ async def get_scaling_status(
     _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Get auto-scaling status, current policies, queue metrics, and current config values."""
-    from app.core.config import get_settings as _get_settings
-    from app.infrastructure.queue import queue_metrics
-    from app.services.scaling.auto_scaler import AutoScaler
-    from app.services.scaling.backends import DockerSwarmBackend
-    from app.services.scaling.config import AutoScalerConfig
-    from app.services.scaling.notifiers import LogNotifier
+    from spectra_platform.core.config import get_settings as _get_settings
+    from spectra_platform.infrastructure.queue import queue_metrics
+    from spectra_platform.services.scaling.auto_scaler import AutoScaler
+    from spectra_platform.services.scaling.backends import DockerSwarmBackend
+    from spectra_platform.services.scaling.config import AutoScalerConfig
+    from spectra_platform.services.scaling.notifiers import LogNotifier
 
     settings = _get_settings()
     config = AutoScalerConfig.from_settings(settings)
@@ -661,9 +661,9 @@ async def get_resource_capacity(
     _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Auto-calculated resource capacity for this node and network, including live system metrics."""
-    from app.core.config import get_settings as _get_settings
-    from app.services.resource_manager import ResourceManager
-    from app.services.scaling.metrics_collector import MetricsCollector
+    from spectra_platform.core.config import get_settings as _get_settings
+    from spectra_platform.services.resource_manager import ResourceManager
+    from spectra_platform.services.scaling.metrics_collector import MetricsCollector
 
     s = _get_settings()
     local = await ResourceManager.get_node_resources()
@@ -740,11 +740,11 @@ async def get_scaling_config(
     _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Return current auto-scaling configuration."""
-    from app.core.config import get_settings as _get_settings
-    from app.services.scaling.auto_scaler import AutoScaler
-    from app.services.scaling.backends import DockerSwarmBackend
-    from app.services.scaling.config import AutoScalerConfig
-    from app.services.scaling.notifiers import LogNotifier
+    from spectra_platform.core.config import get_settings as _get_settings
+    from spectra_platform.services.scaling.auto_scaler import AutoScaler
+    from spectra_platform.services.scaling.backends import DockerSwarmBackend
+    from spectra_platform.services.scaling.config import AutoScalerConfig
+    from spectra_platform.services.scaling.notifiers import LogNotifier
 
     settings = _get_settings()
     config = AutoScalerConfig.from_settings(settings)
@@ -776,7 +776,7 @@ async def update_scaling_config(
     current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Update auto-scaling configuration. Changes take effect on next evaluation cycle."""
-    from app.services.system.runtime_settings import (
+    from spectra_platform.services.system.runtime_settings import (
         hydrate_runtime_settings_from_db,
         upsert_system_config_values,
     )
@@ -833,7 +833,7 @@ async def _proxy_scaling_to_scheduler(action: str, service: str) -> dict | None:
     """Forward a scaling action to the scheduler service (runs on Swarm manager)."""
     import httpx
 
-    from app.core.config import get_settings as _gs
+    from spectra_platform.core.config import get_settings as _gs
 
     settings = _gs()
     url = f"{settings.SCHEDULER_SERVICE_URL}/internal/scaling/action"
@@ -872,15 +872,15 @@ async def execute_scaling_action(
 
     # Heal bypasses Docker commands entirely
     if action == "heal":
-        from app.services.scaling.auto_scaler import AutoScaler
-        from app.services.scaling.backends import DockerSwarmBackend
-        from app.services.scaling.config import AutoScalerConfig
-        from app.services.scaling.metrics_collector import MetricsCollector
-        from app.services.scaling.notifiers import SpectraNotifier
+        from spectra_platform.services.scaling.auto_scaler import AutoScaler
+        from spectra_platform.services.scaling.backends import DockerSwarmBackend
+        from spectra_platform.services.scaling.config import AutoScalerConfig
+        from spectra_platform.services.scaling.metrics_collector import MetricsCollector
+        from spectra_platform.services.scaling.notifiers import SpectraNotifier
 
         collector = MetricsCollector()
         metrics = await collector.collect_all()
-        from app.core.config import get_settings as _get_settings
+        from spectra_platform.core.config import get_settings as _get_settings
         heal_config = AutoScalerConfig.from_settings(_get_settings())
         scaler = AutoScaler(heal_config, DockerSwarmBackend(), SpectraNotifier())
         actions = await scaler._auto_heal(metrics)
@@ -919,7 +919,7 @@ async def get_update_status(
     """Get current image update status for all managed services."""
     import httpx
 
-    from app.core.config import get_settings as _gs
+    from spectra_platform.core.config import get_settings as _gs
 
     settings = _gs()
     url = f"{settings.SCHEDULER_SERVICE_URL}/internal/updates/status"
@@ -949,7 +949,7 @@ async def trigger_update(
     """Manually trigger an image update for a service (or all managed services)."""
     import httpx
 
-    from app.core.config import get_settings as _gs
+    from spectra_platform.core.config import get_settings as _gs
 
     settings = _gs()
     url = f"{settings.SCHEDULER_SERVICE_URL}/internal/updates/apply"
@@ -991,7 +991,7 @@ async def get_rollback_candidates(
     """List services that can be rolled back to a previous version."""
     import httpx
 
-    from app.core.config import get_settings as _gs
+    from spectra_platform.core.config import get_settings as _gs
 
     settings = _gs()
     url = f"{settings.SCHEDULER_SERVICE_URL}/internal/updates/rollback-candidates"
@@ -1016,7 +1016,7 @@ async def rollback_service_update(
     """Rollback a service to its previous version."""
     import httpx
 
-    from app.core.config import get_settings as _gs
+    from spectra_platform.core.config import get_settings as _gs
 
     settings = _gs()
     url = f"{settings.SCHEDULER_SERVICE_URL}/internal/updates/rollback"

@@ -19,7 +19,7 @@ This strategy verifies that a change is safe across the whole platform, not just
 
 Covered subsystems include:
 
-- FastAPI app, routers, templates, and browser flows
+- FastAPI spectra_platform, routers, templates, and browser flows
 - AI service, scheduler, and worker services
 - PostgreSQL, Redis, Garage, ClickHouse, and TensorZero gateway integrations
 - Caddy edge proxy and deployment configuration
@@ -112,8 +112,8 @@ Use the real commands already present in this repo.
 | Live target-only tests | `./tests/run_live_tests.sh --targets` |
 | Browser/UI tests | `./tests/run_ui_tests.sh` |
 | UI E2E in CI (path-scoped) | GitHub Action `ui-e2e` (`.github/workflows/ui-e2e.yml`) |
-| Ruff (step inside CI `static-analysis`) | `ruff check app/` (or `./scripts/runbooks/ci-parity.sh static` for the full job) |
-| Bandit (same CI job) | `bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high` |
+| Ruff (step inside CI `static-analysis`) | `ruff check spectra_platform/` (or `./scripts/runbooks/ci-parity.sh static` for the full job) |
+| Bandit (same CI job) | `bandit -r spectra_platform/ -c pyproject.toml --severity-level high --confidence-level high` |
 | Dependency audit | See the dependency-audit note below. |
 | TensorZero config validation | `python3 -c "import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')"` |
 | Dev compose validation | `docker compose --env-file .env.example -f docker/compose.yaml config --quiet` |

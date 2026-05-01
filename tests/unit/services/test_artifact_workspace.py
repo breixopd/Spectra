@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from app.services.mission import artifact_workspace as workspace_module
-from app.services.mission.artifact_workspace import MissionArtifactWorkspace
+from spectra_platform.services.mission import artifact_workspace as workspace_module
+from spectra_platform.services.mission.artifact_workspace import MissionArtifactWorkspace
 
 
 class _FakeStorage:

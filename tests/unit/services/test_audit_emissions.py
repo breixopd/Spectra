@@ -27,8 +27,8 @@ def _fake_user(role: str = "admin", user_id: str = "00000000-0000-4000-a000-0000
 
 
 def _override_deps(app: FastAPI, user, mock_session):
-    from app.core.database import get_async_session
     from spectra_api.api.dependencies import get_current_active_user
+    from spectra_platform.core.database import get_async_session
 
     app.dependency_overrides[get_current_active_user] = lambda: user
 
@@ -39,7 +39,7 @@ def _override_deps(app: FastAPI, user, mock_session):
 
 
 def _make_app_with_router(router, prefix: str = ""):
-    from app.auth.rate_limit import limiter
+    from spectra_platform.auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter
@@ -84,7 +84,7 @@ class TestLogoutAuditEmission:
             assert resp.status_code == 200
             mock_audit.assert_called_once()
             call_args = mock_audit.call_args
-            from app.models.audit_log import AuditEventType
+            from spectra_platform.models.audit_log import AuditEventType
 
             assert call_args[0][1] == AuditEventType.LOGOUT
             assert call_args[1]["user_id"] == str(user.id)
@@ -122,7 +122,7 @@ class TestMissionStopAuditEmission:
             assert resp.status_code == 200
             mock_audit.assert_called_once()
             call_args = mock_audit.call_args
-            from app.models.audit_log import AuditEventType
+            from spectra_platform.models.audit_log import AuditEventType
 
             assert call_args[0][1] == AuditEventType.MISSION_STATUS_CHANGED
             assert call_args[1]["details"]["action"] == "stopped"
@@ -161,7 +161,7 @@ class TestMissionPauseAuditEmission:
             assert resp.status_code == 200
             mock_audit.assert_called_once()
             call_args = mock_audit.call_args
-            from app.models.audit_log import AuditEventType
+            from spectra_platform.models.audit_log import AuditEventType
 
             assert call_args[0][1] == AuditEventType.MISSION_STATUS_CHANGED
             assert call_args[1]["details"]["action"] == "paused"
@@ -206,7 +206,7 @@ class TestFailedMfaAuditEmission:
             assert resp.status_code == 401
             mock_audit.assert_called_once()
             call_args = mock_audit.call_args
-            from app.models.audit_log import AuditEventType
+            from spectra_platform.models.audit_log import AuditEventType
 
             assert call_args[0][1] == AuditEventType.LOGIN_FAILED
             assert call_args[1]["details"]["reason"] == "mfa_failed"

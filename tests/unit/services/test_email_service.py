@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.email.providers.console import ConsoleProvider
-from app.services.email.service import EmailService
-from app.services.email.templates import TEMPLATES
+from spectra_platform.services.email.providers.console import ConsoleProvider
+from spectra_platform.services.email.service import EmailService
+from spectra_platform.services.email.templates import TEMPLATES
 
 # ---------------------------------------------------------------------------
 # ConsoleProvider
@@ -143,22 +143,22 @@ async def test_email_service_send_template_unknown_returns_false():
 # ---------------------------------------------------------------------------
 
 
-@patch("app.services.email.service.settings")
+@patch("spectra_platform.services.email.service.settings")
 def test_get_provider_returns_smtp_when_host_configured(mock_settings):
     """When SMTP_HOST is set, _get_provider returns SMTPProvider."""
     mock_settings.SMTP_HOST = "smtp.example.com"
-    from app.services.email.providers.smtp import SMTPProvider
-    from app.services.email.service import _get_provider
+    from spectra_platform.services.email.providers.smtp import SMTPProvider
+    from spectra_platform.services.email.service import _get_provider
 
     provider = _get_provider()
     assert isinstance(provider, SMTPProvider)
 
 
-@patch("app.services.email.service.settings")
+@patch("spectra_platform.services.email.service.settings")
 def test_get_provider_returns_console_when_no_smtp(mock_settings):
     """When SMTP_HOST is empty, _get_provider returns ConsoleProvider."""
     mock_settings.SMTP_HOST = ""
-    from app.services.email.service import _get_provider
+    from spectra_platform.services.email.service import _get_provider
 
     provider = _get_provider()
     assert isinstance(provider, ConsoleProvider)
@@ -170,7 +170,7 @@ def test_get_provider_returns_console_when_no_smtp(mock_settings):
 
 
 @pytest.mark.asyncio
-@patch("app.services.email.providers.smtp.settings")
+@patch("spectra_platform.services.email.providers.smtp.settings")
 async def test_smtp_provider_send_success(mock_settings):
     mock_settings.SMTP_HOST = "smtp.test.com"
     mock_settings.SMTP_PORT = 587
@@ -180,11 +180,11 @@ async def test_smtp_provider_send_success(mock_settings):
     mock_settings.SMTP_USE_TLS = True
     mock_settings.SMTP_FROM = "noreply@test.com"
 
-    from app.services.email.providers.smtp import SMTPProvider
+    from spectra_platform.services.email.providers.smtp import SMTPProvider
 
     provider = SMTPProvider()
 
-    with patch("app.services.email.providers.smtp.aiosmtplib", create=True) as mock_aio:
+    with patch("spectra_platform.services.email.providers.smtp.aiosmtplib", create=True) as mock_aio:
         mock_send = AsyncMock()
         mock_aio.send = mock_send
 

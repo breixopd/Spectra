@@ -1,6 +1,6 @@
 """Tests for output intelligence extraction."""
 
-from app.services.ai.output_intelligence import ExtractedIntel, extract_intelligence
+from spectra_platform.services.ai.output_intelligence import ExtractedIntel, extract_intelligence
 
 
 class TestExtractedIntelDataclass:

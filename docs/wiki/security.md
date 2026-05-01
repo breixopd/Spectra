@@ -84,7 +84,7 @@ Role-based access control with three tiers:
 
 ### API Key Management
 
-- SSH keys for server provisioning stored encrypted in DB (via `app/core/encryption.py`)
+- SSH keys for server provisioning stored encrypted in DB (via `spectra_platform/core/encryption.py`)
 - LLM API keys stored as `SecretStr` (Pydantic) — never serialized to logs or JSON
 - Plugin files validated via schema and command blocklist
 

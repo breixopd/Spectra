@@ -6,11 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.rate_limit import RateLimits, limiter
-from app.core.database import get_async_session
-from app.models.user import User
 from spectra_api.api.schemas.auth import UserResponse
 from spectra_api.api.schemas.system import SystemSetupRequest
+from spectra_platform.auth.rate_limit import RateLimits, limiter
+from spectra_platform.core.database import get_async_session
+from spectra_platform.models.user import User
 
 logger = logging.getLogger(__name__)
 

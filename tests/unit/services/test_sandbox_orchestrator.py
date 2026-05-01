@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.services.gateway.sandbox_orchestrator import SandboxOrchestratorClient
+from spectra_platform.services.gateway.sandbox_orchestrator import SandboxOrchestratorClient
 
 
 @pytest.fixture

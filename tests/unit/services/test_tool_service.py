@@ -4,9 +4,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.ai.agents.base import ToolAction
-from app.services.tools.output import create_error_result, normalize_tool_name, validate_tool_name
-from app.services.tools.service import StandaloneMissionAdapter, ToolExecutionService
+from spectra_platform.services.ai.agents.base import ToolAction
+from spectra_platform.services.tools.output import create_error_result, normalize_tool_name, validate_tool_name
+from spectra_platform.services.tools.service import StandaloneMissionAdapter, ToolExecutionService
 from spectra_tools_core.models import ToolExecutionResult
 
 
@@ -17,7 +17,7 @@ def mock_llm():
 
 @pytest.fixture
 def tool_service(mock_llm):
-    with patch("app.services.tools.service.SafetySupervisorAgent"), patch("app.services.tools.service.VotingSystem"):
+    with patch("spectra_platform.services.tools.service.SafetySupervisorAgent"), patch("spectra_platform.services.tools.service.VotingSystem"):
         svc = ToolExecutionService(mock_llm)
         yield svc
 
@@ -85,7 +85,7 @@ class TestToolServiceExecution:
         mission.id = "m1"
         mission.log = MagicMock()
 
-        with patch("app.services.tools.validation.get_registry") as mock_reg:
+        with patch("spectra_platform.services.tools.validation.get_registry") as mock_reg:
             registry = mock_reg.return_value
             registry.sync_status_from_cache = AsyncMock()
             registry.get_tool = MagicMock(return_value=None)
@@ -109,7 +109,7 @@ class TestToolServiceExecution:
         # Mock safety check to allow execution
         tool_service._perform_safety_check = AsyncMock(return_value=(True, "Safe"))
 
-        with patch("app.infrastructure.queue.PostgresJobQueue") as MockQueue, patch("app.infrastructure.queue.Job") as MockJob:
+        with patch("spectra_platform.infrastructure.queue.PostgresJobQueue") as MockQueue, patch("spectra_platform.infrastructure.queue.Job") as MockJob:
             mock_queue = MockQueue.return_value
             mock_queue.enqueue_job = AsyncMock(return_value="job-1")
 
@@ -143,7 +143,7 @@ class TestToolServiceExecution:
 
         tool_service._perform_safety_check = AsyncMock(return_value=(True, "Safe"))
 
-        with patch("app.infrastructure.queue.PostgresJobQueue") as MockQueue, patch("app.infrastructure.queue.Job") as MockJob:
+        with patch("spectra_platform.infrastructure.queue.PostgresJobQueue") as MockQueue, patch("spectra_platform.infrastructure.queue.Job") as MockJob:
             mock_queue = MockQueue.return_value
             mock_queue.enqueue_job = AsyncMock(return_value="job-1")
 
@@ -169,7 +169,7 @@ class TestToolServiceExecution:
 
         tool_service._perform_safety_check = AsyncMock(return_value=(True, "Safe"))
 
-        with patch("app.infrastructure.queue.PostgresJobQueue", side_effect=RuntimeError("queue fail")):
+        with patch("spectra_platform.infrastructure.queue.PostgresJobQueue", side_effect=RuntimeError("queue fail")):
             result = await tool_service.execute_custom_script(
                 mission=mission,
                 script_content="code",

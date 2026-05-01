@@ -10,7 +10,7 @@ Spectra Log Management
 Usage: $0 <command>
 
 Commands:
-  tail [service]      Tail logs for a service (default: app). Services: app, worker, scheduler, ai-svc, db, caddy, garage
+  tail [service]      Tail logs for a service (default: app). Services: spectra_platform, worker, scheduler, ai-svc, db, caddy, garage
   errors [service]    Show recent ERROR lines for a service (default: all)
   export <dir>        Export all service logs to a directory
   sizes               Show log file and container log sizes

@@ -45,10 +45,10 @@ If you cannot use the script, these are the same steps as the workflow file.
 
 ```bash
 docker build -f docker/Dockerfile.test -t spectra-test-ci .
-docker run --rm spectra-test-ci python -m ruff check app/ tests/ services/ packages/
+docker run --rm spectra-test-ci python -m ruff check spectra_platform/ tests/ services/ packages/
 docker run --rm spectra-test-ci python scripts/check_import_boundaries.py
 docker run --rm spectra-test-ci sh -c "pip install --no-cache-dir pyright && pyright"
-docker run --rm spectra-test-ci bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high
+docker run --rm spectra-test-ci bandit -r spectra_platform/ -c pyproject.toml --severity-level high --confidence-level high
 ```
 
 **Unit + coverage + settings**
@@ -60,7 +60,7 @@ docker compose -f docker/compose.yaml --profile test build unit-test-runner
 docker compose -f docker/compose.yaml --profile test run --rm --no-deps unit-test-runner \
   "python -c \"import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')\""
 docker compose -f docker/compose.yaml --profile test run --rm unit-test-runner \
-  "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=app --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov-report=term-missing --cov-fail-under=70"
+  "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_platform --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov-report=term-missing --cov-fail-under=70"
 docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner
 ```
 

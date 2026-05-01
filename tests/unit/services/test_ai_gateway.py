@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.services.gateway import ai_gateway as ag
+from spectra_platform.services.gateway import ai_gateway as ag
 
 
 @pytest.fixture(autouse=True)
@@ -25,7 +25,7 @@ async def test_rag_search_monolith_uses_get_rag_service(monkeypatch):
         return mock_rag
 
     monkeypatch.setattr(ag.settings, "AI_SERVICE_URL", "")
-    monkeypatch.setattr("app.services.ai.knowledge.get_rag_service", fake_get_rag)
+    monkeypatch.setattr("spectra_platform.services.ai.knowledge.get_rag_service", fake_get_rag)
 
     gw = ag.AIGateway()
     assert gw.client is None
@@ -61,7 +61,7 @@ async def test_rag_search_monolith_hit_shape_matches_ai_service_contract(monkeyp
         return mock_rag
 
     monkeypatch.setattr(ag.settings, "AI_SERVICE_URL", "")
-    monkeypatch.setattr("app.services.ai.knowledge.get_rag_service", fake_get_rag)
+    monkeypatch.setattr("spectra_platform.services.ai.knowledge.get_rag_service", fake_get_rag)
 
     gw = ag.AIGateway()
     hits = await gw.rag_search("q", top_k=2)
@@ -83,7 +83,7 @@ async def test_check_embeddings_monolith_uses_get_rag_service(monkeypatch):
         return mock_rag
 
     monkeypatch.setattr(ag.settings, "AI_SERVICE_URL", "")
-    monkeypatch.setattr("app.services.ai.knowledge.get_rag_service", fake_get_rag)
+    monkeypatch.setattr("spectra_platform.services.ai.knowledge.get_rag_service", fake_get_rag)
 
     gw = ag.AIGateway()
     status = await gw.check_embeddings_status()

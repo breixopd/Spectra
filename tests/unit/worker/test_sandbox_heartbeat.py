@@ -13,13 +13,13 @@ class TestHeartbeatConfig:
     """Heartbeat settings exist with correct defaults."""
 
     def test_idle_timeout_default(self):
-        from app.core.config import Settings
+        from spectra_platform.core.config import Settings
 
         s = Settings(DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"))
         assert s.SANDBOX_IDLE_TIMEOUT == 600
 
     def test_heartbeat_interval_default(self):
-        from app.core.config import Settings
+        from spectra_platform.core.config import Settings
 
         s = Settings(DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"))
         assert s.SANDBOX_HEARTBEAT_INTERVAL == 30
@@ -29,7 +29,7 @@ class TestSandboxModelHeartbeat:
     """Sandbox model has last_heartbeat column."""
 
     def test_last_heartbeat_column_exists(self):
-        from app.models.infrastructure import Sandbox
+        from spectra_platform.models.infrastructure import Sandbox
 
         assert hasattr(Sandbox, "last_heartbeat")
 
@@ -62,7 +62,7 @@ class TestHeartbeatLoop:
         mock_session.execute = tracked_execute
         mock_session.commit = AsyncMock()
 
-        with patch("app.core.database.async_session_maker", return_value=mock_session):
+        with patch("spectra_platform.core.database.async_session_maker", return_value=mock_session):
             task = asyncio.create_task(heartbeat_loop("test_queue", interval=0))
             await asyncio.sleep(0.05)
             task.cancel()

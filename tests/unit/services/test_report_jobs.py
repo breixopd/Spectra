@@ -59,9 +59,9 @@ async def test_generate_mission_report_returns_path():
     mock_reporter.execute = AsyncMock(return_value=mock_agent_result)
 
     with (
-        patch("app.core.database.async_session_maker", return_value=_mock_session_ctx(session)),
+        patch("spectra_platform.core.database.async_session_maker", return_value=_mock_session_ctx(session)),
         patch("spectra_ai.llm.get_global_llm_client", new_callable=AsyncMock, return_value=MagicMock()),
-        patch("app.services.ai.agents.reporter.ReporterAgent", return_value=mock_reporter),
+        patch("spectra_platform.services.ai.agents.reporter.ReporterAgent", return_value=mock_reporter),
     ):
         path = await generate_mission_report("m-1")
 
@@ -92,7 +92,7 @@ async def test_generate_mission_report_handles_missing_mission():
     session.execute = AsyncMock(return_value=mission_result)
 
     with (
-        patch("app.core.database.async_session_maker", return_value=_mock_session_ctx(session)),
+        patch("spectra_platform.core.database.async_session_maker", return_value=_mock_session_ctx(session)),
     ):
         with pytest.raises(ValueError, match="not found"):
             await generate_mission_report("nonexistent")
@@ -133,9 +133,9 @@ async def test_generate_executive_summary_returns_text():
     mock_reporter.execute = AsyncMock(return_value=mock_agent_result)
 
     with (
-        patch("app.core.database.async_session_maker", return_value=_mock_session_ctx(session)),
+        patch("spectra_platform.core.database.async_session_maker", return_value=_mock_session_ctx(session)),
         patch("spectra_ai.llm.get_global_llm_client", new_callable=AsyncMock, return_value=MagicMock()),
-        patch("app.services.ai.agents.reporter.ReporterAgent", return_value=mock_reporter),
+        patch("spectra_platform.services.ai.agents.reporter.ReporterAgent", return_value=mock_reporter),
     ):
         summary = await generate_executive_summary("m-1")
 
@@ -154,7 +154,7 @@ async def test_generate_executive_summary_missing_mission():
     session.execute = AsyncMock(return_value=mission_result)
 
     with (
-        patch("app.core.database.async_session_maker", return_value=_mock_session_ctx(session)),
+        patch("spectra_platform.core.database.async_session_maker", return_value=_mock_session_ctx(session)),
     ):
         with pytest.raises(ValueError, match="not found"):
             await generate_executive_summary("nonexistent")

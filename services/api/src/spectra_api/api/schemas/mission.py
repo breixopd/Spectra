@@ -4,8 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.target import TargetStatus
-from app.services.mission.types import AttackSurfaceSummary, ToolExecutionRecord
+from spectra_platform.models.target import TargetStatus
+from spectra_platform.services.mission.types import AttackSurfaceSummary, ToolExecutionRecord
 
 
 class TargetCreate(BaseModel):

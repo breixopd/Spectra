@@ -11,8 +11,6 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
-import app.core.database
-import app.telemetry.telemetry
 from spectra_domain.ai import ChatRequest, ChatResponse, EmbeddingRequest, EmbeddingResponse, RAGRequest, RAGResponse
 
 logger = logging.getLogger(__name__)
@@ -65,7 +63,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-from app.core.config import get_settings as _get_cors_settings
+from spectra_platform.core.config import get_settings as _get_cors_settings
 
 _cors_settings = _get_cors_settings()
 _cors_origins = (
@@ -86,7 +84,7 @@ app.add_middleware(
 )
 
 # Service auth middleware
-from app.di.service_auth import ServiceAuthMiddleware
+from spectra_platform.di.service_auth import ServiceAuthMiddleware
 
 _settings = _cors_settings
 _secret = _settings.SERVICE_AUTH_SECRET.get_secret_value()

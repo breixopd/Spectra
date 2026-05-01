@@ -11,9 +11,9 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.core.config import settings
-from app.infrastructure.cache import CacheService
-from app.infrastructure.redis_client import RedisCache, RedisConnectionPool
+from spectra_platform.core.config import settings
+from spectra_platform.infrastructure.cache import CacheService
+from spectra_platform.infrastructure.redis_client import RedisCache, RedisConnectionPool
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.live, pytest.mark.performance]
 

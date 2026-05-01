@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.shell.session_manager import ShellSession, ShellSessionManager
+from spectra_platform.services.shell.session_manager import ShellSession, ShellSessionManager
 
 
 @pytest.fixture(autouse=True)
@@ -152,7 +152,7 @@ class TestShellSessionManagerAllocatePort:
 class TestShellSessionManagerStartListener:
     def test_start_with_specific_port(self, manager):
         with (
-            patch("app.services.shell.session_manager._get_service_mode", return_value="worker"),
+            patch("spectra_platform.services.shell.session_manager._get_service_mode", return_value="worker"),
             patch("threading.Thread") as mock_thread,
             patch("threading.Timer") as mock_timer,
         ):
@@ -172,7 +172,7 @@ class TestShellSessionManagerStartListener:
             mock_sock.bind.return_value = None
 
             with (
-                patch("app.services.shell.session_manager._get_service_mode", return_value="worker"),
+                patch("spectra_platform.services.shell.session_manager._get_service_mode", return_value="worker"),
                 patch("threading.Thread") as mock_thread,
                 patch("threading.Timer"),
             ):
@@ -185,12 +185,12 @@ class TestShellSessionManagerStartListener:
 
     def test_start_on_already_active_port(self, manager):
         manager.listeners[4444] = MagicMock()
-        with patch("app.services.shell.session_manager._get_service_mode", return_value="worker"):
+        with patch("spectra_platform.services.shell.session_manager._get_service_mode", return_value="worker"):
             port = manager.start_listener("s1", "10.0.0.1", port=4444)
         assert port == 4444
 
     def test_direct_listener_denied_outside_worker_mode(self, manager):
-        with patch("app.services.shell.session_manager._get_service_mode", return_value="api"):
+        with patch("spectra_platform.services.shell.session_manager._get_service_mode", return_value="api"):
             with pytest.raises(RuntimeError, match="worker service mode"):
                 manager.start_listener("s1", "10.0.0.1", port=4444)
 

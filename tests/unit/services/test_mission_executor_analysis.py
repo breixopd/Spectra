@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from app.services.mission.executor.analysis import (
+from spectra_platform.services.mission.executor.analysis import (
     analyze_unexpected_output,
     check_exploit_success,
     detect_blocking,

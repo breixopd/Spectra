@@ -7,26 +7,26 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import BaseModel
 
-from app.services.ai.agents.base import (
+from spectra_ai.llm import (
+    LLMResponse,
+    get_llm_client,
+)
+from spectra_platform.services.ai.agents.base import (
     ActionRisk,
     AgentAction,
     AgentContext,
     ParallelToolAction,
 )
-from app.services.ai.agents.scope import ScopeAction, ScopeAgent, ScopeInput
-from app.services.ai.agents.tool_selector import (
+from spectra_platform.services.ai.agents.scope import ScopeAction, ScopeAgent, ScopeInput
+from spectra_platform.services.ai.agents.tool_selector import (
     ToolSelectorAgent,
     ToolSelectorInput,
     ToolSelectorOutput,
 )
-from app.services.ai.consensus import (
+from spectra_platform.services.ai.consensus import (
     ConsensusStatus,
     VotingConfig,
     VotingSystem,
-)
-from spectra_ai.llm import (
-    LLMResponse,
-    get_llm_client,
 )
 from spectra_tools_core.models import (
     RegisteredTool,
@@ -330,7 +330,7 @@ class TestToolSelectorAgent:
         )
 
         with patch(
-            "app.services.ai.agents.tool_selector.get_registry",
+            "spectra_platform.services.ai.agents.tool_selector.get_registry",
             return_value=mock_registry,
         ):
             result = await agent.execute(agent_context, input_data)
@@ -372,7 +372,7 @@ class TestToolSelectorAgent:
         )
 
         with patch(
-            "app.services.ai.agents.tool_selector.get_registry",
+            "spectra_platform.services.ai.agents.tool_selector.get_registry",
             return_value=mock_registry,
         ):
             result = await agent.execute(agent_context, input_data)
@@ -395,7 +395,7 @@ class TestToolSelectorAgent:
         )
 
         with patch(
-            "app.services.ai.agents.tool_selector.get_registry",
+            "spectra_platform.services.ai.agents.tool_selector.get_registry",
             return_value=mock_registry,
         ):
             result = await agent.execute(agent_context, input_data)

@@ -10,9 +10,9 @@ import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.mission.core.enums import Severity
-from app.models.finding import FindingStatus
 from spectra_api.api.routers.findings import router
+from spectra_platform.mission.core.enums import Severity
+from spectra_platform.models.finding import FindingStatus
 
 
 def _fake_user(is_superuser: bool = False, user_id: str = "00000000-0000-4000-a000-000000000001", role: str = "user"):
@@ -58,7 +58,7 @@ def _fake_finding(**overrides):
 
 
 def _make_app() -> FastAPI:
-    from app.auth.rate_limit import limiter
+    from spectra_platform.auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter
@@ -70,8 +70,8 @@ def _make_app() -> FastAPI:
 @pytest_asyncio.fixture
 async def client():
     app = _make_app()
-    from app.core.database import get_async_session
     from spectra_api.api.dependencies import get_current_active_user
+    from spectra_platform.core.database import get_async_session
 
     user = _fake_user()
     app.dependency_overrides[get_current_active_user] = lambda: user
@@ -94,7 +94,7 @@ async def client():
 async def unauth_client():
     """Client with no auth override — dependency raises 401."""
     app = _make_app()
-    from app.core.database import get_async_session
+    from spectra_platform.core.database import get_async_session
 
     mock_session = AsyncMock()
     mock_session.add = MagicMock()  # sync method
@@ -117,7 +117,7 @@ async def unauth_client():
 class TestListFindings:
     async def test_list_findings_empty(self, client):
         ac, _session, _user = client
-        from app.repositories.finding import FindingRepository
+        from spectra_platform.repositories.finding import FindingRepository
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(FindingRepository, "count", AsyncMock(return_value=0))
@@ -131,7 +131,7 @@ class TestListFindings:
 
     async def test_list_findings_with_data(self, client):
         ac, _session, _user = client
-        from app.repositories.finding import FindingRepository
+        from spectra_platform.repositories.finding import FindingRepository
 
         finding = _fake_finding()
         with pytest.MonkeyPatch.context() as mp:
@@ -146,7 +146,7 @@ class TestListFindings:
 
     async def test_list_findings_pagination(self, client):
         ac, _session, _user = client
-        from app.repositories.finding import FindingRepository
+        from spectra_platform.repositories.finding import FindingRepository
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(FindingRepository, "count", AsyncMock(return_value=50))
@@ -169,7 +169,7 @@ class TestListFindings:
 class TestGetFinding:
     async def test_get_finding_success(self, client):
         ac, _session, _user = client
-        from app.repositories.finding import FindingRepository
+        from spectra_platform.repositories.finding import FindingRepository
 
         finding = _fake_finding()
         with pytest.MonkeyPatch.context() as mp:
@@ -182,7 +182,7 @@ class TestGetFinding:
 
     async def test_get_finding_not_found(self, client):
         ac, _session, _user = client
-        from app.repositories.finding import FindingRepository
+        from spectra_platform.repositories.finding import FindingRepository
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(FindingRepository, "get_by_id", AsyncMock(return_value=None))
@@ -192,7 +192,7 @@ class TestGetFinding:
 
     async def test_get_finding_forbidden(self, client):
         ac, _session, _user = client
-        from app.repositories.finding import FindingRepository
+        from spectra_platform.repositories.finding import FindingRepository
 
         finding = _fake_finding(user_id="00000000-0000-4000-a000-000000000099")
         with pytest.MonkeyPatch.context() as mp:
@@ -211,8 +211,8 @@ class TestGetFinding:
 class TestCreateFinding:
     async def test_create_finding_valid(self, client):
         ac, _session, _user = client
-        from app.repositories.finding import FindingRepository
-        from app.repositories.target import TargetRepository
+        from spectra_platform.repositories.finding import FindingRepository
+        from spectra_platform.repositories.target import TargetRepository
 
         finding = _fake_finding()
         with pytest.MonkeyPatch.context() as mp:
@@ -239,7 +239,7 @@ class TestCreateFinding:
 
     async def test_create_finding_rejects_oversized_evidence_map(self, client):
         ac, _session, _user = client
-        from app.repositories.target import TargetRepository
+        from spectra_platform.repositories.target import TargetRepository
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=_fake_target_owned()))
@@ -257,7 +257,7 @@ class TestCreateFinding:
 
     async def test_create_finding_rejects_oversized_evidence_value(self, client):
         ac, _session, _user = client
-        from app.repositories.target import TargetRepository
+        from spectra_platform.repositories.target import TargetRepository
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=_fake_target_owned()))
@@ -275,7 +275,7 @@ class TestCreateFinding:
 
     async def test_create_finding_target_not_found(self, client):
         ac, _session, _user = client
-        from app.repositories.target import TargetRepository
+        from spectra_platform.repositories.target import TargetRepository
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=None))
@@ -292,8 +292,8 @@ class TestCreateFinding:
 
     async def test_create_finding_forbidden_other_owner(self, client):
         ac, _session, _user = client
-        from app.repositories.finding import FindingRepository
-        from app.repositories.target import TargetRepository
+        from spectra_platform.repositories.finding import FindingRepository
+        from spectra_platform.repositories.target import TargetRepository
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=_fake_target_owned(user_id="other-user")))
@@ -319,7 +319,7 @@ class TestCreateFinding:
 class TestUpdateFinding:
     async def test_update_finding_success(self, client):
         ac, _session, _user = client
-        from app.repositories.finding import FindingRepository
+        from spectra_platform.repositories.finding import FindingRepository
 
         existing = _fake_finding()
         updated = _fake_finding(title="Updated Title")
@@ -336,7 +336,7 @@ class TestUpdateFinding:
 
     async def test_update_finding_not_found(self, client):
         ac, _session, _user = client
-        from app.repositories.finding import FindingRepository
+        from spectra_platform.repositories.finding import FindingRepository
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(FindingRepository, "get_by_id", AsyncMock(return_value=None))
@@ -357,7 +357,7 @@ class TestUpdateFinding:
 class TestDeleteFinding:
     async def test_delete_finding_success(self, client):
         ac, _session, _user = client
-        from app.repositories.finding import FindingRepository
+        from spectra_platform.repositories.finding import FindingRepository
 
         finding = _fake_finding()
         with pytest.MonkeyPatch.context() as mp:
@@ -369,7 +369,7 @@ class TestDeleteFinding:
 
     async def test_delete_finding_not_found(self, client):
         ac, _session, _user = client
-        from app.repositories.finding import FindingRepository
+        from spectra_platform.repositories.finding import FindingRepository
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(FindingRepository, "get_by_id", AsyncMock(return_value=None))
@@ -387,7 +387,7 @@ class TestDeleteFinding:
 class TestFindingExportsAndStatusPaths:
     async def test_export_csv_preserves_zero_cvss_score(self, client):
         ac, _session, _user = client
-        from app.repositories.finding import FindingRepository
+        from spectra_platform.repositories.finding import FindingRepository
 
         finding = _fake_finding(cvss_score=0.0)
         with pytest.MonkeyPatch.context() as mp:
@@ -400,7 +400,7 @@ class TestFindingExportsAndStatusPaths:
 
     async def test_export_csv_encrypted_requires_password_header(self, client):
         ac, _session, _user = client
-        from app.repositories.finding import FindingRepository
+        from spectra_platform.repositories.finding import FindingRepository
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(FindingRepository, "find_many_by", AsyncMock(return_value=[]))
@@ -411,7 +411,7 @@ class TestFindingExportsAndStatusPaths:
 
     async def test_export_json_sets_media_type_and_filename(self, client):
         ac, _session, _user = client
-        from app.repositories.finding import FindingRepository
+        from spectra_platform.repositories.finding import FindingRepository
 
         finding = _fake_finding()
         with pytest.MonkeyPatch.context() as mp:
@@ -425,12 +425,12 @@ class TestFindingExportsAndStatusPaths:
 
     async def test_export_json_encrypted_sets_encrypted_headers(self, client):
         ac, _session, _user = client
-        from app.repositories.finding import FindingRepository
+        from spectra_platform.repositories.finding import FindingRepository
 
         with pytest.MonkeyPatch.context() as mp:
             encrypt = MagicMock(return_value=b"encrypted-payload")
             mp.setattr(FindingRepository, "find_many_by", AsyncMock(return_value=[]))
-            mp.setattr("app.auth.encryption.encrypt_data_with_password", encrypt)
+            mp.setattr("spectra_platform.auth.encryption.encrypt_data_with_password", encrypt)
             resp = await ac.get(
                 "/api/v1/findings/export/json?encrypted=true",
                 headers={"X-Export-Password": "secret-pass"},
@@ -444,7 +444,7 @@ class TestFindingExportsAndStatusPaths:
 
     async def test_verify_finding_returns_explicit_500_when_update_is_falsy(self, client):
         ac, _session, _user = client
-        from app.repositories.finding import FindingRepository
+        from spectra_platform.repositories.finding import FindingRepository
 
         finding = _fake_finding()
         with pytest.MonkeyPatch.context() as mp:
@@ -457,9 +457,9 @@ class TestFindingExportsAndStatusPaths:
 
     async def test_confirm_finding_keeps_generic_500_when_update_is_falsy(self):
         app = _make_app()
-        from app.core.database import get_async_session
-        from app.repositories.finding import FindingRepository
         from spectra_api.api.dependencies import get_current_active_user
+        from spectra_platform.core.database import get_async_session
+        from spectra_platform.repositories.finding import FindingRepository
 
         user = _fake_user()
         app.dependency_overrides[get_current_active_user] = lambda: user

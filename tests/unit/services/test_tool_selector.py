@@ -6,13 +6,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.ai.agents.base import ActionRisk, AgentContext
-from app.services.ai.agents.tool_selector import (
+from spectra_domain.enums import RiskLevel
+from spectra_platform.services.ai.agents.base import ActionRisk, AgentContext
+from spectra_platform.services.ai.agents.tool_selector import (
     ToolSelectorAgent,
     ToolSelectorInput,
     ToolSelectorOutput,
 )
-from spectra_domain.enums import RiskLevel
 from tests.mocks.llm import MockLLMClient
 
 
@@ -191,7 +191,7 @@ class TestToolSelectorExecution:
             required_capability=None,
         )
 
-        with patch("app.services.ai.agents.tool_selector.get_registry") as mock_registry:
+        with patch("spectra_platform.services.ai.agents.tool_selector.get_registry") as mock_registry:
             mock_tool = MagicMock()
             mock_tool.is_available = True
             mock_tool.config.id = "nmap"
@@ -241,7 +241,7 @@ class TestToolSelectorExecution:
         )
 
         # Mock registry to return no tools
-        with patch("app.services.ai.agents.tool_selector.get_registry") as mock_registry:
+        with patch("spectra_platform.services.ai.agents.tool_selector.get_registry") as mock_registry:
             mock_registry.return_value.list_tools.return_value = []
 
             result = await agent.execute(context, input_data)
@@ -249,7 +249,7 @@ class TestToolSelectorExecution:
         # Should skip since no tools available
         assert result.action is not None
         # ToolSelectorOutput has skip_reason attribute - cast to check
-        from app.services.ai.agents.tool_selector import ToolSelectorOutput
+        from spectra_platform.services.ai.agents.tool_selector import ToolSelectorOutput
 
         if isinstance(result.action, ToolSelectorOutput):
             assert result.action.skip_reason is not None

@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.services.tools.consensus import perform_consensus_check
+from spectra_platform.services.tools.consensus import perform_consensus_check
 
 
 @pytest.mark.asyncio

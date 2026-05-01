@@ -131,7 +131,7 @@ async def test_track_tool_stats():
     mock_cache = AsyncMock()
     mock_cache.get = AsyncMock(return_value=None)
 
-    with patch("app.infrastructure.cache.CacheService", return_value=mock_cache):
+    with patch("spectra_platform.infrastructure.cache.CacheService", return_value=mock_cache):
         await _track_tool_stats("nmap", True, 1.5)
 
     mock_cache.set.assert_awaited_once()
@@ -144,7 +144,7 @@ async def test_sync_tool_status():
     mock_cache = AsyncMock()
     mock_cache.get = AsyncMock(return_value={"status": "old"})
 
-    with patch("app.infrastructure.cache.CacheService", return_value=mock_cache):
+    with patch("spectra_platform.infrastructure.cache.CacheService", return_value=mock_cache):
         await _sync_tool_status("nmap", {"status": "running"})
 
     mock_cache.set.assert_awaited_once()
@@ -155,7 +155,7 @@ async def test_track_tool_stats_failure():
     mock_cache = AsyncMock()
     mock_cache.get = AsyncMock(return_value=None)
 
-    with patch("app.infrastructure.cache.CacheService", return_value=mock_cache):
+    with patch("spectra_platform.infrastructure.cache.CacheService", return_value=mock_cache):
         await _track_tool_stats("nmap", False, 1.5)
 
     args = mock_cache.set.call_args
@@ -167,7 +167,7 @@ async def test_track_tool_stats_exception():
     mock_cache = AsyncMock()
     mock_cache.get = AsyncMock(side_effect=ConnectionError("cache down"))
 
-    with patch("app.infrastructure.cache.CacheService", return_value=mock_cache):
+    with patch("spectra_platform.infrastructure.cache.CacheService", return_value=mock_cache):
         await _track_tool_stats("nmap", True, 1.5)
 
     mock_cache.set.assert_not_called()
@@ -178,7 +178,7 @@ async def test_sync_tool_status_non_dict_existing():
     mock_cache = AsyncMock()
     mock_cache.get = AsyncMock(return_value="not a dict")
 
-    with patch("app.infrastructure.cache.CacheService", return_value=mock_cache):
+    with patch("spectra_platform.infrastructure.cache.CacheService", return_value=mock_cache):
         await _sync_tool_status("nmap", {"status": "running"})
 
     mock_cache.set.assert_awaited_once()

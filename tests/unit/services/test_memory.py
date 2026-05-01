@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.services.ai.memory import (
+from spectra_platform.services.ai.memory import (
     MissionMemory,
     detect_os_from_output,
     detect_os_from_services,
@@ -262,7 +262,7 @@ class TestSingleton:
     def test_get_memory_returns_same(self, tmp_path):
         from unittest.mock import patch
 
-        import app.services.ai.memory as mod
+        import spectra_platform.services.ai.memory as mod
 
         mod._memory = None
         cache_dir = tmp_path / "cache"

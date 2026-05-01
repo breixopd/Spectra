@@ -7,7 +7,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.status import HTTP_403_FORBIDDEN
 
-from app.core.config import settings
+from spectra_platform.core.config import settings
 
 logger = logging.getLogger(__name__)
 

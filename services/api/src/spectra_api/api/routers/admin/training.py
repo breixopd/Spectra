@@ -12,15 +12,15 @@ from sqlalchemy import func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
-from app.core.database import get_async_session
-from app.infrastructure.queue import PostgresJobQueue
-from app.models.training import FineTuningJob, TrainingSample
-from app.models.user import User
-from app.services.training.backends import get_training_backend, list_training_backends
-from app.services.training.dataset import export_dataset, get_dataset_stats
 from spectra_api.authz import Permission, require_permission
 from spectra_domain.jobs import WorkerJobName
+from spectra_platform.core.config import settings
+from spectra_platform.core.database import get_async_session
+from spectra_platform.infrastructure.queue import PostgresJobQueue
+from spectra_platform.models.training import FineTuningJob, TrainingSample
+from spectra_platform.models.user import User
+from spectra_platform.services.training.backends import get_training_backend, list_training_backends
+from spectra_platform.services.training.dataset import export_dataset, get_dataset_stats
 
 logger = logging.getLogger(__name__)
 

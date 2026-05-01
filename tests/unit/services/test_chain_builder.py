@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-from app.services.mission.chain_builder import (
+from spectra_platform.services.mission.chain_builder import (
     BUILTIN_CHAINS,
     ChainBuilder,
     ChainExecutionResult,
@@ -151,14 +151,14 @@ class TestBuiltinChains:
 
 class TestCustomChains:
     def test_load_nonexistent_returns_empty(self):
-        with patch("app.services.mission.chain_builder.CUSTOM_CHAINS_PATH", Path("/nonexistent")):
+        with patch("spectra_platform.services.mission.chain_builder.CUSTOM_CHAINS_PATH", Path("/nonexistent")):
             result = load_custom_chains()
             assert result == []
 
     def test_load_invalid_json_returns_empty(self, tmp_path):
         bad_file = tmp_path / "chains.json"
         bad_file.write_text("not json")
-        with patch("app.services.mission.chain_builder.CUSTOM_CHAINS_PATH", bad_file):
+        with patch("spectra_platform.services.mission.chain_builder.CUSTOM_CHAINS_PATH", bad_file):
             result = load_custom_chains()
             assert result == []
 
@@ -169,8 +169,8 @@ class TestCustomChains:
             name="My Chain",
             stages=[ChainStage(id="s1", name="Step1", tool="nmap")],
         )
-        with patch("app.services.mission.chain_builder.CUSTOM_CHAINS_PATH", chains_file):
-            with patch("app.services.mission.chain_builder.load_custom_chains", return_value=[]):
+        with patch("spectra_platform.services.mission.chain_builder.CUSTOM_CHAINS_PATH", chains_file):
+            with patch("spectra_platform.services.mission.chain_builder.load_custom_chains", return_value=[]):
                 save_custom_chain(chain)
             assert chains_file.exists()
             data = json.loads(chains_file.read_text())

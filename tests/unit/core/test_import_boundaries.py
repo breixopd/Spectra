@@ -21,7 +21,7 @@ def test_service_boundary_rules_exist():
     from scripts.check_import_boundaries import FORBIDDEN_IMPORTS, SERVICE_BOUNDARIES
 
     assert "services/worker/src/spectra_worker/__main__.py" in SERVICE_BOUNDARIES
-    assert "app.services.ai" in FORBIDDEN_IMPORTS
+    assert "spectra_platform.services.ai" in FORBIDDEN_IMPORTS
     assert "spectra_ai" in FORBIDDEN_IMPORTS
     assert "spectra_scheduler" in FORBIDDEN_IMPORTS
     assert "services/api/src" in SERVICE_BOUNDARIES

@@ -83,7 +83,7 @@ async def run_command_job(
     logger.info("Running command: %s", command[:100])
 
     # Safety check: validate command against blocklists before execution
-    from app.services.ai.agents.safety import SafetySupervisorAgent
+    from spectra_platform.services.ai.agents.safety import SafetySupervisorAgent
 
     allowed, reason = SafetySupervisorAgent.check_blocklist(command)  # type: ignore[attr-defined]
     if not allowed:
@@ -105,7 +105,7 @@ async def execute_script_job(
 ) -> dict[str, Any]:
     """Execute a custom script (Python/Go/Bash)."""
     # Safety check: validate script content, target, and args against blocklist
-    from app.services.ai.agents.safety import SafetySupervisorAgent
+    from spectra_platform.services.ai.agents.safety import SafetySupervisorAgent
 
     for label, value in [("content", content), ("target", target)]:
         allowed, reason = SafetySupervisorAgent.check_blocklist(value)  # type: ignore[attr-defined]

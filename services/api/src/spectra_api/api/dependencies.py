@@ -15,16 +15,16 @@ from jwt.exceptions import InvalidTokenError as JWTError
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.security import decode_token
-from app.core.database import async_session_maker, get_async_session
-from app.models.user import User
-from app.services.billing.entitlements import get_user_entitlement_plan
 from spectra_common.advisory_locks import stable_lock_id
+from spectra_platform.auth.security import decode_token
+from spectra_platform.core.database import async_session_maker, get_async_session
+from spectra_platform.models.user import User
+from spectra_platform.services.billing.entitlements import get_user_entitlement_plan
 
 if TYPE_CHECKING:
-    from app.repositories.exploit import ExploitRepository
-    from app.repositories.finding import FindingRepository
-    from app.repositories.target import TargetRepository
+    from spectra_platform.repositories.exploit import ExploitRepository
+    from spectra_platform.repositories.finding import FindingRepository
+    from spectra_platform.repositories.target import TargetRepository
 
 logger = __import__("logging").getLogger(__name__)
 
@@ -147,7 +147,7 @@ async def get_current_user(
             raise credentials_exception
 
         # Idle session timeout check
-        from app.core.config import get_settings
+        from spectra_platform.core.config import get_settings
 
         idle_timeout = get_settings().SESSION_IDLE_TIMEOUT_MINUTES
         if idle_timeout > 0 and isinstance(user.last_activity, datetime):
@@ -227,7 +227,7 @@ async def get_target_repository(
     Returns:
         Configured TargetRepository.
     """
-    from app.repositories.target import TargetRepository
+    from spectra_platform.repositories.target import TargetRepository
 
     return TargetRepository(session)
 
@@ -243,7 +243,7 @@ async def get_finding_repository(
     Returns:
         Configured FindingRepository.
     """
-    from app.repositories.finding import FindingRepository
+    from spectra_platform.repositories.finding import FindingRepository
 
     return FindingRepository(session)
 
@@ -259,7 +259,7 @@ async def get_exploit_repository(
     Returns:
         Configured ExploitRepository.
     """
-    from app.repositories.exploit import ExploitRepository
+    from spectra_platform.repositories.exploit import ExploitRepository
 
     return ExploitRepository(session)
 
@@ -290,7 +290,7 @@ async def check_mission_limit(user: User, session: AsyncSession) -> None:
         raise HTTPException(status_code=403, detail="No active subscription")
     if not plan.max_concurrent_missions:
         return
-    from app.models.mission import Mission
+    from spectra_platform.models.mission import Mission
 
     active_count = (
         await session.execute(
@@ -319,7 +319,7 @@ async def check_storage_limit(user: User, session: AsyncSession) -> None:
 
     from datetime import UTC
 
-    from app.models.plan import UsageRecord
+    from spectra_platform.models.plan import UsageRecord
 
     sentinel = datetime(2000, 1, 1, tzinfo=UTC)
     rec_result = await session.execute(
@@ -347,7 +347,7 @@ async def check_target_limit(user: User, session: AsyncSession) -> None:
         raise HTTPException(status_code=403, detail="No active subscription")
     if not plan.max_targets:
         return
-    from app.models.target import Target
+    from spectra_platform.models.target import Target
 
     count = (await session.execute(select(func.count(Target.id)).where(Target.user_id == str(user.id)))).scalar() or 0
     if count >= plan.max_targets:
@@ -392,8 +392,8 @@ async def verify_api_quota_for_user(user: User) -> None:
     if _is_admin_user(user):
         return
 
-    from app.services.billing.quota_enforcer import QuotaEnforcer
-    from app.services.billing.usage_tracker import UsageTracker
+    from spectra_platform.services.billing.quota_enforcer import QuotaEnforcer
+    from spectra_platform.services.billing.usage_tracker import UsageTracker
 
     enforcer = QuotaEnforcer()
     tracker = UsageTracker()

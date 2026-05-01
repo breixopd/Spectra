@@ -12,7 +12,7 @@ from spectra_api.ui.public import router
 
 
 def _make_app() -> FastAPI:
-    from app.auth.rate_limit import limiter
+    from spectra_platform.auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter
@@ -168,9 +168,9 @@ class TestRegisterEndpoint:
         assert "created" in result["detail"].lower()
 
     async def test_register_without_self_service_plan_leaves_user_unassigned(self):
-        from app.models.plan import Subscription
-        from app.models.user import User
         from spectra_api.ui.public import RegisterRequest, register_user
+        from spectra_platform.models.plan import Subscription
+        from spectra_platform.models.user import User
 
         superuser_result = MagicMock()
         superuser_result.scalar_one_or_none.return_value = "admin-id"
@@ -198,8 +198,8 @@ class TestRegisterEndpoint:
         sync_mock.assert_not_awaited()
 
     async def test_register_with_self_service_plan_creates_subscription(self):
-        from app.models.plan import Subscription
         from spectra_api.ui.public import RegisterRequest, register_user
+        from spectra_platform.models.plan import Subscription
 
         superuser_result = MagicMock()
         superuser_result.scalar_one_or_none.return_value = "admin-id"

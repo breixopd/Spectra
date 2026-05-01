@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.tools.dispatch import build_execution_request, dispatch_and_process_result
+from spectra_platform.services.tools.dispatch import build_execution_request, dispatch_and_process_result
 from spectra_tools_core.models import ToolExecutionRequest, ToolExecutionResult
 
 
@@ -28,14 +28,14 @@ def _make_mission(mission_id: str = "mission-001"):
 
 
 class TestBuildExecutionRequest:
-    @patch("app.services.tools.dispatch.prepare_output_directory", return_value="/tmp/output")
+    @patch("spectra_platform.services.tools.dispatch.prepare_output_directory", return_value="/tmp/output")
     def test_basic_request_construction(self, mock_prepare):
         mission = _make_mission()
         tool = _make_tool(timeout=600)
         adapter_instance = MagicMock()
         adapter_instance.builder.build_command.return_value = "nmap -sV 10.0.0.1"
 
-        with patch("app.services.tools.dispatch.CommandToolAdapter", return_value=adapter_instance):
+        with patch("spectra_platform.services.tools.dispatch.CommandToolAdapter", return_value=adapter_instance):
             request, _adapter, _command, output_dir = build_execution_request(
                 mission=mission,
                 tool=tool,
@@ -53,49 +53,49 @@ class TestBuildExecutionRequest:
         assert output_dir == "/tmp/output"
         mission.log.assert_called()
 
-    @patch("app.services.tools.dispatch.prepare_output_directory", return_value="/tmp/out")
+    @patch("spectra_platform.services.tools.dispatch.prepare_output_directory", return_value="/tmp/out")
     def test_timeout_uses_max_of_provided_and_configured(self, mock_prepare):
         mission = _make_mission()
         tool = _make_tool(timeout=100)
         adapter_instance = MagicMock()
         adapter_instance.builder.build_command.return_value = "cmd"
 
-        with patch("app.services.tools.dispatch.CommandToolAdapter", return_value=adapter_instance):
+        with patch("spectra_platform.services.tools.dispatch.CommandToolAdapter", return_value=adapter_instance):
             request, _, _, _ = build_execution_request(
                 mission=mission, tool=tool, tool_name="test", target="t", args=None, timeout=500
             )
 
         assert request.timeout == 500
 
-    @patch("app.services.tools.dispatch.prepare_output_directory", return_value="/tmp/out")
+    @patch("spectra_platform.services.tools.dispatch.prepare_output_directory", return_value="/tmp/out")
     def test_none_timeout_uses_configured(self, mock_prepare):
         mission = _make_mission()
         tool = _make_tool(timeout=200)
         adapter_instance = MagicMock()
         adapter_instance.builder.build_command.return_value = "cmd"
 
-        with patch("app.services.tools.dispatch.CommandToolAdapter", return_value=adapter_instance):
+        with patch("spectra_platform.services.tools.dispatch.CommandToolAdapter", return_value=adapter_instance):
             request, _, _, _ = build_execution_request(
                 mission=mission, tool=tool, tool_name="test", target="t", args=None, timeout=None
             )
 
         assert request.timeout == 200
 
-    @patch("app.services.tools.dispatch.prepare_output_directory", return_value="/tmp/out")
+    @patch("spectra_platform.services.tools.dispatch.prepare_output_directory", return_value="/tmp/out")
     def test_none_args_defaults_to_empty(self, mock_prepare):
         mission = _make_mission()
         tool = _make_tool()
         adapter_instance = MagicMock()
         adapter_instance.builder.build_command.return_value = "cmd"
 
-        with patch("app.services.tools.dispatch.CommandToolAdapter", return_value=adapter_instance):
+        with patch("spectra_platform.services.tools.dispatch.CommandToolAdapter", return_value=adapter_instance):
             request, _, _, _ = build_execution_request(
                 mission=mission, tool=tool, tool_name="test", target="t", args=None, timeout=None
             )
 
         assert request.args == {}
 
-    @patch("app.services.tools.dispatch.prepare_output_directory", return_value="/tmp/out")
+    @patch("spectra_platform.services.tools.dispatch.prepare_output_directory", return_value="/tmp/out")
     def test_non_numeric_configured_timeout_treated_as_zero(self, mock_prepare):
         mission = _make_mission()
         tool = _make_tool()
@@ -103,14 +103,14 @@ class TestBuildExecutionRequest:
         adapter_instance = MagicMock()
         adapter_instance.builder.build_command.return_value = "cmd"
 
-        with patch("app.services.tools.dispatch.CommandToolAdapter", return_value=adapter_instance):
+        with patch("spectra_platform.services.tools.dispatch.CommandToolAdapter", return_value=adapter_instance):
             request, _, _, _ = build_execution_request(
                 mission=mission, tool=tool, tool_name="test", target="t", args=None, timeout=120
             )
 
         assert request.timeout == 120
 
-    @patch("app.services.tools.dispatch.prepare_output_directory", return_value="/tmp/out")
+    @patch("spectra_platform.services.tools.dispatch.prepare_output_directory", return_value="/tmp/out")
     def test_long_command_truncated_in_log(self, mock_prepare):
         mission = _make_mission()
         tool = _make_tool()
@@ -118,7 +118,7 @@ class TestBuildExecutionRequest:
         adapter_instance = MagicMock()
         adapter_instance.builder.build_command.return_value = long_cmd
 
-        with patch("app.services.tools.dispatch.CommandToolAdapter", return_value=adapter_instance):
+        with patch("spectra_platform.services.tools.dispatch.CommandToolAdapter", return_value=adapter_instance):
             build_execution_request(
                 mission=mission, tool=tool, tool_name="test", target="t", args=None, timeout=None
             )
@@ -131,12 +131,12 @@ class TestBuildExecutionRequest:
 
 class TestDispatchAndProcessResult:
     @pytest.mark.asyncio
-    @patch("app.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock, return_value=0)
-    @patch("app.services.tools.dispatch.cleanup_output_directory")
-    @patch("app.services.tools.dispatch.execute_via_worker", new_callable=AsyncMock)
-    @patch("app.services.tools.dispatch.truncate_for_llm", side_effect=lambda s, **kw: s)
-    @patch("app.services.tools.dispatch.log_success")
-    @patch("app.services.tools.dispatch.update_attack_surface_from_finding")
+    @patch("spectra_platform.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock, return_value=0)
+    @patch("spectra_platform.services.tools.dispatch.cleanup_output_directory")
+    @patch("spectra_platform.services.tools.dispatch.execute_via_worker", new_callable=AsyncMock)
+    @patch("spectra_platform.services.tools.dispatch.truncate_for_llm", side_effect=lambda s, **kw: s)
+    @patch("spectra_platform.services.tools.dispatch.log_success")
+    @patch("spectra_platform.services.tools.dispatch.update_attack_surface_from_finding")
     async def test_successful_dispatch(
         self, mock_update_surface, mock_log_success, mock_truncate, mock_execute, mock_cleanup, mock_persist
     ):
@@ -181,9 +181,9 @@ class TestDispatchAndProcessResult:
         mock_cleanup.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("app.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock, return_value=0)
-    @patch("app.services.tools.dispatch.cleanup_output_directory")
-    @patch("app.services.tools.dispatch.execute_via_worker", new_callable=AsyncMock)
+    @patch("spectra_platform.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock, return_value=0)
+    @patch("spectra_platform.services.tools.dispatch.cleanup_output_directory")
+    @patch("spectra_platform.services.tools.dispatch.execute_via_worker", new_callable=AsyncMock)
     async def test_failed_dispatch_records_error(self, mock_execute, mock_cleanup, mock_persist):
         mission = _make_mission()
         tool = _make_tool()
@@ -226,12 +226,12 @@ class TestDispatchAndProcessResult:
         assert "Connection refused" in call_kwargs[1]["error"]
 
     @pytest.mark.asyncio
-    @patch("app.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock, return_value=0)
-    @patch("app.services.tools.dispatch.cleanup_output_directory")
-    @patch("app.services.tools.dispatch.execute_via_worker", new_callable=AsyncMock)
-    @patch("app.services.tools.dispatch.truncate_for_llm", side_effect=lambda s, **kw: s)
-    @patch("app.services.tools.dispatch.log_success")
-    @patch("app.services.tools.dispatch.update_attack_surface_from_finding")
+    @patch("spectra_platform.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock, return_value=0)
+    @patch("spectra_platform.services.tools.dispatch.cleanup_output_directory")
+    @patch("spectra_platform.services.tools.dispatch.execute_via_worker", new_callable=AsyncMock)
+    @patch("spectra_platform.services.tools.dispatch.truncate_for_llm", side_effect=lambda s, **kw: s)
+    @patch("spectra_platform.services.tools.dispatch.log_success")
+    @patch("spectra_platform.services.tools.dispatch.update_attack_surface_from_finding")
     async def test_findings_added_to_mission(
         self, mock_update_surface, mock_log_success, mock_truncate, mock_execute, mock_cleanup, mock_persist
     ):
@@ -274,12 +274,12 @@ class TestDispatchAndProcessResult:
         mock_update_surface.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("app.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock, return_value=0)
-    @patch("app.services.tools.dispatch.cleanup_output_directory")
-    @patch("app.services.tools.dispatch.execute_via_worker", new_callable=AsyncMock)
-    @patch("app.services.tools.dispatch.truncate_for_llm", side_effect=lambda s, **kw: s)
-    @patch("app.services.tools.dispatch.log_success")
-    @patch("app.services.tools.dispatch.update_attack_surface_from_finding")
+    @patch("spectra_platform.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock, return_value=0)
+    @patch("spectra_platform.services.tools.dispatch.cleanup_output_directory")
+    @patch("spectra_platform.services.tools.dispatch.execute_via_worker", new_callable=AsyncMock)
+    @patch("spectra_platform.services.tools.dispatch.truncate_for_llm", side_effect=lambda s, **kw: s)
+    @patch("spectra_platform.services.tools.dispatch.log_success")
+    @patch("spectra_platform.services.tools.dispatch.update_attack_surface_from_finding")
     async def test_stealth_delay_applied(
         self, mock_update_surface, mock_log_success, mock_truncate, mock_execute, mock_cleanup, mock_persist
     ):
@@ -295,7 +295,7 @@ class TestDispatchAndProcessResult:
             tool_id="nmap", target="10.0.0.1", success=True, stdout="ok", stderr="", exit_code=0, duration_seconds=0.5, parsed_findings=[]
         )
 
-        with patch("app.services.tools.dispatch.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        with patch("spectra_platform.services.tools.dispatch.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
             await dispatch_and_process_result(
                 mission=mission,
                 tool=tool,
@@ -317,12 +317,12 @@ class TestDispatchAndProcessResult:
             mock_sleep.assert_awaited_once_with(0.01)
 
     @pytest.mark.asyncio
-    @patch("app.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock)
-    @patch("app.services.tools.dispatch.cleanup_output_directory")
-    @patch("app.services.tools.dispatch.execute_via_worker", new_callable=AsyncMock)
-    @patch("app.services.tools.dispatch.truncate_for_llm", side_effect=lambda s, **kw: s)
-    @patch("app.services.tools.dispatch.log_success")
-    @patch("app.services.tools.dispatch.update_attack_surface_from_finding")
+    @patch("spectra_platform.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock)
+    @patch("spectra_platform.services.tools.dispatch.cleanup_output_directory")
+    @patch("spectra_platform.services.tools.dispatch.execute_via_worker", new_callable=AsyncMock)
+    @patch("spectra_platform.services.tools.dispatch.truncate_for_llm", side_effect=lambda s, **kw: s)
+    @patch("spectra_platform.services.tools.dispatch.log_success")
+    @patch("spectra_platform.services.tools.dispatch.update_attack_surface_from_finding")
     async def test_persist_failure_does_not_propagate(
         self, mock_update_surface, mock_log_success, mock_truncate, mock_execute, mock_cleanup, mock_persist
     ):

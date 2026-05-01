@@ -7,15 +7,15 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.rate_limit import RateLimits, limiter
-from app.core.config import get_settings
-from app.core.database import get_async_session
-from app.models.plan import Plan, UsageRecord
-from app.models.user import User
-from app.services.billing import PaymentService
-from app.services.billing.entitlements import get_manageable_billing_subscription, get_user_entitlement
-from app.services.billing.payment_adapter import get_payment_adapter, list_payment_providers
 from spectra_api.api.dependencies import get_current_active_user
+from spectra_platform.auth.rate_limit import RateLimits, limiter
+from spectra_platform.core.config import get_settings
+from spectra_platform.core.database import get_async_session
+from spectra_platform.models.plan import Plan, UsageRecord
+from spectra_platform.models.user import User
+from spectra_platform.services.billing import PaymentService
+from spectra_platform.services.billing.entitlements import get_manageable_billing_subscription, get_user_entitlement
+from spectra_platform.services.billing.payment_adapter import get_payment_adapter, list_payment_providers
 
 logger = logging.getLogger(__name__)
 

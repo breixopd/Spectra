@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.models.audit_log import AuditEventType
-from app.services.system.audit import log_event
+from spectra_platform.models.audit_log import AuditEventType
+from spectra_platform.services.system.audit import log_event
 
 
 @pytest.fixture
@@ -37,7 +37,7 @@ def _stub_repo(mock_repo):
 class TestLogEvent:
     @pytest.mark.asyncio
     async def test_creates_audit_log(self, mock_session):
-        with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
+        with patch("spectra_platform.services.system.audit.AuditLogRepository") as MockRepo:
             repo_inst = _stub_repo(MockRepo)
 
             await log_event(
@@ -56,7 +56,7 @@ class TestLogEvent:
 
     @pytest.mark.asyncio
     async def test_extracts_ip_from_request(self, mock_session, mock_request):
-        with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
+        with patch("spectra_platform.services.system.audit.AuditLogRepository") as MockRepo:
             repo_inst = _stub_repo(MockRepo)
 
             await log_event(
@@ -71,7 +71,7 @@ class TestLogEvent:
 
     @pytest.mark.asyncio
     async def test_extracts_user_agent_from_request(self, mock_session, mock_request):
-        with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
+        with patch("spectra_platform.services.system.audit.AuditLogRepository") as MockRepo:
             repo_inst = _stub_repo(MockRepo)
 
             await log_event(
@@ -85,7 +85,7 @@ class TestLogEvent:
 
     @pytest.mark.asyncio
     async def test_no_request_sets_none(self, mock_session):
-        with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
+        with patch("spectra_platform.services.system.audit.AuditLogRepository") as MockRepo:
             repo_inst = _stub_repo(MockRepo)
 
             await log_event(mock_session, AuditEventType.LOGOUT)
@@ -100,7 +100,7 @@ class TestLogEvent:
         req.client = None
         req.headers = {"user-agent": "Bot/1.0"}
 
-        with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
+        with patch("spectra_platform.services.system.audit.AuditLogRepository") as MockRepo:
             repo_inst = _stub_repo(MockRepo)
 
             await log_event(mock_session, AuditEventType.LOGIN, request=req)
@@ -110,7 +110,7 @@ class TestLogEvent:
 
     @pytest.mark.asyncio
     async def test_handles_db_error_gracefully(self, mock_session):
-        with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
+        with patch("spectra_platform.services.system.audit.AuditLogRepository") as MockRepo:
             repo_inst = MockRepo.return_value
             repo_inst.create = AsyncMock(side_effect=SQLAlchemyError("DB error"))
 
@@ -121,7 +121,7 @@ class TestLogEvent:
 
     @pytest.mark.asyncio
     async def test_all_event_types_valid(self, mock_session):
-        with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
+        with patch("spectra_platform.services.system.audit.AuditLogRepository") as MockRepo:
             repo_inst = _stub_repo(MockRepo)
 
             for evt in AuditEventType:
@@ -131,7 +131,7 @@ class TestLogEvent:
 
     @pytest.mark.asyncio
     async def test_none_details_stored_as_none(self, mock_session):
-        with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
+        with patch("spectra_platform.services.system.audit.AuditLogRepository") as MockRepo:
             repo_inst = _stub_repo(MockRepo)
 
             await log_event(mock_session, AuditEventType.LOGOUT, details=None)
@@ -146,7 +146,7 @@ class TestLogEvent:
         req.client.host = "10.0.0.1"
         req.headers = {"user-agent": "X" * 1000}
 
-        with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
+        with patch("spectra_platform.services.system.audit.AuditLogRepository") as MockRepo:
             repo_inst = _stub_repo(MockRepo)
 
             await log_event(mock_session, AuditEventType.LOGIN, request=req)

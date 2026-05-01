@@ -117,7 +117,7 @@ async def test_mcp_tool_start_mission():
     mock_user = MagicMock(is_active=True)
     mock_session.get.return_value = mock_user
 
-    with patch("app.services.mission.manager.mission_manager", mock_manager):
+    with patch("spectra_platform.services.mission.manager.mission_manager", mock_manager):
         with patch("spectra_api.api.mcp.settings") as mock_settings:
             mock_settings.MCP_USER_ID = "server-bound-user"
             mock_settings.MCP_API_KEY = "test-key"

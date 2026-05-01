@@ -6,6 +6,16 @@
 
 Technical deep-dive into Spectra's agent system, execution pipeline, and learning mechanisms.
 
+## Repository layout
+
+| Area | Role |
+|------|------|
+| **`spectra_platform/`** | Shared domain kernel: ORM models, repositories, mission/tool/AI business logic, infrastructure helpers. Imported as Python package `spectra_platform`. |
+| **`services/*/src/`** | Deployable edges: `spectra_api` (HTTP), `spectra_worker`, `spectra_scheduler`, `spectra_ai` with thin wiring into `spectra_platform`. |
+| **`packages/*/`** | Portable libraries (`spectra_common`, `spectra_domain`, `spectra_tools_core`) with strict import boundaries. |
+
+In containers, `WORKDIR` is `/app`; the platform package is mounted or copied at `/app/spectra_platform/`.
+
 ## Agent System (MAKER Framework)
 
 Spectra uses the **MAKER** framework: Maximal Agentic decomposition, K-threshold Error mitigation, and Red-flagging.
@@ -43,7 +53,7 @@ Critical decisions pass through quality gates where multiple LLM instances vote:
 
 ## Context Management
 
-The `ContextManager` (`app/services/ai/context.py`) prevents prompt explosion by budgeting tokens across context sections with priority-based allocation.
+The `ContextManager` (`spectra_platform/services/ai/context.py`) prevents prompt explosion by budgeting tokens across context sections with priority-based allocation.
 
 ### Priority Levels
 
@@ -63,7 +73,7 @@ The `ContextManager` (`app/services/ai/context.py`) prevents prompt explosion by
 
 ## Credential Store
 
-The `CredentialStore` (`app/services/mission/credentials.py`) captures discovered credentials during missions for reuse by subsequent tools.
+The `CredentialStore` (`spectra_platform/services/mission/credentials.py`) captures discovered credentials during missions for reuse by subsequent tools.
 
 - **Per-mission, in-memory** — credentials scoped to the mission lifecycle
 - **Auto-extraction** — regex patterns extract credentials from tool output (Hydra, generic login patterns)
@@ -76,7 +86,7 @@ The `CredentialStore` (`app/services/mission/credentials.py`) captures discovere
 
 ## RAG (Retrieval-Augmented Generation)
 
-PostgreSQL **pgvector** semantic search lives in the **`spectra_ai`** package (`services/ai/src/spectra_ai/rag.py`). The app uses **`app.services.ai.knowledge`** as the facade (`get_rag_service`, `get_mission_context`, etc.) and **`app.services.rag.service`** (`RAGFacade`) for higher-level indexing.
+PostgreSQL **pgvector** semantic search lives in the **`spectra_ai`** package (`services/ai/src/spectra_ai/rag.py`). The platform uses **`spectra_platform.services.ai.knowledge`** as the facade (`get_rag_service`, `get_mission_context`, etc.) and **`spectra_platform.services.rag.service`** (`RAGFacade`) for higher-level indexing.
 
 ### Components
 
@@ -183,7 +193,7 @@ User enters target + directive
 
 Debrief lessons are auto-saved after every mission by the `DebriefAgent`.
 
-**Exploit intelligence** (Metasploit modules, CISA KEV catalog, Exploit-DB entries, CVE knowledge base) is cached in PostgreSQL via the `CacheEntry` model (`app/services/ai/exploit_db.py`). At startup, the database is auto-initialized in the background if cached data is present. First-time setup requires an admin download via **Settings → Data Sources**, or the scheduler's `exploit_db_refresh` task handles it automatically.
+**Exploit intelligence** (Metasploit modules, CISA KEV catalog, Exploit-DB entries, CVE knowledge base) is cached in PostgreSQL via the `CacheEntry` model (`spectra_platform/services/ai/exploit_db.py`). At startup, the database is auto-initialized in the background if cached data is present. First-time setup requires an admin download via **Settings → Data Sources**, or the scheduler's `exploit_db_refresh` task handles it automatically.
 
 ### Layer 2: Playbook Engine (`playbook.py`)
 
@@ -226,7 +236,7 @@ Anti-hallucination mechanisms:
 
 Spectra runs as four independently deployable microservices. Each image sets
 `SERVICE_MODE` so shared configuration (for example database pool sizing in
-`app.core.config`) can adapt. **Only the Core API** (`spectra_api`) uses that
+`spectra_platform.core.config`) can adapt. **Only the Core API** (`spectra_api`) uses that
 value for FastAPI router mounting (`api` / `all` / `""` = full surface; see
 `microservices-split.md`). AI, scheduler, and worker are **separate ASGI apps**
 with their own entrypoints.
@@ -246,7 +256,7 @@ For development or single-node **API** processes, `SERVICE_MODE=all` loads the s
 
 ```text
 spectra/
-├── app/
+├── spectra_platform/
 │   ├── _meta/              # App metadata (version, build info)
 │   ├── api/                # HTTP layer — FastAPI routers, schemas
 │   │   ├── routers/        # One module per domain
@@ -305,9 +315,9 @@ spectra/
 
 | Layer | Path | Rule |
 |-------|------|------|
-| **Shared** | `app/core/`, `app/models/`, `app/repositories/` | Used by all services. Must NOT import service-specific code. |
+| **Shared** | `spectra_platform/core/`, `spectra_platform/models/`, `spectra_platform/repositories/` | Used by all services. Must NOT import service-specific code. |
 | **Service: API** | `services/api/src/spectra_api/` (`spectra_api.main:app`) | Routers, schemas, bootstrap, UI templates, API-owned settings/setup services |
-| **Service: AI** | `services/ai/src/spectra_ai/main.py`, `app/services/ai/` | LLM clients, agents, RAG |
+| **Service: AI** | `services/ai/src/spectra_ai/main.py`, `spectra_platform/services/ai/` | LLM clients, agents, RAG |
 | **Service: Worker** | `services/worker/src/spectra_worker/` (`spectra_worker.main:app`) | Job queue consumer, tool execution |
 | **Service: Scheduler** | `services/scheduler/src/spectra_scheduler/main.py` | Background task loops |
 
@@ -323,7 +333,7 @@ Spectra uses a dual-layer caching system: PostgreSQL for persistent application 
 
 ### PostgreSQL CacheService
 
-`CacheService` (`app/core/cache.py`) provides the primary application cache backed by the `cache_entries` table:
+`CacheService` (`spectra_platform/core/cache.py`) provides the primary application cache backed by the `cache_entries` table:
 
 - **Persistent** — survives restarts, shared across all service instances
 - **TTL support** — entries expire via `expires_at` column
@@ -333,7 +343,7 @@ Spectra uses a dual-layer caching system: PostgreSQL for persistent application 
 
 ### Redis Cache
 
-`RedisCache` (`app/core/redis_client.py`) provides fast, ephemeral caching and distributed rate limiting:
+`RedisCache` (`spectra_platform/core/redis_client.py`) provides fast, ephemeral caching and distributed rate limiting:
 
 - **Connection pooling** — singleton `RedisConnectionPool` with graceful degradation when Redis is unavailable
 - **JSON serialization** — values stored as JSON strings
@@ -355,13 +365,13 @@ When Redis is unavailable, the system degrades gracefully: `RedisCache` methods 
 
 ## Service Architecture (Gateway Pattern)
 
-Spectra uses a **ServiceRegistry** pattern (`app/services/gateway/service_registry.py`) to transparently route between in-process and remote implementations. When a gateway URL is configured, the registry instantiates an HTTP client adapter; otherwise it creates the local implementation.
+Spectra uses a **ServiceRegistry** pattern (`spectra_platform/services/gateway/service_registry.py`) to transparently route between in-process and remote implementations. When a gateway URL is configured, the registry instantiates an HTTP client adapter; otherwise it creates the local implementation.
 
 ### Extractable Services
 
 | Service | Config Setting | Local Implementation | Protocol |
 |---------|---------------|---------------------|----------|
-| Sandbox Orchestrator | `SANDBOX_ORCHESTRATOR_URL` | `SandboxPool` (`app/services/tools/sandbox/`) | HTTP `/containers/*` |
+| Sandbox Orchestrator | `SANDBOX_ORCHESTRATOR_URL` | `SandboxPool` (`spectra_platform/services/tools/sandbox/`) | HTTP `/containers/*` |
 
 ### What Stays In-Process
 
@@ -375,7 +385,7 @@ Spectra uses a **ServiceRegistry** pattern (`app/services/gateway/service_regist
 ### ServiceRegistry Pattern
 
 ```python
-from app.services.gateway import get_service_registry
+from spectra_platform.services.gateway import get_service_registry
 
 registry = get_service_registry()
 pool = await registry.get_sandbox_orchestrator()  # Remote or local Docker
