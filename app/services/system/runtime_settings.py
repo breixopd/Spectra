@@ -180,6 +180,8 @@ GENERAL_RUNTIME_FIELD_MAP: dict[str, tuple[str, str]] = {
     "SANDBOX_WORKER_POLL_DELAY": ("SANDBOX_WORKER_POLL_DELAY", "str"),
     # Application
     "APP_NAME": ("APP_NAME", "str"),
+    "CONTACT_EMAIL": ("CONTACT_EMAIL", "str"),
+    "ALLOW_REGISTRATION": ("ALLOW_REGISTRATION", "bool"),
     "JWT_ALGORITHM": ("JWT_ALGORITHM", "str"),
     "CORS_ORIGINS": ("CORS_ORIGINS", "csv_list"),
     "DOCKER_REGISTRY": ("DOCKER_REGISTRY", "str"),
