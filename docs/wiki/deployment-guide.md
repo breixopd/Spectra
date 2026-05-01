@@ -333,7 +333,7 @@ Docker Swarm is built into Docker Engine — no extra software to install. Use i
 
 A pre-built Swarm stack is at `docker/docker-compose.swarm.yml`.
 
-Swarm now mirrors the Compose runtime contract: `ai-svc` on `5010`, `scheduler` on `5011`, and `worker` on `5012`. The stack also supports `_FILE` secret environment variables such as `POSTGRES_PASSWORD_FILE`, `SERVICE_AUTH_SECRET_FILE`, and `JWT_SECRET_KEY_FILE`.
+Swarm now mirrors the Compose runtime contract: `ai-svc` on `5010`, `scheduler` on `5011`, and `worker` on `5012`. The stack also supports `_FILE` secret environment variables such as `POSTGRES_PASSWORD_FILE`, `SERVICE_AUTH_SECRET_FILE`, and `JWT_SECRET_KEY_FILE`. **Scheduler** and **worker** HTTP healthchecks include a **`start_period` of 90s** so cold starts during rolling updates are less likely to be marked unhealthy before dependencies are ready.
 
 ### 1. Initialize Swarm
 
