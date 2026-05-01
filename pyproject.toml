@@ -133,8 +133,8 @@ addopts = [
     "--cov-fail-under=70",
 ]
 filterwarnings = [
-    # AsyncMock returns awaitable proxies; some test paths touch attrs without awaiting.
-    "ignore:coroutine '.*' was never awaited:RuntimeWarning",
+    # AsyncMock returns awaitable proxies; GC can warn from unittest.mock internals.
+    "ignore:coroutine '.*' was never awaited:RuntimeWarning:unittest.mock",
 ]
 pythonpath = [".", "services/ai/src", "services/api/src"]
 asyncio_mode = "strict"
