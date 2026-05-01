@@ -160,3 +160,43 @@ class TestSearchResult:
         sr = SearchResult(document=doc, score=0.95)
         assert sr.score == 0.95
         assert sr.highlights == []
+
+
+class TestRAGSearchFilters:
+    @pytest.mark.asyncio
+    async def test_search_passes_doc_types_user_and_exclude_session(self, functional_rag):
+        functional_rag._table_ready = True
+        row = {
+            "id": "f1",
+            "content": "body",
+            "doc_type": "finding",
+            "cve_id": None,
+            "severity": "high",
+            "target": "10.0.0.1",
+            "session_id": "other-mission",
+            "metadata": {},
+            "similarity": 0.99,
+        }
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.mappings.return_value.all.return_value = [row]
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_cm = AsyncMock()
+        mock_cm.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_cm.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("spectra_ai.rag.get_async_session_maker", return_value=lambda: mock_cm):
+            out = await functional_rag.search(
+                "query",
+                top_k=2,
+                doc_types=["finding", "lesson"],
+                user_id="user-9",
+                exclude_session_id="mission-x",
+            )
+
+        assert len(out) == 1
+        call_kw = mock_session.execute.call_args_list[-1][0][1]
+        assert call_kw["dt_0"] == "finding"
+        assert call_kw["dt_1"] == "lesson"
+        assert call_kw["rag_user_id"] == "user-9"
+        assert call_kw["rag_exclude_session"] == "mission-x"
