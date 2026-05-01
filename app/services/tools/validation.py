@@ -28,14 +28,12 @@ async def validate_and_resolve_tool(
     tool_name: str,
     target: str,
     args: dict[str, Any] | None,
-    install_timeout: int,
 ) -> tuple[RegisteredTool | None, ToolExecutionResult | None]:
     """Validate tool name and resolve from registry.
 
     Runtime execution workers must use prebuilt, verified golden images. Missing
     tools are deployment/build failures, not mission-time installation work.
     """
-    _ = install_timeout  # Compatibility with existing call sites; installs no longer happen here.
     if not validate_tool_name(tool_name):
         mission.log(f"Invalid tool name format: {tool_name}")
         return None, create_error_result(tool_name, target, "Invalid tool name")
