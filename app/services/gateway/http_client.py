@@ -58,7 +58,12 @@ class GatewayClient:
         for attempt in range(HTTP_CLIENT_MAX_RETRIES):
             try:
                 return await self._do_request(method, url, **kwargs)
-            except (aiohttp.ClientConnectionError, TimeoutError) as e:
+            except (
+                aiohttp.ClientConnectionError,
+                aiohttp.ServerDisconnectedError,
+                TimeoutError,
+                asyncio.TimeoutError,
+            ) as e:
                 last_error = e
                 if attempt < HTTP_CLIENT_MAX_RETRIES - 1:
                     wait = HTTP_CLIENT_RETRY_BACKOFF * (2**attempt)

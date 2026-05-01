@@ -1,5 +1,6 @@
 """Tests for GatewayClient retry logic."""
 
+import asyncio
 from unittest.mock import AsyncMock, patch
 
 import aiohttp
@@ -56,6 +57,26 @@ class TestGatewayClientRequest:
             with pytest.raises(aiohttp.ClientConnectionError):
                 await client.get("/test")
         assert mock.await_count == MAX_RETRIES
+
+    async def test_retries_on_server_disconnected_then_succeeds(self, client: GatewayClient):
+        with (
+            patch.object(client, "_do_request", new_callable=AsyncMock) as mock,
+            patch("app.services.gateway.http_client.asyncio.sleep", new_callable=AsyncMock),
+        ):
+            mock.side_effect = [aiohttp.ServerDisconnectedError(), {"ok": True}]
+            result = await client.get("/test")
+        assert result == {"ok": True}
+        assert mock.await_count == 2
+
+    async def test_retries_on_asyncio_timeout_then_succeeds(self, client: GatewayClient):
+        with (
+            patch.object(client, "_do_request", new_callable=AsyncMock) as mock,
+            patch("app.services.gateway.http_client.asyncio.sleep", new_callable=AsyncMock),
+        ):
+            mock.side_effect = [asyncio.TimeoutError(), {"ok": True}]
+            result = await client.get("/test")
+        assert result == {"ok": True}
+        assert mock.await_count == 2
 
     async def test_post_delegates(self, client: GatewayClient):
         with patch.object(client, "_do_request", new_callable=AsyncMock) as mock:
