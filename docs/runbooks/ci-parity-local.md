@@ -79,3 +79,30 @@ docker compose -f docker/compose.yaml --profile app --profile test run --rm test
 ## VPS
 
 After `git pull` on the server, run the same script from the repo root so verification matches CI (see also `scripts/ops/vps-verify-tests.sh` for a slimmer unit-only path).
+
+### When `git fetch` fails (HTTPS origin, no GitHub token on the server)
+
+From a machine that **has** the commits (your laptop):
+
+```bash
+cd /path/to/Spectra
+git bundle create /tmp/spectra-vps-sync.bundle chore/desloppify-quality   # or main
+scp /tmp/spectra-vps-sync.bundle user@vps:/tmp/
+```
+
+On the VPS:
+
+```bash
+cd /root/Spectra   # or your clone path
+git fetch /tmp/spectra-vps-sync.bundle chore/desloppify-quality
+git checkout chore/desloppify-quality && git reset --hard FETCH_HEAD
+rm -f /tmp/spectra-vps-sync.bundle
+```
+
+Images like `spectra-app:dev` are **built on the host** (not pulled from Docker Hub). After updating the tree:
+
+```bash
+docker compose -f docker/compose.yaml --profile app up -d --build
+```
+
+Then hit `http://<VPS_IP>:5000/api/health` (compose publishes **5000** on `0.0.0.0` when using the default `app` service ports).
