@@ -38,29 +38,36 @@ docker compose -f docker/compose.yaml build
 
 ### SERVICE_MODE Configuration
 
-Each container sets `SERVICE_MODE` in its environment to control which routers and background loops are activated:
+Each image sets `SERVICE_MODE` (see Dockerfiles) so **shared** code — especially
+`app.core.config` (DB pool sizing) and **lifespan** branches in the Core API —
+can tell which physical role the container plays (`api`, `ai`, `scheduler`,
+`worker`).
+
+**Router mounting** is **not** six variants of one FastAPI app: the AI,
+scheduler, and worker processes ship their **own** ASGI entrypoints. Only
+`spectra_api` (`Dockerfile.api`) uses `include_routers`, and there the full
+surface is loaded for `api`, `all`, or `""`; anything else is health-only (fail
+closed). See [Microservices Architecture](microservices-split.md).
 
 ```yaml
-# compose.yaml (simplified)
+# Typical split stack (values also baked into Dockerfiles)
 services:
   app:
     environment:
-      - SERVICE_MODE=api
-
+      - SERVICE_MODE=api   # Core API — full routers when api|all|""
   ai-svc:
     environment:
-      - SERVICE_MODE=ai
-
+      - SERVICE_MODE=ai    # separate spectra_ai.main app
   scheduler:
     environment:
       - SERVICE_MODE=scheduler
-
   worker:
     environment:
       - SERVICE_MODE=worker
 ```
 
-For development or single-node deployments, `SERVICE_MODE=all` runs everything in one process.
+For development or single-node runners, `SERVICE_MODE=all` on the **Core API**
+process loads the same full router set as `api`.
 
 ### Scaling Individual Services
 

@@ -6,22 +6,19 @@
 
 ## Current Architecture
 
-Spectra runs as four independently deployable services sharing a PostgreSQL database. Each service has its own Docker build target and per-service requirements file, sharing the same codebase but deployed independently. The `SERVICE_MODE` environment variable controls which routers and background loops each container activates via the `ServiceMode` enum in `app/services_config.py`.
+Spectra runs as four independently deployable services sharing a PostgreSQL database. Each service has its own Docker build target and per-service requirements file, sharing the same codebase but deployed independently. The `SERVICE_MODE` environment variable is set on **every** image (see Dockerfiles) so shared code in `app.core.config` (for example DB pool sizing) can branch. **Router mounting** for the public Core API is implemented only in `spectra_api.routing.include_routers` and applies only to the **API** container (`spectra_api.main:app`).
 
-### ServiceMode Routing
+### Core API router modes (`spectra_api` only)
 
-The `ServiceMode` enum (`app/services_config.py`) defines six modes:
+The AI, worker, and scheduler processes use **separate** FastAPI applications (`spectra_ai.main`, `spectra_worker`, `spectra_scheduler`); they do **not** load `include_routers`. For `spectra_api`, only these values select the full router surface:
 
 | Mode | Value | Description |
 |------|-------|-------------|
-| `API` | `api` | Core API + auth + pages + WebSocket |
-| `AI` | `ai` | LLM + embeddings + RAG |
-| `WORKER` | `worker` | Tool execution from PG queue |
-| `SCHEDULER` | `scheduler` | Background tasks only (no HTTP routers) |
-| `TOOLS` | `tools` | Tool management (subset of API) |
-| `ALL` | `all` | Everything — development/single-node |
+| **API** | `api` | Core API + auth + pages + WebSocket (default in `Dockerfile.api`) |
+| **ALL** | `all` | Same full surface — local / single-node / integration runners |
+| **(empty)** | `""` | Treated like full API for compatibility |
 
-Each mode maps to a specific set of router modules via `SERVICE_ROUTERS` in `app/services_config.py`. At startup, only the routers for the active mode are mounted.
+Any other value for this process is **misconfiguration**: only health routes are mounted (fail closed).
 
 ### Implemented Services
 

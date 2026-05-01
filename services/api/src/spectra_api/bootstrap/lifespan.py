@@ -617,12 +617,11 @@ async def _shutdown_services() -> None:
         await close_smart_router()
         logger.info("[OK] Smart router closed")
 
-        # Close LLM Client
-        if settings.SERVICE_MODE in ("api", "ai"):
-            from spectra_ai.llm import close_global_llm_client
+        # Close LLM client (no-op if never initialised — safe for all API modes).
+        from spectra_ai.llm import close_global_llm_client
 
-            await close_global_llm_client()
-            logger.info("[OK] LLM client closed")
+        await close_global_llm_client()
+        logger.info("[OK] LLM client closed")
 
         # Dispose database engine
         await engine.dispose()
