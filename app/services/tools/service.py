@@ -2,7 +2,7 @@
 Tool Execution Service.
 
 Thin orchestrator that delegates to focused modules:
-- validation.py  — tool name checks, registry resolution, auto-install
+- validation.py  — tool name checks and registry resolution
 - safety_checks.py — SafetySupervisor gate + retry-with-fix
 - consensus.py — VotingSystem gate for high-risk actions
 - dispatch.py — request building, worker dispatch, result processing
@@ -35,7 +35,6 @@ from app.services.tools.validation import validate_and_resolve_tool
 # (which ``patch("app.services.tools.service.<Name>")`` ) keep working.
 from spectra_common.constants import (
     TOOL_DEFAULT_TIMEOUT,
-    TOOL_INSTALL_TIMEOUT,
     TOOL_JOB_BUFFER_TIMEOUT,
     TOOL_MAX_CONCURRENCY,
     TOOL_MAX_RETRIES,
@@ -93,7 +92,6 @@ class ToolExecutionService:
     JOB_BUFFER_TIMEOUT = TOOL_JOB_BUFFER_TIMEOUT
     MAX_STDOUT_CHARS = TOOL_MAX_STDOUT_CHARS
     MAX_STDERR_CHARS = TOOL_MAX_STDERR_CHARS
-    INSTALL_TIMEOUT = TOOL_INSTALL_TIMEOUT
     MAX_CONCURRENCY = TOOL_MAX_CONCURRENCY
     MAX_RETRIES = TOOL_MAX_RETRIES
 
@@ -277,7 +275,6 @@ class ToolExecutionService:
             tool_name,
             target,
             args,
-            self.INSTALL_TIMEOUT,
         )
 
     async def _apply_safety_and_consensus(

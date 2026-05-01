@@ -224,11 +224,15 @@ class TestReportTemplates:
 
 
 class TestGenerateReportRequest:
-    def test_accepts_legacy_mission_contract(self):
-        req = GenerateReportRequest(mission_id="mission-1", template="executive")
+    def test_accepts_mission_with_template_id(self):
+        req = GenerateReportRequest(mission_id="mission-1", template_id="executive")
 
         assert req.mission_id == "mission-1"
-        assert req.template == "executive"
+        assert req.template_id == "executive"
+
+    def test_rejects_missing_template_id(self):
+        with pytest.raises(ValidationError, match="template_id is required"):
+            GenerateReportRequest(mission_id="mission-1")
 
     def test_rejects_missing_report_source(self):
         with pytest.raises(ValidationError, match="Provide exactly one of session_id or mission_id"):

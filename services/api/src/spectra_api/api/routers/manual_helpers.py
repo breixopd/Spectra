@@ -136,14 +136,13 @@ class GenerateReportRequest(BaseModel):
     session_id: str | None = Field(default=None, description="Pentest session ID")
     mission_id: str | None = Field(default=None, description="Mission ID")
     template_id: str | None = Field(default=None, description="Report template ID")
-    template: str | None = Field(default=None, description="Legacy report template ID")
 
     @model_validator(mode="after")
     def validate_source_and_template(self) -> GenerateReportRequest:
         if bool(self.session_id) == bool(self.mission_id):
             raise ValueError("Provide exactly one of session_id or mission_id")
-        if not (self.template_id or self.template):
-            raise ValueError("template_id or template is required")
+        if not self.template_id:
+            raise ValueError("template_id is required")
         return self
 
 
@@ -173,7 +172,7 @@ async def api_generate_report(
 ) -> dict[str, Any]:
     """Generate report data from a session or mission using a template."""
     _ = request
-    template_id = req.template_id or req.template
+    template_id = req.template_id
 
     try:
         if req.mission_id:

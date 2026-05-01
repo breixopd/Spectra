@@ -9,8 +9,6 @@ _(empty — last P0 items were cleared 2026-05-01: worker startup env switch, ex
 ## P1 — Reduce surface area
 
 - Global **`_spectraToast`** legacy API — `services/api/static/js/modules/toast.js` and callers; migrate to ESM `showToast`.
-- **`manual_helpers` legacy template field** — `services/api/src/spectra_api/api/routers/manual_helpers.py`.
-- **`install_timeout` unused compat param** — `app/services/tools/validation.py`.
 - **`asyncssh` shim** in provisioner when dependency is guaranteed — `app/services/provisioning/provisioner.py`.
 
 ## P2 — Docs / data migrations

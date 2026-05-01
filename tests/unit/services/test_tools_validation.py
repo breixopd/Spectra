@@ -15,7 +15,7 @@ async def test_validate_and_resolve_tool_invalid_name():
     mission = MagicMock()
     mission.log = MagicMock()
 
-    tool, error = await validate_and_resolve_tool(mission, "bad_name!", "1.2.3.4", {}, 300)
+    tool, error = await validate_and_resolve_tool(mission, "bad_name!", "1.2.3.4", {})
     assert tool is None
     assert error is not None
     assert "Invalid tool name" in error.stderr
@@ -31,7 +31,7 @@ async def test_validate_and_resolve_tool_not_found():
     mock_registry.get_tool.return_value = None
 
     with patch("app.services.tools.validation.get_registry", return_value=mock_registry):
-        tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {}, 300)
+        tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {})
 
     assert tool is None
     assert "not available" in error.stderr
@@ -51,7 +51,7 @@ async def test_validate_and_resolve_tool_not_installed():
     mock_registry.get_tool.return_value = mock_tool
 
     with patch("app.services.tools.validation.get_registry", return_value=mock_registry):
-        tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {}, 300)
+        tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {})
 
     assert tool == mock_tool
     assert error is None
@@ -72,7 +72,7 @@ async def test_validate_and_resolve_tool_already_available():
     mock_registry.get_tool.return_value = mock_tool
 
     with patch("app.services.tools.validation.get_registry", return_value=mock_registry):
-        tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {}, 300)
+        tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {})
 
     assert tool == mock_tool
     assert error is None
@@ -95,7 +95,7 @@ async def test_validate_and_resolve_tool_jsonschema_invalid():
         with patch("app.services.tools.validation.HAS_JSONSCHEMA", True):
             if jsonschema is not None:
                 with patch("jsonschema.validate", side_effect=jsonschema.ValidationError("missing target")):
-                    tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {}, 300)
+                    tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {})
                 assert tool is None
                 assert "Invalid arguments" in error.stderr
             else:
@@ -117,7 +117,7 @@ async def test_validate_and_resolve_tool_jsonschema_missing():
 
     with patch("app.services.tools.validation.get_registry", return_value=mock_registry):
         with patch("app.services.tools.validation.HAS_JSONSCHEMA", False):
-            tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {}, 300)
+            tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {})
 
     assert tool == mock_tool
     assert error is None
