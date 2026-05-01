@@ -6,6 +6,7 @@
 - [Configuration](configuration.md)
 - [Development](development.md)
 - [Testing Strategy](testing-strategy.md)
+- [Runbooks (CI parity, pre-release)](../runbooks/README.md)
 - [Architecture](architecture.md)
 - [Microservices](microservices-split.md)
 - [System Topology](topology.md)

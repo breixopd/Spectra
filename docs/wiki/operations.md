@@ -14,7 +14,7 @@ Canonical operator-facing runbook index for day-2 work. Use this page for health
 | Script users working from the repo | [scripts/ops/README.md](../../scripts/ops/README.md) | Local script catalog with safety labels and common commands |
 | Platform owners and deployers | [Deployment Guide](deployment-guide.md) | Bootstrap, Compose or Swarm rollout, host prerequisites, and first deploy |
 | Developers | [Development](development.md) | Local workflow, tests, and contributing |
-| Release and verification owners | [Testing Strategy](testing-strategy.md) | Platform-wide validation matrix, release gate, and known gaps |
+| Release and verification owners | [Testing Strategy](testing-strategy.md) · [Runbooks](../runbooks/README.md) | Validation matrix, `./scripts/runbooks/ci-parity.sh`, pre-release gate |
 
 ## Health And Triage Flow
 
