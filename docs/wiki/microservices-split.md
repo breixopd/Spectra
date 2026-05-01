@@ -317,8 +317,15 @@ See [Scaling](scaling.md#auto-scaling) for full configuration and policy details
 | **Health Polling** | Readiness, liveness, capacity monitoring | HTTP `GET /health` endpoints |
 | **Advisory Locks** | Scheduler leader election, task deduplication | PostgreSQL `pg_try_advisory_lock` |
 | **Rate-Limit Counters** | Distributed rate limiting across replicas | Redis |
+| **TLS** | Service-to-service HTTP on untrusted networks | Use **https://** URLs for `AI_SERVICE_URL`, `WORKER_SERVICE_URL`, `SCHEDULER_SERVICE_URL`, etc.; terminate TLS at the edge (e.g. Caddy) or mesh. `X-Service-Auth` is a shared secret — treat transport as untrusted without TLS. |
 
 No external message broker is required — PostgreSQL handles queueing, pub/sub, and coordination.
+
+---
+
+## Build plane / image registry (roadmap)
+
+Golden-image builds and worker image promotion (`app/services/tools/sandbox/golden_image.py`, worker/orchestrator paths) can become **CPU- and disk-heavy** and may need a **dedicated host** or service: isolated build VMs, a private container registry, and signed promotion into the runtime cluster. That is **not** a separate shipped service today; when you split it out, wire it the same way as other gateways (URL env + `GatewayClient`-style client), keep **registry auth** (token or mTLS) distinct from `SERVICE_AUTH_SECRET`, and restrict network paths so only the worker/orchestrator can pull promoted images.
 
 ---
 
