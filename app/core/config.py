@@ -250,7 +250,14 @@ class Settings(BaseSettings):
     )
 
     # --- Service Mode ---
-    SERVICE_MODE: str = Field(default="api", description="Service mode: api, ai, scheduler, worker")
+    SERVICE_MODE: str = Field(
+        default="api",
+        description=(
+            "Which role this container plays for shared settings (pool sizing, etc.): "
+            "api | ai | scheduler | worker. The Core API app (`spectra_api`) only mounts "
+            "full routers for api, all, or empty string — see spectra_api.routing."
+        ),
+    )
 
     # --- MCP Server ---
     MCP_API_KEY: str = ""  # API key for MCP server access (leave empty to disable)

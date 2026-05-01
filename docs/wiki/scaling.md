@@ -17,9 +17,13 @@ By default, everything runs on a single host via Docker Compose. No gateway URLs
 
 ---
 
-## Scaling Individual Services with SERVICE_MODE
+## Scaling Individual Services
 
-Each Spectra service runs in its own container with `SERVICE_MODE` set. This allows independent scaling of individual services.
+Each Spectra service runs in its **own container image** (with `SERVICE_MODE` set
+for shared configuration such as DB pool sizing). Horizontal scale adjusts
+**replicas** of that image — not router modes on a single process. See
+[microservices-split](microservices-split.md) for how the Core API differs from
+AI / worker / scheduler entrypoints.
 
 ### Scaling Workers
 

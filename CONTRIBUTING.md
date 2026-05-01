@@ -112,7 +112,10 @@ uvicorn spectra_api.main:app --reload --port 5000
 
 ## Architecture Overview
 
-Spectra follows a layered architecture with four microservices controlled by `SERVICE_MODE`:
+Spectra follows a layered architecture with **four deployable services**. Each
+image sets `SERVICE_MODE` for shared settings (`app.core.config`); the Core API
+process (`spectra_api`) additionally uses it for router mounting — see
+`docs/wiki/microservices-split.md`.
 
 ```text
 app/
@@ -125,8 +128,7 @@ app/
 ├── models/           # Data layer — SQLAlchemy ORM models
 ├── repositories/     # Data access — Repository pattern CRUD operations
 ├── services/
-│   ├── ai/           # AI service entry point + LLM clients, agents, RAG
-│   ├── scheduler/    # Scheduler entry point + background task loops
+│   ├── ai/           # LLM clients, agents, RAG (shared by API + worker)
 │   ├── mission/      # Mission lifecycle, execution, steering
 │   ├── tools/        # Tool registry, adapters, sandboxes
 │   └── ...           # billing, email, gateway, scaling, storage, etc.
@@ -160,7 +162,7 @@ tests/                # Unit, integration, e2e, load tests
 
 ### Architecture Boundaries
 
-Spectra runs as four microservices controlled by `SERVICE_MODE`. Import boundaries between shared and service-specific code are enforced.
+Spectra runs as four microservices; `SERVICE_MODE` labels each container for shared config. Import boundaries between shared and service-specific code are enforced.
 
 **Shared packages** (used by all services — must NOT import service-specific code):
 - `app/core/` — config, database, security, cache, events, redis

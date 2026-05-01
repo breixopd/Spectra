@@ -224,18 +224,23 @@ Anti-hallucination mechanisms:
 
 ## Service Architecture
 
-Spectra runs as four independently deployable microservices, each controlled by the `SERVICE_MODE` environment variable.
+Spectra runs as four independently deployable microservices. Each image sets
+`SERVICE_MODE` so shared configuration (for example database pool sizing in
+`app.core.config`) can adapt. **Only the Core API** (`spectra_api`) uses that
+value for FastAPI router mounting (`api` / `all` / `""` = full surface; see
+`microservices-split.md`). AI, scheduler, and worker are **separate ASGI apps**
+with their own entrypoints.
 
 ### Services and Roles
 
-| Service | Mode | Port | Role |
-|---------|------|------|------|
-| **App (Core API)** | `api` | 5000 | Web UI, REST API, mission orchestration, user management |
+| Service | Typical `SERVICE_MODE` on image | Port | Role |
+|---------|---------------------------------|------|------|
+| **App (Core API)** | `api` (or `all` in dev runners) | 5000 | Web UI, REST API, mission orchestration, user management |
 | **AI Service** | `ai` | 5010 | LLM routing, embeddings, RAG queries via TensorZero |
 | **Scheduler** | `scheduler` | 5011 | Background tasks — sandbox watchdog, backups, metrics |
 | **Worker** | `worker` | 5012 | Tool execution from PostgreSQL job queue in sandboxes |
 
-For development or single-node deployments, `SERVICE_MODE=all` runs everything in one process.
+For development or single-node **API** processes, `SERVICE_MODE=all` loads the same full `spectra_api` router set as `api`.
 
 ### Directory Layout
 
