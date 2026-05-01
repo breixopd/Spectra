@@ -41,8 +41,9 @@ Internal audit notes (largest files, nesting hotspots) are tracked in [Runbooks:
 ## Tooling (already enforced)
 
 - **Ruff** — format + lint (`ruff check`, `ruff format`). Line length **120** (see `pyproject.toml`).
-- **Pyright** — CI typecheck; add types on new public functions.
-- **Bandit / pip-audit** — see [Pre-release gate](../runbooks/pre-release-gate.md).
+- **CI** — `.github/workflows/ci.yml` **static-analysis** job builds `Dockerfile.test` once per run, then Ruff, import boundaries, Pyright, and Bandit (avoids three duplicate image builds on separate runners).
+- **Pyright** — same job; add types on new public functions. Defaults in `pyproject.toml` (`[tool.pyright]`).
+- **pip-audit** — see [Pre-release gate](../runbooks/pre-release-gate.md).
 
 ## What we avoid
 

@@ -1,6 +1,6 @@
 # CI parity (local or VPS)
 
-This runbook reproduces the **merge gate** from `.github/workflows/ci.yml` on any machine with Docker: **lint**, **typecheck**, **unit tests with coverage floor**, and **settings** runner. Optionally run **integration** tests the same way CI does.
+This runbook reproduces the **merge gate** from `.github/workflows/ci.yml` on any machine with Docker: **one static-analysis pass** (Ruff, import boundaries, Pyright, Bandit on a single `Dockerfile.test` build), **unit tests with coverage floor**, and **settings** runner. Optionally run **integration** tests the same way CI does.
 
 ## Prerequisites
 
@@ -19,36 +19,36 @@ Modes:
 
 | Command | Matches |
 | --- | --- |
-| `./scripts/runbooks/ci-parity.sh lint` | CI `lint` job (ruff + import boundaries) |
-| `./scripts/runbooks/ci-parity.sh type` | CI `type-check` job (pyright) |
+| `./scripts/runbooks/ci-parity.sh static` | Full CI **static-analysis** job (build once → ruff, boundaries, pyright, bandit) |
+| `./scripts/runbooks/ci-parity.sh lint` | Ruff + import boundaries only (builds test image) |
+| `./scripts/runbooks/ci-parity.sh type` | Pyright only (builds test image) |
 | `./scripts/runbooks/ci-parity.sh unit` | CI TensorZero parse + unit + coverage ≥70% |
 | `./scripts/runbooks/ci-parity.sh settings` | CI settings-test-runner |
 | `./scripts/runbooks/ci-parity.sh integration` | CI `integration-test` job |
-| `./scripts/runbooks/ci-parity.sh ci` | lint + type + unit + settings |
+| `./scripts/runbooks/ci-parity.sh ci` | static analysis + unit + settings |
 | `./scripts/runbooks/ci-parity.sh all` | `ci` + integration |
+
+`lint` and `type` are **local script slices** for faster iteration. GitHub Actions runs a single **`static-analysis`** job (one image build, then all steps in order).
 
 Environment:
 
 - `ENCRYPTION_KEY` — defaults to `test-encryption-key` (same idea as CI).
 - `SKIP_PYRIGHT=1` — skip Pyright for a quicker loop.
+- `SKIP_BANDIT=1` — skip Bandit.
 - `COMPOSE_DOWN=1` — after `all`, tear down compose profiles (optional cleanup).
 
 ## Manual equivalents (copy from CI)
 
 If you cannot use the script, these are the same steps as the workflow file.
 
-**Lint image**
+**Static analysis (one image build — matches CI `static-analysis` job)**
 
 ```bash
 docker build -f docker/Dockerfile.test -t spectra-test-ci .
 docker run --rm spectra-test-ci python -m ruff check app/ tests/ services/ packages/
 docker run --rm spectra-test-ci python scripts/check_import_boundaries.py
-```
-
-**Pyright**
-
-```bash
 docker run --rm spectra-test-ci sh -c "pip install --no-cache-dir pyright && pyright"
+docker run --rm spectra-test-ci bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high
 ```
 
 **Unit + coverage + settings**

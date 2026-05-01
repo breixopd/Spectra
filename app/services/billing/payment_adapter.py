@@ -738,4 +738,35 @@ class PaymentService:
             )
             return sub is not None
 
+        if event_type == "charge.refunded":
+            # Webhook `data` is the Charge object: resolve subscription via IDs on the charge.
+            customer_id = data.get("customer") if isinstance(data.get("customer"), str) else None
+            subscription_id = data.get("subscription") if isinstance(data.get("subscription"), str) else None
+            async with async_session_maker() as session:
+                existing = await self._find_local_subscription(
+                    session,
+                    external_subscription_id=subscription_id,
+                    external_customer_id=customer_id,
+                )
+                if existing is None:
+                    return False
+                existing_status = self._normalize_subscription_status(existing.status)
+                if existing_status in _STRIPE_TERMINAL_SUBSCRIPTION_STATUSES:
+                    return False
+                user_id = str(existing.user_id)
+                plan_id = str(existing.plan_id)
+                payment_provider = existing.payment_provider or "stripe"
+                ext_sub = existing.external_subscription_id
+                ext_cus = existing.external_customer_id
+
+            sub, _created = await self._set_local_subscription_state(
+                user_id=user_id,
+                plan_id=plan_id,
+                status="past_due",
+                payment_provider=payment_provider,
+                external_subscription_id=ext_sub,
+                external_customer_id=ext_cus,
+            )
+            return sub is not None
+
         return False

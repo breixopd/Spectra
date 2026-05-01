@@ -30,7 +30,7 @@ Covered subsystems include:
 | Change size | Done means |
 | --- | --- |
 | Docs-only or comment-only | The docs are updated, links resolve, and no platform behavior claim is introduced without evidence. |
-| Small local code change | Targeted unit tests pass, lint/security checks still pass, and the changed path is exercised once locally. |
+| Small local code change | Targeted unit tests pass, static analysis still passes, and the changed path is exercised once locally. |
 | Cross-module or router/API change | Unit plus integration coverage passes, request/response behavior is checked, and UI or live verification is added if the change is user-visible or environment-dependent. |
 | High-risk platform change | The required matrix below passes, including live or browser checks where applicable, deployment/config validation, and ops verification for backup, restore, or rollback if touched. |
 | Release candidate | All required release-gate items pass; any missing automation is replaced by explicit manual evidence before release. |
@@ -46,7 +46,7 @@ Covered subsystems include:
 | Browser/UI tests | Rendered pages, login/setup flows, interactive user behavior | `./tests/run_ui_tests.sh` | Implemented |
 | Ops-script smoke tests | Backup/restore, S3, DB maintenance, incident workflows, health checks | `./tests/run_live_tests.sh` covers live ops smoke; manual script checks exist under `scripts/ops/` | Partial |
 | Deployment/config validation | Docker image builds, compose validity, TensorZero config parsing, deploy health checks | CI docker-build job, `docker compose ... config --quiet`, release health checks | Implemented |
-| Security/static analysis | Lint, code safety checks, dependency audit | `ruff check app/`, `bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high`, and the dependency-audit command noted below | Implemented |
+| Security/static analysis | CI **static-analysis** job (Ruff, import boundaries, Pyright, Bandit) plus separate **`deps`** job (`pip-audit`) | `ruff check`, `scripts/check_import_boundaries.py`, `pyright`, `bandit` (see `ci.yml`); dependency audit command noted below | Implemented |
 | Performance/benchmark tests | Hot-path latency and throughput for core services and queries | `./tests/run_load_tests.sh performance` or `make test-performance` | Implemented, first pass |
 | Burst/load/rate-limit tests | Auth burst resistance, password reset bursts, WebSocket churn, worker/tool concurrency, and rate-limit enforcement at edge and app layers | `./tests/run_load_tests.sh load` or `make test-load` | Implemented, expanded first pass |
 | Soak/stability tests | Long-running stability, leak detection, churn handling, retry behavior over time | `./tests/run_load_tests.sh soak` or `make test-soak` | Implemented, first pass |
@@ -89,7 +89,7 @@ The `tests/e2e/ui/test_multi_role.py` suite (7 tests) verifies:
 | Environment | Purpose | Minimum verification |
 | --- | --- | --- |
 | Local developer loop | Fast feedback while iterating | Unit tests for touched code, targeted integration checks, and one local smoke path for the changed behavior |
-| CI verification | Default merge gate | Lint, unit tests with coverage, integration tests, Bandit, dependency audit, Docker image build verification, compose validation |
+| CI verification | Default merge gate | **`static-analysis`** (Ruff, boundaries, Pyright, Bandit), **`test`** (unit + coverage + settings), **`integration-test`**, **`deps`** (`pip-audit`), **`docker-build`** (images + Trivy + compose validation), **`version-check`** |
 | Release validation | Pre-release confidence on the version to ship | CI-equivalent checks plus release workflow checks, deploy health checks, and backup/rollback readiness |
 | Pre-production or staging | Optional but strongly recommended for operator-managed deployments | Run release candidate images against a staging stack, then execute browser smoke, live integration, config validation, health checks, and any migration or restore drill |
 | Production-safe smoke checks | Non-destructive verification after deploy or during incident response | Health endpoints, public-status, worker/storage health proxies, backup list/verify, and read-only config or container checks only |
@@ -100,7 +100,7 @@ Use the real commands already present in this repo.
 
 | Purpose | Command |
 | --- | --- |
-| **CI parity gate (lint + type + unit coverage + settings; optional integration)** | `./scripts/runbooks/ci-parity.sh ci` — see [Runbooks: CI parity](../runbooks/ci-parity-local.md) |
+| **CI parity gate (static analysis + unit coverage + settings; optional integration)** | `./scripts/runbooks/ci-parity.sh ci` — see [Runbooks: CI parity](../runbooks/ci-parity-local.md) |
 | Unit tests in Docker | `./scripts/test.sh unit` |
 | Integration tests in Docker (may require live services) | `./scripts/test.sh integration` |
 | Full containerized test stack | `./scripts/test.sh compose` |
@@ -112,8 +112,8 @@ Use the real commands already present in this repo.
 | Live target-only tests | `./tests/run_live_tests.sh --targets` |
 | Browser/UI tests | `./tests/run_ui_tests.sh` |
 | UI E2E in CI (path-scoped) | GitHub Action `ui-e2e` (`.github/workflows/ui-e2e.yml`) |
-| Lint | `ruff check app/` |
-| Security scan | `bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high` |
+| Ruff (step inside CI `static-analysis`) | `ruff check app/` (or `./scripts/runbooks/ci-parity.sh static` for the full job) |
+| Bandit (same CI job) | `bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high` |
 | Dependency audit | See the dependency-audit note below. |
 | TensorZero config validation | `python3 -c "import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')"` |
 | Dev compose validation | `docker compose --env-file .env.example -f docker/compose.yaml config --quiet` |
@@ -168,7 +168,7 @@ Platform-wide rule: if a change materially alters concurrency, retries, session 
 Release candidates pass only when all applicable items below are true.
 
 - [ ] Required checks from the change matrix have passed.
-- [ ] CI-equivalent checks pass: lint, unit, integration, security scan, Docker build verification, and compose validation.
+- [ ] CI-equivalent checks pass: static analysis, unit, integration, Docker build verification, and compose validation.
 - [ ] Browser/UI verification has passed for any user-visible or auth/session change.
 - [ ] Live integration verification has passed for mission, worker, tool, or environment-dependent changes.
 - [ ] Config validation passes for Docker Compose and TensorZero configuration.

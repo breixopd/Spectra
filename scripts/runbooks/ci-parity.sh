@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# Local / VPS gate: mirror GitHub Actions CI test + lint jobs (Docker only).
+# Local / VPS gate: mirror GitHub Actions CI test + static-analysis (Docker only).
 #
 # Usage (from repository root):
 #   ./scripts/runbooks/ci-parity.sh           # same as: ci-parity.sh ci
-#   ./scripts/runbooks/ci-parity.sh ci       # lint + typecheck + unit(cov>=70%) + settings
+#   ./scripts/runbooks/ci-parity.sh ci       # static analysis + unit(cov>=70%) + settings
 #   ./scripts/runbooks/ci-parity.sh all      # ci + integration (Garage + test-runner)
-#   ./scripts/runbooks/ci-parity.sh lint|type|unit|settings|integration
+#   ./scripts/runbooks/ci-parity.sh static|lint|type|unit|settings|integration
 #
 # Environment:
 #   ENCRYPTION_KEY=test-encryption-key   # default matches CI
-#   SPECTRA_CI_IMAGE=spectra-test-ci     # image tag for lint/type (matches CI Dockerfile.test)
+#   SPECTRA_CI_IMAGE=spectra-test-ci     # image tag (matches CI Dockerfile.test)
 #   SKIP_PYRIGHT=1                       # skip pyright (faster local iteration)
+#   SKIP_BANDIT=1                        # skip bandit
 #   COMPOSE_DOWN=1                       # after `all`, run compose down for app+test+targets
 #
 set -euo pipefail
@@ -30,16 +31,16 @@ ensure_env_test() {
     echo "[ci-parity] Created .env.test from .env.test.example"
     return 0
   fi
-  echo "[ci-parity] ERROR: missing .env.test and .env.test.example" >&2
+  echo "[ci-parity] ERROR: missing .env.test and no .env.test.example to copy." >&2
   exit 1
 }
 
 build_ci_image() {
-  echo "==> Build lint/type image ($IMAGE) from docker/Dockerfile.test"
+  echo "==> Build Docker test image ($IMAGE) from docker/Dockerfile.test"
   docker build -f docker/Dockerfile.test -t "$IMAGE" .
 }
 
-lint_job() {
+lint_ruff_and_boundaries() {
   echo "==> Ruff"
   docker run --rm "$IMAGE" python -m ruff check app/ tests/ services/ packages/
   echo "==> Import boundaries"
@@ -51,8 +52,24 @@ typecheck_job() {
     echo "==> SKIP pyright (SKIP_PYRIGHT=1)"
     return 0
   fi
-  echo "==> Pyright (installs inside container; first run is slower)"
+  echo "==> Pyright"
   docker run --rm "$IMAGE" sh -c "pip install --no-cache-dir pyright >/dev/null && pyright"
+}
+
+bandit_job() {
+  if [[ "${SKIP_BANDIT:-0}" == "1" ]]; then
+    echo "==> SKIP bandit (SKIP_BANDIT=1)"
+    return 0
+  fi
+  echo "==> Bandit"
+  docker run --rm "$IMAGE" bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high
+}
+
+static_analysis_job() {
+  build_ci_image
+  lint_ruff_and_boundaries
+  typecheck_job
+  bandit_job
 }
 
 tensorzero_check_job() {
@@ -106,13 +123,17 @@ compose_down_optional() {
 
 MODE="${1:-ci}"
 ensure_env_test
-build_ci_image
 
 case "$MODE" in
+  static)
+    static_analysis_job
+    ;;
   lint)
-    lint_job
+    build_ci_image
+    lint_ruff_and_boundaries
     ;;
   type)
+    build_ci_image
     typecheck_job
     ;;
   unit)
@@ -126,25 +147,23 @@ case "$MODE" in
     compose_down_optional
     ;;
   ci)
-    lint_job
-    typecheck_job
+    static_analysis_job
     unit_coverage_job
     settings_job
     ;;
   all)
-    lint_job
-    typecheck_job
+    static_analysis_job
     unit_coverage_job
     settings_job
     integration_job
     compose_down_optional
     ;;
   -h|--help)
-    sed -n '1,25p' "$0"
+    sed -n '1,22p' "$0"
     exit 0
     ;;
   *)
-    echo "Unknown mode: $MODE (use: lint, type, unit, settings, integration, ci, all)" >&2
+    echo "Unknown mode: $MODE (use: static, lint, type, unit, settings, integration, ci, all)" >&2
     exit 1
     ;;
 esac

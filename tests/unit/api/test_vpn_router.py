@@ -93,3 +93,25 @@ async def test_operator_can_connect_shared_runtime_with_owned_config():
     assert response.status_code == 200
     assert response.json()["job_id"] == "job-1"
     manager.connect.assert_awaited_once_with("u_user-123_lab")
+
+
+@pytest.mark.asyncio
+async def test_operator_connect_returns_400_when_vpn_feature_disabled():
+    from spectra_api.api.routers import vpn as vpn_router
+
+    app = _make_app("operator")
+
+    manager = MagicMock()
+    manager.connect = AsyncMock(return_value={"job_id": "job-1", "action": "connect", "type": "wireguard"})
+
+    with (
+        patch("spectra_api.api.routers.vpn._get_vpn_manager", return_value=manager),
+        patch.object(vpn_router.settings, "VPN_ENABLED", False),
+    ):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post("/api/v1/vpn/connect/lab")
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "VPN feature is disabled"
+    manager.connect.assert_not_called()

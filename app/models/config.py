@@ -8,6 +8,7 @@ encrypts on write and decrypts on read using the app SECRET_KEY.
 
 import logging
 
+from cryptography.fernet import InvalidToken
 from sqlalchemy import String, Text, event
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column
@@ -43,8 +44,14 @@ class SystemConfig(Base):
                 from app.auth.encryption import _get_default_secret, decrypt_field
 
                 return decrypt_field(self._value, _get_default_secret())
+            except (InvalidToken, ValueError, UnicodeDecodeError, TypeError):
+                return self._value  # legacy plaintext or ciphertext before key rotation
             except Exception:
-                return self._value  # legacy unencrypted or decryption unavailable
+                logger.exception(
+                    "Unexpected error decrypting secret config key=%r",
+                    getattr(self, "key", "?"),
+                )
+                raise
         return self._value
 
     @value.inplace.setter
@@ -59,8 +66,13 @@ class SystemConfig(Base):
 
                 self._value = encrypt_field(val, _get_default_secret())
                 return
-            except Exception:
-                pass
+            except (UnicodeEncodeError, ValueError, TypeError) as exc:
+                logger.warning(
+                    "Failed to encrypt secret config key=%r: %s",
+                    getattr(self, "key", "?"),
+                    exc,
+                )
+                raise ValueError(f"Could not encrypt secret value for key {self.key!r}") from exc
         self._value = val
 
     @value.inplace.expression
@@ -81,5 +93,18 @@ def _auto_encrypt_secret_value(mapper, connection, target):
             from app.auth.encryption import _get_default_secret, encrypt_field
 
             target._value = encrypt_field(target._value, _get_default_secret())
+        except (UnicodeEncodeError, ValueError, TypeError) as exc:
+            logger.warning(
+                "Failed to auto-encrypt secret config '%s': %s",
+                getattr(target, "key", "?"),
+                exc,
+            )
+            raise ValueError(
+                f"Could not encrypt secret value for key {getattr(target, 'key', '?')!r}"
+            ) from exc
         except Exception:
-            logger.warning("Failed to auto-encrypt secret config '%s'", getattr(target, "key", "?"))
+            logger.exception(
+                "Unexpected failure auto-encrypting secret config '%s'",
+                getattr(target, "key", "?"),
+            )
+            raise
