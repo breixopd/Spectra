@@ -13,7 +13,7 @@ The worker image (`docker/Dockerfile.worker`) is a Kali Linux image with Python,
 On startup, the worker:
 
 1. Initializes the tool plugin registry
-2. Optionally bulk-installs pending tools at startup only when `WORKER_SKIP_STARTUP_AUTO_INSTALL=false`; when unset the worker defaults to **skipping** that pass (`true`), and Compose sets `WORKER_SKIP_STARTUP_AUTO_INSTALL=true` anyway — so startup bulk-install is normally off
+2. Syncs each registered tool’s install state to the database (marks **ready** vs **pending**); missing tools are logged — **no bulk install at startup** (use golden image rebuild or on-demand install paths)
 3. Starts a heartbeat loop (for sandbox workers)
 4. Enters the main `worker_loop` — polling for and executing jobs
 

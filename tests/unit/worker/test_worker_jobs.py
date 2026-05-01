@@ -71,38 +71,6 @@ async def test_auto_install_pending_syncs_detected_status_without_installing():
     installer_factory = MagicMock()
 
     with pytest.MonkeyPatch.context() as mp:
-        mp.setenv("WORKER_SKIP_STARTUP_AUTO_INSTALL", "false")
-        mp.setitem(
-            sys.modules,
-            "app.services.tools.registry",
-            make_module("app.services.tools.registry", get_registry=lambda: registry),
-        )
-        mp.setitem(
-            sys.modules,
-            "app.services.tools.installer",
-            make_module("app.services.tools.installer", ToolInstaller=installer_factory),
-        )
-        mp.setattr(lifecycle, "_is_tool_installed", MagicMock(side_effect=[True, False]))
-        mp.setattr(lifecycle, "_sync_tool_status", sync_status)
-        await lifecycle._auto_install_pending()
-
-    assert has_async_update(sync_status, "ready-tool", status="ready")
-    assert has_async_update(sync_status, "missing-tool", status="pending")
-    installer_factory.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_auto_install_pending_skips_installs_when_env_requests_it():
-    from spectra_worker import lifecycle
-
-    ready_tool = _tool("ready-tool")
-    missing_tool = _tool("missing-tool")
-    registry = SimpleNamespace(list_tools=MagicMock(return_value=[ready_tool, missing_tool]))
-    sync_status = AsyncMock()
-    installer_factory = MagicMock()
-
-    with pytest.MonkeyPatch.context() as mp:
-        mp.setenv("WORKER_SKIP_STARTUP_AUTO_INSTALL", "true")
         mp.setitem(
             sys.modules,
             "app.services.tools.registry",

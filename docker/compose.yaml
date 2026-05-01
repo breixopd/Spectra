@@ -558,7 +558,6 @@ services:
       <<: *common-env
       IS_TOOLS_CONTAINER: "true"
       QUEUE_NAME: tools
-      WORKER_SKIP_STARTUP_AUTO_INSTALL: "true"
     volumes:
       - spectra_plugins:/app/plugins
       - ../plugins:/app/plugins
