@@ -310,6 +310,8 @@ Spectra includes a reactive auto-scaling engine (`app/services/scaling/auto_scal
 
 After initial setup — enabling auto-scaling and adding hosts to the server pool — scaling is fully hands-off.
 
+**Auto-heal (Swarm):** when the collector reports Swarm tasks in **`failed`** or **`rejected`** state (or very recent failures in the task history), the scheduler may restart the affected service. **`failed_tasks` is not** `desired_replicas - running_tasks`, so brief replica gaps during rolling updates do not count as failures.
+
 ### Per-Service Scaling Policies
 
 | Service | Min | Max | Scale-Up Trigger | Scale-Down Trigger | Max Rationale |

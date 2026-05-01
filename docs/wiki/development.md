@@ -159,11 +159,10 @@ app/
 ├── models/             # SQLAlchemy database models
 ├── repositories/       # Data access layer (Repository pattern)
 ├── services/
-│   ├── ai/             # AI service entry point + LLM clients, agents, RAG
+│   ├── ai/             # Agents, memory, knowledge facade, LLM glue (RAG engine is spectra_ai)
 │   │   ├── agents/     # 12 specialized agents (scope → reporting)
 │   │   ├── context.py  # Context window management (token budgeting)
-│   │   ├── rag.py      # PostgreSQL-backed RAG engine
-│   │   ├── embeddings.py # Embedding service
+│   │   ├── knowledge.py # RAG + methodology helpers (calls spectra_ai.rag)
 │   │   ├── router.py   # TensorZero smart routing
 │   │   ├── memory.py   # Persistent cross-mission learning
 │   │   ├── playbook.py # Deterministic attack playbooks
@@ -186,7 +185,7 @@ packages/
 
 services/
 ├── api/                # `spectra_api` FastAPI bootstrap plus UI static/templates
-├── ai/                 # spectra_ai HTTP service entry point
+├── ai/                 # spectra_ai: RAG, embeddings, LLM client, prompts (`services/ai/src/spectra_ai/`)
 ├── scheduler/          # spectra_scheduler background service entry point
 └── worker/             # spectra_worker job queue consumer
 
@@ -200,7 +199,7 @@ docker/
 ├── Dockerfile.scheduler     # Scheduler service image
 └── Dockerfile.worker        # Kali worker image
 
-plugins/                     # Tool plugin JSON configs (25+ included)
+plugins/                     # Tool plugin JSON configs (26 included)
 data/                        # Runtime data (cache, auth, missions, sessions)
 tests/                       # Unit, integration, e2e tests
 docs/                        # Documentation

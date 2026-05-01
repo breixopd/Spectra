@@ -202,6 +202,12 @@ See [Configuration](configuration.md) for all settings.
 
 ---
 
+## Admin ML training exports
+
+- `GET /api/v1/admin/training/export` requires admin permission (`MANAGE_SETTINGS`) and returns **approved training samples only** for fine-tuning workflows (unapproved rows are never included in the HTTP export).
+
+---
+
 ## GDPR Compliance
 
 Spectra includes built-in features for EU General Data Protection Regulation compliance.

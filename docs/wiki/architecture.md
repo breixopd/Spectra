@@ -76,26 +76,30 @@ The `CredentialStore` (`app/services/mission/credentials.py`) captures discovere
 
 ## RAG (Retrieval-Augmented Generation)
 
-PostgreSQL-backed semantic search engine (`app/services/ai/rag.py`).
+PostgreSQL **pgvector** semantic search lives in the **`spectra_ai`** package (`services/ai/src/spectra_ai/rag.py`). The app uses **`app.services.ai.knowledge`** as the facade (`get_rag_service`, `get_mission_context`, etc.) and **`app.services.rag.service`** (`RAGFacade`) for higher-level indexing.
 
 ### Components
 
-| Component | File | Purpose |
-|-----------|------|---------|
-| `RAGService` | `rag.py` | Document storage, cosine similarity search |
-| `EmbeddingService` | `embeddings.py` | Embeddings via API provider or local fastembed |
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `RAGService` | `services/ai/src/spectra_ai/rag.py` | Document storage, cosine similarity search |
+| `EmbeddingService` | `services/ai/src/spectra_ai/embeddings.py` | Embeddings via API provider or local fastembed |
 
 ### How It Works
 
 1. **Embedding** — Text is embedded via the configured embedding provider (local fastembed or any OpenAI-compatible API). Configure `EMBEDDING_MODEL` to select the model.
-2. **Storage** — Embeddings stored as JSONB arrays in a `rag_documents` PostgreSQL table.
-3. **Search** — Query embedded, pgvector-native cosine similarity with HNSW index for fast nearest-neighbor retrieval.
+2. **Storage** — Embeddings stored in a `rag_documents` PostgreSQL table as a **`vector(dim)`** column (HNSW index), with JSON **`metadata`** for extra fields (e.g. **`user_id`** for tenant-scoped mission retrieval).
+3. **Search** — Query embedded; SQL pre-filters **`doc_type`**, optional **`metadata->>'user_id'`**, and optional session exclusion before ordering by distance.
 
 ### Document Types
 
 | Type | Source | Indexed When |
 |------|--------|--------------|
-| `finding` | Mission findings | Mission completes |
+| `finding` | Mission findings | Mission completes (via `RAGFacade`) |
+| `exploit_success` | Successful attack vectors | Mission checkpoint |
+| `mission_summary` | Mission rollup text | Mission checkpoint |
+| `lesson` | Debrief / `[LEARN]` log lines | Mission checkpoint |
+| `tool_output` | Tool stdout summaries | Mission checkpoint |
 | `cve` | CVE intelligence data | CVE DB scripts |
 | `tool_doc` | Tool documentation | Tool docs indexed |
 | `knowledge` | Knowledge base articles | Manual ingestion |
@@ -111,6 +115,8 @@ RAGConfig(
     batch_size=500,                             # Indexing batch size
 )
 ```
+
+Mission planning passes **`user_id`** and excludes the **current** `mission_id` session when pulling “past approaches” so prompts do not prefer in-flight rows.
 
 ---
 
