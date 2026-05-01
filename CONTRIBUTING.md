@@ -120,11 +120,8 @@ process (`spectra_api`) additionally uses it for router mounting — see
 ```text
 app/
 ├── _meta/            # App metadata (version, build info)
-├── api/              # HTTP layer — FastAPI routers, Pydantic schemas
-│   ├── routers/      # One module per domain (auth, missions, tools, admin/, ...)
-│   ├── schemas/      # Request/response models
-│   └── dependencies.py  # FastAPI dependency injection
-├── core/             # Infrastructure — config, DB, security, cache, events, redis
+├── core/             # Infrastructure — config, DB, security, cache, redis
+├── mission/          # Mission FSM, enums, mission-domain helpers
 ├── models/           # Data layer — SQLAlchemy ORM models
 ├── repositories/     # Data access — Repository pattern CRUD operations
 ├── services/
@@ -133,6 +130,11 @@ app/
 │   ├── tools/        # Tool registry, adapters, sandboxes
 │   └── ...           # billing, email, gateway, scaling, storage, etc.
 └── utils/            # Shared utilities
+
+services/api/src/spectra_api/   # HTTP FastAPI app + UI (routers, templates, static)
+│   ├── api/          # Routers, schemas, dependencies (not under app/)
+│   ├── bootstrap/    # Lifespan, startup wiring
+│   └── ui/           # Server-rendered pages, thin API used by templates
 
 packages/
 ├── common/           # spectra_common shared primitives
@@ -158,7 +160,7 @@ tests/                # Unit, integration, e2e, load tests
 - **Service layer**: Business logic lives in `app/services/`. Routers are thin — they validate input, call services, and format output.
 - **Dependency injection**: FastAPI's `Depends()` for database sessions, auth, and permissions.
 - **Plugin system**: Security tools are defined as JSON files in `plugins/`. The registry loads, validates, and manages them.
-- **Event-driven**: `app/core/events.py` provides pub/sub for decoupled communication.
+- **Event-driven**: `app/infrastructure/events.py` provides pub/sub for decoupled communication.
 
 ### Architecture Boundaries
 
@@ -203,6 +205,8 @@ When adding a dependency, add it to the correct requirements file:
 | `requirements/dev.txt` | Development | pytest, ruff, dev-only tools |
 
 ## Code Style
+
+For **readability, modular boundaries, and when to split large modules**, see [Readability and structure](docs/contributing/readability-and-structure.md). It complements PEP 8 + Ruff with Spectra-specific layout and async notes.
 
 ### Python
 

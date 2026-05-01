@@ -6,6 +6,12 @@
 
 Local development setup, testing, code structure, and contributing guidelines.
 
+## Code quality and structure
+
+Ruff and import boundaries are the mechanical gates. For **how we want modules, routers, and async code to read** — including when to split large files — see [Readability and structure](../../docs/contributing/readability-and-structure.md) and the root [CONTRIBUTING.md](../../CONTRIBUTING.md).
+
+---
+
 ## Getting Started
 
 ### Prerequisites
