@@ -11,7 +11,7 @@ def _api_paths(app: FastAPI) -> set[str]:
 
 
 def test_core_api_full_router_modes_frozen():
-    assert CORE_API_FULL_ROUTER_MODES == frozenset(("", "all", "api"))
+    assert frozenset(("", "all", "api")) == CORE_API_FULL_ROUTER_MODES
 
 
 def test_empty_string_mode_includes_core_auth_route():

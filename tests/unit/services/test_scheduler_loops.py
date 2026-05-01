@@ -33,7 +33,7 @@ async def test_db_maintenance_runs_vacuum_when_lock_acquired():
         yield conn
 
     engine = MagicMock()
-    engine.connect = MagicMock(side_effect=lambda: fake_connect())
+    engine.connect = MagicMock(side_effect=fake_connect)
     engine.dispose = AsyncMock()
 
     @asynccontextmanager
@@ -118,7 +118,7 @@ async def test_db_maintenance_handles_vacuum_errors():
         yield conn
 
     engine = MagicMock()
-    engine.connect = MagicMock(side_effect=lambda: fake_connect())
+    engine.connect = MagicMock(side_effect=fake_connect)
     engine.dispose = AsyncMock()
 
     @asynccontextmanager

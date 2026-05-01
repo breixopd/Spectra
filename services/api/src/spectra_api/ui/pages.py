@@ -13,9 +13,9 @@ from starlette.routing import Route
 from app.core.config import settings
 from app.core.database import async_session_maker, get_async_session
 from app.models.user import User
-from app.services.system.runtime_settings import get_runtime_setting_bool, get_runtime_setting_str
 from app.services.billing.entitlements import ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES
 from app.services.shell.session_manager import shell_manager
+from app.services.system.runtime_settings import get_runtime_setting_bool, get_runtime_setting_str
 from spectra_api.api.dependencies import (
     _is_admin_user,
     get_current_active_user,

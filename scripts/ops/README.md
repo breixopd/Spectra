@@ -4,6 +4,8 @@ Run these helper scripts from the repository root against the standard `spectra-
 
 The canonical operator workflow lives in [../../docs/wiki/operations.md](../../docs/wiki/operations.md). The sibling health probe lives at [../health_check.sh](../health_check.sh).
 
+**CI / release verification:** [../../docs/runbooks/README.md](../../docs/runbooks/README.md) — run `./scripts/runbooks/ci-parity.sh ci` from repo root for the same gates as GitHub Actions (Docker).
+
 | Script | Purpose | Common entry points | Safety label | Status |
 |--------|---------|---------------------|--------------|--------|
 | `golden_image_refresh.sh` | Refresh golden VM/container images | — | Mutating | Active |

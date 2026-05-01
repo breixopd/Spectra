@@ -23,6 +23,7 @@ Welcome to the Spectra documentation wiki. Spectra is a Multi-Agent System (MAS)
 | [Worker System](worker-system.md) | Background jobs, dead-letter queue, cleanup, notifications, reports |
 | [Development](development.md) | Local setup, testing, code structure, contributing |
 | [Testing Strategy](testing-strategy.md) | Platform-wide verification layers, change matrix, release gate, and known testing gaps |
+| [Runbooks](../runbooks/README.md) | **CI parity script**, pre-release checklist, compose-smoke mirror — same commands as GitHub Actions |
 | [Frontend Patterns](frontend-patterns.md) | CSP-safe event delegation, modal macro, feature gates, test attributes |
 | [Design Tokens](design-tokens.md) | CSS custom properties, color palette, typography, spacing, animations |
 | [Roadmap](roadmap.md) | Future improvements and completed milestones |
@@ -30,7 +31,7 @@ Welcome to the Spectra documentation wiki. Spectra is a Multi-Agent System (MAS)
 ## Quick Links
 
 - **First time?** Start with [Development](development.md) for local setup, or [Deployment Guide](deployment-guide.md) for production.
-- **Planning verification?** See [Testing Strategy](testing-strategy.md) for the platform-wide test matrix and release gate.
+- **Planning verification?** See [Testing Strategy](testing-strategy.md) for the platform-wide test matrix and release gate, and [Runbooks](../runbooks/README.md) for `./scripts/runbooks/ci-parity.sh` (Docker, matches CI).
 - **Operating Spectra?** See [Operations](operations.md) for the canonical runbook index and [scripts/ops/README.md](../../scripts/ops/README.md) for the local script catalog.
 - **Configuring settings?** See [Configuration](configuration.md) for all environment variables.
 - **Adding a tool?** See [Plugins](plugins.md) for the JSON plugin schema.

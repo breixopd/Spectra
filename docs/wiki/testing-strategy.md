@@ -100,6 +100,7 @@ Use the real commands already present in this repo.
 
 | Purpose | Command |
 | --- | --- |
+| **CI parity gate (lint + type + unit coverage + settings; optional integration)** | `./scripts/runbooks/ci-parity.sh ci` — see [Runbooks: CI parity](../runbooks/ci-parity-local.md) |
 | Unit tests in Docker | `./scripts/test.sh unit` |
 | Integration tests in Docker (may require live services) | `./scripts/test.sh integration` |
 | Full containerized test stack | `./scripts/test.sh compose` |
@@ -188,7 +189,7 @@ The current repo already has strong unit, integration, live, UI, config, and rel
 - A first-pass mixed-traffic soak runner now exists for configurable stability checks against the same Docker test stack.
 - No standalone API contract or OpenAPI breaking-change gate is committed today.
 - Backup creation and backup verification are scriptable, but scheduled automated restore drills are not part of CI.
-- A dedicated staging workflow is not committed; teams with a staging environment should treat release validation there as mandatory for high-risk changes.
+- A dedicated **long-lived staging environment** is not in-repo; teams should still run release validation on staging for high-risk changes. **Local/VPS gates** that mirror CI live under [Runbooks](../runbooks/README.md) (`./scripts/runbooks/ci-parity.sh ci` and [pre-release gate](../runbooks/pre-release-gate.md)).
 - `worker` and `scheduler` need explicitly codified resource ceilings before memory/CPU testing can become a hard release gate.
 
 Recommended next additions:
@@ -196,4 +197,3 @@ Recommended next additions:
 - expand `tests/performance/` beyond the current smoke thresholds into query, cache, and worker-replica benchmarks
 - expand the new load and soak suites into distributed-client, retry/dead-letter, and longer memory-pressure scenarios
 - add an automated non-production restore drill for migration-bearing releases
-- add a staging validation runbook or workflow that mirrors the release gate
