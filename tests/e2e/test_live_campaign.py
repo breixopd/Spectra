@@ -6,8 +6,8 @@ import pytest
 import pytest_asyncio
 
 from app.core.database import engine
-from app.models.base import Base
 from app.services.tools.registry import get_registry
+from spectra_common.orm.base import Base
 
 # Configure logging to show thinking process
 logging.basicConfig(level=logging.INFO)

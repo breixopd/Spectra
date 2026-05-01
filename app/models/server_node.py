@@ -9,7 +9,7 @@ from sqlalchemy import JSON, Boolean, CheckConstraint, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
-from app.models.base import Base
+from spectra_common.orm.base import Base
 
 logger = logging.getLogger(__name__)
 

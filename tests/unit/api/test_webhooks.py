@@ -78,8 +78,8 @@ class TestWebhookModel:
         assert Webhook.__tablename__ == "webhooks"
 
     def test_model_inherits_base(self):
-        from app.models.base import Base
         from app.services.webhooks.models import Webhook
+        from spectra_common.orm.base import Base
 
         assert issubclass(Webhook, Base)
 

@@ -9,7 +9,7 @@ _MODEL_EXPORTS = {
     "ServerNode": ("app.models.server_node", "ServerNode"),
     "AuditEventType": ("app.models.audit_log", "AuditEventType"),
     "AuditLog": ("app.models.audit_log", "AuditLog"),
-    "Base": ("app.models.base", "Base"),
+    "Base": ("spectra_common.orm.base", "Base"),
     "Exploit": ("app.models.exploit", "Exploit"),
     "Finding": ("app.models.finding", "Finding"),
     "FindingStatus": ("app.models.finding", "FindingStatus"),

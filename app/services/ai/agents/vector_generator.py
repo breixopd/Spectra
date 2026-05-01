@@ -183,7 +183,11 @@ class VectorGeneratorAgent(Agent[VectorGeneratorInput, VectorGeneratorOutput]):
         query = " ".join(query_parts) if query_parts else input_data.target_type
 
         # Get RAG context for similar past exploits using centralized service
-        rag_context = await get_exploit_context(query)
+        rag_context = await get_exploit_context(
+            query,
+            user_id=context.user_id,
+            exclude_session_id=context.mission_id,
+        )
 
         # Get available tools using centralized service
         tools_context = await get_available_tools_context(grouped=False)

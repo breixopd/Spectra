@@ -11,7 +11,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.mission.core.enums import MissionStatus
-from app.models.base import Base
+from spectra_common.orm.base import Base
 
 
 class Mission(Base):

@@ -1,7 +1,7 @@
 """
-SQLAlchemy Base Model.
+SQLAlchemy declarative base for Spectra ORM models.
 
-All database models should inherit from this Base class.
+Lives in spectra_common so Alembic and all services share one metadata registry.
 """
 
 from datetime import datetime
@@ -23,7 +23,6 @@ class Base(DeclarativeBase):
         - updated_at: Timestamp of last update
     """
 
-    # Common columns for all models
     id: Mapped[str] = mapped_column(
         UUID(as_uuid=False),
         primary_key=True,
@@ -46,7 +45,7 @@ class Base(DeclarativeBase):
 
     def to_dict(self) -> dict[str, Any]:
         """Convert model to dictionary."""
-        data = {}
+        data: dict[str, Any] = {}
         for c in self.__table__.columns:
             if self.__include_fields__ is not None and c.name not in self.__include_fields__:
                 continue
