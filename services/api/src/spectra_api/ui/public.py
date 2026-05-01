@@ -495,6 +495,7 @@ def _verify_email_template_response(request: Request, *, success: bool, message:
             "request": request,
             "success": success,
             "message": message,
+            "app_name": settings.APP_NAME,
         },
     )
 

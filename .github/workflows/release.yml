@@ -88,7 +88,7 @@ jobs:
       - name: Run unit tests with coverage in Docker
         run: |
           docker compose -f docker/compose.yaml --profile test run --rm unit-test-runner \
-            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=app --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov-report=term-missing --cov-fail-under=70"
+            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=app --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov-report=term-missing --cov-fail-under=70"
 
       - name: Bootstrap Garage for integration tests
         run: |

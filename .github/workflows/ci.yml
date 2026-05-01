@@ -31,14 +31,10 @@ jobs:
     needs: lint
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-      - run: pip install pyright
-      - run: sudo apt-get update && sudo apt-get install -y libcairo2-dev pkg-config python3-dev
-      - run: pip install -r requirements/app.txt
-      - run: pyright
+      - name: Build Docker test runner
+        run: docker build -f docker/Dockerfile.test -t spectra-test-ci .
+      - name: Run pyright in Docker
+        run: docker run --rm spectra-test-ci sh -c "pip install --no-cache-dir pyright && pyright"
 
   test:
     name: Unit Tests
@@ -58,7 +54,7 @@ jobs:
         run: |
           set +e
           docker compose -f docker/compose.yaml --profile test run --name spectra-unit-coverage unit-test-runner \
-            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=app --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=70"
+            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=app --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=70"
           status=$?
           docker cp spectra-unit-coverage:/tmp/coverage.xml coverage.xml 2>/dev/null || true
           docker rm -f spectra-unit-coverage >/dev/null 2>&1 || true

@@ -408,7 +408,12 @@ async def shell_page(request: Request, session_id: str):
         return RedirectResponse(url="/login", status_code=303)
     session = await shell_manager.get_session(session_id)
     if not session:
-        return HTMLResponse("Session not found or inactive", status_code=404)
+        return templates.TemplateResponse(
+            request,
+            "errors/404.html",
+            {"request": request, "detail": "Shell session not found or inactive."},
+            status_code=404,
+        )
 
     return templates.TemplateResponse(
         request,

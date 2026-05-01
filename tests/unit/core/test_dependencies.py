@@ -95,6 +95,15 @@ class TestGetCurrentSuperuser:
             await get_current_superuser(current_user=user)
         assert exc_info.value.status_code == 403
 
+    @pytest.mark.asyncio
+    async def test_admin_role_passes_without_superuser_flag(self):
+        """Admin RBAC aligns with superuser-only routes without persisting is_superuser."""
+        from spectra_api.api.dependencies import get_current_superuser
+
+        user = _make_user(is_superuser=False, is_active=True, role="admin")
+        result = await get_current_superuser(current_user=user)
+        assert result is user
+
 
 # ---------------------------------------------------------------------------
 # check_mission_limit
