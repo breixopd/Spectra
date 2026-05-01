@@ -273,6 +273,22 @@ class TestGetToolUsageContext:
         query = call_args.kwargs.get("query", call_args.args[0] if call_args.args else "")
         assert "smtp" not in query
 
+    @pytest.mark.asyncio
+    async def test_passes_user_and_exclude_session(self, mock_rag_service):
+        mock_rag_service.get_context_for_prompt.return_value = ""
+
+        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+            await get_tool_usage_context(
+                "discovery",
+                services=[{"service": "http"}],
+                user_id="u-1",
+                exclude_session_id="mission-2",
+            )
+
+        kwargs = mock_rag_service.get_context_for_prompt.call_args.kwargs
+        assert kwargs["user_id"] == "u-1"
+        assert kwargs["exclude_session_id"] == "mission-2"
+
 
 # ---------------------------------------------------------------------------
 # 5. get_mission_context

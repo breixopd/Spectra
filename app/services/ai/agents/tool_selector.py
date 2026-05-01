@@ -440,7 +440,12 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             preferred_tool_info = f"\n**[IMPORTANT] REQUIRED TOOL: {input_data.user_preference}** - You MUST select this tool if available.\n"
 
         # Get RAG context using centralized service
-        rag_context = await get_tool_usage_context(input_data.current_phase, input_data.known_services)
+        rag_context = await get_tool_usage_context(
+            input_data.current_phase,
+            input_data.known_services,
+            user_id=context.user_id,
+            exclude_session_id=context.mission_id,
+        )
 
         # Get methodology guidance using centralized service
         methodology_context = get_methodology_guidance(input_data.current_phase)
