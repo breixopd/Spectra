@@ -205,12 +205,14 @@ async def _handle_provider_webhook(request: Request, provider: str):
 
 
 @router.post("/webhooks/{provider}")
+@limiter.limit("30/minute")
 async def payment_provider_webhook(request: Request, provider: str):
     """Handle provider-scoped payment webhooks."""
     return await _handle_provider_webhook(request, provider)
 
 
 @router.post("/webhook")
+@limiter.limit("30/minute")
 async def stripe_webhook(request: Request):
     """Handle Stripe webhook events (checkout.session.completed, etc.)."""
     return await _handle_provider_webhook(request, "stripe")

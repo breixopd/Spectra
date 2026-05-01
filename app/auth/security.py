@@ -495,12 +495,13 @@ def get_password_hash(password: str) -> str:
 
 
 def _get_encryption_key() -> bytes:
-    """Get the encryption key, separate from JWT signing.
-
-    Uses ENCRYPTION_KEY when set, falling back to JWT_SECRET_KEY
-    for backward compatibility with existing encrypted data.
-    """
-    key = settings.ENCRYPTION_KEY or settings.JWT_SECRET_KEY.get_secret_value()
+    """Get the encryption key, separate from JWT signing (MFA, BYOK, etc.)."""
+    key = settings.ENCRYPTION_KEY
+    if not key:
+        raise RuntimeError(
+            "ENCRYPTION_KEY is required for MFA and data encryption. "
+            "Set it in your environment or .env file."
+        )
     # Derive a proper Fernet key from the secret
     derived = hashlib.sha256(key.encode("utf-8")).digest()
     return base64.urlsafe_b64encode(derived)

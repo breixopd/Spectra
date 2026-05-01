@@ -24,6 +24,10 @@ class ServerNode(Base):
         CheckConstraint("max_capacity > 0", name="ck_server_nodes_max_capacity_pos"),
     )
 
+    # Intentional integer PK override: server pool nodes use auto-increment IDs
+    # rather than the UUID default from Base. This is stable across the admin API,
+    # pool_manager, and the g7a8b9c0d1e2 migration. Do not migrate to UUID without
+    # updating all integer references (routers, repository, pool_manager).
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)  # type: ignore[assignment]
     service_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)

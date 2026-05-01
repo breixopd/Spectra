@@ -1,6 +1,6 @@
 {% extends "auth_layout.html" %}
 
-{% block title %}Email Verification — Spectra{% endblock %}
+{% block title %}Email Verification — {{ app_name }}{% endblock %}
 
 {% block auth_body %}
 <div class="auth-form-panel" style="margin: 0 auto; max-width: 480px; padding-top: 10vh;">
@@ -8,7 +8,7 @@
     <div class="logo">
         <a href="/">
             {% include 'partials/shield_svg.html' %}
-            Spectra
+            {{ app_name }}
         </a>
     </div>
     {% if success %}

@@ -192,9 +192,9 @@ async def get_current_superuser(
     current_user: User = Depends(get_current_active_user),
 ) -> User:
     """
-    Get current user and verify they are a superuser.
+    Get current user and verify they are a superuser or platform admin role.
     """
-    if not current_user.is_superuser:
+    if not current_user.is_superuser and current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The user doesn't have enough privileges",

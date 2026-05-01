@@ -128,6 +128,7 @@ addopts = [
     "--cov=spectra_api",
     "--cov=spectra_worker",
     "--cov=spectra_ai",
+    "--cov=spectra_scheduler",
     "--cov-report=term-missing",
     "--cov-fail-under=70",
 ]
@@ -140,7 +141,7 @@ asyncio_default_fixture_loop_scope = "function"
 # coverage configuration (merged from .coveragerc)
 # =============================================================================
 [tool.coverage.run]
-source = ["app", "spectra_api", "spectra_worker", "spectra_ai"]
+source = ["app", "spectra_api", "spectra_worker", "spectra_ai", "spectra_scheduler"]
 data_file = "/tmp/spectra-coverage/.coverage"
 omit = [
     "app/*/migrations/*",

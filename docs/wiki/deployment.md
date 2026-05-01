@@ -36,6 +36,28 @@ docker compose -f docker/compose.yaml build
 | **API** | `docker/Dockerfile.api` | `requirements/app.txt` | ~1.34 GB |
 | **Worker** | `docker/Dockerfile.worker` | `requirements/worker.txt` | ~4.13 GB |
 
+### Required Environment Variables (Production)
+
+The development Compose file ships weak defaults for rapid local setup. **Override
+all** of the following before any shared or production-like deployment:
+
+| Variable | Purpose | Notes |
+|----------|---------|-------|
+| `POSTGRES_PASSWORD` | Database credential | Swarm: use `_FILE` secret |
+| `REDIS_PASSWORD` | Cache / rate-limit store | Swarm: `_FILE` |
+| `JWT_SECRET_KEY` | Token signing | Auto-generated in dev; **required** in prod |
+| `SECRET_KEY` | Session / CSRF | Same |
+| `ENCRYPTION_KEY` | MFA + BYOK encryption | Auto-generated in dev; **required** in prod |
+| `SERVICE_AUTH_SECRET` | Inter-service HMAC | Swarm: `_FILE` |
+| `GARAGE_ACCESS_KEY` | S3-compatible storage | Replace compose default |
+| `GARAGE_SECRET_KEY` | S3-compatible storage | Replace compose default |
+| `GARAGE_RPC_SECRET` | Garage cluster comms | Replace compose default |
+| `CLICKHOUSE_PASSWORD` | Analytics DB | Empty by default; set if ClickHouse exposed |
+| `PLATFORM_DOMAIN` | Caddy TLS + routing | `localhost` default unsafe for public |
+
+See `.env.example` for the full template. Swarm deployments use Docker secrets
+(`_FILE` variants) — see [Swarm deployment](#swarm-deployment) below.
+
 ### SERVICE_MODE Configuration
 
 Each image sets `SERVICE_MODE` (see Dockerfiles) so **shared** code — especially

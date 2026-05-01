@@ -6,8 +6,8 @@ Supports multiple **shell listener** routing modes (``SHELL_ROUTING_MODE``, not
 ``SERVICE_MODE``):
 
   - ``direct``: bind the callback listener in the worker container (typical).
-  - sandbox: listen inside the mission's sandbox container
-  - proxy: route through dedicated proxy nodes or fail closed
+  - ``sandbox``: listen inside the mission's sandbox container.
+  - ``proxy``: route through dedicated proxy nodes or fail closed.
 """
 
 from __future__ import annotations

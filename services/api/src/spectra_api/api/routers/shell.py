@@ -170,7 +170,12 @@ async def list_listeners(request: Request, _current_user: User = Depends(get_cur
 
 
 @router.delete("/listeners/{session_id}", status_code=204)
-async def stop_listener(session_id: str, _current_user: User = Depends(get_current_active_user)) -> None:
+@limiter.limit(RateLimits.SHELL_SESSIONS)
+async def stop_listener(
+    request: Request,
+    session_id: str,
+    _current_user: User = Depends(get_current_active_user),
+) -> None:
     """Stop a managed callback listener."""
     try:
         listeners = await shell_relay_client.list_listeners()
@@ -192,7 +197,12 @@ async def stop_listener(session_id: str, _current_user: User = Depends(get_curre
 
 
 @router.post("/reconnect/{finding_id}")
-async def reconnect_exploit(finding_id: str, _current_user: User = Depends(get_current_active_user)):
+@limiter.limit(RateLimits.MISSION_START)
+async def reconnect_exploit(
+    request: Request,
+    finding_id: str,
+    _current_user: User = Depends(get_current_active_user),
+):
     """
     Trigger a re-exploitation of a vulnerability to re-establish a shell.
 
