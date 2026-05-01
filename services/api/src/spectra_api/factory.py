@@ -30,7 +30,7 @@ from spectra_api.bootstrap.logging_config import CorrelationIdMiddleware, config
 from spectra_api.bootstrap.middleware import AdminIPAllowlistMiddleware, SecurityHeadersMiddleware
 from spectra_api.errors import register_exception_handlers
 from spectra_api.paths import static_directory
-from spectra_api.routing import include_routers
+from spectra_api.routing import CORE_API_FULL_ROUTER_MODES, include_routers
 from spectra_api.telemetry_middleware import TelemetryMiddleware
 from spectra_api.templates import templates as shared_templates
 from spectra_common.constants import SECONDS_PER_DAY
@@ -184,7 +184,7 @@ def create_app() -> FastAPI:
                 return StarletteResponse("Request body too large", status_code=413)
         return await call_next(request)
 
-    if settings.SERVICE_MODE in ("", "all", "api"):
+    if settings.SERVICE_MODE in CORE_API_FULL_ROUTER_MODES:
         app.mount(
             "/static",
             StaticFiles(directory=str(static_directory()), html=True),
@@ -207,7 +207,7 @@ def create_app() -> FastAPI:
 
     include_routers(app, settings.SERVICE_MODE)
 
-    if settings.SERVICE_MODE in ("", "all", "api"):
+    if settings.SERVICE_MODE in CORE_API_FULL_ROUTER_MODES:
 
         @app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> None:

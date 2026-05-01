@@ -8,7 +8,7 @@
 
 Spectra runs as four independently deployable services sharing a PostgreSQL database. Each service has its own Docker build target and per-service requirements file, sharing the same codebase but deployed independently. The `SERVICE_MODE` environment variable is set on **every** image (see Dockerfiles) so shared code in `app.core.config` (for example DB pool sizing) can branch. **Router mounting** for the public Core API is implemented only in `spectra_api.routing.include_routers` and applies only to the **API** container (`spectra_api.main:app`).
 
-### Core API router modes (`spectra_api` only)
+### Core API router policy (`spectra_api` only)
 
 The AI, worker, and scheduler processes use **separate** FastAPI applications (`spectra_ai.main`, `spectra_worker`, `spectra_scheduler`); they do **not** load `include_routers`. For `spectra_api`, only these values select the full router surface:
 
