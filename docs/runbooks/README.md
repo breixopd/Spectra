@@ -4,7 +4,7 @@ Operator and developer **executable** procedures for Spectra. Prefer these paths
 
 | Runbook | Purpose |
 | --- | --- |
-| [CI parity (local / VPS)](ci-parity-local.md) | Same gates as `.github/workflows/ci.yml` lint + test jobs: Ruff, import boundaries, Pyright, unit coverage ≥70%, settings runner, optional integration. |
+| [CI parity (local / VPS)](ci-parity-local.md) | Mirrors CI: one **static-analysis** Docker build (Ruff, boundaries, Pyright, Bandit), unit coverage ≥70%, settings runner, optional integration. |
 | [Pre-release gate](pre-release-gate.md) | Checklist before production: CI parity, compose config, smoke paths, rollback awareness. |
 | [Compose smoke (CI mirror)](compose-smoke-ci.md) | Full stack + live API / health / latency tests (matches `compose-smoke` job when you need it). |
 | [Legacy cleanup backlog](legacy-cleanup-backlog.md) | Tracked removals: deprecated env vars, global toast API — not a substitute for CI. |

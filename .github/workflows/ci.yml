@@ -13,28 +13,23 @@ permissions:
   contents: read
 
 jobs:
-  lint:
-    name: Lint
+  # One image build (Dockerfile.test): Ruff, import boundaries, Pyright, Bandit — avoids
+  # duplicating the same docker build across separate jobs on fresh runners.
+  static-analysis:
+    name: Static analysis
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Build Docker test runner
         run: docker build -f docker/Dockerfile.test -t spectra-test-ci .
-      - name: Run lint in Docker
+      - name: Ruff
         run: docker run --rm spectra-test-ci python -m ruff check app/ tests/ services/ packages/
-      - name: Check import boundaries in Docker
+      - name: Import boundaries
         run: docker run --rm spectra-test-ci python scripts/check_import_boundaries.py
-
-  type-check:
-    name: Type Check
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build Docker test runner
-        run: docker build -f docker/Dockerfile.test -t spectra-test-ci .
-      - name: Run pyright in Docker
-        run: docker run --rm spectra-test-ci sh -c "pip install --no-cache-dir pyright && pyright"
+      - name: Pyright
+        run: docker run --rm spectra-test-ci sh -c "pip install --no-cache-dir pyright >/dev/null && pyright"
+      - name: Bandit
+        run: docker run --rm spectra-test-ci bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high
 
   test:
     name: Unit Tests
@@ -112,16 +107,6 @@ jobs:
         run: |
           docker compose -f docker/compose.yaml --profile app --profile test run --rm test-runner \
             "python -m pytest tests/integration/ -v --tb=short --timeout=120 --override-ini=addopts= -k 'not live and not e2e'"
-
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build Docker test runner
-        run: docker build -f docker/Dockerfile.test -t spectra-test-ci .
-      - name: Run Bandit in Docker
-        run: docker run --rm spectra-test-ci bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high
 
   docker-build:
     name: Docker Build Verification
@@ -222,13 +207,6 @@ jobs:
           exit-code: "1"
       - name: Free Docker cache after worker scan
         run: docker rmi spectra-worker:ci || true; docker builder prune -af || true; docker system prune -f || true; df -h
-      - name: Build Docker test runner image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile.test
-          push: false
-          load: false
 
   deps:
     name: Dependency Audit
@@ -255,7 +233,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Verify app/version.py exists and has __version__
+      - name: Verify app/_meta/version.py exists and has __version__
         run: |
           python3 -c "exec(open('app/_meta/version.py').read()); print('Version:', __version__)"
 
@@ -264,7 +242,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, integration-test]
     if: github.event_name == 'push'
-    continue-on-error: false
     env:
       ENCRYPTION_KEY: test-encryption-key
       ENV_FILE: ../.env.test

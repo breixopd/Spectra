@@ -243,6 +243,8 @@ async def internal_scaling_dashboard():
     from app.services.scaling.auto_scaler import AutoScaler, get_scaling_history
     from app.services.scaling.backends import DockerSwarmBackend
     from app.services.scaling.config import AutoScalerConfig
+    from app.services.scaling.docker_client import get_service_task_nodes
+    from app.services.scaling.image_updater import get_update_status
     from app.services.scaling.metrics_collector import MetricsCollector
     from app.services.scaling.notifiers import LogNotifier
 
@@ -263,25 +265,15 @@ async def internal_scaling_dashboard():
     # --- Per-service info with node placement ---
     services_info: dict[str, dict] = {}
     for svc_name, svc in cluster.services.items():
-        svc_nodes: list[str] = []
-        try:
-            from app.services.scaling.docker_client import get_service_task_nodes
-
-            svc_nodes = await get_service_task_nodes(svc_name)
-        except Exception:
-            pass
+        svc_nodes = await get_service_task_nodes(svc_name)
 
         # Check update availability from image_updater cache
         update_available = False
-        try:
-            from app.services.scaling.image_updater import get_update_status
-            status = get_update_status()
-            for s in status.get("services", []):
-                if s.get("service") == svc_name:
-                    update_available = s.get("update_available", False)
-                    break
-        except Exception:
-            pass
+        status = get_update_status()
+        for s in status.get("services", []):
+            if s.get("service") == svc_name:
+                update_available = s.get("update_available", False)
+                break
 
         services_info[svc_name] = {
             "replicas": svc.replicas,

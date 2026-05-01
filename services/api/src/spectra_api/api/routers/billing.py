@@ -29,6 +29,7 @@ _STRIPE_RECONCILED_EVENT_TYPES = frozenset(
         "customer.subscription.deleted",
         "invoice.payment_failed",
         "invoice.payment_succeeded",
+        "charge.refunded",
     }
 )
 

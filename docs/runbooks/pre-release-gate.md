@@ -4,13 +4,13 @@ Use this checklist before tagging a release or deploying production images. All 
 
 ## Automated (must pass)
 
-1. **CI parity** — full local mirror of merge gate:
+1. **CI parity** — Docker gate aligned with CI **`static-analysis`** + **`test`** (use `all` to add **`integration-test`**-style integration):
 
    ```bash
    ./scripts/runbooks/ci-parity.sh all
    ```
 
-   Minimum for a hotfix branch if integration time is blocked: `./scripts/runbooks/ci-parity.sh ci`.
+   Minimum for a hotfix branch if integration time is blocked: `./scripts/runbooks/ci-parity.sh ci`. This does **not** by itself replace **`deps`** (`pip-audit`), **`version-check`**, **`docker-build`** (Trivy), or push-only **`compose-smoke`** — run those separately when needed (see `.github/workflows/ci.yml`).
 
 2. **Compose files valid** (matches CI `docker-build` compose step):
 
@@ -19,7 +19,7 @@ Use this checklist before tagging a release or deploying production images. All 
    docker compose --env-file .env.example -f docker/docker-compose.swarm.yml config --quiet
    ```
 
-3. **Security scan on app** (matches CI `security` job):
+3. **Security scan on app** (Bandit is already in CI **static-analysis**; re-run locally if you skipped it):
 
    ```bash
    docker build -f docker/Dockerfile.test -t spectra-test-ci .

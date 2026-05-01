@@ -209,6 +209,35 @@ class TestBillingRouter:
         adapter.handle_webhook.assert_awaited_once_with(b"payload", "stripe_sig")
         service.reconcile_stripe_event.assert_awaited_once_with("invoice.payment_succeeded", {"id": "in_123"})
 
+    async def test_provider_webhook_reconciles_charge_refunded(self):
+        from spectra_api.api.routers.billing import _handle_provider_webhook
+
+        adapter = AsyncMock()
+        adapter.handle_webhook = AsyncMock(
+            return_value={
+                "type": "charge.refunded",
+                "data": {"customer": "cus_1", "subscription": "sub_1"},
+            }
+        )
+        service = MagicMock()
+        service.reconcile_stripe_event = AsyncMock(return_value=True)
+        request = MagicMock()
+        request.headers = {"stripe-signature": "stripe_sig"}
+        request.body = AsyncMock(return_value=b"payload")
+
+        with (
+            patch("spectra_api.api.routers.billing.list_payment_providers", return_value=["stripe"]),
+            patch("spectra_api.api.routers.billing.get_payment_adapter", return_value=adapter),
+            patch("spectra_api.api.routers.billing.PaymentService", return_value=service),
+        ):
+            result = await _handle_provider_webhook(request, "stripe")
+
+        assert result == {"received": True, "provider": "stripe"}
+        service.reconcile_stripe_event.assert_awaited_once_with(
+            "charge.refunded",
+            {"customer": "cus_1", "subscription": "sub_1"},
+        )
+
     async def test_provider_webhook_rejects_unregistered_provider(self):
         from spectra_api.api.routers.billing import _handle_provider_webhook
 
@@ -535,6 +564,114 @@ class TestStripeReconciliation:
             handled = await svc.reconcile_stripe_event(
                 "invoice.payment_succeeded",
                 {"subscription": "sub_123", "customer": "cus_123"},
+            )
+
+        assert handled is False
+        set_state.assert_not_awaited()
+
+    async def test_reconcile_charge_refunded_sets_past_due(self):
+        existing = MagicMock()
+        existing.user_id = "u-1"
+        existing.plan_id = "plan-1"
+        existing.payment_provider = "stripe"
+        existing.status = "active"
+        existing.external_subscription_id = "sub_123"
+        existing.external_customer_id = "cus_123"
+
+        existing_result = MagicMock()
+        existing_result.scalar_one_or_none.return_value = existing
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=existing_result)
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+
+        svc = PaymentService(NoopPaymentAdapter())
+        with (
+            patch("app.services.billing.payment_adapter.async_session_maker", return_value=mock_session),
+            patch.object(svc, "_set_local_subscription_state", new=AsyncMock(return_value=(MagicMock(), False))) as set_state,
+        ):
+            handled = await svc.reconcile_stripe_event(
+                "charge.refunded",
+                {"customer": "cus_123", "subscription": "sub_123"},
+            )
+
+        assert handled is True
+        assert set_state.await_args.kwargs["status"] == "past_due"
+
+    async def test_reconcile_charge_refunded_resolves_via_customer_only(self):
+        existing = MagicMock()
+        existing.user_id = "u-1"
+        existing.plan_id = "plan-1"
+        existing.payment_provider = "stripe"
+        existing.status = "active"
+        existing.external_subscription_id = "sub_999"
+        existing.external_customer_id = "cus_abc"
+
+        existing_result = MagicMock()
+        existing_result.scalar_one_or_none.return_value = existing
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=existing_result)
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+
+        svc = PaymentService(NoopPaymentAdapter())
+        with (
+            patch("app.services.billing.payment_adapter.async_session_maker", return_value=mock_session),
+            patch.object(svc, "_set_local_subscription_state", new=AsyncMock(return_value=(MagicMock(), False))) as set_state,
+        ):
+            handled = await svc.reconcile_stripe_event(
+                "charge.refunded",
+                {"customer": "cus_abc"},
+            )
+
+        assert handled is True
+        assert set_state.await_args.kwargs["external_subscription_id"] == "sub_999"
+        assert set_state.await_args.kwargs["status"] == "past_due"
+
+    async def test_reconcile_charge_refunded_returns_false_without_local_subscription(self):
+        none_result = MagicMock()
+        none_result.scalar_one_or_none.return_value = None
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=none_result)
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+
+        svc = PaymentService(NoopPaymentAdapter())
+        with patch("app.services.billing.payment_adapter.async_session_maker", return_value=mock_session):
+            handled = await svc.reconcile_stripe_event(
+                "charge.refunded",
+                {"customer": "cus_unknown"},
+            )
+
+        assert handled is False
+
+    async def test_reconcile_charge_refunded_skips_terminal_subscription(self):
+        existing = MagicMock()
+        existing.user_id = "u-1"
+        existing.plan_id = "plan-1"
+        existing.payment_provider = "stripe"
+        existing.status = "cancelled"
+        existing.external_subscription_id = "sub_123"
+        existing.external_customer_id = "cus_123"
+
+        existing_result = MagicMock()
+        existing_result.scalar_one_or_none.return_value = existing
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=existing_result)
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+
+        svc = PaymentService(NoopPaymentAdapter())
+        with (
+            patch("app.services.billing.payment_adapter.async_session_maker", return_value=mock_session),
+            patch.object(svc, "_set_local_subscription_state", new=AsyncMock()) as set_state,
+        ):
+            handled = await svc.reconcile_stripe_event(
+                "charge.refunded",
+                {"customer": "cus_123", "subscription": "sub_123"},
             )
 
         assert handled is False

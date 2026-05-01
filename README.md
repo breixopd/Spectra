@@ -222,6 +222,8 @@ For the full test matrix and release-gate guidance, see [Testing Strategy](docs/
 ruff check app/
 ```
 
+Pull request CI runs the full **`static-analysis`** job in Docker (Ruff, import boundaries, Pyright, Bandit). See [Development](docs/wiki/development.md) and [CI parity](docs/runbooks/ci-parity-local.md).
+
 ## Documentation
 
 Full documentation is in the [Wiki](docs/wiki/home.md):

@@ -359,11 +359,9 @@ Triggered on every push/PR to `main` or `develop`.
 
 | Job | Purpose |
 |-----|---------|
-| **lint** | `ruff check` + import boundary check in Docker |
-| **type-check** | Pyright (`pyright`) on app/services/packages |
+| **static-analysis** | Single `Dockerfile.test` build, then Ruff, import boundaries, Pyright, Bandit |
 | **test** | Unit tests + coverage + settings runner in Docker |
 | **integration-test** | Integration pytest suite in Docker (Garage bootstrapped) |
-| **security** | Bandit security scan (HIGH severity gate) |
 | **docker-build** | Builds runtime images, Trivy CRITICAL gate on images, validates Compose + Swarm config |
 | **deps** | `pip-audit` dependency audit |
 | **version-check** | Verifies version metadata in `app/_meta/version.py` |
@@ -374,7 +372,7 @@ Triggered on every push/PR to `main` or `develop`.
 Triggered by **manual dispatch from `main` only**.
 
 1. Validate the operator-supplied CalVer release version
-2. Run tests + security scan
+2. Run unit and integration tests in Docker, Bandit on `app/` (HIGH gate), and Compose/Swarm config validation (see `.github/workflows/release.yml` — this path does **not** rerun CI Ruff, import boundaries, or Pyright)
 3. Build & push Docker images to GHCR with `latest` + version tags
 4. SSH deploy only after the host resolves the currently deployed version and captures a pre-deploy PostgreSQL backup; the post-deploy gate now waits for the unauthenticated `/api/health/ready` probe to confirm database, AI service, TensorZero, scheduler, worker, LLM, and embeddings readiness
 5. Publish the git tag and GitHub Release with the generated changelog only after deploy succeeds

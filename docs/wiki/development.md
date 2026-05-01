@@ -130,17 +130,17 @@ make test-soak
 
 ---
 
-## Linting
+## Linting and static analysis
 
 ```bash
 ruff check app/
 ```
 
-No project-specific linter config exists. CI runs `ruff check` and Bandit security scan (HIGH severity gate).
+CI runs one **`static-analysis`** job (`.github/workflows/ci.yml`): a single `Dockerfile.test` build, then Ruff, the import-boundary script, Pyright, and Bandit (HIGH severity / confidence gate). Ruff and Pyright defaults live in `pyproject.toml`.
 
-### Type Checking
+### Type checking (Pyright)
 
-CI runs **Pyright** in the `type-check` job (`pyright` at repo root after installing deps). Repo defaults are in `pyproject.toml` under `[tool.pyright]` (`typeCheckingMode = "off"`).
+Same **`static-analysis`** job installs Pyright in the test image and runs `pyright`. Repo defaults are under `[tool.pyright]` (`typeCheckingMode = "off"`).
 
 Locally:
 
