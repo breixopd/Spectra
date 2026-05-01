@@ -2,8 +2,10 @@
 Shell Session Manager.
 
 Manages active reverse shell connections and bridges them to WebSockets.
-Supports multiple routing modes:
-  - direct: listen inside worker service mode only
+Supports multiple **shell listener** routing modes (``SHELL_ROUTING_MODE``, not
+``SERVICE_MODE``):
+
+  - ``direct``: bind the callback listener in the worker container (typical).
   - sandbox: listen inside the mission's sandbox container
   - proxy: route through dedicated proxy nodes or fail closed
 """
