@@ -148,6 +148,9 @@ async def get_tool_usage_context(
     phase: str,
     services: list[dict[str, Any]] | None = None,
     max_tokens: int = 800,
+    *,
+    user_id: str | None = None,
+    exclude_session_id: str | None = None,
 ) -> str:
     """Get relevant past tool usage from knowledge base."""
     try:
@@ -163,7 +166,11 @@ async def get_tool_usage_context(
         query = " ".join(query_parts)
 
         context = await rag.get_context_for_prompt(
-            query=query, max_tokens=max_tokens, doc_types=["exploit_success", "finding"]
+            query=query,
+            max_tokens=max_tokens,
+            doc_types=["exploit_success", "finding"],
+            user_id=user_id,
+            exclude_session_id=exclude_session_id,
         )
 
         if context:

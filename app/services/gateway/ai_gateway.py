@@ -8,22 +8,12 @@ and methods raise RuntimeError so tests fail fast with a clear message.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from app.core.config import settings
 from app.services.gateway.http_client import GatewayClient
 from spectra_domain.ai import ChatRequest, EmbeddingRequest, RAGRequest
 
 logger = logging.getLogger(__name__)
-
-
-def _search_kwargs_from_rag_request(**kwargs: Any) -> dict[str, Any]:
-    """Map optional RAG / HTTP payload fields to :meth:`RAGService.search` parameters."""
-    out: dict[str, Any] = {"top_k": kwargs.get("top_k", 5), "filters": kwargs.get("filters")}
-    for key in ("doc_type", "doc_types", "user_id", "exclude_session_id"):
-        if key in kwargs and kwargs[key] is not None:
-            out[key] = kwargs[key]
-    return out
 
 
 class AIGateway:
@@ -68,19 +58,18 @@ class AIGateway:
         return resp.get("embeddings", [])
 
     async def rag_search(self, query: str, **kwargs) -> list[dict]:
+        req = RAGRequest(query=query, **kwargs)
         if self.client:
-            payload = RAGRequest(query=query, **kwargs).model_dump(exclude_none=True)
             resp = await self.client.post(
                 "/api/v1/ai/rag",
-                json=payload,
+                json=req.model_dump(exclude_none=True),
             )
             return resp.get("results", [])
         # Monolith fallback — shared Postgres RAG singleton (same as agents / checkpoint)
         from app.services.ai.knowledge import get_rag_service
 
         rag = await get_rag_service()
-        skw = _search_kwargs_from_rag_request(**kwargs)
-        results = await rag.search(query=query, **skw)
+        results = await rag.search(query=req.query, **req.to_search_kwargs())
         return [
             {
                 "content": r.document.content,

@@ -194,7 +194,44 @@ async def test_rag_query_returns_serialized_results():
 
     assert response.query == "what changed"
     assert response.results == [{"content": "doc-1", "score": 0.91, "metadata": {"source": "kb"}}]
-    rag_service.search.assert_awaited_once_with(query="what changed", top_k=3, filters={"kind": "doc"})
+    rag_service.search.assert_awaited_once_with(
+        query="what changed",
+        **ai_service.RAGRequest(query="what changed", top_k=3, filters={"kind": "doc"}).to_search_kwargs(),
+    )
+
+
+@pytest.mark.asyncio
+async def test_rag_query_forwards_scoped_search_fields():
+    import spectra_ai.main as ai_service
+
+    rag_service = SimpleNamespace(search=AsyncMock(return_value=[]))
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(
+            sys.modules,
+            "spectra_ai.rag",
+            make_module("spectra_ai.rag", RAGService=lambda: rag_service),
+        )
+        await ai_service.rag_query(
+            ai_service.RAGRequest(
+                query="x",
+                top_k=2,
+                doc_types=["finding", "lesson"],
+                user_id="user-42",
+                exclude_session_id="mission-9",
+            )
+        )
+
+    rag_service.search.assert_awaited_once_with(
+        query="x",
+        **ai_service.RAGRequest(
+            query="x",
+            top_k=2,
+            doc_types=["finding", "lesson"],
+            user_id="user-42",
+            exclude_session_id="mission-9",
+        ).to_search_kwargs(),
+    )
 
 
 @pytest.mark.asyncio

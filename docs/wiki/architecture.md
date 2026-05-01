@@ -116,7 +116,7 @@ RAGConfig(
 )
 ```
 
-Mission planning passes **`user_id`** and excludes the **current** `mission_id` session when pulling “past approaches” so prompts do not prefer in-flight rows.
+Mission planning passes **`user_id`** and excludes the **current** `mission_id` session when pulling “past approaches” so prompts do not prefer in-flight rows. The shared **`RAGRequest`** model in `spectra_domain` carries the same optional search fields (`doc_types`, `user_id`, `exclude_session_id`, …) for both the **AI microservice** HTTP API and **in-process** `get_rag_service()` callers.
 
 ---
 

@@ -255,11 +255,7 @@ async def rag_query(req: RAGRequest):
         from spectra_ai.rag import RAGService
 
         svc = RAGService()
-        results = await svc.search(
-            query=req.query,
-            top_k=req.top_k,
-            filters=req.filters,
-        )
+        results = await svc.search(query=req.query, **req.to_search_kwargs())
         return RAGResponse(
             results=[
                 {
