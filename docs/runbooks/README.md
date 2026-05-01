@@ -9,7 +9,7 @@ Operator and developer **executable** procedures for Spectra. Prefer these paths
 | [Compose smoke (CI mirror)](compose-smoke-ci.md) | Full stack + live API / health / latency tests (matches `compose-smoke` job when you need it). |
 | [Legacy cleanup backlog](legacy-cleanup-backlog.md) | Tracked removals: deprecated env vars, global toast API — not a substitute for CI. |
 | [Readability & structure](../contributing/readability-and-structure.md) | Spectra-specific modularity, async, split thresholds — complements CONTRIBUTING. |
-| [Iteration log (audit cycles)](iteration-log.md) | Dated audit→research→implement loops toward launch (e.g. 20-loop batches). |
+| [Iteration log (audit cycles)](iteration-log.md) | Short rolling log: recently closed quality items + pointer to P1/P2 backlog. |
 
 Canonical wiki context: [Testing strategy](../wiki/testing-strategy.md), [Operations](../wiki/operations.md), [Development](../wiki/development.md).
 

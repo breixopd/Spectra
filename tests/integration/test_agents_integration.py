@@ -110,9 +110,9 @@ async def test_scope_agent_flow(mock_llm):
 async def test_exploit_crafter_flow(mock_llm):
     """Test ExploitCrafter using Mock LLM."""
     from app.services.ai.agents.exploit_crafter import (
-        ExploitAction,
         ExploitCrafter,
-        ExploitInput,
+        ExploitCrafterInput,
+        ExploitCrafterOutput,
     )
 
     mock_llm.structured_responses = {
@@ -129,7 +129,7 @@ async def test_exploit_crafter_flow(mock_llm):
     }
 
     agent = ExploitCrafter(mock_llm)
-    inp = ExploitInput(target="1.1.1.1", vulnerability_id="CVE-2024-0001", service_info={"port": 80})
+    inp = ExploitCrafterInput(target="1.1.1.1", vulnerability_id="CVE-2024-0001", service_info={"port": 80})
     context = AgentContext(mission_id="test-mission", session_id="test-session", target="1.1.1.1")
 
     # Mock specialized methods via patching if needed or rely on MockLLM for simple flow
@@ -140,7 +140,7 @@ async def test_exploit_crafter_flow(mock_llm):
         result = await agent.execute(context, inp)
 
         assert result.success is True
-        assert isinstance(result.action, ExploitAction)
+        assert isinstance(result.action, ExploitCrafterOutput)
         assert result.action.exploit_name == "test_exploit"
 
 

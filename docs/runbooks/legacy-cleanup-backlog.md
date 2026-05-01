@@ -4,8 +4,7 @@ Last full pass: exploratory audit of the repo (not a guarantee nothing else exis
 
 ## P0 — Remove or replace when safe
 
-- **`WORKER_SKIP_STARTUP_AUTO_INSTALL`** — marked deprecated in `services/worker/src/spectra_worker/lifecycle.py`; still in `docker/compose.yaml`, tests, and `docs/wiki/worker-system.md`. Remove end-to-end once bulk install at startup is gone.
-- **`ExploitInput` / `ExploitAction` aliases** — `app/services/ai/agents/exploit_crafter.py`; migrate `app/services/mission/exploitation.py` and drop aliases.
+_(empty — last P0 items were cleared 2026-05-01: worker startup env switch, exploit crafter type aliases.)_
 
 ## P1 — Reduce surface area
 
@@ -22,5 +21,6 @@ Last full pass: exploratory audit of the repo (not a guarantee nothing else exis
 
 - No `app/api/` tree; no duplicate `templates/` / `static/` at repo root (canonical under `services/api/`).
 - No `sys.modules` import shims in `app/`, `services/`, `packages/`.
+- Worker startup does not read **`WORKER_SKIP_STARTUP_AUTO_INSTALL`**; tools container only syncs registry tool status on boot.
 
 When an item is completed, delete or shrink its section here and point to the PR in the changelog.

@@ -15,9 +15,9 @@ from app.services.ai.agents.base import (
     AgentContext,
 )
 from app.services.ai.agents.exploit_crafter import (
-    ExploitAction,
     ExploitCrafter,
-    ExploitInput,
+    ExploitCrafterInput,
+    ExploitCrafterOutput,
 )
 from app.services.ai.agents.post_exploitation import (
     PostExploitAction,
@@ -64,7 +64,7 @@ class TestExploitCrafter:
         agent = ExploitCrafter(llm=mock_llm)
 
         with patch.object(agent, "_find_exploit_candidates", new_callable=AsyncMock, return_value=[]):
-            input_data = ExploitInput(target="10.0.0.1")
+            input_data = ExploitCrafterInput(target="10.0.0.1")
             result = await agent.execute(context, input_data)
 
         assert result.success is False
@@ -79,7 +79,7 @@ class TestExploitCrafter:
             {"name": "exploit_a", "type": "cve"},
             {"name": "exploit_b", "type": "generic"},
         ]
-        mock_action = ExploitAction(
+        mock_action = ExploitCrafterOutput(
             confidence=0.8,
             risk_level=ActionRisk.HIGH,
             reasoning="test",
@@ -103,7 +103,7 @@ class TestExploitCrafter:
                 return_value=mock_action,
             ),
         ):
-            input_data = ExploitInput(target="10.0.0.1")
+            input_data = ExploitCrafterInput(target="10.0.0.1")
             result = await agent.execute(context, input_data)
 
         assert result.success is True
@@ -122,7 +122,7 @@ class TestExploitCrafter:
             {"name": "exploit_a", "type": "cve"},
             {"name": "exploit_b", "type": "generic"},
         ]
-        mock_action = ExploitAction(
+        mock_action = ExploitCrafterOutput(
             confidence=0.7,
             risk_level=ActionRisk.HIGH,
             reasoning="retry",
@@ -146,7 +146,7 @@ class TestExploitCrafter:
                 return_value=mock_action,
             ) as mock_cfg,
         ):
-            input_data = ExploitInput(target="10.0.0.1")
+            input_data = ExploitCrafterInput(target="10.0.0.1")
             result = await agent.execute(context, input_data)
 
         assert result.success is True
@@ -164,7 +164,7 @@ class TestExploitCrafter:
         ]
         agent = ExploitCrafter(llm=mock_llm)
         candidates = [{"name": "only_one", "type": "cve"}]
-        mock_action = ExploitAction(
+        mock_action = ExploitCrafterOutput(
             confidence=0.5,
             risk_level=ActionRisk.HIGH,
             reasoning="wrap",
@@ -188,7 +188,7 @@ class TestExploitCrafter:
                 return_value=mock_action,
             ),
         ):
-            result = await agent.execute(context, ExploitInput(target="10.0.0.1"))
+            result = await agent.execute(context, ExploitCrafterInput(target="10.0.0.1"))
 
         assert result.success is True
         assert result.metadata["selected_index"] == 0  # (3-1) % 1 == 0
@@ -212,11 +212,11 @@ class TestExploitCrafter:
         )
         agent = ExploitCrafter(llm=llm)
         candidate = {"name": "ms17_010", "type": "cve"}
-        input_data = ExploitInput(target="10.0.0.1", service_info={"port": 445})
+        input_data = ExploitCrafterInput(target="10.0.0.1", service_info={"port": 445})
 
         action = await agent._configure_exploit(context, candidate, input_data, attempt=2)
 
-        assert isinstance(action, ExploitAction)
+        assert isinstance(action, ExploitCrafterOutput)
         assert action.attempt_number == 2  # overridden by the method
         assert action.exploit_name == "ms17_010"
 
@@ -228,7 +228,7 @@ class TestExploitCrafter:
         agent = ExploitCrafter(llm=llm)
 
         candidate = {"name": "fallback_exploit", "type": "generic"}
-        input_data = ExploitInput(target="10.0.0.1", service_info={"port": 80})
+        input_data = ExploitCrafterInput(target="10.0.0.1", service_info={"port": 80})
 
         with pytest.raises(LLMParseError):
             await agent._configure_exploit(context, candidate, input_data, attempt=1)

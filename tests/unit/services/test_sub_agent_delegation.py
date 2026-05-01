@@ -9,7 +9,7 @@ from app.services.ai.agents.base import (
     AgentResult,
     AgentRole,
 )
-from app.services.ai.agents.exploit_crafter import ExploitCrafter, ExploitInput
+from app.services.ai.agents.exploit_crafter import ExploitCrafter, ExploitCrafterInput
 from app.services.ai.agents.mission_controller import MissionController, MissionInput
 from app.services.ai.agents.post_exploitation import PostExploitationAgent, PostExploitInput
 from tests.mocks.llm import MockLLMClient
@@ -33,7 +33,7 @@ class TestExploitCrafterSubAgent:
     async def test_spawns_poc_developer_for_cve_candidate(self):
         llm = MockLLMClient(
             structured_responses={
-                "ExploitAction": {
+                "ExploitCrafterOutput": {
                     "action_type": "execute_exploit",
                     "confidence": 0.85,
                     "risk_level": "high",
@@ -65,7 +65,7 @@ class TestExploitCrafterSubAgent:
             patch.object(agent, "_find_exploit_candidates", return_value=[cve_candidate]),
             patch.object(agent, "spawn_sub_agent", new_callable=AsyncMock, return_value=poc_result),
         ):
-            input_data = ExploitInput(target="10.0.0.1", service_info={"port": 8080})
+            input_data = ExploitCrafterInput(target="10.0.0.1", service_info={"port": 8080})
             ctx = _ctx()
             result = await agent.execute(ctx, input_data)
 
@@ -79,7 +79,7 @@ class TestExploitCrafterSubAgent:
     async def test_no_poc_for_non_cve_candidate(self):
         llm = MockLLMClient(
             structured_responses={
-                "ExploitAction": {
+                "ExploitCrafterOutput": {
                     "action_type": "execute_exploit",
                     "confidence": 0.8,
                     "risk_level": "high",
@@ -103,7 +103,7 @@ class TestExploitCrafterSubAgent:
             patch.object(agent, "_find_exploit_candidates", return_value=[memory_candidate]),
             patch.object(agent, "spawn_sub_agent", new_callable=AsyncMock) as mock_spawn,
         ):
-            input_data = ExploitInput(target="10.0.0.1", service_info={})
+            input_data = ExploitCrafterInput(target="10.0.0.1", service_info={})
             result = await agent.execute(_ctx(), input_data)
 
             assert result.success
@@ -114,7 +114,7 @@ class TestExploitCrafterSubAgent:
     async def test_poc_failure_does_not_break_exploit_result(self):
         llm = MockLLMClient(
             structured_responses={
-                "ExploitAction": {
+                "ExploitCrafterOutput": {
                     "action_type": "execute_exploit",
                     "confidence": 0.85,
                     "risk_level": "high",
@@ -145,7 +145,7 @@ class TestExploitCrafterSubAgent:
                 side_effect=RuntimeError("sub-agent crashed"),
             ),
         ):
-            input_data = ExploitInput(target="10.0.0.1", service_info={"port": 443})
+            input_data = ExploitCrafterInput(target="10.0.0.1", service_info={"port": 443})
             result = await agent.execute(_ctx(), input_data)
 
             # Main result is still successful
