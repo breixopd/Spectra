@@ -62,7 +62,6 @@ class GatewayClient:
                 aiohttp.ClientConnectionError,
                 aiohttp.ServerDisconnectedError,
                 TimeoutError,
-                asyncio.TimeoutError,
             ) as e:
                 last_error = e
                 if attempt < HTTP_CLIENT_MAX_RETRIES - 1:
