@@ -307,6 +307,40 @@ class TestShellInjectionPrevention:
         quoted = shlex.quote("host | cat /etc/shadow")
         assert quoted in cmd
 
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            "192.168.1.1; id",
+            "host$(id)",
+            "host`id`",
+            "host|id",
+            "host&false",
+            "host>out",
+            "host<in",
+            "host'q",
+            'host"d',
+        ],
+    )
+    def test_target_metachar_variants_quoted(self, payload: str):
+        """Regression: user-supplied targets must appear only via shlex.quote."""
+        config = _make_tool_config(command="nmap", args_template="-sV {target}")
+        builder = CommandBuilder(config)
+        request = _make_request(target=payload)
+
+        cmd = builder.build_command(request)
+        assert shlex.quote(payload) in cmd
+
+    def test_newline_in_target_collapsed_to_space_inside_command(self):
+        """Whitespace collapse runs on the full args string after quoting."""
+        config = _make_tool_config(command="nmap", args_template="-sV {target}")
+        builder = CommandBuilder(config)
+        request = _make_request(target="host\nid")
+
+        cmd = builder.build_command(request)
+        assert "nmap -sV" in cmd
+        assert "host" in cmd and "id" in cmd
+        assert "\n" not in cmd
+
 
 # =====================================================================
 # Edge cases

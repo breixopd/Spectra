@@ -55,7 +55,9 @@ async def run_command_safe(command: str | list[str], timeout: int = 300) -> tupl
 
     When *command* is a ``list``, ``create_subprocess_exec`` is used (no shell).
     When *command* is a ``str``, ``create_subprocess_shell`` is kept for
-    install scripts that rely on shell features (e.g. ``&&``, ``>``).
+    install scripts that rely on shell features (e.g. ``&&``, ``>``). Callers
+    must not concatenate raw user input into shell strings without
+    ``shlex.quote`` (prefer ``list`` argv when possible).
 
     Args:
         command: The command to execute (shell string or exec list).
