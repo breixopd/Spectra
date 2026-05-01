@@ -70,10 +70,12 @@ class AIGateway:
 
         rag = await get_rag_service()
         results = await rag.search(query=req.query, **req.to_search_kwargs())
+        # Match ``spectra_ai.main`` RAG HTTP payload keys (content, score, metadata, doc_type).
         return [
             {
                 "content": r.document.content,
                 "score": r.score,
+                "metadata": r.document.metadata or {},
                 "doc_type": r.document.doc_type,
             }
             for r in results

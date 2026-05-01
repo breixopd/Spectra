@@ -42,6 +42,39 @@ async def test_rag_search_monolith_uses_get_rag_service(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_rag_search_monolith_hit_shape_matches_ai_service_contract(monkeypatch):
+    """Monolith fallback must return the same keys as POST /api/v1/ai/rag results."""
+
+    class _Doc:
+        content = "body"
+        doc_type = "finding"
+        metadata = {"user_id": "u-9"}
+
+    class _Hit:
+        document = _Doc()
+        score = 0.91
+
+    mock_rag = MagicMock()
+    mock_rag.search = AsyncMock(return_value=[_Hit()])
+
+    async def fake_get_rag():
+        return mock_rag
+
+    monkeypatch.setattr(ag.settings, "AI_SERVICE_URL", "")
+    monkeypatch.setattr("app.services.ai.knowledge.get_rag_service", fake_get_rag)
+
+    gw = ag.AIGateway()
+    hits = await gw.rag_search("q", top_k=2)
+
+    assert len(hits) == 1
+    assert set(hits[0]) == {"content", "score", "metadata", "doc_type"}
+    assert hits[0]["content"] == "body"
+    assert hits[0]["doc_type"] == "finding"
+    assert hits[0]["score"] == 0.91
+    assert hits[0]["metadata"] == {"user_id": "u-9"}
+
+
+@pytest.mark.asyncio
 async def test_check_embeddings_monolith_uses_get_rag_service(monkeypatch):
     mock_rag = MagicMock()
     mock_rag.is_functional = True

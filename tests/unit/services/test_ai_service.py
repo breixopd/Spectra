@@ -54,6 +54,8 @@ async def test_lifespan_tolerates_embedding_init_failure():
 async def test_health_returns_ai_service_status():
     from unittest.mock import AsyncMock, patch
 
+    from starlette.responses import Response
+
     import spectra_ai.main as ai_service
 
     mock_response = SimpleNamespace(status_code=200)
@@ -61,12 +63,14 @@ async def test_health_returns_ai_service_status():
     mock_client.__aenter__ = AsyncMock(return_value=SimpleNamespace(get=AsyncMock(return_value=mock_response)))
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
+    http_response = Response()
     with patch("httpx.AsyncClient", return_value=mock_client):
-        result = await ai_service.health()
+        result = await ai_service.health(http_response)
 
     assert result["service"] == "ai"
     assert result["status"] == "healthy"
     assert result["tensorzero"] == "reachable"
+    assert http_response.status_code == 200
 
 
 @pytest.mark.asyncio
@@ -176,7 +180,7 @@ async def test_rag_query_returns_serialized_results():
 
     results = [
         SimpleNamespace(
-            document=SimpleNamespace(content="doc-1", metadata={"source": "kb"}),
+            document=SimpleNamespace(content="doc-1", metadata={"source": "kb"}, doc_type="finding"),
             score=0.91,
         )
     ]
@@ -193,7 +197,9 @@ async def test_rag_query_returns_serialized_results():
         )
 
     assert response.query == "what changed"
-    assert response.results == [{"content": "doc-1", "score": 0.91, "metadata": {"source": "kb"}}]
+    assert response.results == [
+        {"content": "doc-1", "score": 0.91, "metadata": {"source": "kb"}, "doc_type": "finding"},
+    ]
     rag_service.search.assert_awaited_once_with(
         query="what changed",
         **ai_service.RAGRequest(query="what changed", top_k=3, filters={"kind": "doc"}).to_search_kwargs(),
