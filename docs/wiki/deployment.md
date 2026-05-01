@@ -58,6 +58,19 @@ all** of the following before any shared or production-like deployment:
 See `.env.example` for the full template. Swarm deployments use Docker secrets
 (`_FILE` variants) — see [Swarm deployment](#swarm-deployment) below.
 
+### Staging / VPS test parity
+
+After a **clean `git pull`** on the host, mirror the CI unit + coverage gate:
+
+```bash
+./scripts/ops/vps-verify-tests.sh
+```
+
+The script lives at `scripts/ops/vps-verify-tests.sh` and uses `docker/compose.yaml`
+profile `test`. A tree that is missing new tests or still on an old commit can
+show **below 70%** aggregate coverage even when `main` is green — always verify
+`git rev-parse HEAD` matches the branch you intend.
+
 ### SERVICE_MODE Configuration
 
 Each image sets `SERVICE_MODE` (see Dockerfiles) so **shared** code — especially
