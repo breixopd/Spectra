@@ -52,6 +52,8 @@ class Settings(BaseSettings):
 
     # --- Application ---
     APP_NAME: str = "Spectra"
+    CONTACT_EMAIL: str = ""
+    ALLOW_REGISTRATION: bool = True
     APP_ENV: str = "development"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"

@@ -100,6 +100,7 @@ class SettingsUpdate(BaseModel):
     # External Service Endpoints
     sandbox_orchestrator_url: str | None = None
     sandbox_orchestrator_timeout: int | None = Field(None, ge=5, le=300)
+    sandbox_orchestrator_api_key: str | None = None
 
     # Shell Routing
     shell_routing_mode: str | None = Field(None, pattern="^(direct|sandbox|proxy)$")
@@ -113,6 +114,11 @@ class SettingsUpdate(BaseModel):
     # Maintenance
     maintenance_mode: bool | None = None
     maintenance_message: str | None = None
+
+    # Branding / access (DB-backed, same keys as initial setup)
+    app_name: str | None = None
+    contact_email: str | None = None
+    allow_registration: bool | None = None
 
     @field_validator("sandbox_resource_tiers")
     @classmethod

@@ -9,9 +9,17 @@
             </div>
             <h1 class="text-2xl font-bold text-white">System Setup</h1>
             <p class="text-gray-400 mt-2">Create the admin account, pick one default AI profile, and keep advanced routing optional.</p>
+            {% if has_users %}
+            <div class="mt-6 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-100 text-sm text-left">
+                <p class="font-medium">Accounts already exist on this instance.</p>
+                <p class="mt-2 text-amber-100/90">Values below reflect the current configuration (TensorZero URL, embeddings, public URLs). To <strong>save</strong> changes, <a href="/login?next=/setup" class="underline text-white font-medium">log in</a> as someone who can manage platform settings, then submit again from this page.</p>
+            </div>
+            {% endif %}
         </div>
 
         <form id="setup-form" class="space-y-6" role="form" aria-label="System setup">
+            <input type="checkbox" id="custom-db" class="hidden" tabindex="-1" aria-hidden="true">
+            <input type="hidden" name="database_url" id="database_url" value="" aria-hidden="true">
             <div class="space-y-4 border-b border-white/10 pb-6">
                 <h2 class="text-lg font-semibold text-white flex items-center gap-2">
                     <i data-lucide="user" class="w-5 h-5 inline-block"></i> Admin Account
@@ -19,21 +27,21 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-400 mb-1">Username</label>
-                        <input type="text" name="username" required maxlength="255" autocomplete="username" aria-required="true" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                        <input type="text" name="username" maxlength="255" autocomplete="username" {% if not has_users %}required aria-required="true"{% endif %} class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors" value="{{ admin_username }}">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-400 mb-1">Email</label>
-                        <input type="email" name="email" required maxlength="255" autocomplete="email" aria-required="true" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                        <input type="email" name="email" maxlength="255" autocomplete="email" {% if not has_users %}required aria-required="true"{% endif %} class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors" value="{{ admin_email }}">
                     </div>
                 </div>
                 <div>
-                    <label for="password" class="block text-sm font-medium text-gray-400 mb-1">Password</label>
-                    <input type="password" name="password" id="password" required minlength="8" maxlength="128" autocomplete="new-password" aria-required="true" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                    <label for="password" class="block text-sm font-medium text-gray-400 mb-1">Password {% if has_users %}<span class="text-xs text-gray-500">(only for first-time setup)</span>{% endif %}</label>
+                    <input type="password" name="password" id="password" {% if not has_users %}required{% endif %} minlength="8" maxlength="128" autocomplete="new-password" {% if not has_users %}aria-required="true"{% endif %} class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
                     <p class="text-xs text-gray-500 mt-1">Min 8 characters, with uppercase, lowercase, and a digit</p>
                 </div>
                 <div>
                     <label for="confirm-password" class="block text-sm font-medium text-gray-400 mb-1">Confirm Password</label>
-                    <input type="password" id="confirm-password" required minlength="8" maxlength="128" autocomplete="new-password" aria-required="true" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors" placeholder="Confirm password">
+                    <input type="password" id="confirm-password" {% if not has_users %}required{% endif %} minlength="8" maxlength="128" autocomplete="new-password" {% if not has_users %}aria-required="true"{% endif %} class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors" placeholder="Confirm password">
                 </div>
             </div>
 
@@ -45,26 +53,26 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-400 mb-1">Platform Domain / URL</label>
-                        <input type="url" name="platform_base_url" placeholder="https://spectra.example.com" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                        <input type="url" name="platform_base_url" value="{{ prefill.platform_base_url }}" placeholder="https://spectra.example.com" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
                         <p class="text-xs text-gray-500 mt-1">Used for email links, callbacks, and report URLs</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-400 mb-1">Platform Name</label>
-                        <input type="text" name="app_name" value="Spectra" maxlength="50" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                        <input type="text" name="app_name" value="{{ prefill.app_name }}" maxlength="50" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
                         <p class="text-xs text-gray-500 mt-1">Displayed in emails and reports</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-400 mb-1">Contact Email</label>
-                        <input type="email" name="contact_email" placeholder="security@example.com" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                        <input type="email" name="contact_email" value="{{ prefill.contact_email }}" placeholder="security@example.com" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
                         <p class="text-xs text-gray-500 mt-1">For system notifications and password resets</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-400 mb-1">Public Registration</label>
                         <div class="flex items-center gap-3 mt-2">
                             <label class="inline-flex items-center gap-2">
-                                <input type="checkbox" name="allow_registration" checked class="rounded bg-black/30 border-white/20 text-violet-500 focus:ring-violet-500">
+                                <input type="checkbox" name="allow_registration" class="rounded bg-black/30 border-white/20 text-violet-500 focus:ring-violet-500" {% if prefill.allow_registration %}checked{% endif %}>
                                 <span class="text-sm text-gray-300">Allow new users to register</span>
                             </label>
                         </div>
@@ -89,12 +97,12 @@
                     <div class="rounded-xl border border-white/10 bg-black/20 p-4 space-y-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-400 mb-1">TensorZero Gateway URL</label>
-                            <input type="text" name="tensorzero_gateway_url" id="tensorzero_gateway_url" value="http://tensorzero:3000" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                            <input type="text" name="tensorzero_gateway_url" id="tensorzero_gateway_url" value="{{ prefill.tensorzero_gateway_url }}" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
                             <p class="text-xs text-gray-500 mt-1">The URL of the TensorZero gateway container</p>
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-400 mb-1">Embedding Model</label>
-                            <input type="text" name="embedding_model" value="local/BAAI/bge-small-en-v1.5" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                            <input type="text" name="embedding_model" value="{{ prefill.embedding_model }}" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
                             <p class="text-xs text-gray-500 mt-1">Prefix with <code class="text-violet-400">local/</code> for free offline embeddings</p>
                         </div>
                     </div>
@@ -111,13 +119,13 @@
                 <!-- Optional: Customize AI Models -->
                 <div class="mt-4">
                     <label class="flex items-center gap-2 cursor-pointer group">
-                        <input type="checkbox" id="customize-ai" class="rounded border-white/20 bg-black/30 text-violet-500 focus:ring-violet-500" data-on-change="toggleAiCustomPanel">
+                            <input type="checkbox" id="customize-ai" class="rounded border-white/20 bg-black/30 text-violet-500 focus:ring-violet-500" data-on-change="toggleAiCustomPanel" {% if has_users %}checked{% endif %}>
                         <span class="text-sm text-gray-300 group-hover:text-violet-300 transition-colors">Customize AI model configuration</span>
                     </label>
                     <p class="text-xs text-gray-500 mt-1 ml-6">Leave unchecked to use optimized defaults (recommended for first setup)</p>
                 </div>
 
-                <div id="ai-custom-panel" class="hidden mt-4 space-y-4 p-4 rounded-xl bg-black/20 border border-white/5">
+                <div id="ai-custom-panel" class="{% if not has_users %}hidden {% endif %}mt-4 space-y-4 p-4 rounded-xl bg-black/20 border border-white/5">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-400 mb-1">Provider Type</label>
@@ -191,7 +199,7 @@
                         </div>
                         <div id="sandbox-fields" class="space-y-3 hidden">
                             <p class="text-xs text-gray-500">For Kubernetes or multi-node Docker sandbox management.</p>
-                            <input type="text" id="sandbox_orchestrator_url" name="sandbox_orchestrator_url" placeholder="http://orchestrator:8084" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                            <input type="text" id="sandbox_orchestrator_url" name="sandbox_orchestrator_url" value="{{ prefill.sandbox_orchestrator_url }}" placeholder="http://orchestrator:8084" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
                             <div>
                                 <label class="block text-xs font-medium text-gray-400 mb-1">API Key</label>
                                 <input type="password" id="sandbox_orchestrator_api_key" name="sandbox_orchestrator_api_key" placeholder="Orchestrator API key" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
@@ -203,7 +211,7 @@
             </div>
 
             <button type="submit" class="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold transition-colors mt-6 shadow-lg shadow-violet-500/20">
-                Complete Setup
+                {% if has_users %}Save platform / AI settings{% else %}Complete Setup{% endif %}
             </button>
         </form>
 
@@ -212,6 +220,8 @@
 </div>
 
 <script nonce="{{ request.state.csp_nonce }}">
+    const HAS_USERS = {{ has_users | tojson }};
+
     function toggleAiCustomPanel() { document.getElementById('ai-custom-panel').classList.toggle('hidden'); }
 
     const setupForm = document.getElementById('setup-form');
@@ -221,6 +231,19 @@
     const customDb = document.getElementById('custom-db');
     const dbFields = document.getElementById('db-fields');
     const testStatus = document.getElementById('test-status');
+
+    if (infraToggle && infraSettings) {
+        infraToggle.addEventListener('click', () => {
+            infraSettings.classList.toggle('hidden');
+            infraToggle.textContent = infraSettings.classList.contains('hidden') ? 'Show Options' : 'Hide Options';
+        });
+    }
+    if (customDb && dbFields) {
+        customDb.addEventListener('change', () => {
+            dbFields.classList.toggle('hidden', !customDb.checked);
+        });
+    }
+    document.getElementById('test-tz-gateway').addEventListener('click', testTZGateway);
 
     async function testTZGateway() {
         const button = document.getElementById('test-tz-gateway');
@@ -251,19 +274,11 @@
         }
     }
 
-    infraToggle.addEventListener('click', () => {
-        infraSettings.classList.toggle('hidden');
-        infraToggle.textContent = infraSettings.classList.contains('hidden') ? 'Show Options' : 'Hide Options';
-    });
-    customDb.addEventListener('change', () => {
-        dbFields.classList.toggle('hidden', !customDb.checked);
-    });
-    document.getElementById('test-tz-gateway').addEventListener('click', testTZGateway);
-
     function setupServiceToggle(checkboxId, fieldsId, statusDotId, defaultLabel) {
         const checkbox = document.getElementById(checkboxId);
         const fields = document.getElementById(fieldsId);
         const statusDot = document.getElementById(statusDotId);
+        if (!checkbox || !fields) return;
         checkbox.addEventListener('change', () => {
             fields.classList.toggle('hidden', !checkbox.checked);
             if (statusDot) {
@@ -279,9 +294,18 @@
     setupForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         errorMsg.classList.add('hidden');
-        const password = document.getElementById('password').value;
-        const confirmPassword = document.getElementById('confirm-password').value;
-        if (password !== confirmPassword) {
+        const passwordEl = document.getElementById('password');
+        const confirmEl = document.getElementById('confirm-password');
+        const password = passwordEl ? passwordEl.value : '';
+        const confirmPassword = confirmEl ? confirmEl.value : '';
+
+        if (HAS_USERS) {
+            if ((password || confirmPassword) && password !== confirmPassword) {
+                errorMsg.textContent = 'Passwords do not match';
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+        } else if (password !== confirmPassword) {
             errorMsg.textContent = 'Passwords do not match';
             errorMsg.classList.remove('hidden');
             return;
@@ -290,9 +314,103 @@
         const submitButton = setupForm.querySelector('button[type="submit"]');
         const originalText = submitButton.textContent;
         submitButton.disabled = true;
-        submitButton.textContent = 'Setting up...';
+        submitButton.textContent = HAS_USERS ? 'Saving...' : 'Setting up...';
+
+        const parseError = async (response) => {
+            try {
+                const error = await response.json();
+                if (Array.isArray(error.detail)) {
+                    return error.detail.map((item) => item.msg || item.message || 'Invalid input').join('. ');
+                }
+                if (typeof error.detail === 'string') return error.detail;
+                return error.detail ? JSON.stringify(error.detail) : `Request failed (${response.status})`;
+            } catch {
+                return `Request failed (${response.status})`;
+            }
+        };
 
         try {
+            if (HAS_USERS) {
+                const settingsBody = {};
+                const tz = document.getElementById('tensorzero_gateway_url').value.trim();
+                if (tz) settingsBody.tensorzero_gateway_url = tz;
+                const emb = setupForm.embedding_model.value.trim();
+                if (emb) settingsBody.embedding_model = emb;
+                const pbu = setupForm.platform_base_url && setupForm.platform_base_url.value.trim();
+                if (pbu) settingsBody.platform_base_url = pbu;
+                const appn = setupForm.app_name && setupForm.app_name.value.trim();
+                if (appn) settingsBody.app_name = appn;
+                const ce = setupForm.contact_email && setupForm.contact_email.value.trim();
+                if (ce) settingsBody.contact_email = ce;
+                if (setupForm.allow_registration) {
+                    settingsBody.allow_registration = setupForm.allow_registration.checked;
+                }
+                const extSandbox = document.getElementById('use-external-sandbox').checked;
+                if (extSandbox) {
+                    const sou = document.getElementById('sandbox_orchestrator_url').value.trim();
+                    if (sou) settingsBody.sandbox_orchestrator_url = sou;
+                    const sak = document.getElementById('sandbox_orchestrator_api_key').value.trim();
+                    if (sak) settingsBody.sandbox_orchestrator_api_key = sak;
+                } else {
+                    settingsBody.sandbox_orchestrator_url = null;
+                }
+
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify(settingsBody),
+                });
+                if (res.status === 401 || res.status === 403) {
+                    throw new Error('Log in as a platform settings admin, then submit again (use the link in the banner).');
+                }
+                if (!res.ok) {
+                    throw new Error(await parseError(res));
+                }
+
+                if (document.getElementById('customize-ai')?.checked) {
+                    const modelPayload = {
+                        models: {
+                            fast: {
+                                primary: document.getElementById('ai-fast-primary')?.value || '',
+                                fallback: document.getElementById('ai-fast-fallback')?.value || '',
+                            },
+                            balanced: {
+                                primary: document.getElementById('ai-balanced-primary')?.value || '',
+                                fallback: document.getElementById('ai-balanced-fallback')?.value || '',
+                            },
+                            capable: {
+                                primary: document.getElementById('ai-capable-primary')?.value || '',
+                                fallback: document.getElementById('ai-capable-fallback')?.value || '',
+                            },
+                        },
+                        provider_type: document.getElementById('ai-provider-type')?.value || 'openai',
+                    };
+                    const tzRes = await fetch('/api/v1/admin/tensorzero/config', {
+                        method: 'PUT',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: JSON.stringify(modelPayload),
+                    });
+                    if (!tzRes.ok) {
+                        if (tzRes.status !== 401 && tzRes.status !== 403) {
+                            throw new Error('Platform settings saved, but model tiers failed: ' + (await parseError(tzRes)));
+                        }
+                    }
+                }
+
+                submitButton.disabled = false;
+                submitButton.textContent = originalText;
+                window.location.reload();
+                return;
+            }
+
             const payload = {
                 user: {
                     username: setupForm.username.value.trim(),
@@ -301,7 +419,7 @@
                 },
                 tensorzero_gateway_url: document.getElementById('tensorzero_gateway_url').value.trim() || 'http://tensorzero:3000',
                 embedding_model: setupForm.embedding_model.value.trim() || null,
-                use_custom_db: customDb.checked,
+                use_custom_db: !!(customDb && customDb.checked),
                 database_url: setupForm.database_url.value.trim() || null,
                 sandbox_orchestrator_url: document.getElementById('use-external-sandbox').checked ? document.getElementById('sandbox_orchestrator_url').value.trim() || null : null,
                 sandbox_orchestrator_api_key: document.getElementById('use-external-sandbox').checked ? document.getElementById('sandbox_orchestrator_api_key').value.trim() || null : null,
@@ -311,7 +429,6 @@
                 allow_registration: setupForm.allow_registration?.checked ?? true,
             };
 
-            // If user customized AI models, include them
             if (document.getElementById('customize-ai')?.checked) {
                 payload.ai_models = {
                     provider_type: document.getElementById('ai-provider-type')?.value || 'openai',
@@ -340,11 +457,7 @@
             });
 
             if (!setupResponse.ok) {
-                const error = await setupResponse.json();
-                if (Array.isArray(error.detail)) {
-                    throw new Error(error.detail.map((item) => item.msg || item.message || 'Invalid input').join('. '));
-                }
-                throw new Error(error.detail || 'Setup failed. Please review the form and try again.');
+                throw new Error(await parseError(setupResponse));
             }
 
             const loginResponse = await fetch('/api/v1/auth/token', {
