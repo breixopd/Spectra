@@ -21,7 +21,7 @@ jobs:
       - name: Build Docker test runner
         run: docker build -f docker/Dockerfile.test -t spectra-test-ci .
       - name: Run lint in Docker
-        run: docker run --rm spectra-test-ci python -m ruff check app/ tests/
+        run: docker run --rm spectra-test-ci python -m ruff check app/ tests/ services/ packages/
       - name: Check import boundaries in Docker
         run: docker run --rm spectra-test-ci python scripts/check_import_boundaries.py
 
@@ -58,7 +58,7 @@ jobs:
         run: |
           set +e
           docker compose -f docker/compose.yaml --profile test run --name spectra-unit-coverage unit-test-runner \
-            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=app --cov=spectra_api --cov=spectra_worker --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=70"
+            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=app --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=70"
           status=$?
           docker cp spectra-unit-coverage:/tmp/coverage.xml coverage.xml 2>/dev/null || true
           docker rm -f spectra-unit-coverage >/dev/null 2>&1 || true

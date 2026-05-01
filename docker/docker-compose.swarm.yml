@@ -1,6 +1,13 @@
 # Spectra — Docker Swarm stack
 # Usage: docker stack deploy -c docker-compose.swarm.yml spectra
 # Secrets and node labels: docs/wiki/deployment-guide.md
+#
+# Autoscaling: Swarm has no built-in metric-driven autoscaling. The usual pattern
+# is Prometheus/cAdvisor (or similar) plus a small controller that calls the
+# Docker API / `docker service scale` on thresholds. Restart policies here react
+# to process exit, not to `unhealthy` alone — pair healthchecks with monitoring
+# or a watchdog if you need heal-on-unhealthy behaviour. See also
+# .audit/2026-05-01--platform-audit/research/01-swarm-self-healing-agents.md
 
 x-logging: &default-logging
   driver: json-file
