@@ -38,7 +38,8 @@ def include_routers(app: FastAPI, mode: str | None = None) -> None:
     """Include routers based on ``SERVICE_MODE``.
 
     Modes ``""``, ``"all"``, and ``"api"`` load the full router set. Dedicated
-    service modes only mount a minimal surface (e.g. health).
+    service modes only mount a minimal surface (e.g. health). Unknown values
+    mount **health only** (fail closed).
     """
     if mode is None:
         mode = settings.SERVICE_MODE
@@ -87,8 +88,11 @@ def include_routers(app: FastAPI, mode: str | None = None) -> None:
         app.include_router(health.router, prefix="/api", tags=["Health"], include_in_schema=False)
 
     else:
-        logger.warning("Unknown SERVICE_MODE %r — loading all routers as fallback", mode)
-        include_routers(app, "all")
-        return
+        logger.error(
+            "Unknown SERVICE_MODE %r — mounting health-only surface (fail closed). "
+            "Valid values: '', 'all', 'api', 'ai', 'worker', 'scheduler', 'tools'.",
+            mode,
+        )
+        app.include_router(health.router, prefix="/api", tags=["Health"])
 
     logger.info("Service mode: %s — routers loaded", mode or "all")
