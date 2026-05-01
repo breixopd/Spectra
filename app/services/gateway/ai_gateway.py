@@ -8,12 +8,22 @@ and methods raise RuntimeError so tests fail fast with a clear message.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from app.core.config import settings
 from app.services.gateway.http_client import GatewayClient
 from spectra_domain.ai import ChatRequest, EmbeddingRequest, RAGRequest
 
 logger = logging.getLogger(__name__)
+
+
+def _search_kwargs_from_rag_request(**kwargs: Any) -> dict[str, Any]:
+    """Map optional RAG / HTTP payload fields to :meth:`RAGService.search` parameters."""
+    out: dict[str, Any] = {"top_k": kwargs.get("top_k", 5), "filters": kwargs.get("filters")}
+    for key in ("doc_type", "doc_types", "user_id", "exclude_session_id"):
+        if key in kwargs and kwargs[key] is not None:
+            out[key] = kwargs[key]
+    return out
 
 
 class AIGateway:
@@ -65,11 +75,12 @@ class AIGateway:
                 json=payload,
             )
             return resp.get("results", [])
-        # Monolith fallback — call RAGService directly
-        from spectra_ai.rag import RAGService
+        # Monolith fallback — shared Postgres RAG singleton (same as agents / checkpoint)
+        from app.services.ai.knowledge import get_rag_service
 
-        svc = RAGService()
-        results = await svc.search(query=query, top_k=kwargs.get("top_k", 5), filters=kwargs.get("filters"))
+        rag = await get_rag_service()
+        skw = _search_kwargs_from_rag_request(**kwargs)
+        results = await rag.search(query=query, **skw)
         return [
             {
                 "content": r.document.content,
@@ -93,9 +104,9 @@ class AIGateway:
                 return {"functional": False, "status": f"unreachable: {type(exc).__name__}"}
         # Monolith fallback
         try:
-            from spectra_ai.rag import RAGService
+            from app.services.ai.knowledge import get_rag_service
 
-            rag = RAGService()
+            rag = await get_rag_service()
             if rag.is_functional:
                 return {"functional": True, "status": "healthy"}
             return {"functional": False, "status": "fallback"}
