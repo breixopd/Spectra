@@ -33,6 +33,7 @@ from app.infrastructure.system_status import (
     remove_system_operation,
     set_system_status,
 )
+from app.services.billing.seed_plans import seed_default_plans
 from app.services.system.runtime_settings import hydrate_runtime_settings_from_db
 from app.telemetry.telemetry import telemetry
 from spectra_common.advisory_locks import stable_lock_id
@@ -40,9 +41,6 @@ from spectra_common.paths import data_root
 from spectra_common.tasks import create_safe_task
 
 logger = logging.getLogger(__name__)
-
-
-from app.services.billing.seed_plans import seed_default_plans
 
 
 async def run_startup_checks() -> None:
