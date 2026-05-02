@@ -284,24 +284,26 @@ jobs:
             echo "Waiting... ($i/90) - $all_running containers running"
             sleep 5
           done
-      - name: Run e2e API live tests
-        run: |
-          docker compose -f docker/compose.yaml --profile app --profile targets --profile test run --rm \
-            -e APP_BASE_URL=http://app:5000 \
-            test-runner \
-            "python -m pytest tests/e2e/test_api_live.py -v --tb=short --timeout=120"
-      - name: Run health endpoint integration test
-        run: |
-          docker compose -f docker/compose.yaml --profile app --profile targets --profile test run --rm \
-            -e APP_BASE_URL=http://app:5000 \
-            test-runner \
-            "python -m pytest tests/integration/test_api_health_live.py -v --tb=short --timeout=120"
+      # Performance runs first: it calls ensure_admin_setup() so a fresh postgres volume has an
+      # admin user before e2e tests authenticate (see tests/platform_harness.py defaults).
       - name: Run performance smoke tests
         run: |
           docker compose -f docker/compose.yaml --profile app --profile targets --profile test run --rm \
             -e LOAD_TEST_APP_URL=http://app:5000 \
             test-runner \
-            "python -m pytest tests/performance/test_api_latency.py -v --tb=short --timeout=120"
+            "python -m pytest tests/performance/test_api_latency.py -v --tb=short --timeout=120 --override-ini=addopts="
+      - name: Run e2e API live tests
+        run: |
+          docker compose -f docker/compose.yaml --profile app --profile targets --profile test run --rm \
+            -e APP_BASE_URL=http://app:5000 \
+            test-runner \
+            "python -m pytest tests/e2e/test_api_live.py -v --tb=short --timeout=120 --override-ini=addopts="
+      - name: Run health endpoint integration test
+        run: |
+          docker compose -f docker/compose.yaml --profile app --profile targets --profile test run --rm \
+            -e APP_BASE_URL=http://app:5000 \
+            test-runner \
+            "python -m pytest tests/integration/test_api_health_live.py -v --tb=short --timeout=120 --override-ini=addopts="
       - name: Collect logs on failure
         if: failure()
         run: |

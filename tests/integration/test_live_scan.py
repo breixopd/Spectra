@@ -22,7 +22,7 @@ pytestmark = [pytest.mark.live]
 
 SPECTRA_URL = os.getenv("SPECTRA_URL", "http://app:5000")
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin123!")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "TestPassword123!")
 VULN_WEB_HOST = os.getenv("VULN_WEB_HOST", "spectra-vuln-web")
 VULN_SSH_HOST = os.getenv("VULN_SSH_HOST", "spectra-vuln-ssh")
 VULN_NETWORK_HOST = os.getenv("VULN_NETWORK_HOST", "spectra-vuln-network")

@@ -29,7 +29,8 @@ async def client():
 async def auth_client(client):
     """Authenticated client — logs in and returns client with auth headers."""
     username = os.environ.get("APP_USERNAME", os.environ.get("TEST_USERNAME", "admin"))
-    password = os.environ.get("APP_PASSWORD", os.environ.get("TEST_PASSWORD", "admin"))
+    # Keep in sync with tests/platform_harness.py and tests/run_ui_tests.sh bootstrap.
+    password = os.environ.get("APP_PASSWORD", os.environ.get("TEST_PASSWORD", "TestPassword123!"))
     resp = await client.post(
         "/api/v1/auth/token",
         data={"username": username, "password": password},
