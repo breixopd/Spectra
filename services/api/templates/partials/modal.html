@@ -1,7 +1,8 @@
 {# Reusable modal macro for consistent modal UI across pages. #}
-{% macro modal(id, title='', size='md', icon='', backdrop_close_action='', title_id='') %}
+{% macro modal(id, title='', size='md', icon='', backdrop_close_action='', title_id='', aria_label='') %}
 {% set size_map = {'sm': 'max-w-sm', 'md': 'max-w-md', 'lg': 'max-w-lg', 'xl': 'max-w-2xl', 'full': 'max-w-full mx-4'} %}
-<div id="{{ id }}" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" {% if title or title_id %}aria-labelledby="{% if title_id %}{{ title_id }}{% else %}{{ id }}-title{% endif %}"{% endif %}>
+{% set _fallback_aria = aria_label or 'Dialog' %}
+<div id="{{ id }}" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" {% if title or title_id %}aria-labelledby="{% if title_id %}{{ title_id }}{% else %}{{ id }}-title{% endif %}"{% else %}aria-label="{{ _fallback_aria }}"{% endif %}>
     <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" {% if backdrop_close_action %}data-action="{{ backdrop_close_action }}"{% endif %}></div>
     <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full {{ size_map.get(size, 'max-w-md') }} glass-panel rounded-xl p-6 border border-white/10 shadow-2xl">
         {% if title %}
