@@ -40,3 +40,5 @@ No `OPEN:` items; follow-ups are product-scale (e.g. optional further consolidat
 ## Verification
 
 - `./tests/run_ui_tests.sh` — **126 passed**, 2 skipped (dark mode).
+- `./scripts/runbooks/full-test-matrix.sh` with `SKIP_*` (API e2e slice only) — **7 passed** (`tests/e2e/test_api_live.py`); worker service healthcheck given **`start_period: 120s`** and **`retries: 8`** in `docker/compose.yaml` so cold-start worker installs do not fail dependent services during marathon compose ups.
+
