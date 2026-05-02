@@ -78,10 +78,19 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             origin = request.headers.get("origin")
             if origin and not settings.DEBUG:
                 allowed = False
-                for allowed_origin in settings.CORS_ORIGINS:
-                    if allowed_origin == "*" or origin == allowed_origin:
+                # Same-origin browser requests (fetch from UI to API on same host:port, e.g. Docker app:5000)
+                try:
+                    from urllib.parse import urlparse
+
+                    if urlparse(origin).netloc == urlparse(str(request.base_url)).netloc:
                         allowed = True
-                        break
+                except Exception:
+                    pass
+                if not allowed:
+                    for allowed_origin in settings.CORS_ORIGINS:
+                        if allowed_origin == "*" or origin == allowed_origin:
+                            allowed = True
+                            break
 
                 if not allowed:
                     logger.warning(
