@@ -43,12 +43,14 @@
             <select id="vpn-config"
                 class="px-2 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-xs text-slate-300 focus:outline-none focus:border-violet-500/50 transition-all appearance-none cursor-pointer"
                 style="min-width:110px;"
+                aria-label="VPN configuration for this mission"
                 data-tooltip="VPN config for this mission" data-tooltip-pos="bottom">
                 <option value="">No VPN</option>
             </select>
             <select id="adversary-playbook"
                 class="px-2 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-xs text-slate-300 focus:outline-none focus:border-violet-500/50 transition-all appearance-none cursor-pointer"
                 style="min-width:130px;"
+                aria-label="Adversary simulation profile"
                 data-tooltip="Adversary simulation profile" data-tooltip-pos="bottom">
                 <option value="">Standard</option>
             </select>
@@ -59,6 +61,7 @@
         <div id="requirements-panel" class="hidden mt-2">
             <textarea id="mission-requirements" rows="2"
                 class="block w-full px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono resize-none"
+                aria-label="Optional mission requirements and scope constraints"
                 placeholder="Optional: scope constraints, rules of engagement, specific requirements..."></textarea>
         </div>
         <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs text-slate-400">
