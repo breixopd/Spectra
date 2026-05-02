@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
-# Run the same unit + coverage gate as CI on a VPS or staging host (Docker).
+# VPS / staging: same unit + coverage gate as GitHub Actions `test` job.
+# Delegates to scripts/runbooks/ci-parity.sh unit (single source of truth).
+#
 # Usage:
 #   ./scripts/ops/vps-verify-tests.sh              # from repo root
 #   ./scripts/ops/vps-verify-tests.sh /path/to/Spectra
-#
-# Prerequisites: Docker, docker compose plugin, repo at requested path with
-# docker/compose.yaml and .env.test (copied from .env.test.example if missing).
 set -euo pipefail
 
-ROOT="${1:-.}"
+ROOT="$(cd "${1:-.}" && pwd)"
 cd "$ROOT"
 
 if [[ ! -f docker/compose.yaml ]]; then
@@ -26,10 +25,5 @@ if [[ ! -f .env.test ]]; then
   fi
 fi
 
-COMPOSE=(docker compose -f docker/compose.yaml --profile test)
-
-"${COMPOSE[@]}" build unit-test-runner
-"${COMPOSE[@]}" run --rm unit-test-runner \
-  "python -m pytest tests/unit/ -q --override-ini=addopts= \
-  --cov=spectra_platform --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler \
-  --cov-fail-under=70"
+RUNBOOK="$(cd "$(dirname "${BASH_SOURCE[0]}")/../runbooks" && pwd)/ci-parity.sh"
+exec "$RUNBOOK" unit

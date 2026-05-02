@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import threading
 import uuid
 
@@ -161,5 +162,12 @@ def ui_login(page: Page, app_url: str, username: str, password: str = DEFAULT_TE
     page.goto(f"{app_url}/login", wait_until="domcontentloaded")
     page.locator("#username").fill(username)
     page.locator("#password").fill(password)
-    page.locator("button[type='submit']").click()
-    page.wait_for_url("**/dashboard", timeout=30_000)
+    with page.expect_response(
+        lambda r: "/api/v1/auth/token" in r.url and r.request.method == "POST",
+        timeout=120_000,
+    ) as resp_ev:
+        page.locator("button[type='submit']").click()
+    resp = resp_ev.value
+    assert resp.ok, f"login token HTTP {resp.status}: {resp.text()[:1200]}"
+    page.wait_for_url(re.compile(r".*/dashboard/?.*"), timeout=180_000)
+    page.locator("[data-testid='sidebar'], #sidebar").first.wait_for(state="visible", timeout=180_000)

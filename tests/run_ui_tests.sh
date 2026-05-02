@@ -20,6 +20,11 @@ echo "Resetting test environment..."
 
 cd "$PROJECT_DIR"
 
+# Match integration/e2e: use .env.test for compose env_file so RATE_LIMIT_*, API keys, etc. apply.
+if [[ -f "$PROJECT_DIR/.env.test" ]]; then
+  export ENV_FILE="$PROJECT_DIR/.env.test"
+fi
+
 docker compose -f "$COMPOSE_FILE" --profile app --profile test down -v --remove-orphans 2>/dev/null || true
 
 echo "Starting test environment..."

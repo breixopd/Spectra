@@ -4,7 +4,11 @@ Run these helper scripts from the repository root against the standard `spectra-
 
 The canonical operator workflow lives in [../../docs/wiki/operations.md](../../docs/wiki/operations.md). The sibling health probe lives at [../health_check.sh](../health_check.sh).
 
+**Scripts map:** [../README.md](../README.md) (runbooks vs ops vs wrappers).
+
 **CI / release verification:** [../../docs/runbooks/README.md](../../docs/runbooks/README.md) — from repo root, `./scripts/runbooks/ci-parity.sh ci` runs the core Docker merge gate (**`static-analysis`** + **`test`** slices: static checks, unit coverage ≥70%, settings). It does not replace CI **`deps`**, **`version-check`**, **`docker-build`**, or push-only **`compose-smoke`**; see [CI parity](../../docs/runbooks/ci-parity-local.md).
+
+**Unit-only on a VM:** `scripts/ops/vps-verify-tests.sh` and `scripts/ops/run_unit_tests_docker.sh` both delegate to `scripts/runbooks/ci-parity.sh unit` (avoid duplicated compose commands).
 
 | Script | Purpose | Common entry points | Safety label | Status |
 |--------|---------|---------------------|--------------|--------|
