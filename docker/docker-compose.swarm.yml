@@ -7,7 +7,7 @@
 # Docker API / `docker service scale` on thresholds. Restart policies here react
 # to process exit, not to `unhealthy` alone — pair healthchecks with monitoring
 # or a watchdog if you need heal-on-unhealthy behaviour. See also
-# .audit/2026-05-01--platform-audit/research/01-swarm-self-healing-agents.md
+# .audit/2026-05-01--full-codebase-audit/research/02-swarm-self-healing-agents.md
 
 x-logging: &default-logging
   driver: json-file

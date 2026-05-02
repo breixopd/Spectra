@@ -48,7 +48,7 @@ Internal audit notes (largest files, nesting hotspots) are tracked in [Runbooks:
 ## What we avoid
 
 - **Abstraction for its own sake** — no new base classes or “plugin architecture” unless several call sites need it.
-- **Dual paths** — one way to do things after a migration ([no legacy shims](../../.cursor/rules/no-legacy-backcompat.mdc) unless an external contract forces versioning).
+- **Dual paths** — one way to do things after a migration (no internal legacy shims unless an external contract forces versioning).
 - **Comments that repeat the code** — prefer a clearer name or a one-line docstring on *why*, not *what*.
 
 ## Related docs

@@ -2,20 +2,22 @@
 
 **Run:** `.audit/2026-05-01--full-codebase-audit/`  
 **Date:** 2026-05-01  
-**Git ref (local):** `chore/desloppify-quality` @ `ea4ebff` + follow-up fixes on same branch (see `git log -5`)
+**Git ref (local):** `chore/desloppify-quality` (see `git log -5`)
+
+A shorter parallel “platform” pass the same week is **folded into this tree** (research + reconciliation); no second audit directory.
 
 ## Phases
 
 | Phase | Status |
 |-------|--------|
 | 0 Bootstrap | done |
-| 1 Map + Chunkhound | done (`health_check` healthy; `code_research` duplication roadmap) |
+| 1 Map + code research | done (tooling health OK; `code_research` duplication roadmap) |
 | 2 Layer audits (parallel) | done → `ui/`, `api/`, `backend/`, `security/`, `tests/` |
 | 3 Drill + fixes | RAG hit contract + AI `/health` `Response` fixed in-repo |
 | 4 External research | light (prior run + skill); optional deeper pass later |
 | 5 Synthesis | `plan/01-improvement-plan.md` |
 | 6 Product completeness | partial — core UI smoke + docs; see `OPEN:` |
-| 7 Verification | `verification/01-docker.md` |
+| 7 Verification | `verification/01-docker.md`, `verification/02-reconciliation.md` |
 | 8 Handoff | this file |
 
 ## Artifacts
@@ -33,6 +35,9 @@
 | [verification/01-docker.md](./verification/01-docker.md) | Commands + results |
 | [subagents/01-notes.md](./subagents/01-notes.md) | Subagent mapping |
 | [research/01-external-notes.md](./research/01-external-notes.md) | Pointers for deeper web pass |
+| [research/02-swarm-self-healing-agents.md](./research/02-swarm-self-healing-agents.md) | Swarm scaling + agent-memory links |
+| [research/03-code-search-index-freshness.md](./research/03-code-search-index-freshness.md) | Semantic index lag vs live routing |
+| [verification/02-reconciliation.md](./verification/02-reconciliation.md) | Claims vs tree + command re-runs |
 | [memory.md](./memory.md) | Durable facts for next audit |
 
 ## Architecture verification (this run)
@@ -48,7 +53,6 @@
 - **`spectra_ai` coverage:** in `pyproject` + CI; see `tests/01-tests-ci-audit.md`.
 - Scheduler `app.*` coupling vs extracted kernel (strategic — multi-PR).
 - **Compose-smoke / harness:** perf→e2e→health, `--override-ini=addopts=`, `TestPassword123!` defaults — in CI + verified on VPS (2026-05).
-- **Stripe webhook dedup** — Redis `SET NX` on event id before reconcile (2026-05).
 
 ## Re-run
 
@@ -58,4 +62,4 @@ docker compose -f docker/compose.yaml --profile test run --rm unit-test-runner \
   "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_platform --cov=spectra_api --cov=spectra_worker --cov-fail-under=70"
 ```
 
-Chunkhound: call `health_check` at audit start; optional `code_research` for follow-up themes.
+Optional: MCP tooling `health_check` at audit start; `code_research` for follow-up themes (verify stale narratives against [`verification/02-reconciliation.md`](./verification/02-reconciliation.md)).
