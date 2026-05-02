@@ -47,4 +47,5 @@ screenshots/
 test.db
 .audit/
 .chunkhound/
+.chunkhound.db
 .cursor/
