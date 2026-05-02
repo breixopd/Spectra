@@ -33,9 +33,15 @@ def test_login_success_redirects_to_dashboard(login_page: Page, app_url: str):
     _reset_user_activity(ADMIN_USERNAME)
     login_page.fill("#username", ADMIN_USERNAME)
     login_page.fill("#password", ADMIN_PASSWORD)
-    login_page.click("button[type='submit']")
-    # Wait for authenticated shell — URL glob alone flakes on cold stacks / SPA timing.
-    login_page.get_by_test_id("sidebar").wait_for(state="visible", timeout=60_000)
+    with login_page.expect_response(
+        lambda r: "/api/v1/auth/token" in r.url and r.request.method == "POST",
+        timeout=120_000,
+    ) as resp_ev:
+        login_page.click("button[type='submit']")
+    resp = resp_ev.value
+    assert resp.ok, f"login token HTTP {resp.status}: {resp.text()[:1200]}"
+    login_page.wait_for_url(re.compile(r".*/dashboard/?.*"), timeout=180_000)
+    login_page.locator("[data-testid='sidebar'], #sidebar").first.wait_for(state="visible", timeout=180_000)
     expect(login_page).to_have_url(re.compile(rf"^{re.escape(app_url)}/dashboard/?$"))
 
 
