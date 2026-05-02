@@ -71,6 +71,12 @@ Role-based access control with three tiers:
 - Admin-only endpoints: `/api/admin/*`, `/api/v1/system/*`, server provisioning
 - Superuser checks enforced at the router level
 
+### MCP (`/api/mcp`)
+
+- **Authentication:** Shared **`MCP_API_KEY`** via `Authorization: Bearer …` or `X-API-Key`. Constant-time comparison prevents trivial timing leaks on the key string.
+- **User scoping:** For mission/target/list tools, the server **replaces** any client-supplied `user_id` with **`MCP_USER_ID`** from settings (`spectra_api/api/mcp.py` — `_execute_mcp_tool`). Without `MCP_USER_ID`, those tools error at runtime. This blocks callers from enumerating or mutating other tenants by passing arbitrary UUIDs while holding only the shared MCP key.
+- **Knowledge search:** `search_knowledge_base` uses the shared AI/RAG gateway and is **not** user-row-scoped in the same way; treat MCP network access as privileged and keep **`MCP_API_KEY`** high-entropy and rotated like other service secrets.
+
 ---
 
 ## Encryption

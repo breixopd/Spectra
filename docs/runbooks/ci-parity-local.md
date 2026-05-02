@@ -76,6 +76,8 @@ docker compose -f docker/compose.yaml --profile app --profile test run --rm test
   "python -m pytest tests/integration/ -v --tb=short --timeout=120 --override-ini=addopts= -k 'not live and not e2e'"
 ```
 
+GitHub Actions also runs a **weekly** extended job — `.github/workflows/nightly-extended.yml` — that executes `scripts/runbooks/ci-parity.sh all` (static + unit + settings + integration). Use `workflow_dispatch` on that workflow for an on-demand full parity run.
+
 ## VPS
 
 After `git pull` on the server, run the same script from the repo root so verification matches CI (see also `scripts/ops/vps-verify-tests.sh` for a slimmer unit-only path).
