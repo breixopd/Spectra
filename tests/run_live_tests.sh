@@ -18,6 +18,12 @@ OPS_TEST_FILE="tests/integration/test_ops_scripts_live.py"
 
 cd "$PROJECT_DIR"
 
+# TensorZero and app read API keys from env_file; default compose uses ../.env only.
+# Prefer .env.test when present (CI parity / VPS) so OPENAI_API_KEY reaches tensorzero.
+if [ -z "${ENV_FILE:-}" ] && [ -f "$PROJECT_DIR/.env.test" ]; then
+  export ENV_FILE="$PROJECT_DIR/.env.test"
+fi
+
 TARGETS_ONLY=false
 if [ "${1:-}" = "--targets" ]; then
     TARGETS_ONLY=true
@@ -168,12 +174,12 @@ if [ "$TARGETS_ONLY" = true ]; then
     # Run only the target-scan tests
     $COMPOSE run --rm --no-deps --entrypoint sh test-runner -c \
         "pip install -q pytest pytest-asyncio pytest-dotenv pytest-timeout httpx aiohttp aiosqlite && \
-         python3 -m pytest tests/integration/test_live_scan.py -v -m live --timeout=120 --tb=short"
+         python3 -m pytest tests/integration/test_live_scan.py -v -m live --timeout=120 --tb=short --override-ini=addopts= -p no:cov"
 else
     # Full suite: LLM + target tests
     $COMPOSE run --rm --no-deps -e SPECTRA_URL=http://app:5000 --entrypoint sh test-runner -c \
         "pip install -q pytest pytest-asyncio pytest-dotenv pytest-timeout httpx aiohttp aiosqlite && \
-         python3 -m pytest tests/integration/test_live_targets.py tests/integration/test_live_scan.py -v --timeout=600 --tb=short"
+         python3 -m pytest tests/integration/test_live_targets.py tests/integration/test_live_scan.py -v --timeout=600 --tb=short --override-ini=addopts= -p no:cov"
 fi
 
 OPS_DB_CONTAINER="$($COMPOSE ps -q db)"
@@ -190,7 +196,7 @@ GARAGE_SECRET_KEY="${OPS_GARAGE_SECRET_KEY}" \
 ./scripts/ops/s3_management.sh create-buckets >/dev/null
 
 echo "Running live ops smoke tests..."
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest "${OPS_TEST_FILE}" -v -m live --tb=short --override-ini=addopts=
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest "${OPS_TEST_FILE}" -v -m live --tb=short --override-ini=addopts= -p no:cov
 
 # ── Step 4: Collect results ──────────────────────────────────
 echo ""
