@@ -105,7 +105,7 @@ def test_invalid_shell_session_returns_clear_404(page: Page, app_url: str) -> No
 
     assert response is not None
     assert response.status == 404
-    expect(page.locator("body")).to_contain_text("Session not found or inactive", timeout=10_000)
+    expect(page.locator("body")).to_contain_text("Shell session not found or inactive", timeout=10_000)
 
 
 @pytest.mark.timeout(45)
