@@ -183,7 +183,7 @@ class StripePaymentAdapter(PaymentAdapter):
         event = await loop.run_in_executor(
             None, lambda: self._stripe.Webhook.construct_event(payload, signature, self._webhook_secret)
         )
-        return {"type": event["type"], "data": event["data"]["object"]}
+        return {"type": event["type"], "data": event["data"]["object"], "id": event.get("id")}
 
     async def get_customer_portal_url(self, user_id: str) -> str:
         """Get Stripe Customer Portal URL for managing billing."""

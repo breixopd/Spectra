@@ -180,6 +180,23 @@ def _signature_for_provider(request: Request, provider: str) -> str:
     )
 
 
+_STRIPE_WEBHOOK_DEDUP_TTL_SECONDS = 86400 * 30
+
+
+async def _claim_stripe_webhook_event(event_id: str) -> bool:
+    """Return True if this process should reconcile the Stripe event (first claimant).
+
+    Uses Redis SET NX when available. Missing Redis falls back to True (no deduplication).
+    """
+    if not event_id:
+        return True
+    from spectra_platform.infrastructure.redis_client import RedisCache
+
+    cache = RedisCache()
+    key = f"spectra:billing:stripe_webhook:{event_id}"
+    return await cache.set_nx(key, ttl_seconds=_STRIPE_WEBHOOK_DEDUP_TTL_SECONDS)
+
+
 async def _handle_provider_webhook(request: Request, provider: str):
     provider_id = provider.strip().lower()
     if provider_id not in list_payment_providers():
@@ -197,8 +214,12 @@ async def _handle_provider_webhook(request: Request, provider: str):
 
     event_type = event.get("type", "")
     data = event.get("data", {})
+    event_id = event.get("id")
 
     if provider_id == "stripe" and event_type in _STRIPE_RECONCILED_EVENT_TYPES:
+        if event_id and not await _claim_stripe_webhook_event(str(event_id)):
+            logger.info("Stripe webhook duplicate or concurrent event id=%s type=%s; skipping reconcile", event_id, event_type)
+            return {"received": True, "duplicate": True, "provider": provider_id}
         svc = PaymentService(adapter)
         await svc.reconcile_stripe_event(event_type, data)
 
