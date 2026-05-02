@@ -46,18 +46,18 @@ async function saveByok() {
     if (em) body.embedding_model = em;
     try {
         const { error } = await spectraApi.put('/api/v1/user/settings', body);
-        if (!error) { _spectraToast('BYOK settings saved'); loadUserSettings(); }
-        else { _spectraToast(error || 'Failed to save BYOK', 'error'); }
-    } catch (e) { _spectraToast('Network error', 'error'); }
+        if (!error) { showToast('BYOK settings saved'); loadUserSettings(); }
+        else { showToast(error || 'Failed to save BYOK', 'error'); }
+    } catch (e) { showToast('Network error', 'error'); }
 }
 
 async function clearByok() {
     _spectraConfirm('Clear all BYOK settings? Missions will use system defaults.', async () => {
         try {
             const { error } = await spectraApi.delete('/api/v1/user/settings/byok');
-            if (!error) { _spectraToast('BYOK settings cleared'); loadUserSettings(); }
-            else _spectraToast('Failed to clear BYOK', 'error');
-        } catch (e) { _spectraToast('Network error', 'error'); }
+            if (!error) { showToast('BYOK settings cleared'); loadUserSettings(); }
+            else showToast('Failed to clear BYOK', 'error');
+        } catch (e) { showToast('Network error', 'error'); }
     }, { title: 'Clear BYOK Settings' });
 }
 
@@ -74,9 +74,9 @@ async function saveSettings() {
     };
     try {
         const { error } = await spectraApi.put('/api/v1/user/settings', body);
-        if (!error) _spectraToast('Settings saved');
-        else { _spectraToast(error || 'Failed to save settings', 'error'); }
-    } catch (e) { _spectraToast('Network error', 'error'); }
+        if (!error) showToast('Settings saved');
+        else { showToast(error || 'Failed to save settings', 'error'); }
+    } catch (e) { showToast('Network error', 'error'); }
 }
 
 loadUserSettings();

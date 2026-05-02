@@ -72,10 +72,10 @@ async function handleAddTarget(event) {
             closeAddTargetModal();
             event.target.reset();
         } else {
-            _spectraToast(`Failed to add target: ${error}`, 'error');
+            showToast(`Failed to add target: ${error}`, 'error');
         }
     } catch (error) {
         console.error('Error adding target:', error);
-        _spectraToast('Error adding target', 'error');
+        showToast('Error adding target', 'error');
     }
 }

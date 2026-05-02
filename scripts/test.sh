@@ -95,7 +95,7 @@ run_in_docker() {
         -e COVERAGE_FILE=/tmp/spectra-coverage/.coverage \
         --tmpfs /tmp:rw,nosuid,nodev,size=512m \
         --tmpfs /app/data:rw,nosuid,nodev,size=256m \
-        -v "$PROJECT_ROOT/spectra_platform:/app/spectra_platform:ro" \
+        -v "$PROJECT_ROOT/packages/platform/src/spectra_platform:/app/spectra_platform:ro" \
         -v "$PROJECT_ROOT/tests:/app/tests:ro" \
         -v "$PROJECT_ROOT/docker:/app/docker:ro" \
         -v "$PROJECT_ROOT/pyproject.toml:/app/pyproject.toml:ro" \

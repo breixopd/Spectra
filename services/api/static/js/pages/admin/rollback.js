@@ -26,7 +26,7 @@ async function loadRollbackSnapshots() {
             </div>
         `).join('');
         if (typeof lucide !== 'undefined') lucide.createIcons();
-    } catch(e) { console.error(e); _spectraToast('Error loading rollback snapshots', 'error'); }
+    } catch(e) { console.error(e); showToast('Error loading rollback snapshots', 'error'); }
 }
 
 async function performRollback(snapshotId) {
@@ -37,9 +37,9 @@ async function performRollback(snapshotId) {
             try {
                 const { data, error } = await spectraApi.post(`/api/admin/rollback/snapshots/${snapshotId}/rollback`, {});
                 if (error) throw new Error(error);
-                _spectraToast('Action reverted successfully', 'success');
+                showToast('Action reverted successfully', 'success');
                 loadRollbackSnapshots();
-            } catch(e) { _spectraToast('Rollback failed: ' + e.message, 'error'); }
+            } catch(e) { showToast('Rollback failed: ' + e.message, 'error'); }
         }
     );
 }

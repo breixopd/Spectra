@@ -317,10 +317,10 @@ async function saveSettings(event) {
             throw new Error(saveError);
         }
         await loadSettings();
-        _spectraToast('Settings saved successfully.', 'success');
+        showToast('Settings saved successfully.', 'success');
     } catch (error) {
         console.error('Error saving settings:', error);
-        _spectraToast(error.message || 'Failed to save settings', 'error');
+        showToast(error.message || 'Failed to save settings', 'error');
     } finally {
         submitButton.disabled = false;
         submitButton.textContent = originalText;
@@ -337,10 +337,10 @@ async function testDefaultProfile() {
         if (testError || !result?.online) {
             throw new Error(testError || result?.error || 'Gateway connection failed');
         }
-        _spectraToast('Gateway online — ' + (result.functions_count || 0) + ' functions, ' + (result.models_count || 0) + ' models configured.', 'success');
+        showToast('Gateway online — ' + (result.functions_count || 0) + ' functions, ' + (result.models_count || 0) + ' models configured.', 'success');
     } catch (error) {
         console.error('Gateway test failed:', error);
-        _spectraToast(error.message || 'Gateway connection failed', 'error');
+        showToast(error.message || 'Gateway connection failed', 'error');
     } finally {
         button.disabled = false;
         button.textContent = originalText;
@@ -386,7 +386,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadSettings();
     } catch (error) {
         console.error('Failed to initialize settings page:', error);
-        _spectraToast('Failed to load settings. Refresh the page after logging in again if the problem persists.', 'error');
+        showToast('Failed to load settings. Refresh the page after logging in again if the problem persists.', 'error');
     }
 });
 

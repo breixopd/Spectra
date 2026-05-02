@@ -33,7 +33,7 @@ async function loadAuditLogs() {
         document.getElementById('audit-page-num').textContent = d.page + ' / ' + totalPages;
         document.getElementById('audit-prev').disabled = d.page <= 1;
         document.getElementById('audit-next').disabled = d.page >= totalPages;
-    } catch(e) { console.error(e); _spectraToast('Error loading audit logs', 'error'); }
+    } catch(e) { console.error(e); showToast('Error loading audit logs', 'error'); }
 }
 
 document.getElementById('audit-prev').addEventListener('click', () => { auditPage--; loadAuditLogs(); });
@@ -44,7 +44,7 @@ document.getElementById('audit-date-to').addEventListener('change', () => { audi
 
 function exportAuditLogsCSV() {
     const rows = document.querySelectorAll('#audit-tbody tr');
-    if (!rows.length) { _spectraToast('No audit log entries to export', 'error'); return; }
+    if (!rows.length) { showToast('No audit log entries to export', 'error'); return; }
     const csvLines = ['Time,Event,Details,IP'];
     rows.forEach(row => {
         const cells = row.querySelectorAll('td');
@@ -60,6 +60,6 @@ function exportAuditLogsCSV() {
     a.download = 'audit-logs-' + new Date().toISOString().slice(0, 10) + '.csv';
     a.click();
     URL.revokeObjectURL(url);
-    _spectraToast('Audit logs exported');
+    showToast('Audit logs exported');
 }
 window.exportAuditLogsCSV = exportAuditLogsCSV;

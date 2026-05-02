@@ -23,5 +23,5 @@ async function loadUsage() {
                     <td class="px-4 py-3 text-right ${a.errors > 0 ? 'text-red-400' : 'text-slate-500'}">${a.errors}</td>
                 </tr>`).join('');
         }
-    } catch(e) { console.error(e); _spectraToast('Error loading usage data', 'error'); }
+    } catch(e) { console.error(e); showToast('Error loading usage data', 'error'); }
 }

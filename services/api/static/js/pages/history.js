@@ -69,7 +69,7 @@ async function loadMissionList(options = {}) {
             renderMissionListError(message);
         }
         if (initial || !missionListRefreshErrorShown) {
-            _spectraToast(message, 'error');
+            showToast(message, 'error');
             missionListRefreshErrorShown = true;
         }
         return false;
@@ -161,7 +161,7 @@ async function loadMissionDetails(id, options = {}) {
             renderMissionDetailsError(message);
         }
         if (!missionDetailsRefreshErrorShown || !background) {
-            _spectraToast(message, 'error');
+            showToast(message, 'error');
             missionDetailsRefreshErrorShown = true;
         }
         return false;
@@ -283,7 +283,7 @@ async function confirmDeleteMission() {
     hideDeleteModal();
     const { error } = await spectraApi.delete(`/api/v1/missions/${currentMissionId}`);
     if (error) {
-        _spectraToast(error || 'Failed to delete mission', 'error');
+        showToast(error || 'Failed to delete mission', 'error');
         return;
     }
     window.location.reload();
@@ -323,11 +323,11 @@ async function submitFeedback() {
         rating: selectedRating,
         comment: comment || null,
     });
-    if (error) { _spectraToast('Failed to submit feedback', 'error'); return; }
+    if (error) { showToast('Failed to submit feedback', 'error'); return; }
     document.getElementById('feedback-saved-badge')?.classList.remove('hidden');
     document.getElementById('submit-feedback-btn').disabled = true;
     document.getElementById('submit-feedback-btn').textContent = 'Sent!';
-    _spectraToast('Thanks for your feedback!', 'success');
+    showToast('Thanks for your feedback!', 'success');
 }
 
 async function loadFeedback(missionId) {

@@ -35,7 +35,7 @@ async function toggleMaintenance() {
         if (error) throw new Error(error);
         location.reload();
     } catch (e) {
-        _spectraToast('Failed to toggle maintenance mode: ' + e.message, 'error');
+        showToast('Failed to toggle maintenance mode: ' + e.message, 'error');
     }
 }
 

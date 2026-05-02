@@ -82,8 +82,8 @@ async function loadSafetyStats() {
     const message = `Unable to refresh safety stats. ${getSafetyStatsErrorMessage(secondaryError || primaryError, 'Please try again shortly.')}`;
     console.error('Failed to load safety stats', { primaryError, secondaryError });
     updateSafetyDisplay(hasLoadedSafetyStats ? { stale: true } : { unavailable: true });
-    if (!safetyStatsFailureShown && typeof _spectraToast === 'function') {
-        _spectraToast(message, 'error');
+    if (!safetyStatsFailureShown && typeof showToast === 'function') {
+        showToast(message, 'error');
         safetyStatsFailureShown = true;
     }
 }

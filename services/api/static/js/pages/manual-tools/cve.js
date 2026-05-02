@@ -90,7 +90,7 @@ async function searchCVEs() {
 function quickRun(toolId) {
     const target = document.getElementById('global-target')?.value?.trim();
     if (!target) {
-        _spectraToast('Enter a target first', 'warning');
+        showToast('Enter a target first', 'warning');
         document.getElementById('global-target')?.focus();
         return;
     }

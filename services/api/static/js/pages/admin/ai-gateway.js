@@ -31,7 +31,7 @@ async function saveTZConfig() {
     try {
         const { error } = await spectraApi.post('/api/settings', payload);
         if (error) throw new Error(error);
-    } catch(e) { _spectraToast('Failed to save settings: ' + e.message, 'error'); return; }
+    } catch(e) { showToast('Failed to save settings: ' + e.message, 'error'); return; }
 
     const modelPayload = {
         models: {
@@ -52,9 +52,9 @@ async function saveTZConfig() {
     };
     try {
         const { error } = await spectraApi.put('/api/v1/admin/tensorzero/config', modelPayload);
-        if (error) _spectraToast('Settings saved. Note: TZ config update failed — ' + error, 'warning');
-        else _spectraToast('Configuration saved. Restart TensorZero container to apply model changes.', 'success');
-    } catch(e) { _spectraToast('Settings saved but TZ update failed: ' + e.message, 'warning'); }
+        if (error) showToast('Settings saved. Note: TZ config update failed — ' + error, 'warning');
+        else showToast('Configuration saved. Restart TensorZero container to apply model changes.', 'success');
+    } catch(e) { showToast('Settings saved but TZ update failed: ' + e.message, 'warning'); }
 }
 
 async function testTZConnection() {

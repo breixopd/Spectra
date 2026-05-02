@@ -16,9 +16,9 @@ async function saveProfile() {
     const email = document.getElementById('profile-email').value;
     try {
         const { error } = await spectraApi.put('/api/v1/auth/me', { email });
-        if (!error) _spectraToast('Profile updated');
-        else _spectraToast('Failed to update profile', 'error');
-    } catch (e) { _spectraToast('Network error', 'error'); }
+        if (!error) showToast('Profile updated');
+        else showToast('Failed to update profile', 'error');
+    } catch (e) { showToast('Network error', 'error'); }
 }
 
 (function() {
@@ -43,22 +43,22 @@ async function changePassword() {
     const current = document.getElementById('current-password').value;
     const newPw = document.getElementById('new-password').value;
     const confirm = document.getElementById('confirm-password').value;
-    if (!current || !newPw) return _spectraToast('Please fill all fields', 'error');
-    if (newPw !== confirm) return _spectraToast('Passwords do not match', 'error');
+    if (!current || !newPw) return showToast('Please fill all fields', 'error');
+    if (newPw !== confirm) return showToast('Passwords do not match', 'error');
     if (newPw.length < 8 || !/[A-Z]/.test(newPw) || !/[a-z]/.test(newPw) || !/[0-9]/.test(newPw)) {
-        return _spectraToast('Password must be at least 8 characters with uppercase, lowercase, and a digit', 'error');
+        return showToast('Password must be at least 8 characters with uppercase, lowercase, and a digit', 'error');
     }
     try {
         const { error } = await spectraApi.post('/api/v1/auth/change-password', { current_password: current, new_password: newPw });
         if (!error) {
-            _spectraToast('Password changed successfully');
+            showToast('Password changed successfully');
             document.getElementById('current-password').value = '';
             document.getElementById('new-password').value = '';
             document.getElementById('confirm-password').value = '';
         } else {
-            _spectraToast(error || 'Failed to change password', 'error');
+            showToast(error || 'Failed to change password', 'error');
         }
-    } catch (e) { _spectraToast('Network error', 'error'); }
+    } catch (e) { showToast('Network error', 'error'); }
 }
 
 async function deleteAccount() {
@@ -69,9 +69,9 @@ async function deleteAccount() {
                 if (!error) {
                     window.location.href = '/login?msg=account_deleted';
                 } else {
-                    _spectraToast(error || 'Failed to delete account', 'error');
+                    showToast(error || 'Failed to delete account', 'error');
                 }
-            } catch (e) { _spectraToast('Network error', 'error'); }
+            } catch (e) { showToast('Network error', 'error'); }
         }, { title: 'Delete Account', confirmLabel: 'Delete Permanently' });
     }, { title: 'Account Deletion', inputType: 'password', placeholder: 'Enter your password', confirmLabel: 'Continue' });
 }

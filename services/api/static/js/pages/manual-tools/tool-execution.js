@@ -1,7 +1,7 @@
 async function executeManualTool() {
     if (!selectedToolConfig) return;
     const target = document.getElementById('arg-target')?.value;
-    if (!target) { _spectraToast('Target is required', 'warning'); return; }
+    if (!target) { showToast('Target is required', 'warning'); return; }
 
     const args = {};
     const schemaFields = getSchemaFields(selectedToolConfig.args_schema).filter(field => field.name !== 'target' && field.name !== 'output_file');

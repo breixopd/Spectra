@@ -40,7 +40,7 @@ async function loadUsers() {
         document.getElementById('users-page-num').textContent = d.page + ' / ' + totalPages;
         document.getElementById('users-prev').disabled = d.page <= 1;
         document.getElementById('users-next').disabled = d.page >= totalPages;
-    } catch(e) { console.error(e); _spectraToast('Error loading users', 'error'); }
+    } catch(e) { console.error(e); showToast('Error loading users', 'error'); }
 }
 
 document.getElementById('users-prev').addEventListener('click', () => { usersPage--; loadUsers(); });
@@ -142,10 +142,10 @@ document.getElementById('user-form').addEventListener('submit', async function(e
         if (!isEdit && data?.activation_url) {
             successMessage = `User created. Share the activation link manually: ${data.activation_url}`;
         }
-        _spectraToast(successMessage, 'success');
+        showToast(successMessage, 'success');
         closeModal('user-modal');
         loadUsers();
-    } catch(e) { _spectraToast(e.message, 'error'); }
+    } catch(e) { showToast(e.message, 'error'); }
 });
 
 function resetPassword(userId, username) {
@@ -153,8 +153,8 @@ function resetPassword(userId, username) {
         try {
             const { data, error } = await spectraApi.post(`/api/admin/users/${userId}/reset-password`);
             if (error) throw new Error(error);
-            _spectraToast(data?.detail || 'Password reset email sent', 'success');
-        } catch(e) { _spectraToast(e.message || 'Password reset failed', 'error'); }
+            showToast(data?.detail || 'Password reset email sent', 'success');
+        } catch(e) { showToast(e.message || 'Password reset failed', 'error'); }
     });
 }
 
@@ -163,9 +163,9 @@ function deactivateUser(userId, username) {
         try {
             const { error } = await spectraApi.delete(`/api/admin/users/${userId}`);
             if (error) throw new Error(error);
-            _spectraToast('User deactivated', 'success');
+            showToast('User deactivated', 'success');
             loadUsers();
-        } catch(e) { _spectraToast(e.message, 'error'); }
+        } catch(e) { showToast(e.message, 'error'); }
     });
 }
 

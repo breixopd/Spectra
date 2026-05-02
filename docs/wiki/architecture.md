@@ -10,11 +10,33 @@ Technical deep-dive into Spectra's agent system, execution pipeline, and learnin
 
 | Area | Role |
 |------|------|
-| **`spectra_platform/`** | Shared domain kernel: ORM models, repositories, mission/tool/AI business logic, infrastructure helpers. Imported as Python package `spectra_platform`. |
+| **`packages/platform/src/spectra_platform/`** | Shared domain kernel (workspace package **`spectra-platform`**): ORM models, repositories, mission/tool/AI business logic, infrastructure helpers. Imported in Python as **`spectra_platform`**. |
 | **`services/*/src/`** | Deployable edges: `spectra_api` (HTTP), `spectra_worker`, `spectra_scheduler`, `spectra_ai` with thin wiring into `spectra_platform`. |
-| **`packages/*/`** | Portable libraries (`spectra_common`, `spectra_domain`, `spectra_tools_core`) with strict import boundaries. |
+| **`packages/{common,domain,tools-core}/src/`** | Portable libraries (`spectra_common`, `spectra_domain`, `spectra_tools_core`) with strict import boundaries. |
 
-In containers, `WORKDIR` is `/app`; the platform package is mounted or copied at `/app/spectra_platform/`.
+In containers, `WORKDIR` is `/app`; the platform tree is copied to **`/app/spectra_platform/`** (import path unchanged).
+
+### `packages/platform` vs the smaller `packages/*` libraries
+
+**`spectra-common`**, **`spectra-domain`**, and **`spectra-tools-core`** stay small and dependency-light where possible.
+
+**`spectra-platform`** is the large shared kernel (ORM, Alembic targets, multi-service imports). It lives under **`packages/platform/`** so every first-party Python tree is a **workspace member** with a single `pyproject.toml` pattern (`src/<package>/`). Runtime layout in images remains **`/app/spectra_platform/`** for a short, stable `PYTHONPATH`.
+
+### Other top-level directories
+
+| Path | Role |
+|------|------|
+| **`alembic/`** | Database migrations for platform models. |
+| **`config/`** | Reference or sample configuration (not secrets). |
+| **`data/`** | **Gitignored** on the host when present — optional local bind-mount target (e.g. encryption keys, caches). Prefer **`docker/data/`** or container **`/app/data`** for stack-local state; do not commit secrets or large blobs here. |
+| **`docker/`** | Compose files, Dockerfiles, image build context. |
+| **`docs/`** | Runbooks (`docs/runbooks/`) and wiki (`docs/wiki/`). |
+| **`plugins/`** | Tool/plugin manifest JSON consumed by the platform. |
+| **`requirements/`** | Supplementary requirement sets / pins where used. |
+| **`scripts/`** | Developer and ops shell helpers. |
+| **`tests/`** | Cross-cutting unit, integration, e2e, and load tests. |
+
+**Convention:** keep **`services/api/static/`** and **`services/api/templates/`** as the only home for the HTTP UI assets—avoid duplicating `static/` or `templates/` at repo root so there is one canonical place to edit the UI.
 
 ## Agent System (MAKER Framework)
 
@@ -256,29 +278,21 @@ For development or single-node **API** processes, `SERVICE_MODE=all` loads the s
 
 ```text
 spectra/
-├── spectra_platform/
+├── packages/platform/src/spectra_platform/
 │   ├── _meta/              # App metadata (version, build info)
-│   ├── api/                # HTTP layer — FastAPI routers, schemas
-│   │   ├── routers/        # One module per domain
-│   │   └── schemas/        # Request/response Pydantic models
 │   ├── auth/               # Security — JWT, RBAC, encryption, rate limiting
-│   ├── bootstrap/          # App bootstrap — lifespan, middleware, templates, logging
-│   ├── core/               # Foundational — config, constants, database (stable)
+│   ├── core/               # Config, database, security, cache, events, redis
 │   ├── di/                 # Dependency injection — container, protocols, service auth
-│   ├── infrastructure/     # Ops infrastructure — cache, queue, events, tasks, metrics
-│   ├── mission/core/       # Mission execution — state machine, enums, websocket, bridge
-│   ├── models/             # Data layer — SQLAlchemy ORM models
-│   ├── repositories/       # Data access — Repository pattern CRUD
-│   ├── services/
-│   │   ├── ai/             # AI service entry point + LLM clients, agents, RAG
-│   │   ├── scheduler/      # Scheduler entry point + background task loops
-│   │   ├── mission/        # Mission lifecycle, execution, credentials
-│   │   ├── tools/          # Tool registry, adapters, sandbox pool
-│   │   └── ...             # billing, email, gateway, scaling, etc.
-│   ├── telemetry/          # Observability — telemetry, tracing, middleware
-│   ├── utils/              # Shared utilities
-│   └── worker/             # Worker entry point + job queue consumer
-├── services/api/           # API service package plus static UI assets and Jinja templates
+│   ├── infrastructure/     # Queue, events, background tasks, metrics
+│   ├── mission/            # Mission FSM, enums, helpers
+│   ├── models/             # SQLAlchemy ORM models
+│   ├── repositories/       # Repository pattern data access
+│   ├── services/           # Domain services (ai, mission, tools, billing, …)
+│   ├── telemetry/          # Observability
+│   └── utils/              # Shared utilities
+├── services/api/           # spectra_api: HTTP app, static UI, Jinja templates
+├── services/{ai,scheduler,worker}/
+├── packages/{common,domain,tools-core}/src/
 ├── plugins/                # Tool plugin JSON configs
 ├── config/                 # Build configs (tailwind, postcss)
 ├── docker/                 # Docker Compose files, Dockerfiles, Caddyfile

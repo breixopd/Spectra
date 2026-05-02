@@ -1,5 +1,5 @@
 // Settings — VPN Management
-// Loaded before settings.js; depends on escapeHtml(), spectraApi, _spectraToast, _spectraConfirm
+// Loaded before settings.js; depends on escapeHtml(), spectraApi, showToast, _spectraConfirm
 
 async function loadVpnConfigs() {
     const container = document.getElementById('vpn-configs-list');
@@ -27,34 +27,34 @@ async function loadVpnConfigs() {
 async function vpnConnect(name) {
     try {
         const { data, error } = await spectraApi.post(`/api/v1/vpn/connect/${encodeURIComponent(name)}`);
-        if (!error) _spectraToast('Shared tools VPN connect job queued: ' + data.job_id, 'success');
-        else _spectraToast('Error: ' + (error || 'Failed'), 'error');
-    } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
+        if (!error) showToast('Shared tools VPN connect job queued: ' + data.job_id, 'success');
+        else showToast('Error: ' + (error || 'Failed'), 'error');
+    } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 async function vpnDisconnect(name) {
     try {
         const { data, error } = await spectraApi.post(`/api/v1/vpn/disconnect/${encodeURIComponent(name)}`);
-        if (!error) _spectraToast('Shared tools VPN disconnect job queued: ' + data.job_id, 'success');
-        else _spectraToast('Error: ' + (error || 'Failed'), 'error');
-    } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
+        if (!error) showToast('Shared tools VPN disconnect job queued: ' + data.job_id, 'success');
+        else showToast('Error: ' + (error || 'Failed'), 'error');
+    } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 async function vpnDelete(name) {
     _spectraConfirm(`Delete VPN config "${name}"?`, async () => {
         try {
             const { error } = await spectraApi.delete(`/api/v1/vpn/configs/${encodeURIComponent(name)}`);
-            if (!error) { loadVpnConfigs(); } else { _spectraToast('Error: ' + (error || 'Failed'), 'error'); }
-        } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
+            if (!error) { loadVpnConfigs(); } else { showToast('Error: ' + (error || 'Failed'), 'error'); }
+        } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }, { title: 'Delete VPN Config' });
 }
 
 async function testVpnConnection() {
     try {
         const { data, error } = await spectraApi.post('/api/v1/vpn/test');
-        if (!error) _spectraToast('Shared tools VPN test job queued: ' + data.job_id, 'success');
-        else _spectraToast('Error: ' + (error || 'Failed'), 'error');
-    } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
+        if (!error) showToast('Shared tools VPN test job queued: ' + data.job_id, 'success');
+        else showToast('Error: ' + (error || 'Failed'), 'error');
+    } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 async function loadVpnStatus() {
@@ -85,9 +85,9 @@ document.addEventListener('DOMContentLoaded', () => {
         fd.append('file', form.vpn_file.files[0]);
         try {
             const { data, error } = await spectraApi.post('/api/v1/vpn/configs', fd);
-            if (!error) { _spectraToast('Config uploaded: ' + data.name, 'success'); form.reset(); loadVpnConfigs(); }
-            else _spectraToast('Error: ' + (error || 'Upload failed'), 'error');
-        } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
+            if (!error) { showToast('Config uploaded: ' + data.name, 'success'); form.reset(); loadVpnConfigs(); }
+            else showToast('Error: ' + (error || 'Upload failed'), 'error');
+        } catch (e) { showToast('Error: ' + e.message, 'error'); }
     });
 
     loadVpnConfigs();

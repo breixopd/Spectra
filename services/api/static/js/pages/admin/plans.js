@@ -5,7 +5,7 @@ async function loadPlans() {
         if (error) throw new Error(error);
         allPlans = Array.isArray(data) ? data : [];
         renderPlans();
-    } catch(e) { console.error(e); _spectraToast('Error loading plans', 'error'); }
+    } catch(e) { console.error(e); showToast('Error loading plans', 'error'); }
 }
 
 function renderPlans() {
@@ -117,7 +117,7 @@ document.getElementById('plan-form').addEventListener('submit', async function(e
     const featuresRaw = document.getElementById('plan-form-features').value.trim();
     let extraFeatures = {};
     if (featuresRaw) {
-        try { extraFeatures = JSON.parse(featuresRaw); } catch { _spectraToast('Invalid JSON in features field', 'error'); return; }
+        try { extraFeatures = JSON.parse(featuresRaw); } catch { showToast('Invalid JSON in features field', 'error'); return; }
     }
     body.features = Object.assign({}, toggleFeatures, extraFeatures);
     if (!isEdit) body.name = document.getElementById('plan-form-name').value;
@@ -126,10 +126,10 @@ document.getElementById('plan-form').addEventListener('submit', async function(e
         const url = isEdit ? `/api/admin/plans/${id}` : '/api/admin/plans';
         const { error } = isEdit ? await spectraApi.put(url, body) : await spectraApi.post(url, body);
         if (error) throw new Error(error);
-        _spectraToast(isEdit ? 'Plan updated' : 'Plan created', 'success');
+        showToast(isEdit ? 'Plan updated' : 'Plan created', 'success');
         closeModal('plan-modal');
         loadPlans();
-    } catch(e) { _spectraToast(e.message, 'error'); }
+    } catch(e) { showToast(e.message, 'error'); }
 });
 
 function deactivatePlan(planId, el) {
@@ -138,9 +138,9 @@ function deactivatePlan(planId, el) {
         try {
             const { error } = await spectraApi.delete(`/api/admin/plans/${planId}`);
             if (error) throw new Error(error);
-            _spectraToast('Plan deactivated', 'success');
+            showToast('Plan deactivated', 'success');
             loadPlans();
-        } catch(e) { _spectraToast('Failed', 'error'); }
+        } catch(e) { showToast('Failed', 'error'); }
     });
 }
 
@@ -150,9 +150,9 @@ function activatePlan(planId, el) {
         try {
             const { error } = await spectraApi.put(`/api/admin/plans/${planId}`, { is_active: true });
             if (error) throw new Error(error);
-            _spectraToast('Plan activated', 'success');
+            showToast('Plan activated', 'success');
             loadPlans();
-        } catch(e) { _spectraToast('Failed', 'error'); }
+        } catch(e) { showToast('Failed', 'error'); }
     });
 }
 

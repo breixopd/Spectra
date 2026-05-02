@@ -8,6 +8,7 @@ requires-python = ">=3.11"
 members = [
     "packages/common",
     "packages/domain",
+    "packages/platform",
     "packages/tools-core",
     "services/api",
     "services/ai",
@@ -19,6 +20,7 @@ members = [
 spectra-common = { workspace = true }
 spectra-domain = { workspace = true }
 spectra-tools-core = { workspace = true }
+spectra-platform = { workspace = true }
 spectra-api = { workspace = true }
 spectra-ai = { workspace = true }
 spectra-scheduler = { workspace = true }
@@ -73,7 +75,7 @@ ignore = [
 "tests/**" = ["S101", "S106", "S107", "S603", "S607", "SIM117"]
 "**/__init__.py" = ["F401"]  # re-exports
 # `import docker` must precede `from docker.errors` (docker-py); isort I001 reorders unsafely.
-"spectra_platform/services/scaling/docker_client.py" = ["I001"]
+"packages/platform/src/spectra_platform/services/scaling/docker_client.py" = ["I001"]
 
 [tool.ruff.lint.isort]
 known-first-party = [
@@ -91,7 +93,7 @@ known-first-party = [
 [tool.pyright]
 pythonVersion = "3.11"
 typeCheckingMode = "off"
-include = ["spectra_platform", "services", "packages"]
+include = ["packages/platform/src", "services", "packages"]
 exclude = ["tests"]
 reportMissingImports = "none"
 reportMissingModuleSource = "none"
@@ -136,7 +138,7 @@ filterwarnings = [
     # AsyncMock returns awaitable proxies; GC can warn from unittest.mock internals.
     "ignore:coroutine '.*' was never awaited:RuntimeWarning:unittest.mock",
 ]
-pythonpath = [".", "services/ai/src", "services/api/src"]
+pythonpath = [".", "packages/platform/src", "services/ai/src", "services/api/src"]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
 

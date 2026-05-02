@@ -21,7 +21,13 @@ import ast
 import sys
 from pathlib import Path
 
-SHARED_PACKAGES = ["spectra_platform/core", "spectra_platform/models", "packages/common/src", "packages/domain/src", "packages/tools-core/src"]
+SHARED_PACKAGES = [
+    "packages/platform/src/spectra_platform/core",
+    "packages/platform/src/spectra_platform/models",
+    "packages/common/src",
+    "packages/domain/src",
+    "packages/tools-core/src",
+]
 FORBIDDEN_IMPORTS = [
     "spectra_api.api",
     "spectra_worker",

@@ -219,7 +219,7 @@ For the full test matrix and release-gate guidance, see [Testing Strategy](docs/
 ### Linting
 
 ```bash
-ruff check spectra_platform/
+ruff check packages/platform/src/spectra_platform
 ```
 
 Pull request CI runs the full **`static-analysis`** job in Docker (Ruff, import boundaries, Pyright, Bandit). See [Development](docs/wiki/development.md) and [CI parity](docs/runbooks/ci-parity-local.md).

@@ -123,8 +123,8 @@ const spectraApi = (() => {
 
             if (response.status === 429) {
                 const msg = 'Rate limit exceeded — please wait and try again';
-                if (typeof _spectraToast === 'function') {
-                    _spectraToast(msg, 'warning');
+                if (typeof showToast === 'function') {
+                    showToast(msg, 'warning');
                 }
                 return { data: null, response, error: msg, status: response.status };
             }

@@ -92,7 +92,7 @@ async function startSession() {
             document.getElementById('session-start-btn').textContent = 'Active';
             document.getElementById('session-start-btn').disabled = true;
             document.getElementById('session-export-btn').classList.remove('hidden');
-        }).catch(e => { _spectraToast('Failed to start session', 'error'); });
+        }).catch(e => { showToast('Failed to start session', 'error'); });
     }, { title: 'Start Session', placeholder: `Pentest ${new Date().toLocaleDateString('en-US')}` });
 }
 
@@ -113,6 +113,6 @@ async function exportSession() {
         a.download = `session-${currentSessionId}.json`;
         a.click();
     } catch (e) {
-        _spectraToast('Export failed: ' + e.message, 'error');
+        showToast('Export failed: ' + e.message, 'error');
     }
 }

@@ -4,11 +4,10 @@
 // Public paths constant (shared with api.js)
 window.PUBLIC_PATHS = ['/login', '/setup', '/register', '/landing', '/forgot-password', '/reset-password', '/verify-email', '/status', '/legal/terms', '/legal/privacy', '/legal/cookies', '/security', '/changelog'];
 
-// _spectraToast stub — real implementation loaded from toast.js module
-function _spectraToast(msg, type) {
-    // Queue until module loads
+// Global showToast — stub queues until modules/toast.js (ESM) loads and replaces window.showToast
+window.showToast = function showToastStub(msg, type) {
     (window._toastQueue = window._toastQueue || []).push({ msg, type });
-}
+};
 
 function _spectraConfirm(msg, onConfirm, opts) {
     opts = opts || {};

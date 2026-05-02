@@ -209,16 +209,16 @@ async function switchModel(modelId) {
         
         if (!error) {
             addTerminalLine(`[SUCCESS] Model switched to ${modelId}`, 'success');
-            if (typeof _spectraToast === 'function') {
-                _spectraToast(`Model switched to ${modelId}`, 'success');
+            if (typeof showToast === 'function') {
+                showToast(`Model switched to ${modelId}`, 'success');
             }
         } else {
             if (currentModelEl) {
                 currentModelEl.textContent = previousModelId;
             }
             addTerminalLine(`[ERROR] Failed to switch model: ${error}`, 'error');
-            if (typeof _spectraToast === 'function') {
-                _spectraToast(`Failed to switch model: ${error}`, 'error');
+            if (typeof showToast === 'function') {
+                showToast(`Failed to switch model: ${error}`, 'error');
             }
         }
     } catch (error) {
@@ -226,8 +226,8 @@ async function switchModel(modelId) {
             currentModelEl.textContent = previousModelId;
         }
         addTerminalLine(`[ERROR] Connection failed: ${error}`, 'error');
-        if (typeof _spectraToast === 'function') {
-            _spectraToast(`Connection failed while switching model: ${error}`, 'error');
+        if (typeof showToast === 'function') {
+            showToast(`Connection failed while switching model: ${error}`, 'error');
         }
     }
 }

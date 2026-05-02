@@ -215,13 +215,15 @@ class TestGetQueueName:
 
 # --- Sandbox container config tests ---
 
+_POOL_PY = Path(__file__).resolve().parents[3] / "packages/platform/src/spectra_platform/services/tools/sandbox/pool.py"
+
 
 class TestSandboxPoolVolumes:
     """Tests for sandbox container volume and environment configuration."""
 
     def test_sandbox_environment_includes_required_keys(self):
         """Verify sandbox container gets safe env vars but NOT sensitive credentials."""
-        source = Path("spectra_platform/services/tools/sandbox/pool.py").read_text()
+        source = _POOL_PY.read_text()
         assert '"QUEUE_NAME"' in source
         assert '"IS_TOOLS_CONTAINER"' in source
         # Sandbox workers need DB access for mission queues, but must not receive auth secrets.
@@ -230,7 +232,7 @@ class TestSandboxPoolVolumes:
 
     def test_sandbox_mounts_data_and_tools_volumes(self):
         """Verify sandbox uses named Docker volumes for data and tools."""
-        source = Path("spectra_platform/services/tools/sandbox/pool.py").read_text()
+        source = _POOL_PY.read_text()
         assert "spectra_data" in source
         assert "spectra_tools_data" in source
         assert "/app/data" in source
@@ -238,7 +240,7 @@ class TestSandboxPoolVolumes:
 
     def test_sandbox_mounts_plugins_readonly(self):
         """Verify sandbox mounts plugins as read-only."""
-        source = Path("spectra_platform/services/tools/sandbox/pool.py").read_text()
+        source = _POOL_PY.read_text()
         assert "/app/plugins" in source
         assert "read_only=True" in source
 

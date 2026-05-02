@@ -55,8 +55,8 @@ async function loadStats() {
         console.error(e);
         const message = e.message || 'Could not load dashboard stats.';
         resetDashboardStats(message);
-        if (!statsErrorVisible && typeof _spectraToast === 'function') {
-            _spectraToast(`Failed to load dashboard stats: ${message}`, 'error');
+        if (!statsErrorVisible && typeof showToast === 'function') {
+            showToast(`Failed to load dashboard stats: ${message}`, 'error');
             statsErrorVisible = true;
         }
     }

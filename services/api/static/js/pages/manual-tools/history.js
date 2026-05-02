@@ -97,7 +97,7 @@ function rerunFromHistory(idx) {
 
 // ========== DIFF MODAL ==========
 function openDiffModal() {
-    if (commandHistory.length < 2) { _spectraToast('Need at least 2 command runs to compare', 'warning'); return; }
+    if (commandHistory.length < 2) { showToast('Need at least 2 command runs to compare', 'warning'); return; }
     const options = commandHistory.slice(0, 50).map((h, i) => {
         const t = new Date(h.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
         return `<option value="${i}">${t} - ${h.tool} → ${h.target}</option>`;
