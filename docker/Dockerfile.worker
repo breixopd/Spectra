@@ -30,6 +30,7 @@ RUN sed -i 's|http://http.kali.org/kali|http://kali.download/kali|g' /etc/apt/so
     gcc libpq-dev libffi-dev pkg-config libpcap-dev \
     sudo \
     curl wget git jq unzip \
+    nmap \
     iputils-ping iproute2 netcat-openbsd iptables \
     wireguard-tools openvpn \
     && apt-get clean \
