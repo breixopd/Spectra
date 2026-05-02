@@ -190,7 +190,7 @@ class TestBillingRouter:
 
         adapter = AsyncMock()
         adapter.handle_webhook = AsyncMock(
-            return_value={"type": "invoice.payment_succeeded", "data": {"id": "in_123"}}
+            return_value={"id": "evt_1", "type": "invoice.payment_succeeded", "data": {"id": "in_123"}}
         )
         service = MagicMock()
         service.reconcile_stripe_event = AsyncMock()
@@ -202,6 +202,7 @@ class TestBillingRouter:
             patch("spectra_api.api.routers.billing.list_payment_providers", return_value=["stripe"]),
             patch("spectra_api.api.routers.billing.get_payment_adapter", return_value=adapter),
             patch("spectra_api.api.routers.billing.PaymentService", return_value=service),
+            patch("spectra_api.api.routers.billing._claim_stripe_webhook_event", new=AsyncMock(return_value=True)),
         ):
             result = await _handle_provider_webhook(request, "stripe")
 
@@ -209,12 +210,37 @@ class TestBillingRouter:
         adapter.handle_webhook.assert_awaited_once_with(b"payload", "stripe_sig")
         service.reconcile_stripe_event.assert_awaited_once_with("invoice.payment_succeeded", {"id": "in_123"})
 
+    async def test_stripe_webhook_duplicate_event_skips_reconcile(self):
+        from spectra_api.api.routers.billing import _handle_provider_webhook
+
+        adapter = AsyncMock()
+        adapter.handle_webhook = AsyncMock(
+            return_value={"id": "evt_dup", "type": "invoice.payment_succeeded", "data": {"id": "in_9"}}
+        )
+        service = MagicMock()
+        service.reconcile_stripe_event = AsyncMock()
+        request = MagicMock()
+        request.headers = {"stripe-signature": "stripe_sig"}
+        request.body = AsyncMock(return_value=b"payload")
+
+        with (
+            patch("spectra_api.api.routers.billing.list_payment_providers", return_value=["stripe"]),
+            patch("spectra_api.api.routers.billing.get_payment_adapter", return_value=adapter),
+            patch("spectra_api.api.routers.billing.PaymentService", return_value=service),
+            patch("spectra_api.api.routers.billing._claim_stripe_webhook_event", new=AsyncMock(return_value=False)),
+        ):
+            result = await _handle_provider_webhook(request, "stripe")
+
+        assert result == {"received": True, "duplicate": True, "provider": "stripe"}
+        service.reconcile_stripe_event.assert_not_called()
+
     async def test_provider_webhook_reconciles_charge_refunded(self):
         from spectra_api.api.routers.billing import _handle_provider_webhook
 
         adapter = AsyncMock()
         adapter.handle_webhook = AsyncMock(
             return_value={
+                "id": "evt_2",
                 "type": "charge.refunded",
                 "data": {"customer": "cus_1", "subscription": "sub_1"},
             }
@@ -229,6 +255,7 @@ class TestBillingRouter:
             patch("spectra_api.api.routers.billing.list_payment_providers", return_value=["stripe"]),
             patch("spectra_api.api.routers.billing.get_payment_adapter", return_value=adapter),
             patch("spectra_api.api.routers.billing.PaymentService", return_value=service),
+            patch("spectra_api.api.routers.billing._claim_stripe_webhook_event", new=AsyncMock(return_value=True)),
         ):
             result = await _handle_provider_webhook(request, "stripe")
 

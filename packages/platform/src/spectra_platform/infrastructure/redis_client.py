@@ -93,6 +93,24 @@ class RedisCache:
             logger.warning("Redis delete error for %s: %s", key, exc)
             return False
 
+    async def set_nx(self, key: str, *, ttl_seconds: int, value: str = "1") -> bool:
+        """Set ``key`` to ``value`` with expiry only if absent.
+
+        Returns True if this caller acquired the key (should process).
+        Returns False if the key was already present (duplicate / in-flight).
+        When Redis is unavailable, returns True so callers degrade to previous behaviour.
+        """
+        if not self._client:
+            return True
+        if ttl_seconds <= 0:
+            ttl_seconds = 60
+        try:
+            inserted = await self._client.set(name=key, value=value, ex=ttl_seconds, nx=True)
+            return inserted is True
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Redis set_nx error for %s: %s", key, exc)
+            return True
+
     async def delete_pattern(self, pattern: str) -> int:
         """Delete all keys matching a glob-style pattern."""
         if not self._client:
