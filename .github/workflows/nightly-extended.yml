@@ -1,0 +1,28 @@
+# Weekly extended verification: same Docker gate as local/VPS `ci-parity.sh all`
+# (static analysis + unit coverage + settings + integration). Does not run compose-smoke
+# (full stack + e2e perf) to avoid runner flake; trigger that path via push to main/develop.
+name: Nightly extended verification
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * 0"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  ENCRYPTION_KEY: test-encryption-key
+
+permissions:
+  contents: read
+
+jobs:
+  ci-parity-all:
+    name: Docker CI parity (static + unit + settings + integration)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure .env.test for Compose
+        run: test -f .env.test || cp .env.test.example .env.test
+      - name: Run scripts/runbooks/ci-parity.sh all
+        run: bash scripts/runbooks/ci-parity.sh all
