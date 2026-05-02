@@ -27,7 +27,7 @@ class HttpResult:
 BASE_URL = os.environ.get("APP_BASE_URL") or os.environ.get("SPECTRA_URL") or "http://localhost:5000"
 BASE_URL = BASE_URL.rstrip("/")
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", os.environ.get("APP_USERNAME", "admin"))
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", os.environ.get("APP_PASSWORD", "Admin123!"))
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", os.environ.get("APP_PASSWORD", "TestPassword123!"))
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@spectra.local")
 LLM_PROVIDER = os.environ.get("AI_PROVIDER", "tensorzero")
 LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-4o-mini")

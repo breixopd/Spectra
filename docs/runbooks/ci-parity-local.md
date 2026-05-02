@@ -2,6 +2,8 @@
 
 This runbook reproduces the **merge gate** from `.github/workflows/ci.yml` on any machine with Docker: **one static-analysis pass** (Ruff, import boundaries, Pyright, Bandit on a single `Dockerfile.test` build), **unit tests with coverage floor**, and **settings** runner. Optionally run **integration** tests the same way CI does.
 
+For a **broader** scripted gate — parity integration plus load/performance/soak harnesses, Playwright UI tests, live target scans, and optionally full LLM live tests when `.env.test` has keys — run `./scripts/runbooks/full-test-matrix.sh` (see script header for `SKIP_*` flags).
+
 ## Prerequisites
 
 - Docker and Docker Compose v2

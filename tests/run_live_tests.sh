@@ -30,12 +30,14 @@ COMPOSE_TARGETS="docker compose -f $COMPOSE_BASE --profile app --profile targets
 if [ "$TARGETS_ONLY" = true ]; then
     COMPOSE="docker compose -f $COMPOSE_BASE --profile app --profile targets"
 else
-    # Full mode — check .env.test for LLM credentials
+    # Full mode — check .env.test for LLM credentials (same fallbacks as scripts/live_smoke.py)
     # shellcheck disable=SC1091
     source "$PROJECT_DIR/.env.test"
+    if [ -z "${LLM_API_KEY:-}" ] && [ -n "${OPENAI_API_KEY:-}" ]; then
+        export LLM_API_KEY="$OPENAI_API_KEY"
+    fi
     if [ -z "${LLM_API_KEY:-}" ] || [ "$LLM_API_KEY" = "your-api-key-here" ]; then
-        echo "SKIP: LLM_API_KEY is not configured in .env.test."
-        echo "  Add your LLM_API_KEY to .env.test and re-run."
+        echo "SKIP: No LLM key in .env.test (set LLM_API_KEY or OPENAI_API_KEY)."
         echo "  Or run with --targets for target-only tests."
         exit 0
     fi

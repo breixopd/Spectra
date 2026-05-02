@@ -18,6 +18,9 @@
 #   REBUILD=1           Force rebuild the test image before running
 #   START_STACK=1       Bring up docker/compose.yaml (app + test profiles) before live-smoke
 #   SPECTRA_KEEP_TEST_ARTIFACTS=1  Export coverage/smoke diagnostics to ./reports
+#
+# Full extended matrix (parity + load/perf/soak + Playwright + live targets; optional LLM live):
+#   ./scripts/runbooks/full-test-matrix.sh
 
 set -euo pipefail
 
