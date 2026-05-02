@@ -146,12 +146,14 @@ class Settings(BaseSettings):
     MAX_REQUEST_BODY_SIZE: int = 10 * 1024 * 1024  # 10 MB
     MAX_UPLOAD_SIZE: int = 50 * 1024 * 1024  # 50 MB — multipart file uploads
 
-    # --- CORS ---
+    # --- CORS (also used by SecurityHeadersMiddleware for browser POST same-origin checks) ---
     CORS_ORIGINS: list[str] = [
         "http://localhost:5000",
         "http://127.0.0.1:5000",
         "http://localhost:5050",
         "http://127.0.0.1:5050",
+        "http://app:5000",
+        "http://spectra-ui-app:5000",
     ]
 
     @field_validator("CORS_ORIGINS", mode="before")
