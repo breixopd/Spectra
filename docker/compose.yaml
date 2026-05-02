@@ -610,7 +610,7 @@ services:
       - PERMISSION_BOUNDARY=172.21.0.0/24
       - APP_BASE_URL=http://app:5000
       - APP_USERNAME=admin
-      - APP_PASSWORD=${ADMIN_PASSWORD:-Admin123!}
+      - APP_PASSWORD=${ADMIN_PASSWORD:-TestPassword123!}
       - AI_SERVICE_URL=http://ai-svc:5010
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - TOOL_QUEUE_NAME=${TOOL_QUEUE_NAME:-tools}
@@ -674,7 +674,7 @@ services:
       - LOAD_TEST_APP_REPLICA_URL=http://app-replica:5000
       - LOAD_TEST_CADDY_URL=http://caddy
       - LOAD_TEST_ADMIN_USERNAME=${APP_USERNAME:-admin}
-      - LOAD_TEST_ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin123!}
+      - LOAD_TEST_ADMIN_PASSWORD=${ADMIN_PASSWORD:-TestPassword123!}
       - LOAD_TEST_RESET_RATE_LIMIT_STATE=1
     volumes:
       - ../.env.test:/app/.env.test:ro

@@ -13,6 +13,7 @@
 #   SKIP_UI_E2E=1          Skip tests/run_ui_tests.sh (Playwright)
 #   SKIP_LIVE_TARGETS=1    Skip tests/run_live_tests.sh --targets
 #   SKIP_LIVE_FULL=1       Never run full LLM live suite (even if keys present)
+#   SKIP_API_E2E=1         Skip async HTTP e2e (test_api_live.py; starts app stack if needed)
 #   RUN_LIVE_SMOKE=1       After matrix, START_STACK=1 scripts/test.sh live-smoke (multi-minute)
 
 set -euo pipefail
@@ -75,6 +76,43 @@ run_live_full_maybe() {
   ./tests/run_live_tests.sh
 }
 
+run_api_e2e() {
+  if [[ "${SKIP_API_E2E:-0}" == "1" ]]; then
+    echo ">>> [full-test-matrix] SKIP API async e2e (SKIP_API_E2E=1)"
+    return 0
+  fi
+  echo ">>> [full-test-matrix] Async API e2e (tests/e2e/test_api_live.py)"
+  export ENV_FILE="${ROOT}/.env.test"
+  COMPOSE=(docker compose -f "${ROOT}/docker/compose.yaml")
+  echo ">>> [full-test-matrix] compose --profile app up (stack for API e2e)"
+  ENV_FILE="${ENV_FILE}" "${COMPOSE[@]}" --profile app up -d --build
+
+  GARAGE_CONTAINER="$("${COMPOSE[@]}" ps -q garage)"
+  export GARAGE_CONTAINER
+  GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}" \
+    GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}" \
+    GARAGE_PRINT_CREDENTIALS=0 \
+    bash "${ROOT}/docker/garage-init.sh"
+
+  echo ">>> [full-test-matrix] waiting for app health on :5000"
+  _ready=""
+  for _i in $(seq 1 120); do
+    if curl -sf http://127.0.0.1:5000/api/health >/dev/null 2>&1; then
+      _ready=1
+      break
+    fi
+    sleep 2
+  done
+  if [[ -z "${_ready}" ]]; then
+    echo "[full-test-matrix] ERROR: app did not become healthy on :5000" >&2
+    ENV_FILE="${ENV_FILE}" "${COMPOSE[@]}" --profile app logs --tail=80 app >&2 || true
+    exit 1
+  fi
+
+  ENV_FILE="${ENV_FILE}" "${COMPOSE[@]}" --profile app --profile test run --rm --no-deps test-runner \
+    "python3 -m pytest tests/e2e/test_api_live.py -v --tb=short --override-ini=addopts= -p no:cov"
+}
+
 if [[ "${SKIP_CI_PARITY:-0}" != "1" ]]; then
   run_ci_parity
 fi
@@ -92,6 +130,8 @@ if [[ "${SKIP_LIVE_TARGETS:-0}" != "1" ]]; then
 fi
 
 run_live_full_maybe
+
+run_api_e2e
 
 if [[ "${RUN_LIVE_SMOKE:-0}" == "1" ]]; then
   echo ">>> optional live_smoke.py (requires reachable APP_BASE_URL)"
