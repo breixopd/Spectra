@@ -14,7 +14,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 COMPOSE_BASE="docker/compose.yaml"
-OPS_TEST_FILE="tests/integration/test_ops_scripts_live.py"
 
 cd "$PROJECT_DIR"
 
@@ -34,7 +33,7 @@ fi
 COMPOSE_TARGETS="docker compose -f $COMPOSE_BASE --profile app --profile targets"
 
 if [ "$TARGETS_ONLY" = true ]; then
-    COMPOSE="docker compose -f $COMPOSE_BASE --profile app --profile targets"
+    COMPOSE="docker compose -f $COMPOSE_BASE --profile app --profile targets --profile test"
 else
     # Full mode — check .env.test for LLM credentials (same fallbacks as scripts/live_smoke.py)
     # shellcheck disable=SC1091
@@ -47,7 +46,7 @@ else
         echo "  Or run with --targets for target-only tests."
         exit 0
     fi
-    COMPOSE="docker compose -f $COMPOSE_BASE --profile app --profile targets --env-file .env.test"
+    COMPOSE="docker compose -f $COMPOSE_BASE --profile app --profile targets --profile test --env-file .env.test"
 fi
 
 echo "=== Spectra Live Integration Tests ==="
@@ -196,7 +195,8 @@ GARAGE_SECRET_KEY="${OPS_GARAGE_SECRET_KEY}" \
 ./scripts/ops/s3_management.sh create-buckets >/dev/null
 
 echo "Running live ops smoke tests..."
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest "${OPS_TEST_FILE}" -v -m live --tb=short --override-ini=addopts= -p no:cov
+$COMPOSE run --rm --no-deps --entrypoint sh test-runner -c \
+    "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests/integration/test_ops_scripts_live.py -v -m live --tb=short --override-ini=addopts= -p no:cov"
 
 # ── Step 4: Collect results ──────────────────────────────────
 echo ""

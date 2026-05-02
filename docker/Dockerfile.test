@@ -12,7 +12,7 @@ WORKDIR /app
 
 # System deps for asyncpg, psycopg2, etc.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc libpq-dev git \
+    gcc libpq-dev git docker.io \
     && rm -rf /var/lib/apt/lists/*
 
 # Install all dependencies including test deps.
