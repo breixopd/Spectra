@@ -463,7 +463,8 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:5012/health"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 8
+      start_period: 120s
     deploy:
       resources:
         limits:
