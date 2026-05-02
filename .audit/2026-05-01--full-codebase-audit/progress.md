@@ -3,12 +3,13 @@
 | Step | Done |
 |------|------|
 | Preconditions `.audit/`, gitignore | already present |
-| Chunkhound health | yes |
+| MCP code-research health | yes |
 | Parallel layer audits (5 files) | yes |
 | Drill: RAG contract + AI health | yes (code + tests) |
 | INDEX / SCOPE / plan / verification | yes |
 | Full `tests/unit/` after contract fix | run on merge or CI |
 | Compose-smoke / harness / VPS matrix | reconciled 2026-05 |
+| Platform-only audit dir | merged into this run (`research/02–03`, `verification/02`) |
 | Stripe webhook Redis dedup + nightly `ci-parity.sh all` workflow | 2026-05 |
 | Shell relay client unit tests | `tests/unit/services/test_shell_relay_client.py` |
 

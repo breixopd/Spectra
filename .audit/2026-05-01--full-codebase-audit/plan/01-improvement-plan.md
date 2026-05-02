@@ -26,5 +26,5 @@
 
 ## Big moves (optional)
 
-- Split `spectra_api` health duplication (`/api` vs `/api/v1`) once clients are enumerated.
+- Split `spectra_api` health duplication (`/api` vs `/api/v1`) only after client enumeration — [`verification/02-reconciliation.md`](../verification/02-reconciliation.md) records why dual mount stayed intentional for probes.
 - Nightly job: `live` / `e2e` / `ui` / soak off PR path.

@@ -1,6 +1,6 @@
 # External research — pointers
 
-Deeper web passes were **not** re-run in full for this engagement; prior audit run under `.audit/2026-05-01--platform-audit/research/` contains Swarm / agent-memory links.
+Deeper web passes were **not** re-run in full for this engagement; see [`02-swarm-self-healing-agents.md`](./02-swarm-self-healing-agents.md) and [`03-code-search-index-freshness.md`](./03-code-search-index-freshness.md).
 
 Suggested follow-up queries:
 
