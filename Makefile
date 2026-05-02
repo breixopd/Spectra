@@ -3,7 +3,7 @@
 # lint/import-boundaries are fast local conveniences; CI-parity validation runs through docker/Dockerfile.test.
 
 .PHONY: test test-unit test-integration test-all test-coverage test-compose \
-	test-load test-performance test-soak test-live-smoke \
+	test-load test-performance test-soak test-live-smoke test-full-matrix \
        lint format check clean docker-build docker-up docker-down \
        deploy rollback deploy-check help css-build css-build-prod css-watch
 
@@ -41,6 +41,9 @@ test-soak: ## Run the soak/stability harness in Docker
 
 test-live-smoke: ## Run live API/UI/LLM smoke tests (START_STACK=1 optional)
 	@./scripts/test.sh live-smoke
+
+test-full-matrix: ## CI parity + load/perf/soak + Playwright + live targets; see script for SKIP_*
+	@./scripts/runbooks/full-test-matrix.sh
 
 lint: import-boundaries ## Run import boundary check + ruff linter on app/
 	@ruff check app/

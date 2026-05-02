@@ -101,6 +101,7 @@ Use the real commands already present in this repo.
 | Purpose | Command |
 | --- | --- |
 | **CI parity gate (static analysis + unit coverage + settings; optional integration)** | `./scripts/runbooks/ci-parity.sh ci` — see [Runbooks: CI parity](../runbooks/ci-parity-local.md) |
+| **Extended matrix (parity + load/perf/soak + Playwright + live target scans; optional LLM live + optional live_smoke)** | `./scripts/runbooks/full-test-matrix.sh` — `SKIP_*` and `RUN_LIVE_SMOKE` documented in script header |
 | Unit tests in Docker | `./scripts/test.sh unit` |
 | Integration tests in Docker (may require live services) | `./scripts/test.sh integration` |
 | Full containerized test stack | `./scripts/test.sh compose` |

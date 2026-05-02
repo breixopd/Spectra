@@ -1,5 +1,7 @@
 """Test authentication flow - login, navigation, logout."""
 
+import re
+
 from playwright.sync_api import Page, expect
 
 from tests.e2e.ui.conftest import ADMIN_PASSWORD, ADMIN_USERNAME, _reset_user_activity
@@ -32,8 +34,9 @@ def test_login_success_redirects_to_dashboard(login_page: Page, app_url: str):
     login_page.fill("#username", ADMIN_USERNAME)
     login_page.fill("#password", ADMIN_PASSWORD)
     login_page.click("button[type='submit']")
-    login_page.wait_for_url("**/dashboard", timeout=30_000)
-    expect(login_page).to_have_url(f"{app_url}/dashboard")
+    # Wait for authenticated shell — URL glob alone flakes on cold stacks / SPA timing.
+    login_page.get_by_test_id("sidebar").wait_for(state="visible", timeout=60_000)
+    expect(login_page).to_have_url(re.compile(rf"^{re.escape(app_url)}/dashboard/?$"))
 
 
 def test_navigation_after_login(authenticated_page: Page, app_url: str):
