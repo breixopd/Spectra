@@ -28,7 +28,7 @@ async function loadTraining() {
 async function loadTrainingStats() {
     const { data, error } = await spectraApi.get('/api/v1/admin/training/stats');
     if (error) {
-        _spectraToast('Failed to load training stats', 'error');
+        showToast('Failed to load training stats', 'error');
         return;
     }
     const types = data.types || {};
@@ -39,7 +39,7 @@ async function loadTrainingStats() {
 async function loadTrainingProviders() {
     const { data, error } = await spectraApi.get('/api/v1/admin/training/providers');
     if (error) {
-        _spectraToast('Failed to load training providers', 'error');
+        showToast('Failed to load training providers', 'error');
         return;
     }
     trainingProviders = data.providers || [];
@@ -63,7 +63,7 @@ async function loadTrainingProviders() {
 async function loadTrainingSamples() {
     const { data, error } = await spectraApi.get('/api/v1/admin/training/samples?per_page=25');
     if (error) {
-        _spectraToast('Failed to load training samples', 'error');
+        showToast('Failed to load training samples', 'error');
         return;
     }
     const samples = data.items || [];
@@ -87,7 +87,7 @@ async function loadTrainingSamples() {
 async function loadTrainingJobs() {
     const { data, error } = await spectraApi.get('/api/v1/admin/training/jobs');
     if (error) {
-        _spectraToast('Failed to load training jobs', 'error');
+        showToast('Failed to load training jobs', 'error');
         return;
     }
     const jobs = data.jobs || [];
@@ -112,20 +112,20 @@ async function loadTrainingJobs() {
 async function approveTrainingSample(sampleId) {
     const { error } = await spectraApi.post(`/api/v1/admin/training/samples/${sampleId}/approve`, {});
     if (error) {
-        _spectraToast('Failed to approve sample', 'error');
+        showToast('Failed to approve sample', 'error');
         return;
     }
-    _spectraToast('Training sample approved', 'success');
+    showToast('Training sample approved', 'success');
     await loadTrainingSamples();
 }
 
 async function bulkApproveTrainingSamples() {
     const { data, error } = await spectraApi.post('/api/v1/admin/training/samples/bulk-approve', { min_quality: 0.7 });
     if (error) {
-        _spectraToast('Bulk approval failed', 'error');
+        showToast('Bulk approval failed', 'error');
         return;
     }
-    _spectraToast(`Approved ${data.approved_count || 0} samples`, 'success');
+    showToast(`Approved ${data.approved_count || 0} samples`, 'success');
     await loadTraining();
 }
 
@@ -143,9 +143,9 @@ async function createTrainingJob() {
     };
     const { error } = await spectraApi.post('/api/v1/admin/training/jobs', body);
     if (error) {
-        _spectraToast(`Failed to queue training job: ${error}`, 'error');
+        showToast(`Failed to queue training job: ${error}`, 'error');
         return;
     }
-    _spectraToast('Training job queued', 'success');
+    showToast('Training job queued', 'success');
     await loadTrainingJobs();
 }

@@ -80,7 +80,7 @@ async function deleteContent(id) {
     showConfirm('Delete Content', 'Delete this item?', async () => {
         await spectraApi.delete(`/api/admin/content/${id}`);
         loadContent();
-        _spectraToast('Content deleted', 'success');
+        showToast('Content deleted', 'success');
     });
 }
 
@@ -117,6 +117,6 @@ document.getElementById('content-form').addEventListener('submit', async (e) => 
         if (r.error) throw new Error(r.error);
         closeContentModal();
         loadContent();
-        _spectraToast('Content saved', 'success');
-    } catch(e) { _spectraToast(e.message, 'error'); }
+        showToast('Content saved', 'success');
+    } catch(e) { showToast(e.message, 'error'); }
 });

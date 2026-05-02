@@ -108,7 +108,7 @@ jobs:
       - name: Security scan (bandit)
         run: |
           docker compose -f docker/compose.yaml --profile test run --rm --no-deps unit-test-runner \
-            "bandit -r spectra_platform/ -c pyproject.toml --severity-level high --confidence-level high"
+            "bandit -r packages/platform/src/spectra_platform -c pyproject.toml --severity-level high --confidence-level high"
 
       - name: Validate Docker Compose config
         run: ENV_FILE=../.env.example docker compose --env-file .env.example -f docker/compose.yaml --profile app config --quiet

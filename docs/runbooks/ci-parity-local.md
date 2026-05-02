@@ -45,10 +45,10 @@ If you cannot use the script, these are the same steps as the workflow file.
 
 ```bash
 docker build -f docker/Dockerfile.test -t spectra-test-ci .
-docker run --rm spectra-test-ci python -m ruff check spectra_platform/ tests/ services/ packages/
+  docker run --rm spectra-test-ci python -m ruff check packages/platform/src/spectra_platform tests/ services/ packages/
 docker run --rm spectra-test-ci python scripts/check_import_boundaries.py
 docker run --rm spectra-test-ci sh -c "pip install --no-cache-dir pyright && pyright"
-docker run --rm spectra-test-ci bandit -r spectra_platform/ -c pyproject.toml --severity-level high --confidence-level high
+  docker run --rm spectra-test-ci bandit -r packages/platform/src/spectra_platform -c pyproject.toml --severity-level high --confidence-level high
 ```
 
 **Unit + coverage + settings**

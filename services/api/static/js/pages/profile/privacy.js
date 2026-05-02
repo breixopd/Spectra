@@ -14,8 +14,8 @@ async function downloadMyData() {
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        _spectraToast('Data export downloaded');
-    } catch (e) { _spectraToast(e.message || 'Failed to export data', 'error'); }
+        showToast('Data export downloaded');
+    } catch (e) { showToast(e.message || 'Failed to export data', 'error'); }
 }
 
 async function loadDataPrivacy() {
@@ -37,18 +37,18 @@ async function toggleRestrictProcessing() {
     const checked = document.getElementById('restrict-processing-toggle').checked;
     try {
         const { error } = await spectraApi.post('/api/v1/auth/restrict-processing', { restricted: checked });
-        if (!error) _spectraToast(checked ? 'Processing restricted' : 'Processing restriction removed');
-        else { _spectraToast(error || 'Failed to update', 'error'); document.getElementById('restrict-processing-toggle').checked = !checked; }
-    } catch (e) { _spectraToast('Network error', 'error'); document.getElementById('restrict-processing-toggle').checked = !checked; }
+        if (!error) showToast(checked ? 'Processing restricted' : 'Processing restriction removed');
+        else { showToast(error || 'Failed to update', 'error'); document.getElementById('restrict-processing-toggle').checked = !checked; }
+    } catch (e) { showToast('Network error', 'error'); document.getElementById('restrict-processing-toggle').checked = !checked; }
 }
 
 async function toggleShareTraining() {
     const checked = document.getElementById('share-training-toggle').checked;
     try {
         const { error } = await spectraApi.put('/api/v1/user/settings', { share_training_data: checked });
-        if (!error) _spectraToast(checked ? 'Training data sharing enabled' : 'Training data sharing disabled');
-        else { _spectraToast(error || 'Failed to update', 'error'); document.getElementById('share-training-toggle').checked = !checked; }
-    } catch (e) { _spectraToast('Network error', 'error'); document.getElementById('share-training-toggle').checked = !checked; }
+        if (!error) showToast(checked ? 'Training data sharing enabled' : 'Training data sharing disabled');
+        else { showToast(error || 'Failed to update', 'error'); document.getElementById('share-training-toggle').checked = !checked; }
+    } catch (e) { showToast('Network error', 'error'); document.getElementById('share-training-toggle').checked = !checked; }
 }
 
 loadDataPrivacy();

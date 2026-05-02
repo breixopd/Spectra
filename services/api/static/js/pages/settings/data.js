@@ -1,17 +1,17 @@
 // Settings — Data Management (clear tools/missions/cache, reinstall, data sources)
-// Loaded before settings.js; depends on escapeHtml(), spectraApi, _spectraToast, _spectraConfirm, showSharedModal, closeSharedModal
+// Loaded before settings.js; depends on escapeHtml(), spectraApi, showToast, _spectraConfirm, showSharedModal, closeSharedModal
 
 async function clearToolStats() {
     _spectraConfirm('Clear all tool statistics?', async () => {
         try {
             const { data, error } = await spectraApi.post('/api/v1/system/clear/tools');
             if (!error) {
-                _spectraToast(`Cleared ${data.cleared_count || 0} tool stat entries`, 'success');
+                showToast(`Cleared ${data.cleared_count || 0} tool stat entries`, 'success');
             } else {
-                _spectraToast('Error: ' + (error || 'Failed to clear'), 'error');
+                showToast('Error: ' + (error || 'Failed to clear'), 'error');
             }
         } catch (e) {
-            _spectraToast('Error: ' + e.message, 'error');
+            showToast('Error: ' + e.message, 'error');
         }
     }, { title: 'Clear Tool Statistics' });
 }
@@ -29,12 +29,12 @@ async function confirmClearMissions() {
     try {
         const { data, error } = await spectraApi.post('/api/v1/system/clear/missions', { confirm: true });
         if (!error) {
-            _spectraToast(`Deleted ${data.cleared_count || 0} missions`, 'success');
+            showToast(`Deleted ${data.cleared_count || 0} missions`, 'success');
         } else {
-            _spectraToast('Error: ' + (error || 'Failed to clear'), 'error');
+            showToast('Error: ' + (error || 'Failed to clear'), 'error');
         }
     } catch (e) {
-        _spectraToast('Error: ' + e.message, 'error');
+        showToast('Error: ' + e.message, 'error');
     }
 }
 
@@ -43,12 +43,12 @@ async function clearCache() {
         try {
             const { data, error } = await spectraApi.post('/api/v1/system/clear/cache');
             if (!error) {
-                _spectraToast(`Cleared ${data.cleared_count || 0} cache entries`, 'success');
+                showToast(`Cleared ${data.cleared_count || 0} cache entries`, 'success');
             } else {
-                _spectraToast('Error: ' + (error || 'Failed to clear'), 'error');
+                showToast('Error: ' + (error || 'Failed to clear'), 'error');
             }
         } catch (e) {
-            _spectraToast('Error: ' + e.message, 'error');
+            showToast('Error: ' + e.message, 'error');
         }
     }, { title: 'Clear Cache' });
 }
@@ -58,12 +58,12 @@ async function reinstallTools() {
         try {
             const { data, error } = await spectraApi.post('/api/v1/tools/install-all');
             if (!error) {
-                _spectraToast('Tool installation queued. Check system status for progress.', 'success');
+                showToast('Tool installation queued. Check system status for progress.', 'success');
             } else {
-                _spectraToast('Error: ' + (error || 'Failed to queue'), 'error');
+                showToast('Error: ' + (error || 'Failed to queue'), 'error');
             }
         } catch (e) {
-            _spectraToast('Error: ' + e.message, 'error');
+            showToast('Error: ' + e.message, 'error');
         }
     }, { title: 'Reinstall Tools' });
 }

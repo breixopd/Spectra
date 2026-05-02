@@ -23,7 +23,7 @@ async function loadServices() {
         renderServiceCards();
         startSvcHealthPoll();
         refreshNodesList();
-    } catch(e) { console.error(e); _spectraToast('Error loading services', 'error'); grid.innerHTML = ''; }
+    } catch(e) { console.error(e); showToast('Error loading services', 'error'); grid.innerHTML = ''; }
     // Populate billing fields from settings
     loadBillingFields();
 }
@@ -51,9 +51,9 @@ async function saveBillingSettings() {
     try {
         const r = await spectraApi.post('/api/settings', body);
         if (r.error) throw new Error(r.error);
-        _spectraToast('Billing settings saved', 'success');
+        showToast('Billing settings saved', 'success');
         loadServices();
-    } catch(e) { _spectraToast(e.message, 'error'); }
+    } catch(e) { showToast(e.message, 'error'); }
 }
 
 function renderServiceCards() {
@@ -126,8 +126,8 @@ async function checkAllHealth() {
         if (r.error) throw new Error(r.error);
         svcHealth = r.data;
         renderServiceCards();
-        _spectraToast('Health check complete', 'success');
-    } catch(e) { _spectraToast(e.message, 'error'); }
+        showToast('Health check complete', 'success');
+    } catch(e) { showToast(e.message, 'error'); }
     btn.disabled = false;
     btn.innerHTML = '<i data-lucide="heart-pulse" class="w-4 h-4 inline-block mr-1"></i> Check All Health';
     if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -217,10 +217,10 @@ document.getElementById('service-form').addEventListener('submit', async functio
     try {
         const r = await spectraApi.post('/api/settings', body);
         if (r.error) throw new Error(r.error);
-        _spectraToast(map.label + ' configuration saved', 'success');
+        showToast(map.label + ' configuration saved', 'success');
         closeModal('service-modal');
         loadServices();
-    } catch(e) { _spectraToast(e.message, 'error'); }
+    } catch(e) { showToast(e.message, 'error'); }
 });
 
 async function resetServiceToLocal() {
@@ -232,10 +232,10 @@ async function resetServiceToLocal() {
     try {
         const r = await spectraApi.post('/api/settings', body);
         if (r.error) throw new Error(r.error);
-        _spectraToast(map.label + ' reset to local', 'success');
+        showToast(map.label + ' reset to local', 'success');
         closeModal('service-modal');
         loadServices();
-    } catch(e) { _spectraToast(e.message, 'error'); }
+    } catch(e) { showToast(e.message, 'error'); }
 }
 
 // Auto-refresh
@@ -327,7 +327,7 @@ async function testServerConnection() {
 
 async function provisionServer() {
     const cfg = getProvisionConfig();
-    if (!cfg.host) { _spectraToast('Host is required', 'error'); return; }
+    if (!cfg.host) { showToast('Host is required', 'error'); return; }
     cfg.service_type = document.getElementById('prov-service-type').value;
     cfg.service_port = parseInt(document.getElementById('prov-service-port').value) || 8080;
 
@@ -346,14 +346,14 @@ async function provisionServer() {
         logPre.scrollTop = logPre.scrollHeight;
 
         if (d.success) {
-            _spectraToast('Server provisioned successfully' + (d.health_check_passed ? ' (healthy)' : ' (health check pending)'), 'success');
+            showToast('Server provisioned successfully' + (d.health_check_passed ? ' (healthy)' : ' (health check pending)'), 'success');
             loadServices();
         } else {
-            _spectraToast('Provisioning failed: ' + (d.error || 'unknown'), 'error');
+            showToast('Provisioning failed: ' + (d.error || 'unknown'), 'error');
         }
     } catch(e) {
         logPre.textContent += '\nError: ' + e.message;
-        _spectraToast('Provisioning request failed', 'error');
+        showToast('Provisioning request failed', 'error');
     }
     btn.disabled = false;
     btn.innerHTML = '<i data-lucide="rocket" class="w-4 h-4 inline-block mr-1"></i> Provision';
@@ -371,10 +371,10 @@ function deprovisionServer(serviceType) {
                     spectraApi.post('/api/admin/servers/deprovision', cfg)
                         .then(r => {
                             const d = r.data;
-                            if (d.success) { _spectraToast('Server deprovisioned', 'success'); loadServices(); }
-                            else { _spectraToast('Deprovision failed: ' + (d.error || 'unknown'), 'error'); }
+                            if (d.success) { showToast('Server deprovisioned', 'success'); loadServices(); }
+                            else { showToast('Deprovision failed: ' + (d.error || 'unknown'), 'error'); }
                         })
-                        .catch(() => _spectraToast('Deprovision request failed', 'error'));
+                        .catch(() => showToast('Deprovision request failed', 'error'));
                 };
                 if (authMethod === 'key') {
                     _spectraPrompt('Paste private key:', (key) => {
@@ -456,20 +456,20 @@ async function deployToNode(nodeId, el) {
     const nodeName = (typeof el === 'object' && el?.dataset?.nodeName) ? el.dataset.nodeName : (el || 'node');
     nodeId = parseInt(nodeId, 10);
     showConfirm('Deploy Services', `Deploy Spectra services to ${nodeName}? This may take several minutes.`, async () => {
-        _spectraToast('Starting deployment to ' + nodeName + '...', 'success');
+        showToast('Starting deployment to ' + nodeName + '...', 'success');
     try {
         const r = await spectraApi.post(`/api/admin/services/nodes/${nodeId}/deploy`, { services: null, harden: true });
         const data = r.data;
         if (data.status === 'complete') {
-            _spectraToast('Deployment successful!', 'success');
+            showToast('Deployment successful!', 'success');
         } else {
-            _spectraToast('Deployment failed: ' + (data.message || 'unknown'), 'error');
+            showToast('Deployment failed: ' + (data.message || 'unknown'), 'error');
         }
         // Show logs
         document.getElementById('deploy-logs-content').textContent = (data.logs || []).join('\n');
         showModal('deploy-logs-modal');
         refreshNodesList();
-    } catch(e) { _spectraToast('Deployment request failed', 'error'); }
+    } catch(e) { showToast('Deployment request failed', 'error'); }
     });
 }
 
@@ -479,6 +479,6 @@ async function viewNodeLogs(nodeId) {
         const data = r.data;
         document.getElementById('deploy-logs-content').textContent = (data.logs || []).join('\n') || 'No logs available.';
         showModal('deploy-logs-modal');
-    } catch(e) { _spectraToast('Failed to load logs', 'error'); }
+    } catch(e) { showToast('Failed to load logs', 'error'); }
 }
 

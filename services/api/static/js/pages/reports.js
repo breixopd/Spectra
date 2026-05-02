@@ -222,7 +222,7 @@ async function viewReport(missionId) {
 
     const reportData = await getReportRenderData(missionId);
     if (!reportData) {
-        _spectraToast('Report not found', 'warning');
+        showToast('Report not found', 'warning');
         return;
     }
     openReportModal(`Report: ${reportData.report.target || 'Unknown'}`, reportData.content);
@@ -235,7 +235,7 @@ function printReport() {
     const title = document.getElementById('view-report-title')?.textContent || 'Report';
     const w = window.open('', '_blank');
     if (!w) {
-        _spectraToast('Allow pop-ups to print the report', 'warning');
+        showToast('Allow pop-ups to print the report', 'warning');
         return;
     }
     w.document.write(buildReportDocument(title, content));
@@ -246,7 +246,7 @@ function printReport() {
 async function downloadReportHTML(id) {
     const reportData = await getReportRenderData(id);
     if (!reportData) {
-        _spectraToast('Report not found', 'warning');
+        showToast('Report not found', 'warning');
         return;
     }
     const title = `Report: ${reportData.report.target || 'Unknown'}`;
@@ -267,7 +267,7 @@ async function openNewReportModal() {
     sel.innerHTML = '<option value="">Select a mission...</option>';
     const { data, error } = await spectraApi.get('/api/v1/missions');
     if (error) {
-        _spectraToast(getReportsErrorMessage(error, 'Failed to load missions'), 'error');
+        showToast(getReportsErrorMessage(error, 'Failed to load missions'), 'error');
         return;
     }
     const missionsList = data?.items || [];
@@ -278,15 +278,15 @@ function closeNewReportModal() { closeSharedModal('new-report-modal'); }
 
 async function generateReport() {
     const mid = document.getElementById('report-mission-select').value;
-    if (!mid) { _spectraToast('Select a mission', 'warning'); return; }
+    if (!mid) { showToast('Select a mission', 'warning'); return; }
     const tpl = document.getElementById('report-template-select').value;
     const { data, error } = await spectraApi.post('/api/v1/helpers/reports/generate', { mission_id: mid, template_id: tpl });
     if (error) {
-        _spectraToast(getReportsErrorMessage(error, 'Failed to generate report'), 'error');
+        showToast(getReportsErrorMessage(error, 'Failed to generate report'), 'error');
         return;
     }
     if (!data) {
-        _spectraToast('Failed to generate report', 'error');
+        showToast('Failed to generate report', 'error');
         return;
     }
 
@@ -318,7 +318,7 @@ async function confirmDeleteMission() {
     hideDeleteMissionModal();
     const { error } = await spectraApi.delete(`/api/v1/missions/${deleteMissionId}`);
     if (error) {
-        _spectraToast(error || 'Failed to delete mission', 'error');
+        showToast(error || 'Failed to delete mission', 'error');
         return;
     }
     generatedReports.delete(String(deleteMissionId));

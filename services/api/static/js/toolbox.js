@@ -222,7 +222,7 @@ async function installTool(id) {
     const { data, error } = await spectraApi.post(`/api/v1/tools/${encodeURIComponent(id)}/install`);
     if (error) {
         _setInstallLogs(String(error), 'error');
-        _spectraToast(String(error), 'error');
+        showToast(String(error), 'error');
         return;
     }
     _setInstallLogs(data?.message || 'Installation queued in tools container', 'success');
@@ -235,7 +235,7 @@ async function toggleTool(id, enabled) {
     const { data, error } = await spectraApi.post(`/api/v1/tools/${encodeURIComponent(id)}/${action}`);
     if (error) {
         _setInstallLogs(String(error), 'error');
-        _spectraToast(String(error), 'error');
+        showToast(String(error), 'error');
         return;
     }
     _setInstallLogs(data?.message || `Tool ${enabled ? 'enabled' : 'disabled'}`, 'success');
@@ -253,7 +253,7 @@ async function deleteTool(id) {
             await refreshTools();
         } catch (e) {
             _setInstallLogs(String(e), 'error');
-            _spectraToast(String(e), 'error');
+            showToast(String(e), 'error');
         }
     }, { title: 'Delete Tool', confirmLabel: 'Delete Tool' });
 }
@@ -331,7 +331,7 @@ async function runToolTest(toolId) {
     const resultDiv = document.getElementById('test-result');
     const runBtn = document.getElementById('test-run-btn');
     if (!target.trim()) {
-        _spectraToast('Please enter a target', 'warning');
+        showToast('Please enter a target', 'warning');
         return;
     }
 
@@ -340,7 +340,7 @@ async function runToolTest(toolId) {
         try {
             args = JSON.parse(argsInput);
         } catch (_) {
-            _spectraToast('Invalid JSON in args field', 'error');
+            showToast('Invalid JSON in args field', 'error');
             return;
         }
     }

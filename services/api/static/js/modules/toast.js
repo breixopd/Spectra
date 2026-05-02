@@ -1,7 +1,6 @@
 /**
  * Toast notification system — canonical implementation.
- * Exposes showToast() as the module API.
- * Also sets window._spectraToast for legacy callers.
+ * Exports showToast for ESM; assigns window.showToast for classic scripts (confirm.js stub is replaced at load).
  */
 
 const TOAST_TYPES = {
@@ -50,8 +49,7 @@ export function showToast(msg, type = 'info') {
     el.addEventListener('click', () => { clearTimeout(timer); el.remove(); });
 }
 
-// Expose as global for legacy callers and base.html inline script
-window._spectraToast = showToast;
+window.showToast = showToast;
 
 // Drain any toasts queued before module loaded
 if (Array.isArray(window._toastQueue)) {

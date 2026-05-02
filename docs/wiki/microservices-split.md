@@ -74,7 +74,7 @@ Each service has its own requirements file with only the dependencies it needs:
 
 ### Import Boundary Enforcement
 
-Shared packages (`spectra_platform/core/`, `spectra_platform/models/`) must not import service-specific code. This is enforced by `scripts/check_import_boundaries.py`:
+Shared packages (`packages/platform/src/spectra_platform/core/`, `packages/platform/src/spectra_platform/models/`) must not import service-specific code. This is enforced by `scripts/check_import_boundaries.py`:
 
 ```bash
 python3 scripts/check_import_boundaries.py

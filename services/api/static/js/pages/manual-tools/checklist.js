@@ -370,7 +370,7 @@ function copyCVSSVector() {
 function parseCVSSVector() {
     const input = document.getElementById('cvss-vector-input').value.trim();
     const match = input.match(/CVSS:3\.[01]\/AV:([NALP])\/AC:([LH])\/PR:([NLH])\/UI:([NR])\/S:([UC])\/C:([NLH])\/I:([NLH])\/A:([NLH])/);
-    if (!match) { _spectraToast('Invalid CVSS vector string', 'error'); return; }
+    if (!match) { showToast('Invalid CVSS vector string', 'error'); return; }
     const [, av, ac, pr, ui, s, c, i, a] = match;
     const vals = {AV:av, AC:ac, PR:pr, UI:ui, S:s, C:c, I:i, A:a};
     Object.entries(vals).forEach(([metric, val]) => {

@@ -78,5 +78,5 @@ function renderScopeExclusions() {
 function saveScope() {
     localStorage.setItem('spectra_scope_roe', document.getElementById('scope-roe').value);
     syncManualStateToServer();
-    _spectraToast('Scope saved to session', 'success');
+    showToast('Scope saved to session', 'success');
 }

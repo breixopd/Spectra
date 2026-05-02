@@ -37,7 +37,7 @@ function cleanupShellResources() {
 
 function openShell(btn, sessionId) {
     if (!hasValidSessionId(sessionId)) {
-        _spectraToast('No active shell session is available for this target.', 'error');
+        showToast('No active shell session is available for this target.', 'error');
         return;
     }
 

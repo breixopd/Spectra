@@ -118,7 +118,7 @@ process (`spectra_api`) additionally uses it for router mounting — see
 `docs/wiki/microservices-split.md`.
 
 ```text
-spectra_platform/
+packages/platform/src/spectra_platform/
 ├── _meta/            # App metadata (version, build info)
 ├── core/             # Infrastructure — config, DB, security, cache, redis
 ├── mission/          # Mission FSM, enums, mission-domain helpers
@@ -187,7 +187,7 @@ Spectra runs as four microservices; `SERVICE_MODE` labels each container for sha
 python3 scripts/check_import_boundaries.py
 ```
 
-This checks that `spectra_platform/core/` and `spectra_platform/models/` have no top-level imports of service-specific modules (`spectra_api.api`, `spectra_worker`, `spectra_ai`, `spectra_scheduler`, etc.). Lazy imports inside functions are allowed.
+This checks that `packages/platform/src/spectra_platform/core/` and `packages/platform/src/spectra_platform/models/` have no top-level imports of service-specific modules (`spectra_api.api`, `spectra_worker`, `spectra_ai`, `spectra_scheduler`, etc.). Lazy imports inside functions are allowed.
 
 The pre-commit hook also runs this check automatically on every commit (see [Pre-commit Hooks](#pre-commit-hooks)).
 
@@ -221,17 +221,17 @@ For **readability, modular boundaries, and when to split large modules**, see [R
 
 ```bash
 # Check for lint errors
-ruff check spectra_platform/
+ruff check packages/platform/src/spectra_platform
 
 # Auto-fix what ruff can fix
-ruff check spectra_platform/ --fix
+ruff check packages/platform/src/spectra_platform --fix
 
 # Format code
-ruff format spectra_platform/ tests/
+ruff format packages/platform/src/spectra_platform tests/
 
 # Or use the Makefile shortcuts
 make lint     # ruff check + import boundary check
-make format   # ruff format spectra_platform/ tests/
+make format   # ruff format packages/platform/src/spectra_platform tests/
 ```
 
 ### CSS and Frontend
@@ -346,7 +346,7 @@ Key variables in `.env.test`:
 1. **Branch**: Create a feature branch from `main` (`feature/your-feature` or `fix/your-fix`)
 2. **Implement**: Make your changes following the code style guidelines
 3. **Test**: Ensure all existing tests pass and add tests for new functionality
-4. **Lint**: Run `ruff check spectra_platform/` and fix any issues
+4. **Lint**: Run `ruff check packages/platform/src/spectra_platform` and fix any issues
 5. **Commit**: Use clear commit messages
 6. **PR**: Open a pull request against `main` with:
    - A clear description of what changed and why
@@ -360,7 +360,7 @@ Use this checklist when reviewing pull requests:
 
 - [ ] **Code quality**: Follows project style, clear naming, no dead code
 - [ ] **Tests**: New functionality has tests; all existing tests pass
-- [ ] **Lint clean**: `ruff check spectra_platform/` reports no errors
+- [ ] **Lint clean**: `ruff check packages/platform/src/spectra_platform` reports no errors
 - [ ] **Import boundaries**: `python3 scripts/check_import_boundaries.py` passes
 - [ ] **Security**: No hardcoded secrets, no SQL injection, no XSS vectors
 - [ ] **Constants**: No magic numbers — constants go in `spectra_platform/core/constants.py`
@@ -394,7 +394,7 @@ We will acknowledge receipt within 48 hours and provide a timeline for resolutio
 - All user input must be validated at API boundaries (Pydantic schemas)
 - Use parameterized queries — never concatenate user input into SQL
 - Follow the OWASP Top 10 guidelines
-- Run `ruff check spectra_platform/` to catch common security anti-patterns
+- Run `ruff check packages/platform/src/spectra_platform` to catch common security anti-patterns
 - Test authentication/authorization paths in your changes
 
 ## Project Conventions

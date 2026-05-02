@@ -16,7 +16,7 @@ async function loadScalingStatus() {
         populateInfraStatus(statusData);
         if (metricsData) populateClusterMetrics(metricsData);
         startScalingAutoRefresh();
-    } catch(e) { console.error('Load scaling status error', e); _spectraToast('Error loading scaling status', 'error'); }
+    } catch(e) { console.error('Load scaling status error', e); showToast('Error loading scaling status', 'error'); }
 }
 
 // --- Cluster Metrics (from /api/admin/scaling/metrics) ---
@@ -179,29 +179,29 @@ async function saveScalingConfig(e) {
     try {
         const { error } = await spectraApi.put('/api/admin/scaling/config', payload);
         if (error) throw new Error(error);
-        _spectraToast('Scaling configuration saved', 'success');
+        showToast('Scaling configuration saved', 'success');
         loadScalingStatus();
-    } catch(e) { _spectraToast('Failed to save scaling config: ' + e.message, 'error'); }
+    } catch(e) { showToast('Failed to save scaling config: ' + e.message, 'error'); }
 }
 
 // --- Scaling actions ---
 
 async function scalingAction(action, service) {
     try {
-        _spectraToast(`Executing ${action} on ${service}…`, 'info');
+        showToast(`Executing ${action} on ${service}…`, 'info');
         const { data, error } = await spectraApi.post('/api/admin/scaling/action', { action, service });
         if (error) throw new Error(error);
         if (data.success) {
-            _spectraToast(`${action} on ${service} succeeded`, 'success');
+            showToast(`${action} on ${service} succeeded`, 'success');
             if (action === 'heal' && data.actions) {
                 data.actions.forEach(a => _addHealLogEntry(a));
             }
         } else {
-            _spectraToast(`${action} on ${service} failed`, 'error');
+            showToast(`${action} on ${service} failed`, 'error');
         }
         // Refresh metrics after action
         setTimeout(() => loadScalingStatus(), 2000);
-    } catch(e) { _spectraToast(`Scaling action failed: ${e.message}`, 'error'); }
+    } catch(e) { showToast(`Scaling action failed: ${e.message}`, 'error'); }
 }
 
 function _addHealLogEntry(text) {

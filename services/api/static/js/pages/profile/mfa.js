@@ -37,7 +37,7 @@ async function loadMfaStatus() {
 async function startMfaSetup() {
     try {
         const { data, error } = await spectraApi.post('/api/v1/auth/mfa/setup');
-        if (error) { _spectraToast(error || 'Failed to start MFA setup', 'error'); return; }
+        if (error) { showToast(error || 'Failed to start MFA setup', 'error'); return; }
         document.getElementById('mfa-secret-display').textContent = data.secret;
         const qrArea = document.getElementById('mfa-qr-code');
         qrArea.innerHTML = '';
@@ -48,7 +48,7 @@ async function startMfaSetup() {
         }
         document.getElementById('mfa-status-area').classList.add('hidden');
         document.getElementById('mfa-setup-flow').classList.remove('hidden');
-    } catch (e) { _spectraToast('Network error', 'error'); }
+    } catch (e) { showToast('Network error', 'error'); }
 }
 
 function cancelMfaSetup() {
@@ -59,18 +59,18 @@ function cancelMfaSetup() {
 
 async function verifyMfaSetup() {
     const code = document.getElementById('mfa-verify-code').value.trim();
-    if (!/^\d{6}$/.test(code)) return _spectraToast('Enter a valid 6-digit code', 'error');
+    if (!/^\d{6}$/.test(code)) return showToast('Enter a valid 6-digit code', 'error');
     try {
         const { error } = await spectraApi.post('/api/v1/auth/mfa/verify-setup', { code });
         if (!error) {
-            _spectraToast('MFA enabled successfully');
+            showToast('MFA enabled successfully');
             document.getElementById('mfa-setup-flow').classList.add('hidden');
             document.getElementById('mfa-status-area').classList.remove('hidden');
             loadMfaStatus();
         } else {
-            _spectraToast(error || 'Verification failed', 'error');
+            showToast(error || 'Verification failed', 'error');
         }
-    } catch (e) { _spectraToast('Network error', 'error'); }
+    } catch (e) { showToast('Network error', 'error'); }
 }
 
 function startDisableMfa() {
@@ -88,21 +88,21 @@ function cancelDisableMfa() {
 async function confirmDisableMfa() {
     const password = document.getElementById('mfa-disable-password').value;
     const code = document.getElementById('mfa-disable-code').value.trim();
-    if (!password) return _spectraToast('Enter your password', 'error');
-    if (!/^\d{6}$/.test(code)) return _spectraToast('Enter a valid 6-digit code', 'error');
+    if (!password) return showToast('Enter your password', 'error');
+    if (!/^\d{6}$/.test(code)) return showToast('Enter a valid 6-digit code', 'error');
     try {
         const { error } = await spectraApi.post('/api/v1/auth/mfa/disable', { password, code });
         if (!error) {
-            _spectraToast('MFA disabled');
+            showToast('MFA disabled');
             document.getElementById('mfa-disable-flow').classList.add('hidden');
             document.getElementById('mfa-status-area').classList.remove('hidden');
             document.getElementById('mfa-disable-password').value = '';
             document.getElementById('mfa-disable-code').value = '';
             loadMfaStatus();
         } else {
-            _spectraToast(error || 'Failed to disable MFA', 'error');
+            showToast(error || 'Failed to disable MFA', 'error');
         }
-    } catch (e) { _spectraToast('Network error', 'error'); }
+    } catch (e) { showToast('Network error', 'error'); }
 }
 
 loadMfaStatus();

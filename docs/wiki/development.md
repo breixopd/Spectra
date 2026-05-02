@@ -133,7 +133,7 @@ make test-soak
 ## Linting and static analysis
 
 ```bash
-ruff check spectra_platform/
+ruff check packages/platform/src/spectra_platform
 ```
 
 CI runs one **`static-analysis`** job (`.github/workflows/ci.yml`): a single `Dockerfile.test` build, then Ruff, the import-boundary script, Pyright, and Bandit (HIGH severity / confidence gate). Ruff and Pyright defaults live in `pyproject.toml`.
@@ -156,11 +156,8 @@ Use `from __future__ import annotations` at the top of new files for modern type
 ## Code Structure
 
 ```text
-spectra_platform/
+packages/platform/src/spectra_platform/
 ├── _meta/              # App metadata (version, build info)
-├── api/                # FastAPI routes and schemas
-│   ├── routers/        # One module per domain
-│   └── schemas/        # Request/response Pydantic models
 ├── core/               # Config, database, security, WebSocket, events, cache, redis
 ├── models/             # SQLAlchemy database models
 ├── repositories/       # Data access layer (Repository pattern)
@@ -187,6 +184,7 @@ spectra_platform/
 packages/
 ├── common/             # spectra_common shared primitives
 ├── domain/             # spectra_domain integration contracts
+├── platform/           # spectra_platform domain kernel (workspace: `spectra-platform`)
 └── tools-core/         # spectra_tools_core registry contracts
 
 services/
@@ -206,7 +204,7 @@ docker/
 └── Dockerfile.worker        # Kali worker image
 
 plugins/                     # Tool plugin JSON configs (26 included)
-data/                        # Runtime data (cache, auth, missions, sessions)
+data/                        # Gitignored on host when used (local keys/cache); containers use /app/data
 tests/                       # Unit, integration, e2e tests
 docs/                        # Documentation
 config/                      # Build configs (tailwind, postcss)

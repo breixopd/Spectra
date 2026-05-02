@@ -8,7 +8,7 @@ import pytest
 
 
 def _load_recipes_module():
-    module_path = Path(__file__).resolve().parents[3] / "spectra_platform/services/provisioning/recipes.py"
+    module_path = Path(__file__).resolve().parents[3] / "packages/platform/src/spectra_platform/services/provisioning/recipes.py"
     spec = spec_from_file_location("test_provisioning_recipes_module", module_path)
     assert spec is not None
     assert spec.loader is not None

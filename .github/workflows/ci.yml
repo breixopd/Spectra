@@ -23,13 +23,13 @@ jobs:
       - name: Build Docker test runner
         run: docker build -f docker/Dockerfile.test -t spectra-test-ci .
       - name: Ruff
-        run: docker run --rm spectra-test-ci python -m ruff check spectra_platform/ tests/ services/ packages/
+        run: docker run --rm spectra-test-ci python -m ruff check packages/platform/src/spectra_platform tests/ services/ packages/
       - name: Import boundaries
         run: docker run --rm spectra-test-ci python scripts/check_import_boundaries.py
       - name: Pyright
         run: docker run --rm spectra-test-ci sh -c "pip install --no-cache-dir pyright >/dev/null && pyright"
       - name: Bandit
-        run: docker run --rm spectra-test-ci bandit -r spectra_platform/ -c pyproject.toml --severity-level high --confidence-level high
+        run: docker run --rm spectra-test-ci bandit -r packages/platform/src/spectra_platform -c pyproject.toml --severity-level high --confidence-level high
 
   test:
     name: Unit Tests
@@ -233,9 +233,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Verify spectra_platform/_meta/version.py exists and has __version__
+      - name: Verify packages/platform/src/spectra_platform/_meta/version.py exists and has __version__
         run: |
-          python3 -c "exec(open('spectra_platform/_meta/version.py').read()); print('Version:', __version__)"
+          python3 -c "exec(open('packages/platform/src/spectra_platform/_meta/version.py').read()); print('Version:', __version__)"
 
   compose-smoke:
     name: Compose Smoke Tests

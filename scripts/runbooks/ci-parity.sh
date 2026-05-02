@@ -42,7 +42,7 @@ build_ci_image() {
 
 lint_ruff_and_boundaries() {
   echo "==> Ruff"
-  docker run --rm "$IMAGE" python -m ruff check spectra_platform/ tests/ services/ packages/
+  docker run --rm "$IMAGE" python -m ruff check packages/platform/src/spectra_platform tests/ services/ packages/
   echo "==> Import boundaries"
   docker run --rm "$IMAGE" python scripts/check_import_boundaries.py
 }
@@ -62,7 +62,7 @@ bandit_job() {
     return 0
   fi
   echo "==> Bandit"
-  docker run --rm "$IMAGE" bandit -r spectra_platform/ -c pyproject.toml --severity-level high --confidence-level high
+  docker run --rm "$IMAGE" bandit -r packages/platform/src/spectra_platform -c pyproject.toml --severity-level high --confidence-level high
 }
 
 static_analysis_job() {

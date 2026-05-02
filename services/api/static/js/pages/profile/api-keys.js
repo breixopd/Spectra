@@ -24,7 +24,7 @@ async function generateApiKey() {
     try {
         const { data, error } = await spectraApi.post('/api/v1/auth/api-keys');
         if (!error) {
-            _spectraToast('API key generated — copy it now, it won\'t be shown again');
+            showToast('API key generated — copy it now, it won\'t be shown again');
             if (data.key) {
                 const container = document.getElementById('api-keys-list');
                 container.insertAdjacentHTML('afterbegin', `
@@ -37,8 +37,8 @@ async function generateApiKey() {
                 `);
             }
             setTimeout(loadApiKeys, 5000);
-        } else _spectraToast('Failed to generate key', 'error');
-    } catch (e) { _spectraToast('Network error', 'error'); }
+        } else showToast('Failed to generate key', 'error');
+    } catch (e) { showToast('Network error', 'error'); }
     }, { title: 'Generate API Key' });
 }
 
@@ -46,9 +46,9 @@ async function revokeApiKey(keyId) {
     _spectraConfirm('Revoke this API key? This cannot be undone.', async () => {
         try {
             const { error } = await spectraApi.delete(`/api/v1/auth/api-keys/${keyId}`);
-            if (!error) { _spectraToast('API key revoked'); loadApiKeys(); }
-            else _spectraToast('Failed to revoke key', 'error');
-        } catch (e) { _spectraToast('Network error', 'error'); }
+            if (!error) { showToast('API key revoked'); loadApiKeys(); }
+            else showToast('Failed to revoke key', 'error');
+        } catch (e) { showToast('Network error', 'error'); }
     }, { title: 'Revoke API Key' });
 }
 

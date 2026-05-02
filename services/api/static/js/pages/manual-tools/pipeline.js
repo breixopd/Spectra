@@ -76,7 +76,7 @@ async function runPipeline() {
     const output = document.getElementById('pipeline-output');
     const btn = document.getElementById('pipeline-run-btn');
 
-    if (pipelineSteps.length === 0) { _spectraToast('Add at least one step', 'warning'); return; }
+    if (pipelineSteps.length === 0) { showToast('Add at least one step', 'warning'); return; }
 
     btn.disabled = true;
     btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin mr-1"></i> Running...';

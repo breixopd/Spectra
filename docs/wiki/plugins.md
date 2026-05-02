@@ -316,5 +316,5 @@ Spectra ships with 25+ tool plugins:
 ### Adding a New Tool
 
 1. Create `plugins/my-tool.json` following the schema above.
-2. Restart spectra_platform/worker or reload plugins via the API so the registry picks up the file; golden-image rebuild follows plugin updates.
+2. Restart the **app** and **worker** services (or reload plugins via the API) so the registry picks up the file; golden-image rebuild follows plugin updates.
 3. The tool appears in the registry. Execution installs into sandboxes as needed (see [Sandboxes](sandboxes.md#golden-image-system)).

@@ -59,8 +59,8 @@ function showProfileLoadError(message) {
         errorEl.textContent = message;
         errorEl.classList.remove('hidden');
     }
-    if (!profileLoadErrorShown && typeof _spectraToast === 'function') {
-        _spectraToast(message, 'error');
+    if (!profileLoadErrorShown && typeof showToast === 'function') {
+        showToast(message, 'error');
         profileLoadErrorShown = true;
     }
 }

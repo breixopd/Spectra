@@ -6,6 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
     "spectra-common",
     "spectra-domain",
+    "spectra-platform",
     "httpx>=0.28.1",
     "json-repair>=0.58.5",
     "openai>=2.26.0",

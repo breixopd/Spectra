@@ -188,14 +188,14 @@ async function startCheckout(planId) {
         if (data.checkout_url) {
             const checkoutUrl = getSafeExternalHttpsUrl(data.checkout_url);
             if (!checkoutUrl) {
-                _spectraToast('Invalid checkout URL returned', 'error');
+                showToast('Invalid checkout URL returned', 'error');
                 return;
             }
             window.location.assign(checkoutUrl);
         } else {
-            _spectraToast('No checkout URL returned — payment provider may not be configured', 'error');
+            showToast('No checkout URL returned — payment provider may not be configured', 'error');
         }
-    } catch (e) { _spectraToast(e.message, 'error'); }
+    } catch (e) { showToast(e.message, 'error'); }
 }
 
 async function openBillingPortal() {
@@ -205,15 +205,15 @@ async function openBillingPortal() {
         if (data.portal_url) {
             const portalUrl = getSafeExternalHttpsUrl(data.portal_url);
             if (!portalUrl) {
-                _spectraToast('Invalid billing portal URL returned', 'error');
+                showToast('Invalid billing portal URL returned', 'error');
                 return;
             }
             const portalWindow = window.open(portalUrl, '_blank', 'noopener,noreferrer');
             if (portalWindow) portalWindow.opener = null;
         } else {
-            _spectraToast('Billing portal not available', 'error');
+            showToast('Billing portal not available', 'error');
         }
-    } catch (e) { _spectraToast(e.message, 'error'); }
+    } catch (e) { showToast(e.message, 'error'); }
 }
 
 loadPlan();
