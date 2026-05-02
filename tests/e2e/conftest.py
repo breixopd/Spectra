@@ -26,7 +26,7 @@ def ensure_e2e_admin_user() -> None:
         from spectra_platform.auth.security import get_password_hash
 
         username = os.environ.get("APP_USERNAME", os.environ.get("TEST_USERNAME", "admin"))
-        password = os.environ.get("APP_PASSWORD", os.environ.get("TEST_PASSWORD", "Admin123!"))
+        password = os.environ.get("APP_PASSWORD", os.environ.get("TEST_PASSWORD", "TestPassword123!"))
         email = os.environ.get("APP_ADMIN_EMAIL", "admin@test.local")
         password_hash = get_password_hash(password)
 

@@ -59,11 +59,15 @@ def get_admin_username() -> str:
 
 
 def get_admin_email() -> str:
-    return os.getenv("LOAD_TEST_ADMIN_EMAIL", "admin@spectra.local")
+    # Matches tests/run_ui_tests.sh initial setup and UI E2E defaults.
+    return os.getenv("LOAD_TEST_ADMIN_EMAIL", "admin@test.com")
 
 
 def get_admin_password() -> str:
-    return os.getenv("LOAD_TEST_ADMIN_PASSWORD", "Admin123!x")
+    return os.getenv(
+        "LOAD_TEST_ADMIN_PASSWORD",
+        os.getenv("APP_PASSWORD", os.getenv("TEST_PASSWORD", "TestPassword123!")),
+    )
 
 
 def _healthcheck_url(base_url: str) -> str:

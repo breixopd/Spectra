@@ -18,7 +18,7 @@ import pytest
 
 SPECTRA_URL = os.getenv("SPECTRA_URL", "http://app:5000")
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin123!")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "TestPassword123!")
 TARGET_EASY = os.getenv("TARGET_EASY", "spectra-target-easy")  # hostname on docker network
 TARGET_MEDIUM = os.getenv("TARGET_MEDIUM", "spectra-target-medium")
 TARGET_HARD = os.getenv("TARGET_HARD", "spectra-target-hard")
