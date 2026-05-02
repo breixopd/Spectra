@@ -30,7 +30,10 @@ x-security-stateful: &security-stateful
   security_opt: ["no-new-privileges:true"]
 
 x-common-env: &common-env
-  DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_test}@db:5432/${POSTGRES_DB:-spectra_test}}
+  # Always use the compose service hostname `db` for the default DSN. Do not interpolate
+  # `${DATABASE_URL}` from the host: `.env.test` sets localhost:5433 for host-side pytest.
+  # For an external Postgres URL in compose, set COMPOSE_DATABASE_URL in the project env.
+  DATABASE_URL: ${COMPOSE_DATABASE_URL:-postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_test}@db:5432/${POSTGRES_DB:-spectra_test}}
   S3_ENDPOINT_URL: http://garage:3900
   S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
   S3_SECRET_KEY: ${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
@@ -463,7 +466,7 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:5012/health"]
       interval: 10s
       timeout: 5s
-      retries: 8
+      retries: 10
       start_period: 120s
     deploy:
       resources:

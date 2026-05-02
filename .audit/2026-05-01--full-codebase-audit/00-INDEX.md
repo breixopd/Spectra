@@ -52,7 +52,7 @@ A shorter parallel “platform” pass the same week is **folded into this tree*
 - **MCP / IDOR:** user-scoped MCP tools documented in `docs/wiki/security.md` (forced `MCP_USER_ID`); RAG MCP path remains a privileged shared surface — product decision.
 - **`spectra_ai` coverage:** in `pyproject` + CI; see `tests/01-tests-ci-audit.md`.
 - Scheduler `app.*` coupling vs extracted kernel (strategic — multi-PR).
-- **Compose-smoke / harness:** perf→e2e→health, `--override-ini=addopts=`, `TestPassword123!` defaults — in CI + verified on VPS (2026-05).
+- Compose **`DATABASE_URL` host vs in-stack:** reconciled 2026-05-02 — `x-common-env` no longer inherits host `.env.test` localhost DSN (see `docs/audits/2026-05-02-scripts-and-quality-pass.md`).
 
 ## Re-run
 

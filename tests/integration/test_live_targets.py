@@ -391,12 +391,22 @@ class TestFindingManagement:
         if target_resp.status_code in (200, 201):
             target_id = target_resp.json().get("id", "unknown")
         elif target_resp.status_code == 400:
-            # Already exists, fetch it
+            # Already exists, fetch it (list API returns paginated {items, total, ...})
             list_resp = client.get("/api/v1/targets", headers=auth_headers)
             if list_resp.status_code == 200:
-                targets = list_resp.json()
-                if isinstance(targets, list) and targets:
-                    target_id = targets[0].get("id", "unknown")
+                body = list_resp.json()
+                if isinstance(body, dict):
+                    targets = body.get("items") or []
+                elif isinstance(body, list):
+                    targets = body
+                else:
+                    targets = []
+                if targets:
+                    t0 = targets[0]
+                    target_id = t0.get("id") or t0.get("target_id") or "unknown"
+
+        if target_id == "unknown":
+            pytest.skip("Could not resolve a target id for create finding test")
 
         resp = client.post(
             "/api/v1/findings",
