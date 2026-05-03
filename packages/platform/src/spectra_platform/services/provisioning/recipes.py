@@ -20,6 +20,40 @@ class ProvisionStep:
     required: bool = True
 
 
+_SPECTRA_POOL_HOST_AUTOMATION: list[ProvisionStep] = [
+    ProvisionStep(
+        name="Spectra host ops (systemd timer — weekly Docker prune via scheduler image)",
+        command=(
+            "bash -lc 'set -euo pipefail; "
+            "IMG=\"{registry}/spectra-scheduler:{version}\"; "
+            "docker pull \"$IMG\" 2>/dev/null || true; "
+            "printf \"%s\\n\" "
+            "\"[Unit]\" \"Description=Spectra pool Docker prune\" \"After=docker.service\" \"Requires=docker.service\" \"\" "
+            "\"[Service]\" \"Type=oneshot\" "
+            "\"ExecStart=/usr/bin/docker run --rm -v /var/run/docker.sock:/var/run/docker.sock $IMG python -m spectra_platform.runtime.host_ops_cli\" \"\" "
+            "\"[Install]\" \"WantedBy=multi-user.target\" "
+            "> /etc/systemd/system/spectra-host-ops.service; "
+            "printf \"%s\\n\" \"[Unit]\" \"Description=Weekly Spectra host ops\" \"\" \"[Timer]\" \"OnCalendar=Sun *-*-* 04:00\" \"Persistent=true\" \"\" "
+            "\"[Install]\" \"WantedBy=timers.target\" "
+            "> /etc/systemd/system/spectra-host-ops.timer; "
+            "if command -v systemctl >/dev/null 2>&1; then systemctl daemon-reload && systemctl enable --now spectra-host-ops.timer; "
+            "else echo no_systemd; fi'"
+        ),
+        timeout=180,
+        required=False,
+    ),
+    ProvisionStep(
+        name="Kernel hardening (rp_filter)",
+        command=(
+            "bash -lc 'command -v sysctl >/dev/null 2>&1 && sysctl -w net.ipv4.conf.all.rp_filter=1 "
+            "&& sysctl -w net.ipv4.conf.default.rp_filter=1 || true; echo ok'"
+        ),
+        timeout=30,
+        required=False,
+    ),
+]
+
+
 # Docker installation (shared across all service types)
 _DOCKER_INSTALL_STEPS = [
     ProvisionStep(
@@ -66,6 +100,7 @@ CONTAINER_NAMES: dict[str, str] = {
 PROVISIONING_RECIPES: dict[str, list[ProvisionStep]] = {
     "sandbox_worker": [
         *_DOCKER_INSTALL_STEPS,
+        *_SPECTRA_POOL_HOST_AUTOMATION,
         ProvisionStep(
             name="Pull Spectra tools image",
             command=(
@@ -97,6 +132,7 @@ PROVISIONING_RECIPES: dict[str, list[ProvisionStep]] = {
     ],
     "app_worker": [
         *_DOCKER_INSTALL_STEPS,
+        *_SPECTRA_POOL_HOST_AUTOMATION,
         ProvisionStep(
             name="Pull Spectra app image",
             command="docker pull {registry}/spectra-app:{version} || echo 'image_pull_skipped'",
@@ -123,6 +159,7 @@ PROVISIONING_RECIPES: dict[str, list[ProvisionStep]] = {
     ],
     "tools_worker": [
         *_DOCKER_INSTALL_STEPS,
+        *_SPECTRA_POOL_HOST_AUTOMATION,
         ProvisionStep(
             name="Pull Spectra tools image",
             command="docker pull {registry}/spectra-worker:{version} || echo 'image_pull_skipped'",
@@ -150,6 +187,7 @@ PROVISIONING_RECIPES: dict[str, list[ProvisionStep]] = {
     ],
     "db_replica": [
         *_DOCKER_INSTALL_STEPS,
+        *_SPECTRA_POOL_HOST_AUTOMATION,
         ProvisionStep(
             name="Pull pgvector image",
             command="docker pull pgvector/pgvector:pg16",
@@ -176,6 +214,7 @@ PROVISIONING_RECIPES: dict[str, list[ProvisionStep]] = {
     ],
     "db_backup": [
         *_DOCKER_INSTALL_STEPS,
+        *_SPECTRA_POOL_HOST_AUTOMATION,
         ProvisionStep(
             name="Create backup directory",
             command="mkdir -p /opt/spectra/backups",

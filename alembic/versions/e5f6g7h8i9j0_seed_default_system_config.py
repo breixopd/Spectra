@@ -88,7 +88,7 @@ _DEFAULTS = [
     ("AUDIT_LOG_RETENTION_DAYS", "365", False, "Audit log retention days (0=forever)"),
     ("MISSION_RETENTION_DAYS", "0", False, "Auto-delete completed missions after N days (0=forever)"),
     ("ADMIN_IP_ALLOWLIST", "", False, "Admin route IP allowlist (comma-separated CIDRs)"),
-    ("AUTOSCALE_ENABLED", "false", False, "Enable auto-scaling"),
+    ("AUTOSCALE_ENABLED", "true", False, "Enable auto-scaling"),
     ("AUTOSCALE_WORKER_MIN", "1", False, "Min worker replicas"),
     ("AUTOSCALE_WORKER_MAX", "10", False, "Max worker replicas"),
     ("AUTOSCALE_API_MIN", "1", False, "Min API replicas"),

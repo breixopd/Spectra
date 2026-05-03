@@ -301,7 +301,7 @@ See [Deployment Guide](deployment-guide.md) for full instructions. See [Topology
 
 ## Auto-Scaling
 
-The scheduler includes a reactive auto-scaling engine that adjusts service replica counts based on queue depth and utilization metrics. Auto-scaling is opt-in (`AUTOSCALE_ENABLED=false` by default) and works with both Docker Compose and Docker Swarm.
+The scheduler includes a reactive auto-scaling engine that adjusts service replica counts based on queue depth and utilization metrics. Auto-scaling defaults **on** (`AUTOSCALE_ENABLED=true` in `Settings`); set `AUTOSCALE_ENABLED=false` only as an emergency override. It works with both Docker Compose and Docker Swarm. API, worker, and AI containers also start a lightweight **embedded ops** loop (disk metrics and optional Docker prune when the socket is mounted); full DB/heal/image loops remain scheduler-owned.
 
 See [Scaling](scaling.md#auto-scaling) for full configuration and policy details.
 

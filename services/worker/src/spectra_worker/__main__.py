@@ -24,17 +24,25 @@ def _latency_ms(start: float) -> float:
 
 _worker_task: asyncio.Task | None = None
 _heartbeat_task: asyncio.Task | None = None
+_embedded_ops_task: asyncio.Task | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Start worker loops on startup."""
-    global _worker_task, _heartbeat_task
+    global _worker_task, _heartbeat_task, _embedded_ops_task
     logger.info("Worker service starting...")
     _worker_task = create_safe_task(work_loop(), name="worker_loop")
     _heartbeat_task = create_safe_task(_run_heartbeat(), name="heartbeat_loop")
+    from spectra_platform.runtime.embedded_daemon import spawn_embedded_ops_task
+
+    _embedded_ops_task = spawn_embedded_ops_task("worker")
     yield
     logger.info("Worker service shutting down...")
+    if _embedded_ops_task:
+        _embedded_ops_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await _embedded_ops_task
     if _heartbeat_task:
         _heartbeat_task.cancel()
         with suppress(asyncio.CancelledError):
