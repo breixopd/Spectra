@@ -1,0 +1,231 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e4]:
+    - img [ref=e5]
+    - text: System initializing...
+  - generic [ref=e8]:
+    - complementary [ref=e9]:
+      - generic [ref=e10]:
+        - link "Spectra" [ref=e12] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e13]
+          - text: Spectra
+        - navigation [ref=e15]:
+          - link "Dashboard" [ref=e16]:
+            - /url: /dashboard
+            - img [ref=e17]
+            - text: Dashboard
+          - link "History" [ref=e22]:
+            - /url: /history
+            - img [ref=e23]
+            - text: History
+          - link "Targets" [ref=e27]:
+            - /url: /targets
+            - img [ref=e28]
+            - text: Targets
+          - link "Reports" [ref=e32]:
+            - /url: /reports
+            - img [ref=e33]
+            - text: Reports
+          - link "Account" [ref=e36]:
+            - /url: /profile
+            - img [ref=e37]
+            - text: Account
+          - link "Toolbox" [ref=e41]:
+            - /url: /toolbox
+            - img [ref=e42]
+            - text: Toolbox
+          - link "Agents" [ref=e46]:
+            - /url: /overseer
+            - img [ref=e47]
+            - text: Agents
+          - link "Documentation" [ref=e50]:
+            - /url: /docs/api
+            - img [ref=e51]
+            - text: Documentation
+          - link "Manual Tools" [ref=e53]:
+            - /url: /manual
+            - img [ref=e54]
+            - text: Manual Tools
+          - link "Settings" [ref=e57]:
+            - /url: /settings
+            - img [ref=e58]
+            - text: Settings
+          - link "Help Center" [ref=e61]:
+            - /url: /help
+            - img [ref=e62]
+            - text: Help Center
+          - link "Observability" [ref=e65]:
+            - /url: /observability
+            - img [ref=e66]
+            - text: Observability
+          - link "Admin" [ref=e69]:
+            - /url: /admin
+            - img [ref=e70]
+            - text: Admin
+        - generic [ref=e74]:
+          - generic [ref=e75]:
+            - img [ref=e77]
+            - generic [ref=e80]:
+              - paragraph [ref=e81]: User
+              - paragraph [ref=e82]: Connected
+          - generic [ref=e83]:
+            - link "vdev" [ref=e84] [cursor=pointer]:
+              - /url: /changelog
+            - button "Sign out" [ref=e85] [cursor=pointer]:
+              - img [ref=e86]
+    - main [ref=e89]:
+      - generic [ref=e91]:
+        - generic [ref=e92]:
+          - img [ref=e94]
+          - heading "System Setup" [level=1] [ref=e96]
+          - paragraph [ref=e97]: Create the admin account, pick one default AI profile, and keep advanced routing optional.
+        - form "System setup" [ref=e98]:
+          - checkbox [ref=e99]
+          - generic [ref=e100]:
+            - heading "Admin Account" [level=2] [ref=e101]:
+              - img [ref=e102]
+              - text: Admin Account
+            - generic [ref=e105]:
+              - generic [ref=e106]:
+                - text: Username
+                - textbox [ref=e107]
+              - generic [ref=e108]:
+                - text: Email
+                - textbox [ref=e109]
+            - generic [ref=e110]:
+              - text: Password
+              - textbox "Password" [ref=e111]
+              - paragraph [ref=e112]: Min 8 characters, with uppercase, lowercase, and a digit
+            - generic [ref=e113]:
+              - text: Confirm Password
+              - textbox "Confirm Password" [ref=e114]:
+                - /placeholder: Confirm password
+          - generic [ref=e115]:
+            - heading "Platform Configuration" [level=2] [ref=e116]:
+              - img [ref=e117]
+              - text: Platform Configuration
+            - paragraph [ref=e120]: Configure how users access your Spectra instance.
+            - generic [ref=e121]:
+              - generic [ref=e122]:
+                - text: Platform Domain / URL
+                - textbox "https://spectra.example.com" [ref=e123]
+                - paragraph [ref=e124]: Used for email links, callbacks, and report URLs
+              - generic [ref=e125]:
+                - text: Platform Name
+                - textbox [ref=e126]: Spectra
+                - paragraph [ref=e127]: Displayed in emails and reports
+            - generic [ref=e128]:
+              - generic [ref=e129]:
+                - text: Contact Email
+                - textbox "security@example.com" [ref=e130]
+                - paragraph [ref=e131]: For system notifications and password resets
+              - generic [ref=e132]:
+                - text: Public Registration
+                - generic [ref=e134]:
+                  - checkbox "Allow new users to register" [checked] [ref=e135]
+                  - text: Allow new users to register
+          - generic [ref=e136]:
+            - generic [ref=e137]:
+              - generic [ref=e138]:
+                - heading "AI Gateway" [level=2] [ref=e139]:
+                  - img [ref=e140]
+                  - text: AI Gateway
+                - paragraph [ref=e143]: All AI inference routes through the TensorZero gateway. Set the provider API key in the TensorZero container's environment.
+              - button "Test Gateway" [ref=e144] [cursor=pointer]
+            - generic [ref=e145]:
+              - generic [ref=e146]:
+                - generic [ref=e147]:
+                  - text: TensorZero Gateway URL
+                  - textbox [ref=e148]: http://tensorzero:3000
+                  - paragraph [ref=e149]: The URL of the TensorZero gateway container
+                - generic [ref=e150]:
+                  - text: Embedding Model
+                  - textbox [ref=e151]: local/BAAI/bge-small-en-v1.5
+                  - paragraph [ref=e152]:
+                    - text: Prefix with
+                    - code [ref=e153]: local/
+                    - text: for free offline embeddings
+              - generic [ref=e154]:
+                - paragraph [ref=e155]: How it works
+                - paragraph [ref=e156]:
+                  - text: All AI calls route through TensorZero. Models and providers are configured in
+                  - code [ref=e157]: config/tensorzero.toml
+                  - text: .
+                - paragraph [ref=e158]:
+                  - text: Set
+                  - code [ref=e159]: OPENAI_API_KEY
+                  - text: in the TensorZero container's environment to use OpenRouter or any OpenAI-compatible provider.
+                - paragraph [ref=e160]: Model tiers (fast/balanced/capable) can be changed in the Admin UI after setup.
+                - generic [ref=e161]: Gateway connection will be tested when you click "Test Gateway".
+            - generic [ref=e162]:
+              - generic [ref=e163]:
+                - checkbox "Customize AI model configuration" [ref=e164]
+                - text: Customize AI model configuration
+              - paragraph [ref=e165]: Leave unchecked to use optimized defaults (recommended for first setup)
+            - generic [ref=e166]:
+              - generic [ref=e168]:
+                - text: Provider Type
+                - combobox [ref=e169]:
+                  - option "OpenAI-Compatible (OpenRouter, vLLM, Ollama)" [selected]
+                  - option "Anthropic"
+                  - option "Google Gemini"
+              - heading "Tier 1 — Fast (parsing, tool selection)" [level=4] [ref=e170]
+              - generic [ref=e171]:
+                - generic [ref=e172]:
+                  - text: Primary Model
+                  - textbox [ref=e173]: nvidia/nemotron-3-nano-30b-a3b:free
+                - generic [ref=e174]:
+                  - text: Fallback Model
+                  - textbox [ref=e175]: google/gemma-3-12b-it:free
+              - heading "Tier 2 — Balanced (planning, reporting)" [level=4] [ref=e176]
+              - generic [ref=e177]:
+                - generic [ref=e178]:
+                  - text: Primary Model
+                  - textbox [ref=e179]: nvidia/nemotron-3-super-120b-a12b:free
+                - generic [ref=e180]:
+                  - text: Fallback Model
+                  - textbox [ref=e181]: z-ai/glm-4.5-air:free
+              - heading "Tier 3 — Capable (exploit crafting, PoC)" [level=4] [ref=e182]
+              - generic [ref=e183]:
+                - generic [ref=e184]:
+                  - text: Primary Model
+                  - textbox [ref=e185]: minimax/minimax-m2.5:free
+                - generic [ref=e186]:
+                  - text: Fallback Model
+                  - textbox [ref=e187]: stepfun/step-3.5-flash:free
+          - generic [ref=e188]:
+            - generic [ref=e189]:
+              - heading "Infrastructure (Advanced)" [level=2] [ref=e190]:
+                - img [ref=e191]
+                - text: Infrastructure (Advanced)
+              - button "Show Options" [ref=e194] [cursor=pointer]
+            - generic [ref=e196]:
+              - generic [ref=e197]:
+                - generic [ref=e198]:
+                  - checkbox "Use external Sandbox Orchestrator" [ref=e199]
+                  - text: Use external Sandbox Orchestrator
+                - generic [ref=e200]: In-process
+              - generic [ref=e201]:
+                - paragraph [ref=e202]: For Kubernetes or multi-node Docker sandbox management.
+                - textbox "http://orchestrator:8084" [ref=e203]
+                - generic [ref=e204]:
+                  - text: API Key
+                  - textbox "Orchestrator API key" [ref=e205]
+          - button "Complete Setup" [ref=e206] [cursor=pointer]
+        - alert
+  - dialog "Cookie consent":
+    - generic [ref=e207]:
+      - generic [ref=e208]:
+        - generic [ref=e209]: Your privacy matters
+        - paragraph [ref=e210]:
+          - text: We use essential cookies only to keep the platform working. We
+          - strong [ref=e211]: never
+          - text: use external trackers, sell your data, or share information with advertisers. Optional cookies help us improve the experience — nothing more. You can change your cookie preferences at any time via the link in the footer. Read our
+          - link "Cookie Policy" [ref=e212] [cursor=pointer]:
+            - /url: /legal/cookies
+          - text: .
+      - generic [ref=e213]:
+        - button "Essential only" [ref=e214] [cursor=pointer]
+        - button "Accept all" [ref=e215] [cursor=pointer]
