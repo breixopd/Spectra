@@ -38,8 +38,8 @@ RUN mkdir -p /opt/spectra_tools
 RUN python3 -m venv /opt/venv
 
 COPY requirements/worker.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r worker.txt
+RUN /opt/venv/bin/pip install --no-cache-dir --upgrade pip && \
+    /opt/venv/bin/pip install --no-cache-dir -r worker.txt
 
 # Copy application code
 COPY services/worker/src/spectra_worker/ ./spectra_worker/
