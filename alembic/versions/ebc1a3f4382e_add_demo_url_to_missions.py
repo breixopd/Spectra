@@ -9,8 +9,8 @@ Create Date: 2026-05-03
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "ebc1a3f4382e"
-down_revision: str | None = "a1b2c3d4e5f6"
+revision: str = "d3m0urlv001"
+down_revision: str | None = "m1l3st0n35v1"
 branch_labels = None
 depends_on = None
 
