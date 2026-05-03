@@ -31,15 +31,18 @@ def get_env_bool(name: str, default: bool = False) -> bool:
 
 
 def get_app_base_url() -> str:
-    return os.getenv("LOAD_TEST_APP_URL", "http://127.0.0.1:15000")
+    # Default matches docker/compose app publish (5000:5000). Use in-container URL (http://app:5000)
+    # when running under compose (see load-test-runner environment in docker/compose.yaml).
+    return os.getenv("LOAD_TEST_APP_URL", "http://127.0.0.1:5000")
 
 
 def get_app_replica_base_url() -> str:
-    return os.getenv("LOAD_TEST_APP_REPLICA_URL", "http://127.0.0.1:15001")
+    return os.getenv("LOAD_TEST_APP_REPLICA_URL", "http://127.0.0.1:5001")
 
 
 def get_caddy_base_url() -> str:
-    return os.getenv("LOAD_TEST_CADDY_URL", "http://127.0.0.1:15080")
+    # Default HTTP port matches compose `${SPECTRA_PORT:-80}:80` unless overridden.
+    return os.getenv("LOAD_TEST_CADDY_URL", "http://127.0.0.1:80")
 
 
 def derive_websocket_url(base_url: str) -> str:
@@ -51,7 +54,24 @@ def derive_websocket_url(base_url: str) -> str:
 
 
 def get_websocket_url() -> str:
-    return os.getenv("LOAD_TEST_WS_URL", derive_websocket_url(get_caddy_base_url()))
+    raw = os.getenv("LOAD_TEST_WS_URL")
+    if raw:
+        target = raw
+    else:
+        target = derive_websocket_url(get_caddy_base_url())
+    # websockets.connect() requires ws: or wss: (http/https are invalid)
+    p = urlsplit(target)
+    if p.scheme in ("http", "https"):
+        target = urlunsplit(
+            (
+                "wss" if p.scheme == "https" else "ws",
+                p.netloc,
+                p.path,
+                p.query,
+                p.fragment,
+            )
+        )
+    return target
 
 
 def get_admin_username() -> str:
@@ -84,7 +104,7 @@ def _platform_targets_skip_message(*, failures: list[str], helper_command: str) 
 def ensure_platform_targets_available(*targets: tuple[str, str], helper_command: str) -> None:
     failures: list[str] = []
 
-    with httpx.Client(timeout=5.0, follow_redirects=False) as client:
+    with httpx.Client(timeout=5.0, follow_redirects=True) as client:
         for label, base_url in targets:
             health_url = _healthcheck_url(base_url)
             try:
