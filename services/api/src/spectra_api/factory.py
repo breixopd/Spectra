@@ -8,6 +8,8 @@ import json
 import logging
 import time
 
+from typing import cast
+
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -83,9 +85,13 @@ def create_app() -> FastAPI:
         openapi_url="/api/openapi.json" if settings.DEBUG else None,
     )
 
-    app.state.limiter = limiter
-    app.state.limiter._rate_limit_exceeded_handler = _safe_rate_limit_handler  # type: ignore[attr-defined]
-    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler_sync)  # type: ignore[arg-type]
+    from slowapi import Limiter
+
+    cast(Limiter, app.state.limiter)._rate_limit_exceeded_handler = _safe_rate_limit_handler
+    app.add_exception_handler(
+        RateLimitExceeded,
+        cast("Callable[[Request, Exception], Response]", rate_limit_exceeded_handler_sync),
+    )
     app.add_middleware(SlowAPIMiddleware)
 
     register_exception_handlers(app, shared_templates)
