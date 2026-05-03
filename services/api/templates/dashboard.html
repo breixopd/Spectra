@@ -80,6 +80,18 @@
                     <option value="manual">Manual</option>
                 </select>
             </label>
+            <label class="flex items-center gap-2">
+                <span class="text-slate-500 whitespace-nowrap">Methodology</span>
+                <select id="mission-pentest-framework"
+                    class="flex-1 min-w-[8rem] px-2 py-1 bg-slate-900/50 border border-white/10 rounded-lg text-xs text-slate-300 focus:outline-none focus:border-violet-500/50"
+                    aria-label="Pentest methodology checklist">
+                    <option value="ptes">PTES Standard</option>
+                    <option value="owasp_top10_2021">OWASP Top 10 (2021)</option>
+                    <option value="network_pentest">Network pentest</option>
+                    <option value="api_security">API security</option>
+                    <option value="ad_pentest">Active Directory</option>
+                </select>
+            </label>
             <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" id="mission-requires-approval" class="rounded border-white/10 bg-slate-900 text-violet-500">
                 <span>Require human approval for high-risk actions (this launch)</span>

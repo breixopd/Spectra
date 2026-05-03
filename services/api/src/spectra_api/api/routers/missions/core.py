@@ -1,6 +1,7 @@
 """Mission core endpoints — start/list, per-mission CRUD and lifecycle (catalog lives in mission_catalog)."""
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import select
@@ -37,6 +38,30 @@ from spectra_platform.services.mission.output_model import (
 from spectra_platform.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
+
+
+def _mission_response_fields(
+    *,
+    mission_status: str,
+    current_phase: str | None,
+    pentest_framework: str | None,
+) -> dict[str, Any]:
+    from spectra_platform.services.mission.framework_progress import (
+        framework_display_name,
+        framework_phase_timeline,
+        normalize_pentest_framework,
+    )
+
+    fw = normalize_pentest_framework(pentest_framework)
+    return {
+        "pentest_framework": fw,
+        "framework_label": framework_display_name(fw),
+        "framework_phase_timeline": framework_phase_timeline(
+            current_phase=current_phase,
+            mission_status=mission_status,
+            pentest_framework=fw,
+        ),
+    }
 
 router = APIRouter()
 
@@ -123,6 +148,7 @@ async def start_mission(
         record_demo=mission_request.record_demo,
         playbook_id=mission_request.playbook_id,
         scan_mode=eff_scan,
+        pentest_framework=mission_request.pentest_framework,
     )
     mission = await mission_manager.get_mission(mission_id)
 
@@ -165,6 +191,11 @@ async def start_mission(
         tool_executions=getattr(mission, "tool_executions", []),
         report_path=getattr(mission, "report_path", None),
         attack_surface=mission.attack_surface.get_summary() if mission.attack_surface else None,
+        **_mission_response_fields(
+            mission_status=mission.status,
+            current_phase=current_phase,
+            pentest_framework=getattr(mission, "pentest_framework", None),
+        ),
     )
 
 
@@ -250,18 +281,25 @@ async def list_missions(
     result = await db.execute(stmt)
     missions = result.scalars().all()
 
-    items = [
-        MissionResponse(
-            id=m.id,
-            target=m.target,
-            status=m.status,
-            current_phase=get_mission_summary_dict(m).get("current_phase"),
-            logs=m.logs or [],
-            directive=m.directive,
-            findings=get_mission_output_findings(m),
+    items = []
+    for m in missions:
+        summ = get_mission_summary_dict(m)
+        items.append(
+            MissionResponse(
+                id=m.id,
+                target=m.target,
+                status=m.status,
+                current_phase=summ.get("current_phase"),
+                logs=m.logs or [],
+                directive=m.directive,
+                findings=get_mission_output_findings(m),
+                **_mission_response_fields(
+                    mission_status=m.status,
+                    current_phase=summ.get("current_phase"),
+                    pentest_framework=summ.get("pentest_framework"),
+                ),
+            )
         )
-        for m in missions
-    ]
     return PaginatedResponse(items=items, total=total, page=page, per_page=per_page)
 
 
@@ -332,6 +370,11 @@ async def get_mission(
             tool_executions=getattr(mission, "tool_executions", []),
             report_path=getattr(mission, "report_path", None),
             attack_surface=mission.attack_surface.get_summary() if mission.attack_surface else None,
+            **_mission_response_fields(
+                mission_status=mission.status,
+                current_phase=current_phase,
+                pentest_framework=getattr(mission, "pentest_framework", None),
+            ),
         )
 
     # Try DB
@@ -351,4 +394,9 @@ async def get_mission(
         logs=db_mission.logs or [],
         directive=db_mission.directive,
         findings=get_mission_output_findings(db_mission),
+        **_mission_response_fields(
+            mission_status=db_mission.status,
+            current_phase=summary.get("current_phase"),
+            pentest_framework=summary.get("pentest_framework"),
+        ),
     )

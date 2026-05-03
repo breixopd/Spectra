@@ -345,6 +345,8 @@ docker swarm init --advertise-addr <MANAGER_IP>
 docker swarm join --token <TOKEN> <MANAGER_IP>:2377
 ```
 
+**Firewall / exposure (non-negotiable):** do **not** publish Swarm control-plane ports (**2377/tcp**, **7946/tcp+udp**, **4789/udp** for overlay) to the public Internet. Put managers and workers on a **private network** or **WireGuard / site-to-site VPN**, join using the **VPN IP** as `--advertise-addr` / join target, and restrict host firewalls (or cloud security groups) so only **SSH (key-only, allowlisted)** and **HTTP/S to Caddy** are reachable from untrusted networks. Remote Docker for provisioning should use **SSH + TLS** or API sockets bound to **loopback + VPN**, not raw `0.0.0.0:2375`.
+
 ### 2. Label Nodes
 
 Assign roles so services land on the right hardware. Labels use per-role booleans

@@ -1,6 +1,6 @@
 """Mission and target schemas."""
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -93,6 +93,18 @@ class StartMissionRequest(BaseModel):
         pattern=r"^[a-zA-Z0-9][a-zA-Z0-9\-]{0,63}$",
         description="VPN config name to use for this mission",
     )
+    pentest_framework: str = Field(
+        default="ptes",
+        max_length=64,
+        description="Built-in methodology checklist (ptes, owasp_top10_2021, network_pentest, api_security, ad_pentest)",
+    )
+
+    @field_validator("pentest_framework")
+    @classmethod
+    def normalize_pentest_framework_id(cls, v: str) -> str:
+        from spectra_platform.services.mission.framework_progress import normalize_pentest_framework
+
+        return normalize_pentest_framework(v)
 
     @field_validator("target")
     @classmethod
@@ -157,6 +169,9 @@ class MissionResponse(BaseModel):
     tool_executions: list[ToolExecutionRecord] | None = None
     report_path: str | None = None
     attack_surface: AttackSurfaceSummary | None = None
+    pentest_framework: str = "ptes"
+    framework_label: str = "PTES Standard"
+    framework_phase_timeline: list[dict[str, Any]] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 

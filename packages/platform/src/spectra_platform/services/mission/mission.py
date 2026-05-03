@@ -75,6 +75,7 @@ class Mission:
         record_demo: bool = False,
         playbook_id: str | None = None,
         scan_mode: str = "autonomous",
+        pentest_framework: str = "ptes",
     ):
         self.id = str(uuid.uuid4())
         self.target = target
@@ -85,6 +86,7 @@ class Mission:
         self.requires_approval = requires_approval
         self.record_demo = record_demo
         self.playbook_id = playbook_id
+        self.pentest_framework = pentest_framework
         self.scan_mode = scan_mode if scan_mode in {"autonomous", "guided", "manual"} else "autonomous"
         self.automation_level = _SCAN_MODE_AUTOMATION.get(self.scan_mode, "full_auto")
         self.status = "created"
@@ -467,12 +469,18 @@ class Mission:
     def to_dict(self) -> dict[str, Any]:
         """Serialize mission to dictionary."""
         with self._state_lock:
+            current_phase: str | None = None
+            if self.plan and hasattr(self.plan, "current_phase"):
+                cp = self.plan.current_phase
+                current_phase = cp.value if hasattr(cp, "value") else str(cp)
             return {
                 "id": self.id,
                 "target": self.target,
                 "directive": self.directive,
                 "requirements": self.requirements,
                 "status": self.status,
+                "pentest_framework": getattr(self, "pentest_framework", "ptes"),
+                "current_phase": current_phase,
                 "start_time": self.start_time.isoformat(),
                 "current_task_index": self.current_task_index,
                 "findings_count": len(self.findings),
@@ -507,6 +515,7 @@ class Mission:
             "directive": self.directive,
             "requirements": self.requirements,
             "status": self.status,
+            "pentest_framework": getattr(self, "pentest_framework", "ptes"),
             "start_time": self.start_time.isoformat(),
             "current_task_index": self.current_task_index,
             "findings": self.findings,
@@ -536,6 +545,7 @@ class Mission:
         mission.tool_executions = data.get("tool_executions", [])
         mission.skipped_phases = set(data.get("skipped_phases", []))
         mission.replan_count = data.get("replan_count", 0)
+        mission.pentest_framework = data.get("pentest_framework", getattr(mission, "pentest_framework", "ptes"))
 
         # Restore attack surface
         if data.get("attack_surface"):

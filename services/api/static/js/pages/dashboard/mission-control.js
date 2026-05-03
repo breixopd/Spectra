@@ -105,6 +105,9 @@ function startMission(target, directive, playbookId) {
         payload.record_demo = true;
     }
 
+    const fw = document.getElementById('mission-pentest-framework')?.value || '';
+    if (fw) payload.pentest_framework = fw;
+
     // Remove empty state from activity log
     const emptyEl = document.getElementById('activity-empty');
     if (emptyEl) emptyEl.remove();

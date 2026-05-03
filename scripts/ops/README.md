@@ -20,6 +20,8 @@ The canonical operator workflow lives in [../../docs/wiki/operations.md](../../d
 | `s3_management.sh` | Inspect Garage or S3 state and create required buckets | `status`, `buckets`, `list <bucket>`, `usage`, `create-buckets`, `health` | Mutating | Active |
 | `swarm_deploy.sh` | Deploy or update the Swarm stack | — | Mutating | Active |
 | `worker_management.sh` | Inspect, retry, and purge queue work | `status`, `failed`, `dead-letter`, `retry-job <id>`, `purge-completed`, `purge-dead`, `worker-health` | Destructive | Active — Admin UI planned |
+| `host-maintenance.sh` | Journal vacuum, old `/var/log` `.gz`, Docker builder/image prune | `sudo ./scripts/ops/host-maintenance.sh` (`AGGRESSIVE=1` for stronger image prune) | Mutating | Active |
+| `suggest-compose-scale.sh` | Print suggested `AUTOSCALE_*` caps from CPU/RAM | `./scripts/ops/suggest-compose-scale.sh` | Read-only | Active |
 
 ## Safety Notes
 
