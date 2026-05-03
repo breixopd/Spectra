@@ -79,6 +79,7 @@ class MissionManager:
         record_demo: bool = False,
         playbook_id: str | None = None,
         scan_mode: str = "autonomous",
+        pentest_framework: str = "ptes",
     ) -> str:
         """
         Start a new security assessment mission.
@@ -105,6 +106,7 @@ class MissionManager:
             record_demo=record_demo,
             playbook_id=playbook_id,
             scan_mode=scan_mode,
+            pentest_framework=pentest_framework,
         )
 
         # Create per-mission LLM semaphore (max 1 concurrent LLM call)

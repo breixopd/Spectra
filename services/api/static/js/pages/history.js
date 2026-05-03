@@ -12,6 +12,31 @@ function getHistoryErrorMessage(error, fallback) {
     return fallback;
 }
 
+function renderFrameworkTimeline(mission) {
+    const section = document.getElementById('detail-framework-section');
+    const labelEl = document.getElementById('detail-framework-label');
+    const timelineEl = document.getElementById('detail-framework-timeline');
+    if (!section || !labelEl || !timelineEl) return;
+    const tl = mission.framework_phase_timeline;
+    if (!Array.isArray(tl) || !tl.length) {
+        section.classList.add('hidden');
+        return;
+    }
+    section.classList.remove('hidden');
+    labelEl.textContent = mission.framework_label || mission.pentest_framework || '';
+    timelineEl.innerHTML = '';
+    for (const step of tl) {
+        const span = document.createElement('span');
+        let cls = 'px-2 py-0.5 rounded border border-white/10 text-slate-500';
+        if (step.done) cls = 'px-2 py-0.5 rounded border border-emerald-500/40 text-emerald-300 bg-emerald-500/10';
+        if (step.current) cls = 'px-2 py-0.5 rounded border border-amber-400/50 text-amber-200 bg-amber-500/10';
+        span.className = cls;
+        span.textContent = step.label || step.id;
+        span.title = String(step.id || '');
+        timelineEl.appendChild(span);
+    }
+}
+
 function renderMissionListError(message) {
     const list = document.getElementById('mission-list');
     if (!list) return;
@@ -40,6 +65,7 @@ function showMissionDetailsLoading() {
     document.getElementById('tab-logs').innerHTML = '<div class="text-slate-500 italic">Loading mission logs...</div>';
     document.getElementById('tab-findings').innerHTML = '<div class="text-slate-500 italic">Loading findings...</div>';
     document.getElementById('detail-json').innerText = '{\n  "status": "loading"\n}';
+    document.getElementById('detail-framework-section')?.classList.add('hidden');
 }
 
 function renderMissionDetailsError(message) {
@@ -57,6 +83,7 @@ function renderMissionDetailsError(message) {
     document.getElementById('tab-findings').innerHTML = '<div class="text-slate-600 italic">Mission findings are unavailable right now.</div>';
     document.getElementById('detail-json').innerText = JSON.stringify({ error: message }, null, 2);
     document.getElementById('mission-feedback-section')?.classList.add('hidden');
+    document.getElementById('detail-framework-section')?.classList.add('hidden');
 }
 
 async function loadMissionList(options = {}) {
@@ -196,6 +223,8 @@ async function loadMissionDetails(id, options = {}) {
             } else {
                  document.getElementById('detail-directive').innerText = "No directive available (check API schema)";
             }
+
+            renderFrameworkTimeline(mission);
 
             // Logs
             const logsContainer = document.getElementById('tab-logs');

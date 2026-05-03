@@ -89,9 +89,12 @@ Rate-limited with IP-based lockout after repeated failures.
 ```json
 {
   "target": "192.168.1.100",
-  "directive": "Full security audit focusing on web vulnerabilities."
+  "directive": "Full security audit focusing on web vulnerabilities.",
+  "pentest_framework": "ptes"
 }
 ```
+
+Optional **`pentest_framework`** selects the built-in methodology checklist (`ptes`, `owasp_top10_2021`, `network_pentest`, `api_security`, `ad_pentest`). Mission GET/list responses include **`framework_label`** and **`framework_phase_timeline`** (PTES-aligned execution phases for UI progress).
 
 ### POST `/api/v1/missions/{id}/steer`
 

@@ -19,6 +19,7 @@ from spectra_platform.services.ai.agents.base import AgentContext
 from spectra_platform.services.billing.entitlements import get_user_entitlement_plan
 from spectra_platform.services.billing.quota_enforcer import QuotaEnforcer
 from spectra_platform.services.billing.usage_tracker import UsageTracker
+from spectra_platform.services.mission.framework_progress import normalize_pentest_framework
 from spectra_platform.services.mission.mission import Mission
 from spectra_platform.services.mission.state_store import MissionStateStore
 from spectra_platform.services.tools.output import cleanup_mission_workspace
@@ -85,9 +86,11 @@ class MissionLifecycleManager:
         record_demo: bool = False,
         playbook_id: str | None = None,
         scan_mode: str = "autonomous",
+        pentest_framework: str = "ptes",
     ) -> Mission:
         """Create and start a new mission."""
         effective_directive = _directive_with_playbook(playbook_id, directive)
+        fw = normalize_pentest_framework(pentest_framework)
         mission = Mission(
             target,
             effective_directive,
@@ -98,6 +101,7 @@ class MissionLifecycleManager:
             record_demo=record_demo,
             playbook_id=playbook_id,
             scan_mode=scan_mode,
+            pentest_framework=fw,
         )
 
         # Persist to DB — quota check + row creation run inside one
@@ -124,7 +128,7 @@ class MissionLifecycleManager:
                     directive=effective_directive,
                     status="created",
                     logs=[],
-                    summary={},
+                    summary={"pentest_framework": fw},
                     vpn_config=vpn_config,
                     user_id=user_id,
                     requires_approval=requires_approval,
