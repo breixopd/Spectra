@@ -362,6 +362,7 @@ class Settings(BaseSettings):
     AUTOSCALE_IDLE_SECS: int = 300  # 5 min idle before scale-down
     AUTOSCALE_CPU_UP_THRESHOLD: int = 75  # CPU % to trigger scale-up
     AUTOSCALE_CPU_DOWN_THRESHOLD: int = 25  # CPU % to trigger scale-down
+    AUTOSCALE_DERIVED_ENABLED: bool = True  # Auto-detect cgroup limits for max values
 
     # Service names (Docker Swarm or Compose)
     SWARM_WORKER_SERVICE: str = "spectra_worker"
