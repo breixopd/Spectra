@@ -55,10 +55,7 @@ def derive_websocket_url(base_url: str) -> str:
 
 def get_websocket_url() -> str:
     raw = os.getenv("LOAD_TEST_WS_URL")
-    if raw:
-        target = raw
-    else:
-        target = derive_websocket_url(get_caddy_base_url())
+    target = raw or derive_websocket_url(get_caddy_base_url())
     # websockets.connect() requires ws: or wss: (http/https are invalid)
     p = urlsplit(target)
     if p.scheme in ("http", "https"):
