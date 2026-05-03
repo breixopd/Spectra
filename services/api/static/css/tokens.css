@@ -1,0 +1,63 @@
+/* Consolidated design tokens - single source of truth for all CSS custom properties */
+
+:root {
+    color-scheme: dark;
+
+    /* Colors - Background */
+    --color-bg-primary: #0a0e1a;
+    --color-bg-secondary: #020617;
+    --color-bg-elevated: #111827;
+
+    /* Colors - Border */
+    --color-border: rgba(255,255,255,0.1);
+    --color-border-hover: rgba(255,255,255,0.2);
+
+    /* Colors - Primary (violet) */
+    --color-primary: #8b5cf6;
+    --color-primary-hover: #7c3aed;
+    --color-primary-glow: rgba(139, 92, 246, 0.3);
+
+    /* Colors - Accent (green) */
+    --color-accent-green: #00ff88;
+    --color-success: #10b981;
+
+    /* Colors - Semantic */
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+    --color-info: #3b82f6;
+
+    /* Colors - Text */
+    --color-text-primary: #e2e8f0;
+    --color-text-secondary: #94a3b8;
+    --color-text-muted: #64748b;
+
+    /* Border Radius */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
+    --shadow-glow: 0 0 20px var(--color-primary-glow);
+
+    /* Legacy aliases for backward compatibility */
+    --bg: var(--color-bg-primary);
+    --bg-card: var(--color-bg-elevated);
+    --bg-card-hover: var(--color-bg-secondary);
+    --accent: var(--color-accent-green);
+    --accent-dim: var(--color-primary-glow);
+    --violet: var(--color-primary);
+    --violet-dim: var(--color-primary-glow);
+    --text: var(--color-text-primary);
+    --text-muted: var(--color-text-muted);
+    --border: var(--color-border);
+    --border-hover: var(--color-border-hover);
+    --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+}
+
+html {
+    color-scheme: dark;
+}

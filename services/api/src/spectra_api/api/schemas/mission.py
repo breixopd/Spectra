@@ -1,5 +1,7 @@
 """Mission and target schemas."""
 
+import ipaddress
+import re
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -24,10 +26,31 @@ class TargetCreate(BaseModel):
     @field_validator("address")
     @classmethod
     def validate_address(cls, v: str) -> str:
-        """Validate and normalize address."""
+        """Validate and normalize address (IP, CIDR, hostname, or domain)."""
         if not v or not v.strip():
             raise ValueError("Address cannot be empty")
-        return v.strip()
+        address = v.strip()
+
+        # Try to validate as IP address (IPv4 or IPv6)
+        try:
+            ipaddress.ip_address(address)
+            return address
+        except ValueError:
+            pass
+
+        # Try to validate as CIDR (e.g., 192.168.1.0/24)
+        try:
+            ipaddress.ip_network(address, strict=False)
+            return address
+        except ValueError:
+            pass
+
+        # Validate as hostname ( alphanumeric, dots, hyphens, max 253 chars)
+        if not re.match(r"^[a-zA-Z0-9]([a-zA-Z0-9\-\.]*[a-zA-Z0-9])?$", address):
+            raise ValueError("Invalid address format. Must be a valid IP, CIDR, hostname, or domain")
+        if len(address) > 253:
+            raise ValueError("Address too long (max 253 characters)")
+        return address
 
 
 class TargetResponse(BaseModel):
@@ -58,13 +81,13 @@ class StartMissionRequest(BaseModel):
     directive: str = Field(
         default="Perform a comprehensive security assessment",
         min_length=1,
-        max_length=2000,
-        description="High-level assessment directive (max 2000 chars)",
+        max_length=5000,
+        description="High-level assessment directive (max 5000 chars)",
     )
     requirements: str | None = Field(
         default=None,
-        max_length=5000,
-        description="Optional scope, requirements, or constraints for the mission",
+        max_length=2000,
+        description="Optional scope, requirements, or constraints for the mission (max 2000 chars)",
     )
     record_demo: bool = Field(
         default=False,

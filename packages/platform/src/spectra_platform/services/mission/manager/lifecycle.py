@@ -149,18 +149,34 @@ class MissionLifecycleManager:
 
         self.active_missions[mission.id] = mission
 
-        # Persist to distributed state store
-        await self.state_store.register(
-            mission.id,
-            {
-                "id": mission.id,
-                "target": target,
-                "directive": effective_directive,
-                "status": "created",
-                "user_id": user_id,
-                "started_at": mission.start_time.isoformat(),
-            },
-        )
+        # Persist to distributed state store — rollback DB mission if this fails
+        try:
+            await self.state_store.register(
+                mission.id,
+                {
+                    "id": mission.id,
+                    "target": target,
+                    "directive": effective_directive,
+                    "status": "created",
+                    "user_id": user_id,
+                    "started_at": mission.start_time.isoformat(),
+                },
+            )
+        except (OSError, RuntimeError) as e:
+            # State store failed — rollback: mark mission as FAILED in DB
+            logger.error("State store registration failed for mission %s, rolling back: %s", mission.id, e)
+            try:
+                async with async_session_maker() as session, session.begin():
+                    repo = MissionRepository(session)
+                    await repo.update(
+                        mission.id,
+                        status="failed",
+                        logs=[f"Rollback: state store registration failed: {e}"],
+                        summary={"error": str(e)},
+                    )
+            except (SQLAlchemyError, OSError, RuntimeError) as rollback_err:
+                logger.error("Failed to rollback mission %s: %s", mission.id, rollback_err)
+            raise RuntimeError(f"Mission could not be registered in state store: {e}") from e
 
         return mission
 

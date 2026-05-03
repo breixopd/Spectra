@@ -1,20 +1,5 @@
-/* Shared dark theme tokens for standalone page stylesheets */
+@import url('/static/css/tokens.css');
 
 html {
     color-scheme: dark;
-}
-
-:root {
-    color-scheme: dark;
-    --bg: #0a0a0f;
-    --bg-card: rgba(255,255,255,0.03);
-    --accent: #00ff88;
-    --accent-dim: rgba(0,255,136,0.15);
-    --violet: #8b5cf6;
-    --violet-dim: rgba(139,92,246,0.15);
-    --text: #e2e8f0;
-    --text-muted: #64748b;
-    --border: rgba(255,255,255,0.06);
-    --border-hover: rgba(255,255,255,0.12);
-    --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }

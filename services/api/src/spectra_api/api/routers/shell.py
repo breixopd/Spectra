@@ -67,7 +67,7 @@ async def shell_websocket(websocket: WebSocket, session_id: str, token: str | No
         async with async_session_maker() as db:
             await check_feature_allowed(user, db, "shell_access")
     except HTTPException:
-        await websocket.close(code=4003, reason="Shell access not available on your plan")
+        await websocket.close(code=4003, reason="Shell access requires Pro plan or higher. Upgrade at /billing/plans")
         return
 
     logger.info("Shell WebSocket connected: user=%s session=%s", user.username, session_id)
@@ -219,8 +219,14 @@ async def reconnect_exploit(
         raise HTTPException(status_code=404, detail="Finding not found")
 
     # Check shell_access feature
-    async with async_session_maker() as db:
-        await check_feature_allowed(_current_user, db, "shell_access")
+    try:
+        async with async_session_maker() as db:
+            await check_feature_allowed(_current_user, db, "shell_access")
+    except HTTPException:
+        raise HTTPException(
+            status_code=403,
+            detail="Shell access requires Pro plan or higher. Upgrade at /billing/plans",
+        )
 
     # User isolation: non-superusers can only reconnect to their own findings
     if not _current_user.is_superuser and finding.user_id and finding.user_id != str(_current_user.id):
