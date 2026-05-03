@@ -30,6 +30,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # Build Tailwind CSS with PostCSS pipeline in builder stage
 COPY config/package.json config/package-lock.json config/postcss.config.js config/tailwind.config.js ./config/
 COPY services/api/static/css/input.css ./services/api/static/css/input.css
+COPY services/api/templates/ ./services/api/templates/
+COPY services/api/static/js/ ./services/api/static/js/
 RUN cp config/package.json config/package-lock.json . && npm install && \
     NODE_ENV=production npx postcss services/api/static/css/input.css -o services/api/static/css/output.css --config config/postcss.config.js
 
