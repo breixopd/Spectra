@@ -6,6 +6,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
 COMPOSE_FILE="${PROJECT_DIR}/docker/compose.yaml"
 KEEP_STACK="${KEEP_STACK:-0}"
+# Enable app + test profiles for every compose invocation (load-test-runner is profile `test`;
+# without this, `compose run load-test-runner` can miss the service or join the wrong project context).
+export COMPOSE_PROFILES="${COMPOSE_PROFILES:-app,test}"
 export GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}"
 export GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
 
@@ -114,16 +117,26 @@ docker compose -f "${COMPOSE_FILE}" up -d --build db garage redis >/dev/null
 
 bootstrap_garage
 
-docker compose -f "${COMPOSE_FILE}" --profile app up -d --build app app-replica caddy tools >/dev/null
+docker compose -f "${COMPOSE_FILE}" up -d --build app app-replica caddy tools >/dev/null
 
 wait_for_service_health app 60
 wait_for_service_health app-replica 60
 wait_for_service_health caddy 60
 wait_for_service_health tools 60
 
-export LOAD_TEST_APP_URL="${LOAD_TEST_APP_URL:-http://127.0.0.1:15000}"
-export LOAD_TEST_APP_REPLICA_URL="${LOAD_TEST_APP_REPLICA_URL:-http://127.0.0.1:15001}"
-export LOAD_TEST_CADDY_URL="${LOAD_TEST_CADDY_URL:-http://127.0.0.1:15080}"
+# Optional: for running pytest on the *host* against published ports. The load-test-runner
+# service sets LOAD_TEST_* to in-network URLs (http://app:5000, http://caddy, …) in compose.yaml.
+if [[ -f "${PROJECT_DIR}/.env.test" ]]; then
+  # shellcheck disable=SC1091
+  set -a
+  # shellcheck disable=SC1091
+  source "${PROJECT_DIR}/.env.test" 2>/dev/null || true
+  set +a
+fi
+export LOAD_TEST_APP_URL="${LOAD_TEST_APP_URL:-http://127.0.0.1:5000}"
+# app-replica is not published to the host by default; use a mapped port if you add one in compose.
+export LOAD_TEST_APP_REPLICA_URL="${LOAD_TEST_APP_REPLICA_URL:-http://127.0.0.1:5001}"
+export LOAD_TEST_CADDY_URL="${LOAD_TEST_CADDY_URL:-http://127.0.0.1:${SPECTRA_PORT:-80}}"
 export LOAD_TEST_RESET_RATE_LIMIT_STATE="${LOAD_TEST_RESET_RATE_LIMIT_STATE:-1}"
 
 printf -v PYTEST_CMD '%q ' \
