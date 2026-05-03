@@ -138,6 +138,7 @@ class MissionExecutionManager:
                 path = await recorder.save()
                 if path:
                     mission.log(f"[RECORD] Demo cast saved (asciinema v2): {path}")
+                    mission.demo_url = path
         except (OSError, RuntimeError, ValueError) as e:
             logger.warning("Demo recorder finalize failed: %s", e)
 
