@@ -3,9 +3,10 @@
 Runs as a separate microservice, exposing internal API for the core API service.
 """
 
+import asyncio
 import logging
 import time
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Response, status
@@ -15,11 +16,19 @@ from spectra_domain.ai import ChatRequest, ChatResponse, EmbeddingRequest, Embed
 
 logger = logging.getLogger(__name__)
 
+_ai_embedded_task = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """AI service startup/shutdown."""
+    global _ai_embedded_task
     logger.info("AI Service starting...")
+    _ai_embedded_task = None
+
+    from spectra_platform.runtime.embedded_daemon import spawn_embedded_ops_task
+
+    _ai_embedded_task = spawn_embedded_ops_task("ai-svc")
 
     from spectra_ai.embeddings import EmbeddingService
 
@@ -32,6 +41,11 @@ async def lifespan(app: FastAPI):
 
     yield
     logger.info("AI Service shutting down...")
+    if _ai_embedded_task:
+        _ai_embedded_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await _ai_embedded_task
+        _ai_embedded_task = None
 
     # Close httpx clients used by AI router
     try:

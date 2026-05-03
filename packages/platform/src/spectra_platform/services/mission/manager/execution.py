@@ -63,6 +63,7 @@ class MissionExecutionManager:
     async def run_mission_loop(self, mission: Mission) -> None:
         """Main execution loop for a mission."""
         recorder = self._init_demo_recorder(mission)
+        mission._demo_recorder = recorder
 
         if not await self._llm_provider_healthy(mission):
             return
@@ -90,6 +91,7 @@ class MissionExecutionManager:
             self._broadcast_state("mission_controller", "failed")
             await self.lifecycle.update_db_status(mission)
         finally:
+            await self._finalize_demo_recorder(mission, recorder)
             await self._cleanup_mission(mission)
 
     async def _llm_provider_healthy(self, mission: Mission) -> bool:
@@ -124,6 +126,20 @@ class MissionExecutionManager:
         except (ImportError, OSError, RuntimeError) as e:
             logger.debug("Demo recorder init failed: %s", e)
             return None
+
+    async def _finalize_demo_recorder(self, mission: Mission, recorder: Any) -> None:
+        """Persist asciinema cast when record_demo was enabled (success, failure, or cancel)."""
+        if not recorder:
+            return
+        try:
+            if getattr(recorder, "is_recording", False):
+                recorder.stop()
+            if getattr(recorder, "event_count", 0):
+                path = await recorder.save()
+                if path:
+                    mission.log(f"[RECORD] Demo cast saved (asciinema v2): {path}")
+        except (OSError, RuntimeError, ValueError) as e:
+            logger.warning("Demo recorder finalize failed: %s", e)
 
     def _setup_cost_tracking(
         self,
@@ -226,8 +242,6 @@ class MissionExecutionManager:
         if mission.plan is None:
             raise RuntimeError("No plan created")
 
-        if recorder:
-            mission._demo_recorder = recorder
         await self._execute_mission_tasks(mission, context)
 
         record_mission_lessons(mission)
@@ -248,12 +262,6 @@ class MissionExecutionManager:
             f"Duration: {summary['duration_seconds']}s"
         )
         logger.info("Mission %s cost summary: %s", mission.id, summary)
-
-        if recorder:
-            recorder.stop()
-            path = await recorder.save()
-            if path:
-                mission.log(f"[RECORD] Demo saved: {path}")
 
         await self._send_completion_notifications(mission)
         await self.lifecycle.update_db_status(mission)

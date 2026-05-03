@@ -351,7 +351,7 @@ class Settings(BaseSettings):
     ADMIN_IP_ALLOWLIST: str = ""  # Comma-separated list of allowed IPs/CIDRs for admin routes, empty = disabled
 
     # --- Auto-Scaling ---
-    AUTOSCALE_ENABLED: bool = False  # Opt-in, safe default
+    AUTOSCALE_ENABLED: bool = True  # On by default; set AUTOSCALE_ENABLED=false to disable
     AUTOSCALE_WORKER_MIN: int = 1
     AUTOSCALE_WORKER_MAX: int = 10
     AUTOSCALE_API_MIN: int = 1
