@@ -9,7 +9,7 @@ import tempfile
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from spectra_common.constants import GO_COMPILE_TIMEOUT
 
@@ -85,7 +85,7 @@ async def run_command_job(
     # Safety check: validate command against blocklists before execution
     from spectra_platform.services.ai.agents.safety import SafetySupervisorAgent
 
-    allowed, reason = SafetySupervisorAgent.check_blocklist(command)  # type: ignore[attr-defined]
+    allowed, reason = cast("Any", SafetySupervisorAgent).check_blocklist(command)
     if not allowed:
         logger.warning("Command blocked by safety check: %s", reason)
         return _error_job_result(f"Blocked by safety check: {reason}")
@@ -108,13 +108,13 @@ async def execute_script_job(
     from spectra_platform.services.ai.agents.safety import SafetySupervisorAgent
 
     for label, value in [("content", content), ("target", target)]:
-        allowed, reason = SafetySupervisorAgent.check_blocklist(value)  # type: ignore[attr-defined]
+        allowed, reason = cast("Any", SafetySupervisorAgent).check_blocklist(value)
         if not allowed:
             logger.warning("Script %s blocked by safety check: %s", label, reason)
             return _error_job_result(f"Blocked by safety check: {reason}")
     if args:
         for arg in args:
-            allowed, reason = SafetySupervisorAgent.check_blocklist(str(arg))  # type: ignore[attr-defined]
+            allowed, reason = cast("Any", SafetySupervisorAgent).check_blocklist(str(arg))
             if not allowed:
                 logger.warning("Script argument blocked by safety check: %s", reason)
                 return _error_job_result(f"Blocked by safety check: {reason}")
