@@ -52,3 +52,4 @@ test.db
 *.png
 admin-dashboard-final.png
 dashboard-fixed.png
+.playwright-mcp/
