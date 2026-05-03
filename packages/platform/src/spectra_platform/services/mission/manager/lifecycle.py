@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from spectra_ai.sanitizer import sanitize_for_prompt
 from spectra_common.advisory_locks import stable_lock_id
 from spectra_platform.core.database import async_session_maker
-from spectra_platform.infrastructure.events import events
+from spectra_platform.infrastructure.events import EventType, events
 from spectra_platform.models.mission import Mission as MissionModel
 from spectra_platform.models.user import User
 from spectra_platform.repositories.mission import MissionRepository
@@ -388,4 +388,4 @@ class MissionLifecycleManager:
         # We need to make sure we keep the same signature/behavior.
         # Original: events.emit_sync(msg_type, "mission_manager", **data)
         data = {"agent_id": agent_id, "status": status, **kwargs}
-        events.emit_sync("agent_state", "mission_manager", **data)
+        events.emit_sync(EventType.AGENT_STATE, "mission_manager", **data)

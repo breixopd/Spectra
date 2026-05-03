@@ -106,13 +106,16 @@ class TestMissionStopAuditEmission:
         _override_deps(app, user, mock_session)
 
         mission_id = "00000000-0000-4000-a000-000000000123"
+        fake_mission = MagicMock()
+        fake_mission.user_id = user.id
 
         with (
+            patch("spectra_api.api.routers.missions.mission_lifecycle.MissionRepository") as mock_repo_cls,
             patch("spectra_api.api.routers.missions.mission_lifecycle.mission_manager") as mock_mm,
             patch("spectra_api.api.routers.missions.mission_lifecycle.audit_log_event", new_callable=AsyncMock) as mock_audit,
             patch("spectra_api.api.routers.missions.mission_lifecycle.check_resource_owner"),
         ):
-            mock_mm.get_mission = AsyncMock(return_value=None)
+            mock_repo_cls.return_value.get_by_id = AsyncMock(return_value=fake_mission)
             mock_mm.stop_mission = AsyncMock(return_value=True)
 
             transport = ASGITransport(app=app)
@@ -145,13 +148,16 @@ class TestMissionPauseAuditEmission:
         _override_deps(app, user, mock_session)
 
         mission_id = "00000000-0000-4000-a000-000000000456"
+        fake_mission = MagicMock()
+        fake_mission.user_id = user.id
 
         with (
+            patch("spectra_api.api.routers.missions.mission_lifecycle.MissionRepository") as mock_repo_cls,
             patch("spectra_api.api.routers.missions.mission_lifecycle.mission_manager") as mock_mm,
             patch("spectra_api.api.routers.missions.mission_lifecycle.audit_log_event", new_callable=AsyncMock) as mock_audit,
             patch("spectra_api.api.routers.missions.mission_lifecycle.check_resource_owner"),
         ):
-            mock_mm.get_mission = AsyncMock(return_value=None)
+            mock_repo_cls.return_value.get_by_id = AsyncMock(return_value=fake_mission)
             mock_mm.pause_mission = AsyncMock(return_value=True)
 
             transport = ASGITransport(app=app)
@@ -187,10 +193,13 @@ class TestFailedMfaAuditEmission:
 
         with (
             patch("spectra_api.api.routers.auth.totp._extract_bearer_token", return_value="mfa-token"),
-            patch("spectra_api.api.routers.auth.totp._decode_token_or_http_error", return_value=mfa_payload),
+            patch(
+                "spectra_api.api.routers.auth.totp._decode_token_or_http_error",
+                new=AsyncMock(return_value=mfa_payload),
+            ),
             patch("spectra_api.api.routers.auth.totp._get_user_by_username", new_callable=AsyncMock, return_value=user),
-            patch("spectra_api.api.routers.auth.totp._check_lockout", new_callable=AsyncMock),
-            patch("spectra_api.api.routers.auth.totp._record_failure", new_callable=AsyncMock),
+            patch("spectra_api.api.routers.auth.totp._check_lockout", new_callable=AsyncMock, return_value=None),
+            patch("spectra_api.api.routers.auth.totp._record_failure", new_callable=AsyncMock, return_value=None),
             patch("spectra_api.api.routers.auth.totp.decrypt_mfa_secret", return_value="raw-secret"),
             patch("spectra_api.api.routers.auth.totp.verify_totp", return_value=False),
             patch("spectra_api.api.routers.auth.totp.audit_log_event", new_callable=AsyncMock) as mock_audit,
@@ -263,6 +272,10 @@ class TestAuditIpAddressFilter:
         fake_row.details = "{}"
         fake_row.ip_address = "10.0.0.42"
         fake_row.created_at = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+
+        user_lookup = MagicMock()
+        user_lookup.all.return_value = []
+        mock_session.execute = AsyncMock(return_value=user_lookup)
 
         with patch("spectra_api.api.routers.admin.audit.AuditLogRepository") as MockRepo:
             repo_inst = MockRepo.return_value

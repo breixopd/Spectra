@@ -65,7 +65,15 @@ class TestAddNode:
 
         mock_instance = _make_mock_node(name="new-worker")
 
-        with patch("spectra_platform.models.server_node.ServerNode", return_value=mock_instance):
+        with (
+            patch("spectra_platform.models.server_node.ServerNode", return_value=mock_instance),
+            patch.object(
+                ServerPoolManager,
+                "_auto_enable_autoscale",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+        ):
             result = await mgr.add_node(
                 session,
                 "sandbox_worker",
@@ -92,7 +100,7 @@ class TestRemoveNode:
         mock_node = _make_mock_node(id=42)
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_node
-        session.execute.return_value = mock_result
+        session.execute = AsyncMock(return_value=mock_result)
         session.delete = AsyncMock()
 
         result = await mgr.remove_node(session, 42)
@@ -107,7 +115,7 @@ class TestRemoveNode:
         session = AsyncMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
-        session.execute.return_value = mock_result
+        session.execute = AsyncMock(return_value=mock_result)
 
         result = await mgr.remove_node(session, 999)
         assert result is False
@@ -125,7 +133,7 @@ class TestListNodes:
         mock_nodes = [_make_mock_node(id=1), _make_mock_node(id=2, name="worker-2")]
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = mock_nodes
-        session.execute.return_value = mock_result
+        session.execute = AsyncMock(return_value=mock_result)
 
         nodes = await mgr.list_nodes(session)
         assert len(nodes) == 2
@@ -138,7 +146,7 @@ class TestListNodes:
         session = AsyncMock()
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = [_make_mock_node()]
-        session.execute.return_value = mock_result
+        session.execute = AsyncMock(return_value=mock_result)
 
         nodes = await mgr.list_nodes(session, service_type="sandbox_worker")
         assert len(nodes) == 1
@@ -175,7 +183,7 @@ class TestSelectNode:
         mock_result.scalars.return_value.all.return_value = [node1, node2]
 
         mock_session = AsyncMock()
-        mock_session.execute.return_value = mock_result
+        mock_session.execute = AsyncMock(return_value=mock_result)
         mock_session_ctx = AsyncMock()
         mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
@@ -195,7 +203,7 @@ class TestSelectNode:
         mock_result.scalars.return_value.all.return_value = []
 
         mock_session = AsyncMock()
-        mock_session.execute.return_value = mock_result
+        mock_session.execute = AsyncMock(return_value=mock_result)
         mock_session_ctx = AsyncMock()
         mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
@@ -316,7 +324,7 @@ class TestHealthCheck:
         mock_result.scalars.return_value.all.return_value = [mock_node]
 
         mock_session = AsyncMock()
-        mock_session.execute.return_value = mock_result
+        mock_session.execute = AsyncMock(return_value=mock_result)
         mock_session.commit = AsyncMock()
         mock_session_ctx = AsyncMock()
         mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
@@ -396,7 +404,7 @@ class TestGetNode:
         mock_node = _make_mock_node(id=1)
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_node
-        session.execute.return_value = mock_result
+        session.execute = AsyncMock(return_value=mock_result)
 
         result = await mgr.get_node(session, 1)
         assert result is not None
@@ -409,7 +417,7 @@ class TestGetNode:
         session = AsyncMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
-        session.execute.return_value = mock_result
+        session.execute = AsyncMock(return_value=mock_result)
 
         result = await mgr.get_node(session, 999)
         assert result is None
@@ -427,7 +435,7 @@ class TestUpdateNode:
         mock_node = _make_mock_node(id=1, weight=1)
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_node
-        session.execute.return_value = mock_result
+        session.execute = AsyncMock(return_value=mock_result)
         session.flush = AsyncMock()
 
         result = await mgr.update_node(session, 1, weight=5)
@@ -442,7 +450,7 @@ class TestUpdateNode:
         session = AsyncMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
-        session.execute.return_value = mock_result
+        session.execute = AsyncMock(return_value=mock_result)
 
         result = await mgr.update_node(session, 999, weight=5)
         assert result is None

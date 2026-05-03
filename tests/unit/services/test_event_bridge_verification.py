@@ -64,3 +64,28 @@ async def test_event_bridge_broadcasts_system_events_globally():
             assert call_args.kwargs["event_type"] == EventType.SERVICE_HEALTH_CHANGED.value
         finally:
             bridge.stop()
+
+
+@pytest.mark.asyncio
+async def test_event_bridge_broadcasts_agent_state_globally():
+    """Live agent_state stream is global (not user-scoped); UI clients filter by mission."""
+    bridge = EventWebSocketBridge()
+    mock_ws_manager = AsyncMock()
+
+    with patch("spectra_platform.mission.core.bridge.ws_manager", mock_ws_manager):
+        bridge.start()
+
+        try:
+            await events.emit(
+                EventType.AGENT_STATE,
+                "mission_executor",
+                agent_id="scope_agent",
+                status="running",
+            )
+
+            mock_ws_manager.broadcast_event.assert_called()
+            call_args = mock_ws_manager.broadcast_event.call_args
+            assert call_args.kwargs["event_type"] == EventType.AGENT_STATE.value
+            assert call_args.kwargs["data"]["agent_id"] == "scope_agent"
+        finally:
+            bridge.stop()

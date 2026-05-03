@@ -172,13 +172,11 @@ echo "Running live integration tests..."
 if [ "$TARGETS_ONLY" = true ]; then
     # Run only the target-scan tests
     $COMPOSE run --rm --no-deps --entrypoint sh test-runner -c \
-        "pip install -q pytest pytest-asyncio pytest-dotenv pytest-timeout httpx aiohttp aiosqlite && \
-         python3 -m pytest tests/integration/test_live_scan.py -v -m live --timeout=120 --tb=short --override-ini=addopts= -p no:cov"
+        "python3 -m pytest tests/integration/test_live_scan.py -v -m live --timeout=120 --tb=short --override-ini=addopts= -p no:cov"
 else
     # Full suite: LLM + target tests
     $COMPOSE run --rm --no-deps -e SPECTRA_URL=http://app:5000 --entrypoint sh test-runner -c \
-        "pip install -q pytest pytest-asyncio pytest-dotenv pytest-timeout httpx aiohttp aiosqlite && \
-         python3 -m pytest tests/integration/test_live_targets.py tests/integration/test_live_scan.py -v --timeout=600 --tb=short --override-ini=addopts= -p no:cov"
+        "python3 -m pytest tests/integration/test_live_targets.py tests/integration/test_live_scan.py -v --timeout=600 --tb=short --override-ini=addopts= -p no:cov"
 fi
 
 OPS_DB_CONTAINER="$($COMPOSE ps -q db)"

@@ -58,6 +58,8 @@ class EventType(StrEnum):
     FINDING_EXPLOITED = "finding_exploited"
 
     # Agent events
+    # High-frequency UI stream (WebSocket `type: agent_state`); distinct from AGENT_STATE_CHANGED.
+    AGENT_STATE = "agent_state"
     AGENT_STATE_CHANGED = "agent_state_changed"
     CONSENSUS_VOTE_STARTED = "consensus_vote_started"
     CONSENSUS_VOTE_COMPLETED = "consensus_vote_completed"

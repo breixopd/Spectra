@@ -111,6 +111,7 @@ class TestMissionLoop:
         mission.directive = "test"
         mission.findings = [{"severity": "high"}]
         mission.plan = MagicMock()
+        mission.user_id = None
 
         execution_manager._run_scope_phase = AsyncMock()
         execution_manager._run_planning_phase = AsyncMock()
@@ -141,6 +142,7 @@ class TestMissionLoop:
         mission.directive = "test"
         mission.findings = []
         mission.plan = None  # No plan created
+        mission.user_id = None
 
         execution_manager._run_scope_phase = AsyncMock()
         execution_manager._run_planning_phase = AsyncMock()

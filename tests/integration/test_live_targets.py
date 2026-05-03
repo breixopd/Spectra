@@ -313,7 +313,6 @@ class TestPentestSessions:
         data = resp.json()
         session_id = data.get("id") or data.get("session_id")
         assert session_id is not None
-        return session_id
 
     def test_list_sessions(self, client, auth_headers):
         resp = client.get("/api/v1/pentest-sessions", headers=auth_headers)

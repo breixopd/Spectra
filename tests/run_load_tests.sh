@@ -149,4 +149,4 @@ printf -v PYTEST_CMD '%q ' \
 
 echo "Running ${MODE} tests through the dedicated runner service"
 docker compose -f "${COMPOSE_FILE}" run --rm --no-deps --entrypoint sh load-test-runner -c \
-    "pip install -q pytest pytest-asyncio pytest-dotenv httpx redis websockets && ${PYTEST_CMD}"
+    "${PYTEST_CMD}"
