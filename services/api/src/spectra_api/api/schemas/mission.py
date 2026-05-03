@@ -199,6 +199,7 @@ class MissionResponse(BaseModel):
     pentest_framework: str = "ptes"
     framework_label: str = "PTES Standard"
     framework_phase_timeline: list[dict[str, Any]] = Field(default_factory=list)
+    demo_url: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
