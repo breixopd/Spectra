@@ -236,6 +236,7 @@ class AdminUserUpdate(BaseModel):
     )
     role: str | None = Field(None, pattern="^(admin|staff|user)$")
     is_active: bool | None = None
+    email_verified: bool | None = None
     plan_id: str | None = None
 
 
