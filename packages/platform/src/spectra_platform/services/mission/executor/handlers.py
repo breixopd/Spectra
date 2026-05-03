@@ -125,16 +125,19 @@ class TaskDispatcher:
         mission.task_tree.update_status(task_tree_id, TaskStatus.ACTIVE)
 
         handler = self._get_task_handler(task.agent_type)
-        if handler:
-            try:
-                await handler(mission, task, context)
-                mission.task_tree.update_status(task_tree_id, TaskStatus.COMPLETED)
-            except (OSError, RuntimeError, ValueError):
-                mission.task_tree.update_status(task_tree_id, TaskStatus.FAILED)
-                raise
-        else:
-            mission.log(f"Unknown agent type: {task.agent_type}")
-            mission.task_tree.update_status(task_tree_id, TaskStatus.SKIPPED)
+        try:
+            if handler:
+                try:
+                    await handler(mission, task, context)
+                    mission.task_tree.update_status(task_tree_id, TaskStatus.COMPLETED)
+                except (OSError, RuntimeError, ValueError):
+                    mission.task_tree.update_status(task_tree_id, TaskStatus.FAILED)
+                    raise
+            else:
+                mission.log(f"Unknown agent type: {task.agent_type}")
+                mission.task_tree.update_status(task_tree_id, TaskStatus.SKIPPED)
+        finally:
+            mission.broadcast_task_tree_ui()
 
     def _get_task_handler(self, agent_type: str) -> Callable[[Mission, Task, AgentContext], Awaitable[None]] | None:
         """Get the handler method for an agent type."""
@@ -736,6 +739,7 @@ class TaskDispatcher:
             chain_count += 1
 
         mission._chain_depth = chain_count  # type: ignore[attr-defined]
+        mission.broadcast_task_tree_ui()
 
     def should_transition_phase(
         self,

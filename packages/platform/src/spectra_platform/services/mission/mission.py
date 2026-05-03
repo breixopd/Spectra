@@ -217,6 +217,47 @@ class Mission:
         else:
             create_safe_task(ws_manager.broadcast_event(msg_type, data), name="ws-broadcast")
 
+    def task_tree_ui_tasks(self) -> list[dict[str, Any]]:
+        """Serialize ``task_tree`` for dashboard ``renderTaskTree`` (nested ``children`` + UI status strings)."""
+        status_map: dict[TaskStatus, str] = {
+            TaskStatus.PENDING: "pending",
+            TaskStatus.ACTIVE: "running",
+            TaskStatus.COMPLETED: "completed",
+            TaskStatus.FAILED: "failed",
+            TaskStatus.SKIPPED: "skipped",
+        }
+
+        def walk(task_id: str) -> dict[str, Any] | None:
+            node = self.task_tree.get_node(task_id)
+            if not node or task_id == "root":
+                return None
+            children_out: list[dict[str, Any]] = []
+            for child_id in node.children:
+                child = walk(child_id)
+                if child is not None:
+                    children_out.append(child)
+            return {
+                "id": node.id,
+                "name": node.name,
+                "tool": node.tool_used,
+                "status": status_map.get(node.status, "pending"),
+                "children": children_out,
+            }
+
+        root = self.task_tree.get_node("root")
+        if not root:
+            return []
+        roots: list[dict[str, Any]] = []
+        for cid in root.children:
+            item = walk(cid)
+            if item is not None:
+                roots.append(item)
+        return roots
+
+    def broadcast_task_tree_ui(self) -> None:
+        """Push current task tree to dashboards over WebSocket."""
+        self._broadcast("task_tree", self.task_tree_ui_tasks())
+
     # --- Attack Surface Management ---
 
     def add_service(

@@ -119,6 +119,12 @@ function startMission(target, directive, playbookId) {
             currentMissionId = data.id;
             addTerminalLine(`[SUCCESS] Mission started: ${data.id}`, 'success');
             initGraphWithTarget(target);
+            spectraApi.get(`/api/v1/missions/${data.id}/task-tree`)
+                .then(({ data: treePayload }) => {
+                    const tasks = treePayload && treePayload.tasks;
+                    if (Array.isArray(tasks) && tasks.length) renderTaskTree(tasks);
+                })
+                .catch(() => {});
         }
     })
     .finally(() => {

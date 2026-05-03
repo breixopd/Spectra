@@ -98,6 +98,21 @@ class TestMissionProgress:
         assert progress["phase"] == "exploit"
 
 
+class TestTaskTreeUiTasks:
+    def test_nested_ui_shape(self):
+        mission = Mission("target.com", "test")
+        mission.task_tree.add_task("a", "Alpha", "recon/nmap")
+        mission.task_tree.add_task("b", "Beta", "exploit/rce", parent_id="a")
+        mission.task_tree.update_status("a", TaskStatus.ACTIVE)
+        roots = mission.task_tree_ui_tasks()
+        assert len(roots) == 1
+        assert roots[0]["id"] == "a"
+        assert roots[0]["status"] == "running"
+        assert len(roots[0]["children"]) == 1
+        assert roots[0]["children"][0]["id"] == "b"
+        assert roots[0]["children"][0]["status"] == "pending"
+
+
 # ===== Auto Expand Scope =====
 
 

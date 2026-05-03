@@ -79,7 +79,7 @@ Rate-limited with IP-based lockout after repeated failures.
 | POST | `/api/v1/missions/{id}/resume` | Resume a paused mission |
 | POST | `/api/v1/missions/{id}/steer` | Steer a running mission (modify objectives) |
 | GET | `/api/v1/missions/{id}/progress` | Get mission progress |
-| GET | `/api/v1/missions/{id}/task-tree` | Get mission task tree |
+| GET | `/api/v1/missions/{id}/task-tree` | Get mission task tree (`nodes` + `tasks` UI snapshot for dashboards) |
 | GET | `/api/v1/missions/{id}/diff/{other_id}` | Compare two missions |
 | GET | `/api/v1/missions/{id}/report/pdf` | Download PDF report |
 | GET | `/api/v1/missions/{id}/export/json` | Export mission as JSON |

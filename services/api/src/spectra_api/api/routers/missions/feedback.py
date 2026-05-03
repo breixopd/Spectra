@@ -93,7 +93,9 @@ async def get_task_tree(
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
     check_resource_owner(mission, _current_user, "mission")
-    return mission.task_tree.to_dict()
+    tree = mission.task_tree.to_dict()
+    tree["tasks"] = mission.task_tree_ui_tasks()
+    return tree
 
 
 @router.get("/{mission_id}/progress")

@@ -12,7 +12,10 @@ document.getElementById('task-tree-content')?.addEventListener('click', function
 document.addEventListener('spectra:ws-message', (event) => {
     try {
         const msg = JSON.parse(event.detail);
-        if (msg.type === 'task_tree') renderTaskTree(msg.data);
+        if (msg.type === 'task_tree') {
+            const tasks = Array.isArray(msg.data) ? msg.data : (msg.data && msg.data.tasks) || [];
+            if (tasks.length) renderTaskTree(tasks);
+        }
         if (msg.type === 'attack_paths') renderAttackPaths(msg.data);
         if (msg.type === 'task_update' && msg.data?.tasks) renderTaskTree(msg.data.tasks);
     } catch {}
@@ -34,6 +37,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 initGraph();
                 initGraphWithTarget(mission.target || 'Target');
                 addTerminalLine(`[SYSTEM] Resumed active mission: ${mission.id}`, 'info');
+
+                spectraApi.get(`/api/v1/missions/${mission.id}/task-tree`)
+                    .then(({ data: treePayload }) => {
+                        const tasks = treePayload && treePayload.tasks;
+                        if (Array.isArray(tasks) && tasks.length) renderTaskTree(tasks);
+                    })
+                    .catch(() => {});
 
                 // Load existing findings for this mission
                 spectraApi.get(`/api/v1/missions/${mission.id}/findings`)
