@@ -27,6 +27,7 @@
     {% block extra_css %}{% endblock %}
     <!-- Centralized API client (must load before confirm bootstrap) -->
     <script src="/static/js/api.js?v=20260503"></script>
+    <script nonce="{{ request.state.csp_nonce }}">window.escapeHtml=function(s){var d=document.createElement('div');d.textContent=String(s);return d.innerHTML};</script>
     <script src="/static/js/shared-utils.js?v=20260503"></script>
     <script src="/static/js/confirm.js?v=20260503" nonce="{{ request.state.csp_nonce }}"></script>
 </head>

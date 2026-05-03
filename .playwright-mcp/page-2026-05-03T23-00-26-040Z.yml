@@ -1,0 +1,299 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e4]:
+    - img [ref=e5]
+    - text: System initializing...
+  - generic [ref=e8]:
+    - complementary [ref=e9]:
+      - generic [ref=e10]:
+        - link "Spectra" [ref=e12] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e13]
+          - text: Spectra
+        - navigation [ref=e15]:
+          - link "Dashboard" [ref=e16]:
+            - /url: /dashboard
+            - img [ref=e17]
+            - text: Dashboard
+          - link "History" [ref=e22]:
+            - /url: /history
+            - img [ref=e23]
+            - text: History
+          - link "Targets" [ref=e27]:
+            - /url: /targets
+            - img [ref=e28]
+            - text: Targets
+          - link "Reports" [ref=e32]:
+            - /url: /reports
+            - img [ref=e33]
+            - text: Reports
+          - link "Account" [ref=e36]:
+            - /url: /profile
+            - img [ref=e37]
+            - text: Account
+          - link "Toolbox" [ref=e41]:
+            - /url: /toolbox
+            - img [ref=e42]
+            - text: Toolbox
+          - link "Agents" [ref=e46]:
+            - /url: /overseer
+            - img [ref=e47]
+            - text: Agents
+          - link "Documentation" [ref=e50]:
+            - /url: /docs/api
+            - img [ref=e51]
+            - text: Documentation
+          - link "Manual Tools" [ref=e53]:
+            - /url: /manual
+            - img [ref=e54]
+            - text: Manual Tools
+          - link "Settings" [ref=e57]:
+            - /url: /settings
+            - img [ref=e58]
+            - text: Settings
+          - link "Help Center" [ref=e61]:
+            - /url: /help
+            - img [ref=e62]
+            - text: Help Center
+          - link "Observability" [ref=e65]:
+            - /url: /observability
+            - img [ref=e66]
+            - text: Observability
+          - link "Admin" [ref=e69]:
+            - /url: /admin
+            - img [ref=e70]
+            - text: Admin
+        - generic [ref=e74]:
+          - generic [ref=e75]:
+            - img [ref=e77]
+            - generic [ref=e80]:
+              - paragraph [ref=e81]: User
+              - paragraph [ref=e82]: Connected
+          - generic [ref=e83]:
+            - link "vdev" [ref=e84] [cursor=pointer]:
+              - /url: /changelog
+            - button "Sign out" [ref=e85] [cursor=pointer]:
+              - img [ref=e86]
+    - main [ref=e89]:
+      - navigation "Breadcrumb" [ref=e90]:
+        - link "Home" [ref=e91] [cursor=pointer]:
+          - /url: /dashboard
+        - text: / Dashboard
+      - generic "Mission control" [ref=e92]:
+        - heading "Assessment" [level=1] [ref=e94]
+        - generic [ref=e95]:
+          - generic [ref=e96]:
+            - generic [ref=e97]:
+              - img [ref=e99]
+              - textbox "Target IP or domain" [ref=e101]:
+                - /placeholder: Target IP / domain
+            - textbox "Mission directive" [ref=e103]:
+              - /placeholder: Directive (e.g., Full security assessment)
+            - button "Toggle requirements" [ref=e104]:
+              - img [ref=e105]
+              - text: Reqs
+            - combobox "VPN configuration for this mission" [ref=e108]:
+              - option "No VPN" [selected]
+            - combobox "Adversary simulation profile" [ref=e109]:
+              - option "Standard" [selected]
+            - button "Launch" [ref=e110] [cursor=pointer]:
+              - img [ref=e111]
+              - text: Launch
+          - textbox "Optional mission requirements and scope constraints" [ref=e117]:
+            - /placeholder: "Optional: scope constraints, rules of engagement, specific requirements..."
+          - generic [ref=e118]:
+            - generic [ref=e119]:
+              - checkbox "I confirm I own this target or have explicit written authorization to test it." [ref=e120]
+              - text: I confirm I own this target or have explicit written authorization to test it.
+            - generic [ref=e121]:
+              - text: Scan mode override
+              - combobox "Scan mode override" [ref=e122]:
+                - option "Profile default" [selected]
+                - option "Autonomous"
+                - option "Guided"
+                - option "Manual"
+            - generic [ref=e123]:
+              - text: Methodology
+              - combobox "Pentest methodology checklist" [ref=e124]:
+                - option "PTES Standard" [selected]
+                - option "OWASP Top 10 (2021)"
+                - option "Network pentest"
+                - option "API security"
+                - option "Active Directory"
+            - generic [ref=e125]:
+              - checkbox "Require human approval for high-risk actions (this launch)" [ref=e126]
+              - text: Require human approval for high-risk actions (this launch)
+            - generic [ref=e127]:
+              - checkbox "Record exploit demo video if exploitation succeeds" [ref=e128]
+              - text: Record exploit demo video if exploitation succeeds
+        - generic [ref=e129]:
+          - generic [ref=e130]:
+            - button "Presets" [ref=e131] [cursor=pointer]:
+              - img [ref=e132]
+              - text: Presets
+              - img [ref=e134]
+            - menu [ref=e136]:
+              - generic [ref=e137]:
+                - generic [ref=e138]: Scan Presets
+                - menuitem "Quick Recon ~5 min" [ref=e139] [cursor=pointer]:
+                  - img [ref=e140]
+                  - text: Quick Recon ~5 min
+                - menuitem "Full Assessment ~30 min" [ref=e142] [cursor=pointer]:
+                  - img [ref=e143]
+                  - text: Full Assessment ~30 min
+                - menuitem "Web Application ~15 min" [ref=e145] [cursor=pointer]:
+                  - img [ref=e146]
+                  - text: Web Application ~15 min
+                - menuitem "Stealth Scan ~45 min" [ref=e149] [cursor=pointer]:
+                  - img [ref=e150]
+                  - text: Stealth Scan ~45 min
+                - menuitem "Exploit Focus ~20 min" [ref=e157] [cursor=pointer]:
+                  - img [ref=e158]
+                  - text: Exploit Focus ~20 min
+                - menuitem "API Security ~15 min" [ref=e160] [cursor=pointer]:
+                  - img [ref=e161]
+                  - text: API Security ~15 min
+          - button "Pause Mission" [ref=e164]:
+            - img [ref=e165]
+            - text: Pause
+          - button "Stop Mission" [ref=e168]:
+            - img [ref=e169]
+            - text: Stop
+      - generic [ref=e171]: Ready
+      - generic [ref=e172]:
+        - img [ref=e173]
+        - paragraph
+        - button "Dismiss error" [ref=e175] [cursor=pointer]:
+          - img [ref=e176]
+      - generic [ref=e180]: Phase
+      - generic [ref=e182]:
+        - img [ref=e184]
+        - generic [ref=e189]:
+          - heading "Welcome to Spectra!" [level=2] [ref=e190]
+          - paragraph [ref=e191]: "Get started with your first security assessment:"
+          - list [ref=e192]:
+            - listitem [ref=e193]:
+              - text: Enter a target IP or domain in the
+              - strong [ref=e194]: Target
+              - text: field above
+            - listitem [ref=e195]: Add an optional directive describing your assessment objective
+            - listitem [ref=e196]:
+              - text: Click
+              - strong [ref=e197]: Launch
+              - text: or pick a
+              - strong [ref=e198]: Preset
+            - listitem [ref=e199]: Watch the live assessment in the activity log and network graph
+          - paragraph [ref=e200]:
+            - text: Need help?
+            - link "Configure Settings" [ref=e201] [cursor=pointer]:
+              - /url: /settings
+            - text: ·
+            - link "Help Center" [ref=e202] [cursor=pointer]:
+              - /url: /help
+      - generic [ref=e204]:
+        - img [ref=e205]
+        - paragraph [ref=e207]: Failed to load dashboard data
+        - button "Retry" [ref=e208] [cursor=pointer]:
+          - img [ref=e209]
+          - text: Retry
+      - generic [ref=e214]:
+        - generic [ref=e215]:
+          - generic [ref=e217]: Location
+          - generic [ref=e219]:
+            - text: Findings
+            - status "Findings summary" [ref=e233]:
+              - generic [ref=e234]: 0 Critical
+              - generic [ref=e235]: 0 High
+              - generic [ref=e236]: 0 Medium
+              - generic [ref=e237]: 0 Info
+          - generic [ref=e238]:
+            - text: Sessions
+            - generic [ref=e240]:
+              - img [ref=e241]
+              - paragraph [ref=e243]: No active sessions
+        - generic [ref=e244]:
+          - generic [ref=e245]:
+            - generic [ref=e246]:
+              - img [ref=e247]
+              - text: Network Topology
+            - generic [ref=e252]:
+              - img [ref=e253]
+              - paragraph [ref=e257]: Discovered services and hosts appear here
+            - generic [ref=e259]: 0 nodes
+            - generic [ref=e260]:
+              - generic [ref=e261]: Target
+              - generic [ref=e262]: Service
+              - generic [ref=e263]: Vuln
+          - generic [ref=e264]:
+            - generic [ref=e266]:
+              - img [ref=e267]
+              - text: Activity Log
+            - generic [ref=e269]:
+              - paragraph [ref=e270]: Dashboard ready.
+              - generic [ref=e271]:
+                - img [ref=e272]
+                - heading "No activity yet" [level=2] [ref=e274]
+                - paragraph [ref=e275]: Enter a target and directive above, then click Launch to start an assessment.
+      - generic [ref=e276]:
+        - generic [ref=e278]:
+          - img [ref=e279]
+          - text: Task Tree
+        - generic [ref=e281]: No active tasks
+      - generic [ref=e282]:
+        - generic [ref=e284]:
+          - img [ref=e285]
+          - text: Attack Paths
+        - generic [ref=e291]:
+          - img [ref=e292]
+          - paragraph [ref=e296]: Attack paths appear after exploitation
+      - generic [ref=e297]:
+        - generic [ref=e298]:
+          - generic [ref=e299]:
+            - img [ref=e300]
+            - text: Metrics & Trends
+          - combobox [ref=e303]:
+            - option "7 days" [selected]
+            - option "30 days"
+            - option "90 days"
+            - option "All time"
+        - generic [ref=e304]:
+          - generic [ref=e305]:
+            - generic [ref=e306]: Findings Over Time
+            - generic [ref=e308]: Missions Per Week
+            - generic [ref=e310]: Top Vulnerabilities
+          - generic [ref=e311]:
+            - generic [ref=e312]: Severity Breakdown
+            - generic [ref=e315]: Top Targets
+      - dialog "Playbook" [ref=e317]:
+        - generic [ref=e318]:
+          - heading "Playbook" [level=2] [ref=e319]
+          - paragraph
+          - generic [ref=e320]:
+            - generic [ref=e321]: Phases
+            - generic [ref=e322]:
+              - generic [ref=e323]:
+                - text: Stealth
+                - paragraph [ref=e324]: N/A
+              - generic [ref=e325]:
+                - text: Auto-exploit
+                - paragraph [ref=e326]: N/A
+          - generic [ref=e327]:
+            - button "Close" [ref=e328] [cursor=pointer]
+            - button "Launch" [ref=e329] [cursor=pointer]:
+              - img [ref=e330]
+              - text: Launch
+      - dialog "Finding" [ref=e335]:
+        - generic [ref=e336]:
+          - generic [ref=e337]:
+            - heading "Finding" [level=2] [ref=e338]
+            - button "Close finding dialog" [ref=e339] [cursor=pointer]:
+              - img [ref=e340]
+          - generic [ref=e343]:
+            - button "Details" [ref=e344] [cursor=pointer]
+            - button "Evidence" [ref=e345] [cursor=pointer]
+            - button "Remediation" [ref=e346] [cursor=pointer]
+            - button "Notes" [ref=e347] [cursor=pointer]
+          - generic [ref=e348]:
+            - button "Mark False Positive" [ref=e349] [cursor=pointer]
+            - button "Retest" [ref=e350] [cursor=pointer]
