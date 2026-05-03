@@ -1,3 +1,30 @@
+// Render framework phase timeline for active missions
+function renderPhaseTimeline(mission) {
+    const container = document.getElementById('phase-timeline-container');
+    const labelEl = document.getElementById('phase-timeline-label');
+    const timelineEl = document.getElementById('phase-timeline');
+    if (!container || !labelEl || !timelineEl) return;
+
+    const tl = mission.framework_phase_timeline;
+    if (!Array.isArray(tl) || !tl.length) {
+        container.classList.add('hidden');
+        return;
+    }
+    container.classList.remove('hidden');
+    labelEl.textContent = mission.framework_label || mission.pentest_framework || '';
+    timelineEl.innerHTML = '';
+    for (const step of tl) {
+        const span = document.createElement('span');
+        let cls = 'px-2 py-0.5 rounded border border-white/10 text-slate-500 text-xs';
+        if (step.done) cls = 'px-2 py-0.5 rounded border border-emerald-500/40 text-emerald-300 bg-emerald-500/10 text-xs';
+        if (step.current) cls = 'px-2 py-0.5 rounded border border-amber-400/50 text-amber-200 bg-amber-500/10 text-xs';
+        span.className = cls;
+        span.textContent = step.label || step.id;
+        span.title = String(step.id || '');
+        timelineEl.appendChild(span);
+    }
+}
+
 // Event delegation for task tree clicks (replaces inline onclick for XSS safety)
 // Registered once at page load — not inside renderTaskTree() — to avoid duplicate handlers.
 document.getElementById('task-tree-content')?.addEventListener('click', function(e) {
@@ -37,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 initGraph();
                 initGraphWithTarget(mission.target || 'Target');
                 addTerminalLine(`[SYSTEM] Resumed active mission: ${mission.id}`, 'info');
+                renderPhaseTimeline(mission);
 
                 spectraApi.get(`/api/v1/missions/${mission.id}/task-tree`)
                     .then(({ data: treePayload }) => {

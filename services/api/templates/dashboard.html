@@ -153,6 +153,15 @@
     <span class="text-[11px] font-mono text-slate-500 w-16 text-right" id="status-text">Ready</span>
 </div>
 
+<!-- Framework Phase Timeline (shown for active missions) -->
+<div id="phase-timeline-container" class="mb-4 hidden">
+    <div class="flex items-center gap-2 mb-2">
+        <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Phase</span>
+        <span id="phase-timeline-label" class="text-xs text-slate-400"></span>
+    </div>
+    <div id="phase-timeline" class="flex flex-wrap gap-1.5"></div>
+</div>
+
 <!-- Getting Started Card - shown when no missions exist -->
 <div id="getting-started" data-testid="getting-started" class="glass-panel rounded-xl p-6 mb-6 border border-violet-500/20 animate-fade-in-up">
     <div class="flex items-start gap-4">

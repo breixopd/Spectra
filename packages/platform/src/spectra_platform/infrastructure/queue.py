@@ -109,17 +109,18 @@ class PostgresJobQueue:
             if job.retry_count >= job.max_retries:
                 job.status = "dead_letter"
                 job.completed_at = datetime.now(UTC)
-                logger.warning(
-                    "Job %s moved to dead letter after %d retries: %s",
+                logger.info(
+                    "Job %s (%s) promoted to dead letter after %d retries",
                     job_id,
+                    job.function,
                     job.retry_count,
-                    error,
                 )
             else:
                 job.status = "pending"
                 logger.info(
-                    "Job %s queued for retry %d/%d",
+                    "Job %s (%s) queued for retry %d/%d",
                     job_id,
+                    job.function,
                     job.retry_count,
                     job.max_retries,
                 )

@@ -79,8 +79,10 @@ class MissionExecutor:
         context: AgentContext,
     ) -> None:
         """Execute a single task with the appropriate agent."""
+        logger.info("Starting task %s for mission %s (user_id=%s)", task.task_id, mission.id, mission.user_id)
         try:
             await self.dispatcher.dispatch(mission, task, context)
+            logger.info("Task %s completed for mission %s", task.task_id, mission.id)
         except (OSError, RuntimeError, ValueError) as e:
             mission.log(f"Task execution failed: {e}")
             logger.error("Error executing task %s: %s", task.task_id, e, exc_info=True)

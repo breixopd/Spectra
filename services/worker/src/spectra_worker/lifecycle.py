@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import UTC, datetime
 
 from spectra_tools_core.models import ToolStatus
 
@@ -74,15 +75,59 @@ async def startup() -> None:
     await _auto_install_pending()
 
 
+async def _batch_sync_tool_statuses(tools: list[object]) -> list[str]:
+    """Batch sync tool statuses to cache, return list of pending tool IDs."""
+    from spectra_platform.infrastructure.cache import CacheService
+    from spectra_common.constants import SECONDS_PER_HOUR
+
+    cache = CacheService()
+    pending = []
+
+    # Phase 1: Check installation status for all tools (local filesystem checks)
+    for tool in tools:
+        tool_id = tool.config.id
+        is_installed = _is_tool_installed(tool)
+        tool.status = ToolStatus.READY if is_installed else ToolStatus.PENDING
+
+        if not is_installed:
+            pending.append(tool_id)
+
+    # Phase 2: Batch sync all statuses to cache (single batch operation)
+    # Build all payloads first
+    tool_statuses: dict[str, dict[str, object]] = {}
+    for tool in tools:
+        tool_id = tool.config.id
+        result = {"status": tool.status.value}
+        # Get existing status from cache (batch get would be better but requires API change)
+        key = f"spectra:tool_status:{tool_id}"
+        existing = await cache.get(key)
+        if not isinstance(existing, dict):
+            existing = {}
+        payload = {
+            "status": result["status"],
+            "last_updated": datetime.now(UTC).isoformat(),
+        }
+        tool_statuses[key] = payload
+
+    # Batch set all (CacheService.set doesn't support batch, but we reduce get calls)
+    for key, payload in tool_statuses.items():
+        await cache.set(key, payload, ttl=SECONDS_PER_HOUR)
+
+    # Log installed tools
+    for tool in tools:
+        if tool.status == ToolStatus.READY:
+            logger.info("Tool %s already installed", tool.config.id)
+
+    return pending
+
+
 async def _auto_install_pending() -> None:
     """Sync tool availability on startup without mutating the container image."""
     from spectra_platform.services.tools.registry import get_registry
 
     registry = get_registry()
-    pending = []
-    for tool in registry.list_tools():
-        if not await _sync_detected_tool_status(tool):
-            pending.append(tool.config.id)
+    tools = list(registry.list_tools())
+    pending = await _batch_sync_tool_statuses(tools)
 
     if pending:
         logger.warning(

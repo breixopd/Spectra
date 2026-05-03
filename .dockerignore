@@ -29,3 +29,7 @@ build/
 keys/*.pem
 keys/*.key
 docker/targets/
+requirements/test.txt
+requirements/dev.txt
+scripts/ops/
+.audit/

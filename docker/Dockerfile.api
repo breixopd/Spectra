@@ -23,7 +23,8 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements/app.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r app.txt
 
 # Build Tailwind CSS with PostCSS pipeline in builder stage
@@ -80,7 +81,6 @@ COPY --chown=spectra:spectra services/api/templates/ ./spectra_api/templates/
 COPY --chown=spectra:spectra alembic/ ./alembic/
 COPY --chown=spectra:spectra config/alembic.ini ./config/alembic.ini
 COPY --chown=spectra:spectra plugins/ ./plugins/
-COPY --chown=spectra:spectra plugins/ ./bundled-plugins/
 COPY --chown=spectra:spectra config/tailwind.config.js ./config/tailwind.config.js
 COPY --chown=spectra:spectra config/postcss.config.js ./config/postcss.config.js
 RUN chmod +x /app/scripts/start.sh
