@@ -541,7 +541,7 @@ async def update_user(
             status_code=409,
             detail="Cannot remove or deactivate the last active superuser",
         )
-    if body.is_active and not row.email_verified:
+    if body.is_active and not row.email_verified and not body.email_verified:
         raise HTTPException(status_code=400, detail="User must complete account activation before being activated")
 
     before_state = await _build_user_before_state(session, row)
@@ -577,6 +577,8 @@ async def update_user(
     if body.role is not None:
         row.role = body.role
         row.is_superuser = body.role == "admin"
+    if body.email_verified:
+        row.email_verified = True
     if body.is_active is not None:
         row.is_active = body.is_active
     if plan_change_requested:
