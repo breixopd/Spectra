@@ -60,6 +60,7 @@ class Mission(Base):
     )
     feedback_rating: Mapped[int | None] = mapped_column(nullable=True, default=None)  # 1-5 stars
     feedback_comment: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    milestones: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
 
     def __repr__(self) -> str:
         """String representation of the mission."""

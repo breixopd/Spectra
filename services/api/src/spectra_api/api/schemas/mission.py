@@ -98,6 +98,10 @@ class StartMissionRequest(BaseModel):
         max_length=64,
         description="Built-in methodology checklist (ptes, owasp_top10_2021, network_pentest, api_security, ad_pentest)",
     )
+    roe: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional Rules of Engagement constraints",
+    )
 
     @field_validator("pentest_framework")
     @classmethod

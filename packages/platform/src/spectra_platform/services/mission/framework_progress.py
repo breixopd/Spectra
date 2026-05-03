@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
-from spectra_platform.mission.core.enums import AssessmentPhase
+from spectra_platform.mission.core.enums import AssessmentPhase, MissionMilestone, MissionMilestoneStatus
 from spectra_platform.services.system.checklists import BUILTIN_CHECKLISTS
 
 ALLOWED_PENTEST_FRAMEWORKS: frozenset[str] = frozenset(BUILTIN_CHECKLISTS.keys())
@@ -99,3 +100,51 @@ def framework_phase_timeline(
             }
         )
     return out
+
+
+def advance_milestone(
+    mission,
+    milestone: MissionMilestone,
+    status: MissionMilestoneStatus = MissionMilestoneStatus.COMPLETED,
+    details: str = "",
+) -> None:
+    """Advance a mission milestone and persist to DB.
+
+    Args:
+        mission: Mission object with milestones attribute
+        milestone: The milestone to advance (M1-M11)
+        status: Status to set (default: COMPLETED)
+        details: Optional details about the milestone completion
+    """
+    from sqlalchemy import select
+
+    from spectra_platform.core.database import get_sync_session
+    from spectra_platform.models.mission import Mission
+
+    stored = mission.milestones or []
+    stored_map = {m.get("milestone"): m for m in stored if m.get("milestone")}
+
+    now = datetime.now(UTC).isoformat()
+
+    entry = {
+        "milestone": milestone.value,
+        "label": milestone.label,
+        "status": status.value,
+        "completed_at": now if status == MissionMilestoneStatus.COMPLETED else None,
+        "details": details,
+    }
+
+    stored_map[milestone.value] = entry
+
+    mission.milestones = list(stored_map.values())
+
+    if hasattr(mission, "id") and mission.id:
+        session = get_sync_session()
+        try:
+            result = session.execute(select(Mission).where(Mission.id == mission.id))
+            db_mission = result.scalar_one_or_none()
+            if db_mission:
+                db_mission.milestones = mission.milestones
+                session.commit()
+        finally:
+            session.close()

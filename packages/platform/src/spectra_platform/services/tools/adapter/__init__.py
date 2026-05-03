@@ -160,7 +160,12 @@ class CommandToolAdapter(ToolAdapter):
             except (OSError, RuntimeError, ValueError) as e:
                 logger.warning("Failed to parse tool output: %s", e)
 
-            success = proc.returncode == 0
+            # Get configured success exit codes (default [0])
+            success_codes = [0]
+            if hasattr(self, 'config') and hasattr(self.config, 'execution') and hasattr(self.config.execution, 'success_exit_codes'):
+                success_codes = self.config.execution.success_exit_codes
+
+            success = proc.returncode in success_codes
 
             # Exit code 124 is produced by the `timeout` coreutils wrapper
             if proc.returncode == 124 and not stderr:
