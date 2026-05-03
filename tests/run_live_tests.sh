@@ -196,7 +196,7 @@ GARAGE_SECRET_KEY="${OPS_GARAGE_SECRET_KEY}" \
 
 echo "Running live ops smoke tests..."
 $COMPOSE run --rm --no-deps --entrypoint sh test-runner -c \
-    "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests/integration/test_ops_scripts_live.py -v -m live --tb=short --override-ini=addopts= -p no:cov"
+    "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests/integration/test_ops_scripts_live.py -v -m live --tb=short --override-ini=addopts= -p no:cov -p pytest_asyncio.plugin"
 
 # ── Step 4: Collect results ──────────────────────────────────
 echo ""
