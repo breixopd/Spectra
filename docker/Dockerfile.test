@@ -51,9 +51,14 @@ COPY config/ config/
 COPY alembic/ alembic/
 COPY services/api/static/ spectra_api/static/
 COPY services/api/templates/ spectra_api/templates/
-COPY services/api/static/ services/api/static/
-COPY services/api/templates/ services/api/templates/
 COPY pyproject.toml .
+
+# Add non-root user for security
+RUN useradd --create-home --shell /bin/bash testuser
+USER testuser
+
+# Health check for the test container
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 CMD python -c "import sys; sys.exit(0)"
 
 # Default: run unit tests
 CMD ["python3", "-m", "pytest", "tests/unit/", "-q", "--no-cov"]

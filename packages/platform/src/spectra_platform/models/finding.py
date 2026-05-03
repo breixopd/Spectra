@@ -52,6 +52,7 @@ class Finding(Base):
     __tablename__ = "findings"
     __table_args__ = (
         Index("ix_findings_user_id_severity", "user_id", "severity"),
+        Index("ix_findings_cve_id", "cve_id"),
         CheckConstraint(
             "cvss_score IS NULL OR (cvss_score >= 0 AND cvss_score <= 10)",
             name="ck_findings_cvss_range",

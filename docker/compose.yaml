@@ -270,6 +270,8 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.api
+      cache_from:
+        - spectra-app:dev
     container_name: spectra-app
     profiles: [app, test]
     labels:
@@ -340,6 +342,8 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.ai
+      cache_from:
+        - spectra-ai-svc:dev
     container_name: spectra-ai
     profiles: [app, test]
     labels:
@@ -393,6 +397,8 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.scheduler
+      cache_from:
+        - spectra-scheduler:dev
     container_name: spectra-scheduler
     profiles: [app, test]
     labels:
@@ -446,6 +452,8 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.worker
+      cache_from:
+        - spectra-worker:dev
     profiles: [app, test]
     labels:
       spectra.managed: "true"
