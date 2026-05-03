@@ -147,7 +147,13 @@ async def upload_wordlist(
 ) -> dict[str, str]:
     """Upload a custom wordlist file."""
     _ = request
-    await check_feature_allowed(_current_user, session, "custom_wordlists")
+    try:
+        await check_feature_allowed(_current_user, session, "custom_wordlists")
+    except HTTPException:
+        raise HTTPException(
+            status_code=403,
+            detail="Custom wordlists require Pro plan or higher. Upgrade at /billing/plans",
+        )
 
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")

@@ -56,6 +56,14 @@ class Settings(BaseSettings):
     ALLOW_REGISTRATION: bool = True
     APP_ENV: str = "development"
     DEBUG: bool = False
+    PLATFORM_EXPOSED: bool = False
+
+    @model_validator(mode="after")
+    def _force_debug_false_in_production(self):
+        if self.PLATFORM_EXPOSED and self.DEBUG:
+            logger.warning("PLATFORM_EXPOSED=true — forcing DEBUG=False for production security")
+            self.DEBUG = False
+        return self
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "text"  # "json" for structured logs in production, "text" for dev
 
@@ -147,14 +155,25 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 50 * 1024 * 1024  # 50 MB — multipart file uploads
 
     # --- CORS (also used by SecurityHeadersMiddleware for browser POST same-origin checks) ---
-    CORS_ORIGINS: list[str] = [
-        "http://localhost:5000",
-        "http://127.0.0.1:5000",
-        "http://localhost:5050",
-        "http://127.0.0.1:5050",
-        "http://app:5000",
-        "http://spectra-ui-app:5000",
-    ]
+    CORS_ORIGINS: list[str] = Field(
+        default=[
+            "http://localhost:5000",
+            "http://127.0.0.1:5000",
+            "http://localhost:5050",
+            "http://127.0.0.1:5050",
+            "http://app:5000",
+            "http://spectra-ui-app:5000",
+        ],
+        description="Comma-separated CORS origins. Read from CORS_ORIGINS env var, defaults to localhost/Docker hosts.",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _parse_cors_origins_from_env(cls, values: dict) -> dict:
+        env_origins = os.environ.get("CORS_ORIGINS")
+        if env_origins:
+            values["CORS_ORIGINS"] = [i.strip() for i in env_origins.split(",") if i.strip()]
+        return values
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

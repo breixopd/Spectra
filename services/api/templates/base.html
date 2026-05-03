@@ -17,6 +17,9 @@
     <!-- Tailwind CSS (compiled) -->
     <link rel="stylesheet" href="/static/css/output.css?v={{ version }}">
 
+    <!-- Design tokens (single source of truth) -->
+    <link rel="stylesheet" href="/static/css/tokens.css?v={{ version }}">
+
     <!-- Fonts (local) -->
     <link rel="stylesheet" href="/static/vendor/css/fonts.css?v={{ version }}">
     
@@ -381,49 +384,13 @@
             }
         });
     </script>
-    <!-- Sidebar Toggle -->
-    <script nonce="{{ request.state.csp_nonce }}">
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebar-overlay');
-            sidebar.classList.toggle('open');
-            overlay.classList.toggle('active');
-        }
-        // Close sidebar on nav click (mobile)
-        document.querySelectorAll('.sidebar nav a').forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth < 768) toggleSidebar();
-            });
-        });
-        // Close sidebar on resize to desktop
-        window.addEventListener('resize', () => {
-            if (window.innerWidth >= 768) {
-                document.getElementById('sidebar').classList.remove('open');
-                document.getElementById('sidebar-overlay').classList.remove('active');
-            }
-        });
-    </script>
+    <script src="/static/js/modules/sidebar.js"></script>
     <script src="/static/js/modules/accordion.js"></script>
     <script src="/static/js/modules/delegated-events.js"></script>
     <script src="/static/js/modules/modal.js" type="module"></script>
     <script src="/static/js/modules/tabs.js" type="module"></script>
     <script src="/static/js/modules/toast.js" type="module"></script>
     {% endif %}
-    <script nonce="{{ request.state.csp_nonce }}">
-    function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-    function escapeAttr(str) {
-        return String(str ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-    }
-    function togglePasswordVisibility(el) {
-        const input = el.previousElementSibling;
-        if (input) input.type = input.type === 'password' ? 'text' : 'password';
-    }
-    </script>
     <!-- Lucide Icons — locally hosted, same-origin (SRI would add no cross-origin benefit) -->
     <script src="/static/vendor/js/lucide.min.js"></script>
     <script nonce="{{ request.state.csp_nonce }}">
