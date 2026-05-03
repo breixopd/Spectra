@@ -30,7 +30,7 @@ def with_retry(max_retries: int = 1, backoff_base: float = 2.0, max_backoff: flo
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            last_exc = None
+            last_exc: BaseException | None = None
             for attempt in range(1, max_retries + 1):
                 try:
                     return await func(*args, **kwargs)
@@ -51,7 +51,8 @@ def with_retry(max_retries: int = 1, backoff_base: float = 2.0, max_backoff: flo
                         await asyncio.sleep(wait)
                     else:
                         logger.error("Job %s failed after %d attempts: %s", func.__name__, max_retries, exc)
-            raise last_exc  # type: ignore[misc]  # last_exc is always set after loop
+            if last_exc:
+                raise last_exc
 
         return wrapper
 

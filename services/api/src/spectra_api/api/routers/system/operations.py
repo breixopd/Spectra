@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import delete
@@ -115,7 +115,7 @@ async def clear_missions(
         result = await db.execute(stmt)
         await db.commit()
 
-        deleted_count: int = result.rowcount or 0  # type: ignore[assignment]
+        deleted_count: int = cast(int, result.rowcount) or 0
 
         cache_cleared = 0
         cache = _get_cache()
