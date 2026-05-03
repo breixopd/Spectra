@@ -4,6 +4,37 @@
 
 var selectedPlaybookData = null;
 
+function updateMissionProgressFromTasks(tasks) {
+    const bar = document.getElementById('mission-progress-bar');
+    const statusText = document.getElementById('status-text');
+    window._lastRenderedTasksForProgress = tasks;
+    if (!tasks || tasks.length === 0) {
+        if (bar) bar.style.width = '0%';
+        if (statusText) {
+            statusText.textContent = window._agentActivityLine || 'Ready';
+        }
+        return;
+    }
+    let total = 0;
+    let done = 0;
+    let active = 0;
+    function walk(nodes) {
+        (nodes || []).forEach((t) => {
+            total += 1;
+            if (t.status === 'completed') done += 1;
+            else if (t.status === 'running' || t.status === 'active') active += 1;
+            if (t.children && t.children.length) walk(t.children);
+        });
+    }
+    walk(tasks);
+    const pct = total ? Math.min(100, Math.round((done / total) * 100)) : 0;
+    if (bar) bar.style.width = `${pct}%`;
+    if (statusText) {
+        const taskPart = `${done}/${total} tasks${active ? ` · ${active} active` : ''}`;
+        statusText.textContent = window._agentActivityLine ? `${window._agentActivityLine} — ${taskPart}` : taskPart;
+    }
+}
+
 function updateTaskList(data) {
     // Currently no dedicated task list UI, logging to terminal
     if (data && data.tasks) {
@@ -17,11 +48,21 @@ function updateTaskList(data) {
 function renderTaskTree(tasks) {
     const panel = document.getElementById('task-tree-panel');
     const content = document.getElementById('task-tree-content');
-    if (!tasks || tasks.length === 0) { panel.classList.add('hidden'); return; }
+    if (!tasks || tasks.length === 0) {
+        panel?.classList.add('hidden');
+        updateMissionProgressFromTasks([]);
+        return;
+    }
     panel.classList.remove('hidden');
 
-    const icons = { completed: '☑', running: '●', pending: '○', failed: '✗' };
-    const colors = { completed: 'text-emerald-400', running: 'text-amber-400 animate-pulse', pending: 'text-slate-500', failed: 'text-rose-400' };
+    const icons = { completed: '☑', running: '●', pending: '○', failed: '✗', skipped: '⊘' };
+    const colors = {
+        completed: 'text-emerald-400',
+        running: 'text-amber-400 animate-pulse',
+        pending: 'text-slate-500',
+        failed: 'text-rose-400',
+        skipped: 'text-slate-500',
+    };
 
     function renderNode(task, depth) {
         depth = depth || 0;
@@ -44,6 +85,7 @@ function renderTaskTree(tasks) {
     const running = tasks.filter(t => t.status === 'running').length;
     const completed = tasks.filter(t => t.status === 'completed').length;
     document.getElementById('task-tree-status').textContent = `${completed}/${tasks.length} complete, ${running} active`;
+    updateMissionProgressFromTasks(tasks);
 }
 
 // --- Playbook Detail Modal ---

@@ -42,9 +42,28 @@ function handleExploitSuccess(data) {
 }
 
 function handleAgentState(data) {
-    // Update status text based on agent state
-    const statusText = document.getElementById('status-text');
-    if (statusText && data.status === 'running') {
-        statusText.textContent = `${data.agent_id.replace(/_/g, ' ')} running...`;
+    const agentLabel = (data.agent_id || 'agent').replace(/_/g, ' ');
+    if (data.status === 'running') {
+        window._agentActivityLine = `${agentLabel} running…`;
+    } else if (data.status === 'idle') {
+        window._agentActivityLine = '';
+    } else {
+        window._agentActivityLine = `${agentLabel}: ${data.status}`;
+        window.setTimeout(() => {
+            if (window._agentActivityLine === `${agentLabel}: ${data.status}`) {
+                window._agentActivityLine = '';
+                const tasks = window._lastRenderedTasksForProgress;
+                if (Array.isArray(tasks) && tasks.length && typeof updateMissionProgressFromTasks === 'function') {
+                    updateMissionProgressFromTasks(tasks);
+                }
+            }
+        }, 3500);
+    }
+    const tasks = window._lastRenderedTasksForProgress;
+    if (Array.isArray(tasks) && tasks.length && typeof updateMissionProgressFromTasks === 'function') {
+        updateMissionProgressFromTasks(tasks);
+    } else {
+        const st = document.getElementById('status-text');
+        if (st && window._agentActivityLine) st.textContent = window._agentActivityLine;
     }
 }
