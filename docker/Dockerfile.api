@@ -36,7 +36,6 @@ RUN cp config/package.json config/package-lock.json . && npm install && \
 FROM ${PYTHON_BASE_IMAGE}
 
 ARG BUILD_VERSION=dev
-ARG GRYPE_VERSION=0.84.0
 LABEL org.opencontainers.image.title="Spectra API" \
       org.opencontainers.image.description="AI-Driven Security Assessment Platform — API" \
       org.opencontainers.image.source="https://github.com/breixopd14/spectra" \

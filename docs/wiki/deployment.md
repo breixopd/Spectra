@@ -71,6 +71,10 @@ profile `test`. A tree that is missing new tests or still on an old commit can
 show **below 70%** aggregate coverage even when `main` is green — always verify
 `git rev-parse HEAD` matches the branch you intend.
 
+For the **full** extended matrix (load/perf/soak/UI/live/API e2e) on a VPS over SSH, use
+`scripts/runbooks/vps-full-test-matrix.sh` (see `docs/runbooks/ci-parity-local.md`). For a one-shot
+CPU/RAM snapshot: `scripts/runbooks/vps-docker-stats.sh`.
+
 ### SERVICE_MODE Configuration
 
 Each image sets `SERVICE_MODE` (see Dockerfiles) so **shared** code — especially

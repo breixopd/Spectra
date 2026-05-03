@@ -7,6 +7,8 @@ Run everything from the **repository root** unless a script says otherwise.
 | **CI / verification** | [`runbooks/ci-parity.sh`](runbooks/ci-parity.sh) | Mirror GitHub Actions: static analysis, unit coverage ≥70%, settings; `all` adds integration. |
 | **Extended matrix** | [`runbooks/full-test-matrix.sh`](runbooks/full-test-matrix.sh) | Parity + load/perf/soak + Playwright + live targets + optional LLM live + API e2e (`SKIP_*` in header). |
 | **VPS sync** | [`runbooks/vps-sync.sh`](runbooks/vps-sync.sh) | `rsync` to server; **excludes `.env.test`** so remote secrets survive. |
+| **VPS full matrix** | [`runbooks/vps-full-test-matrix.sh`](runbooks/vps-full-test-matrix.sh) | SSH + `full-test-matrix.sh` on the VPS (`VPS_BACKGROUND=1` for `nohup`). |
+| **VPS docker stats** | [`runbooks/vps-docker-stats.sh`](runbooks/vps-docker-stats.sh) | `docker stats --no-stream` + compose `ps` over SSH. |
 | **Daily tests** | [`test.sh`](test.sh) | Docker pytest helpers (`unit`, `integration`, `live-smoke`, …). |
 | **Quick unit (wrapper)** | [`ops/run_unit_tests_docker.sh`](ops/run_unit_tests_docker.sh) | Delegates to `runbooks/ci-parity.sh unit`. |
 | **Deploy / rollback** | [`deploy.sh`](deploy.sh), [`rollback.sh`](rollback.sh) | Production workflows; uses [`health_check.sh`](health_check.sh). |

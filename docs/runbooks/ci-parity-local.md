@@ -84,6 +84,16 @@ GitHub Actions also runs a **weekly** extended job — `.github/workflows/nightl
 
 After `git pull` on the server, run the same script from the repo root so verification matches CI (see also `scripts/ops/vps-verify-tests.sh` for a slimmer unit-only path).
 
+**Full extended matrix on the VPS** (same as local `full-test-matrix.sh`): from a machine with SSH access,
+
+```bash
+VPS=root@your.host ./scripts/runbooks/vps-full-test-matrix.sh
+# long run in background on server, log at /tmp/spectra-matrix-vps.log:
+VPS_BACKGROUND=1 VPS=root@your.host ./scripts/runbooks/vps-full-test-matrix.sh
+```
+
+**Resource snapshot** (CPU/RAM per container): `VPS=root@your.host ./scripts/runbooks/vps-docker-stats.sh`
+
 ### When `git fetch` fails (HTTPS origin, no GitHub token on the server)
 
 From a machine that **has** the commits (your laptop):
