@@ -61,3 +61,33 @@
 html {
     color-scheme: dark;
 }
+
+/* Loading states for buttons */
+.btn.loading,
+button.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.btn .spinner,
+button .spinner {
+    display: none;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+.btn.loading .spinner,
+button.loading .spinner {
+    display: inline-block;
+    margin-right: 0.5rem;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

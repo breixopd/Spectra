@@ -83,7 +83,7 @@
                             <input type="text" id="profile-role" class="form-input" readonly>
                         </div>
                         <button data-action="saveProfile" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
-                            Save Changes
+                            <span class="spinner"></span>Save Changes
                         </button>
                     </div>
                 </div>
@@ -117,7 +117,7 @@
                             <input type="password" id="confirm-password" class="form-input" autocomplete="new-password">
                         </div>
                         <button data-action="changePassword" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
-                            Update Password
+                            <span class="spinner"></span>Update Password
                         </button>
                     </div>
                 </div>
@@ -192,6 +192,11 @@
                     <div id="api-keys-list">
                         <div class="text-sm text-slate-500 text-center py-6">Loading API keys...</div>
                     </div>
+                    <div id="api-keys-empty" class="hidden text-center py-6">
+                        <i data-lucide="key" class="w-8 h-8 inline-block text-slate-600 mb-2"></i>
+                        <p class="text-sm text-slate-400">No API keys created yet.</p>
+                        <p class="text-xs text-slate-500 mt-1">Generate one to get started.</p>
+                    </div>
                 </div>
             </div>
 
@@ -202,6 +207,11 @@
                     <p class="text-sm text-slate-400 mb-4">Your recent security-relevant account events.</p>
                     <div id="activity-log">
                         <div class="text-sm text-slate-500 text-center py-6">Loading activity...</div>
+                    </div>
+                    <div id="activity-empty" class="hidden text-center py-6">
+                        <i data-lucide="history" class="w-8 h-8 inline-block text-slate-600 mb-2"></i>
+                        <p class="text-sm text-slate-400">No recent activity.</p>
+                        <p class="text-xs text-slate-500 mt-1">Your actions will appear here.</p>
                     </div>
                 </div>
             </div>
@@ -247,7 +257,7 @@
                             <input type="text" id="settings-emb-model" class="form-input" placeholder="text-embedding-3-small">
                         </div>
                         <div class="flex gap-2 mt-4">
-                            <button data-action="saveByok" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors">Save BYOK</button>
+                            <button data-action="saveByok" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors"><span class="spinner"></span>Save BYOK</button>
                             <button data-action="clearByok" class="px-4 py-2 text-rose-400 hover:bg-rose-500/10 text-sm rounded-lg border border-rose-500/20 transition-colors">Clear BYOK</button>
                         </div>
                     </div>
@@ -322,7 +332,7 @@
                             <option value="Australia/Sydney">Australia Eastern</option>
                         </select>
                     </div>
-                    <button data-action="saveSettings" class="mt-4 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors">Save Settings</button>
+                    <button data-action="saveSettings" class="mt-4 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors"><span class="spinner"></span>Save Settings</button>
                 </div>
             </div>
 

@@ -125,3 +125,31 @@ window.stopMission = stopMission;
 window.connectShell = connectShell;
 window.switchModel = switchModel;
 window.loadMetrics = loadMetrics;
+
+// --- Error handling ---
+function showError(message) {
+    const container = document.getElementById('error-container');
+    const msgEl = document.getElementById('error-message');
+    if (container && msgEl) {
+        msgEl.textContent = message;
+        container.classList.remove('hidden');
+        container.setAttribute('aria-live', 'polite');
+    }
+}
+
+function dismissError() {
+    const container = document.getElementById('error-container');
+    if (container) {
+        container.classList.add('hidden');
+    }
+}
+
+window.showError = showError;
+window.dismissError = dismissError;
+
+// Dismiss error on button click
+document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-action="dismissError"]')) {
+        dismissError();
+    }
+});
