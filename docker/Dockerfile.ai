@@ -67,6 +67,7 @@ COPY --chown=spectra:spectra packages/platform/src/spectra_platform/models/ ./sp
 COPY --chown=spectra:spectra packages/platform/src/spectra_platform/repositories/ ./spectra_platform/repositories/
 COPY --chown=spectra:spectra packages/platform/src/spectra_platform/services/ ./spectra_platform/services/
 COPY --chown=spectra:spectra packages/platform/src/spectra_platform/telemetry/ ./spectra_platform/telemetry/
+COPY --chown=spectra:spectra packages/platform/src/spectra_platform/runtime/ ./spectra_platform/runtime/
 COPY --chown=spectra:spectra packages/platform/src/spectra_platform/utils/ ./spectra_platform/utils/
 COPY --chown=spectra:spectra alembic/ ./alembic/
 COPY --chown=spectra:spectra config/alembic.ini ./config/alembic.ini
