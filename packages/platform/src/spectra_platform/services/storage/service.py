@@ -391,11 +391,16 @@ class StorageService:
     async def list_objects(self, bucket: str, prefix: str = "") -> list[str]:
         """List object keys in an S3 bucket with optional prefix."""
         keys = []
-        async with self._client() as s3:
-            paginator = s3.get_paginator("list_objects_v2")
-            async for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
-                for obj in page.get("Contents", []):
-                    keys.append(obj["Key"])
+        try:
+            async with self._client() as s3:
+                paginator = s3.get_paginator("list_objects_v2")
+                async for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+                    for obj in page.get("Contents", []):
+                        keys.append(obj["Key"])
+        except self._client_error:
+            logger.debug("S3 list_objects failed for bucket=%s prefix=%s", bucket, prefix)
+        except (RuntimeError, ConnectionError, ValueError) as e:
+            logger.warning("Unexpected error listing S3 objects: %s", e)
         return keys
 
     async def get_presigned_url(self, bucket: str, key: str, expires: int = 3600) -> str | None:
