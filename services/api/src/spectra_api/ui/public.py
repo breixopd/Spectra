@@ -407,7 +407,7 @@ def _registration_requires_email_verification() -> bool:
     return settings.smtp_configured or settings.EMAIL_VERIFICATION_ENABLED
 
 
-def _public_base_url(request: Request | None) -> str:
+def _public_base_url(request: Optional[Request]) -> str:
     if settings.PLATFORM_BASE_URL:
         return settings.PLATFORM_BASE_URL.rstrip("/")
     if request is not None:
