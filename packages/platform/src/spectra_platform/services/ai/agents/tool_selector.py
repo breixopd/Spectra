@@ -373,7 +373,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         self,
         context: AgentContext,
         input_data: ToolSelectorInput,
-        available_tools: list[Any],  # List[RegisteredTool]
+        available_tools: list[Any],
     ) -> ToolSelectorOutput:
         """Use LLM to select and configure the best tool with rich metadata and RAG context."""
         from spectra_platform.services.ai.knowledge import (
