@@ -1,0 +1,218 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - link "Spectra" [ref=e7] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e8]
+          - generic [ref=e10]: Spectra
+        - navigation [ref=e11]:
+          - link "Dashboard" [ref=e12]:
+            - /url: /dashboard
+            - img [ref=e13]
+            - generic [ref=e18]: Dashboard
+          - link "History" [ref=e19]:
+            - /url: /history
+            - img [ref=e20]
+            - generic [ref=e24]: History
+          - link "Targets" [ref=e25]:
+            - /url: /targets
+            - img [ref=e26]
+            - generic [ref=e30]: Targets
+          - link "Reports" [ref=e31]:
+            - /url: /reports
+            - img [ref=e32]
+            - generic [ref=e35]: Reports
+          - link "Account" [ref=e36]:
+            - /url: /profile
+            - img [ref=e37]
+            - generic [ref=e41]: Account
+          - link "Toolbox" [ref=e42]:
+            - /url: /toolbox
+            - img [ref=e43]
+            - generic [ref=e47]: Toolbox
+          - link "Agents" [ref=e48]:
+            - /url: /overseer
+            - img [ref=e49]
+            - generic [ref=e52]: Agents
+          - link "Documentation" [ref=e53]:
+            - /url: /docs/api
+            - img [ref=e54]
+            - generic [ref=e56]: Documentation
+          - link "Manual Tools" [ref=e57]:
+            - /url: /manual
+            - img [ref=e58]
+            - generic [ref=e61]: Manual Tools
+          - link "Settings" [ref=e62]:
+            - /url: /settings
+            - img [ref=e63]
+            - generic [ref=e66]: Settings
+          - link "Help Center" [ref=e67]:
+            - /url: /help
+            - img [ref=e68]
+            - generic [ref=e71]: Help Center
+        - generic [ref=e73]:
+          - generic [ref=e74]:
+            - img [ref=e76]
+            - generic [ref=e79]:
+              - paragraph [ref=e80]: User
+              - paragraph [ref=e81]: Connected
+          - generic [ref=e83]:
+            - link "vdev" [ref=e84] [cursor=pointer]:
+              - /url: /changelog
+            - button "Sign out" [ref=e85] [cursor=pointer]:
+              - img [ref=e86]
+    - main [ref=e89]:
+      - navigation "Breadcrumb" [ref=e91]:
+        - link "Home" [ref=e92] [cursor=pointer]:
+          - /url: /dashboard
+        - text: / Dashboard
+      - generic "Mission control" [ref=e93]:
+        - heading "Assessment" [level=1] [ref=e95]
+        - generic [ref=e96]:
+          - generic [ref=e97]:
+            - generic [ref=e98]:
+              - generic:
+                - img
+              - textbox "Target IP or domain" [ref=e99]:
+                - /placeholder: Target IP / domain
+            - textbox "Mission directive" [ref=e101]:
+              - /placeholder: Directive (e.g., Full security assessment)
+            - button "Toggle requirements" [ref=e102]:
+              - img [ref=e103]
+              - generic [ref=e106]: Reqs
+            - combobox "VPN configuration for this mission" [ref=e107]:
+              - option "No VPN" [selected]
+            - combobox "Adversary simulation profile" [ref=e108]:
+              - option "Standard" [selected]
+            - button "Launch" [ref=e109] [cursor=pointer]:
+              - img [ref=e110]
+              - text: Launch
+          - generic [ref=e115]:
+            - generic [ref=e116]:
+              - checkbox "I confirm I own this target or have explicit written authorization to test it." [ref=e117]
+              - generic [ref=e118]: I confirm I own this target or have explicit written authorization to test it.
+            - generic [ref=e119]:
+              - generic [ref=e120]: Scan mode override
+              - combobox "Scan mode override" [ref=e121]:
+                - option "Profile default" [selected]
+                - option "Autonomous"
+                - option "Guided"
+                - option "Manual"
+            - generic [ref=e122]:
+              - generic [ref=e123]: Methodology
+              - combobox "Pentest methodology checklist" [ref=e124]:
+                - option "PTES Standard" [selected]
+                - option "OWASP Top 10 (2021)"
+                - option "Network pentest"
+                - option "API security"
+                - option "Active Directory"
+            - generic [ref=e125] [cursor=pointer]:
+              - checkbox "Require human approval for high-risk actions (this launch)" [ref=e126]
+              - generic [ref=e127]: Require human approval for high-risk actions (this launch)
+            - generic [ref=e128] [cursor=pointer]:
+              - checkbox "Record exploit demo video if exploitation succeeds" [ref=e129]
+              - generic [ref=e130]: Record exploit demo video if exploitation succeeds
+        - generic [ref=e131]:
+          - button "Presets" [ref=e133] [cursor=pointer]:
+            - img [ref=e134]
+            - generic [ref=e136]: Presets
+            - img [ref=e137]
+          - button "Pause Mission" [ref=e139]:
+            - img [ref=e140]
+            - generic [ref=e143]: Pause
+          - button "Stop Mission" [ref=e144]:
+            - img [ref=e145]
+            - generic [ref=e147]: Stop
+      - generic [ref=e150]: Ready
+      - generic [ref=e152]:
+        - img [ref=e154]
+        - generic [ref=e159]:
+          - heading "Welcome to Spectra!" [level=2] [ref=e160]
+          - paragraph [ref=e161]: "Get started with your first security assessment:"
+          - list [ref=e162]:
+            - listitem [ref=e163]:
+              - text: Enter a target IP or domain in the
+              - strong [ref=e164]: Target
+              - text: field above
+            - listitem [ref=e165]: Add an optional directive describing your assessment objective
+            - listitem [ref=e166]:
+              - text: Click
+              - strong [ref=e167]: Launch
+              - text: or pick a
+              - strong [ref=e168]: Preset
+            - listitem [ref=e169]: Watch the live assessment in the activity log and network graph
+          - paragraph [ref=e170]:
+            - text: Need help?
+            - link "Configure Settings" [ref=e171] [cursor=pointer]:
+              - /url: /settings
+            - text: ·
+            - link "Help Center" [ref=e172] [cursor=pointer]:
+              - /url: /help
+      - generic [ref=e173]:
+        - generic [ref=e174]:
+          - generic [ref=e175]:
+            - generic: Location
+          - generic [ref=e178]: Findings
+          - generic [ref=e192]:
+            - generic [ref=e193]: Sessions
+            - generic [ref=e195]:
+              - img [ref=e196]
+              - paragraph [ref=e198]: No active sessions
+        - generic [ref=e199]:
+          - generic [ref=e200]:
+            - generic [ref=e201]:
+              - img [ref=e202]
+              - generic [ref=e206]: Network Topology
+            - generic [ref=e208]:
+              - img [ref=e209]
+              - paragraph [ref=e213]: Discovered services and hosts appear here
+            - generic [ref=e217]: 0 nodes
+            - generic [ref=e218]:
+              - generic [ref=e219]: Target
+              - generic [ref=e221]: Service
+              - generic [ref=e223]: Vuln
+          - generic [ref=e225]:
+            - generic [ref=e227]:
+              - img [ref=e228]
+              - generic [ref=e230]: Activity Log
+            - generic [ref=e235]:
+              - paragraph [ref=e236]: Dashboard ready.
+              - generic [ref=e237]:
+                - img [ref=e238]
+                - heading "No activity yet" [level=2] [ref=e240]
+                - paragraph [ref=e241]: Enter a target and directive above, then click Launch to start an assessment.
+      - generic [ref=e242]:
+        - generic [ref=e243]:
+          - generic [ref=e244]:
+            - img [ref=e245]
+            - generic [ref=e248]: Metrics & Trends
+          - combobox [ref=e249]:
+            - option "7 days" [selected]
+            - option "30 days"
+            - option "90 days"
+            - option "All time"
+        - generic [ref=e250]:
+          - generic [ref=e251]:
+            - generic [ref=e253]: Findings Over Time
+            - generic [ref=e256]: Missions Per Week
+            - generic [ref=e259]: Top Vulnerabilities
+          - generic [ref=e260]:
+            - generic [ref=e262]: Severity Breakdown
+            - generic [ref=e266]: Top Targets
+  - dialog "Cookie consent":
+    - generic [ref=e268]:
+      - generic [ref=e269]:
+        - generic [ref=e270]: Your privacy matters
+        - paragraph [ref=e271]:
+          - text: We use essential cookies only to keep the platform working. We
+          - strong [ref=e272]: never
+          - text: use external trackers, sell your data, or share information with advertisers. Optional cookies help us improve the experience — nothing more. You can change your cookie preferences at any time via the link in the footer. Read our
+          - link "Cookie Policy" [ref=e273] [cursor=pointer]:
+            - /url: /legal/cookies
+          - text: .
+      - generic [ref=e274]:
+        - button "Essential only" [ref=e275] [cursor=pointer]
+        - button "Accept all" [ref=e276] [cursor=pointer]
