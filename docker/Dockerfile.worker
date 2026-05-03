@@ -58,6 +58,7 @@ COPY packages/platform/src/spectra_platform/models/ ./spectra_platform/models/
 COPY packages/platform/src/spectra_platform/repositories/ ./spectra_platform/repositories/
 COPY packages/platform/src/spectra_platform/services/ ./spectra_platform/services/
 COPY packages/platform/src/spectra_platform/telemetry/ ./spectra_platform/telemetry/
+COPY packages/platform/src/spectra_platform/runtime/ ./spectra_platform/runtime/
 COPY packages/platform/src/spectra_platform/utils/ ./spectra_platform/utils/
 COPY plugins/ ./plugins/
 
