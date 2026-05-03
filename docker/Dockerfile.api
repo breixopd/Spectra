@@ -38,7 +38,7 @@ RUN cp config/package.json config/package-lock.json . && npm install && \
 # ── Runtime stage ──
 FROM ${PYTHON_BASE_IMAGE}
 
-ARG BUILD_VERSION=dev
+ARG BUILD_VERSION=2026.05.03
 LABEL org.opencontainers.image.title="Spectra API" \
       org.opencontainers.image.description="AI-Driven Security Assessment Platform — API" \
       org.opencontainers.image.source="https://github.com/breixopd14/spectra" \
