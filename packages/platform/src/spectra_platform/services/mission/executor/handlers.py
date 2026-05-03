@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 from spectra_ai.sanitizer import sanitize_for_prompt
 from spectra_common.constants import MAX_HOSTS_DEFAULT
-from spectra_platform.infrastructure.events import events
+from spectra_platform.infrastructure.events import EventType, events
 from spectra_platform.services.ai.agents.base import AgentContext, ParallelToolAction, ToolAction
 from spectra_platform.services.ai.agents.mission_controller import AssessmentPhase, Task
 from spectra_platform.services.ai.output_intelligence import extract_intelligence
@@ -201,7 +201,7 @@ class TaskDispatcher:
         """Broadcast agent state via EventBus."""
         # We emit an event, and the EventWebSocketBridge handles the broadcasting
         events.emit_sync(
-            "agent_state",
+            EventType.AGENT_STATE,
             "mission_executor",
             agent_id=agent_id,
             status=status,

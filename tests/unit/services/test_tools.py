@@ -9,6 +9,7 @@ Tests cover:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import tempfile
 from pathlib import Path
@@ -367,14 +368,22 @@ class TestCommandToolAdapter:
             timeout=1,
         )
 
+        async def wait_for_then_timeout(coro, timeout=None):
+            await coro
+            raise TimeoutError
+
         with (
             patch("asyncio.create_subprocess_exec") as mock_subprocess,
-            patch("asyncio.wait_for", side_effect=TimeoutError),
+            patch(
+                "spectra_platform.services.tools.adapter.asyncio.wait_for",
+                side_effect=wait_for_then_timeout,
+            ),
             patch("os.killpg"),
             patch("os.getpgid"),
         ):
             process_mock = AsyncMock()
             process_mock.pid = 12345
+            process_mock.communicate = AsyncMock(return_value=(b"", b""))
             mock_subprocess.return_value = process_mock
 
             result = await adapter.execute(request, "/tmp")

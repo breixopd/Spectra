@@ -108,7 +108,7 @@ run_in_docker() {
         -v "$PROJECT_ROOT/plugins:/app/plugins:ro" \
         "${artifact_mounts[@]}" \
         --entrypoint sh "$IMAGE" \
-        -c "pip install -q pytest pytest-asyncio pytest-dotenv aiosqlite aiohttp httpx pytest-cov 2>/dev/null && python3 -m pytest ${pytest_args[*]}"
+        -c "python3 -m pytest ${pytest_args[*]}"
 }
 
 run_stack_harness() {

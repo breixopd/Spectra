@@ -21,6 +21,10 @@ class TestEventType:
         assert EventType.LOGIN_SUCCESS.value == "login_success"
         assert EventType.LOGIN_FAILED.value == "login_failed"
 
+    def test_agent_state_stream_exists(self):
+        assert EventType.AGENT_STATE.value == "agent_state"
+        assert EventType.AGENT_STATE_CHANGED.value == "agent_state_changed"
+
 
 class TestEvent:
     def test_to_dict(self):

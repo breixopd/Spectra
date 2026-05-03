@@ -12,7 +12,7 @@ from spectra_ai.llm import get_global_llm_client
 from spectra_common.constants import (
     MAX_HOSTS_DEFAULT,
 )
-from spectra_platform.infrastructure.events import events
+from spectra_platform.infrastructure.events import EventType, events
 from spectra_platform.services.ai.agents.base import AgentContext
 from spectra_platform.services.ai.agents.mission_controller import (
     MissionController,
@@ -441,8 +441,8 @@ class MissionExecutionManager:
 
     def _broadcast_state(self, agent_id: str, status: str, **kwargs: Any) -> None:
         """Broadcast agent state."""
-        self._broadcast("agent_state", {"agent_id": agent_id, "status": status, **kwargs})
+        self._broadcast(EventType.AGENT_STATE, {"agent_id": agent_id, "status": status, **kwargs})
 
-    def _broadcast(self, msg_type: str, data: Any) -> None:
+    def _broadcast(self, msg_type: EventType | str, data: Any) -> None:
         """Broadcast to WebSocket clients via EventBus."""
         events.emit_sync(msg_type, "mission_manager", **data)
