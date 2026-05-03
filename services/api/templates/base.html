@@ -65,23 +65,30 @@
 
                 <!-- Navigation -->
                 {% from "macros/navigation.html" import nav_item %}
-                <nav class="flex flex-col gap-2">
+                <nav class="flex flex-col gap-1">
+                    <div class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Main</div>
                     {{ nav_item("/dashboard", "layout-dashboard", "Dashboard", active=(request.url.path == '/dashboard')) }}
                     {{ nav_item("/history", "history", "History", active=(request.url.path == '/history')) }}
+                    
+                    <div class="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Assessment</div>
                     {{ nav_item("/targets", "target", "Targets", active=(request.url.path == '/targets')) }}
-                    {{ nav_item("/reports", "file-text", "Reports", active=(request.url.path == '/reports')) }}
-                    {{ nav_item("/profile", "user-circle", "Account", active=(request.url.path == '/profile')) }}
                     {{ nav_item("/toolbox", "package", "Toolbox", active=(request.url.path == '/toolbox' or request.url.path.startswith('/toolbox/'))) }}
-                    {{ nav_item("/overseer", "bot", "Agents", active=(request.url.path == '/overseer')) }}
-                    {{ nav_item("/docs/api", "book-open", "Documentation", active=(request.url.path == '/docs/api')) }}
                     {{ nav_item("/manual", "terminal-square", "Manual Tools", active=(request.url.path == '/manual')) }}
+                    {{ nav_item("/overseer", "bot", "Agents", active=(request.url.path == '/overseer')) }}
+                    {{ nav_item("/reports", "file-text", "Reports", active=(request.url.path == '/reports')) }}
+                    
+                    <div class="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Settings</div>
+                    {{ nav_item("/profile", "user-circle", "Account", active=(request.url.path == '/profile')) }}
                     {{ nav_item("/settings", "settings-2", "Settings", active=(request.url.path == '/settings')) }}
+                    
+                    <div class="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Advanced</div>
+                    {{ nav_item("/docs/api", "book-open", "Documentation", active=(request.url.path == '/docs/api')) }}
                     {{ nav_item("/help", "help-circle", "Help Center", active=(request.url.path == '/help')) }}
-                    <a id="observability-nav-link" href="/observability" data-testid="observability-nav-link" class="hidden {% if request.url.path == '/observability' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg transition-colors group" data-tooltip="Platform metrics and traces" data-tooltip-pos="right">
+                    <a id="observability-nav-link" href="/observability" data-testid="observability-nav-link" class="hidden {% if request.url.path == '/observability' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg transition-colors group">
                         <i data-lucide="line-chart" class="w-4 h-4"></i>
                         <span class="ml-3 text-sm font-medium">Observability</span>
                     </a>
-                    <a id="admin-nav-link" href="/admin" data-testid="admin-nav-link" class="hidden {% if request.url.path == '/admin' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg transition-colors group" data-tooltip="Admin controls and oversight" data-tooltip-pos="right">
+                    <a id="admin-nav-link" href="/admin" data-testid="admin-nav-link" class="hidden {% if request.url.path == '/admin' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg transition-colors group">
                         <i data-lucide="shield-check" class="w-4 h-4"></i>
                         <span class="ml-3 text-sm font-medium">Admin</span>
                     </a>

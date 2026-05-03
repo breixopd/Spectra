@@ -62,7 +62,10 @@ input:focus, select:focus, textarea:focus {
 /* Tooltip system */
 [data-tooltip] {
     position: relative;
-    cursor: help;
+    cursor: default;
+}
+.sidebar a[data-tooltip] {
+    cursor: pointer;
 }
 [data-tooltip]::before,
 [data-tooltip]::after {
