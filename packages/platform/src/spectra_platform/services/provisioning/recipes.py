@@ -229,7 +229,7 @@ PROVISIONING_RECIPES: dict[str, list[ProvisionStep]] = {
                 "PGPASSWORD=$DB_PASS pg_dump -h $DB_HOST -U $DB_USER $DB_NAME "
                 "| gzip > /opt/spectra/backups/spectra_$TIMESTAMP.sql.gz\n"
                 "ls -t /opt/spectra/backups/spectra_*.sql.gz | tail -n +31 | xargs -r rm\n"
-                'echo "Backup completed: spectra_$TIMESTAMP.sql.gz"\n'
+                "echo \"Backup completed: spectra_$TIMESTAMP.sql.gz\"\n"
                 "BACKUP_EOF\n"
                 "chmod +x /opt/spectra/backup.sh"
             ),

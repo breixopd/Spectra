@@ -29,7 +29,7 @@ class RedisConnectionPool:
         """Return the shared connection pool, creating it on first call."""
         if cls._instance is None:
             redis_url = settings.REDIS_URL or settings.RATE_LIMIT_STORAGE
-            if not redis_url.startswith(("redis://", "rediss://")):
+            if not redis_url or not redis_url.startswith(("redis://", "rediss://")):
                 logger.warning("Redis URL not configured (%s); Redis cache disabled", redis_url)
                 return None
             try:
