@@ -3,6 +3,8 @@ let auditPage = 1, auditPerPage = 50;
 let allPlans = [];
 let currentUsers = [];
 
+var escapeHtml = window.escapeHtml || function(s) { var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; };
+
 const USER_ROLE_BADGE_CLASSES = {
     admin: 'badge-admin',
     operator: 'badge-operator',
