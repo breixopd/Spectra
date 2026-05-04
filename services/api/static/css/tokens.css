@@ -44,12 +44,12 @@
 
     /* Legacy aliases for backward compatibility */
     --bg: var(--color-bg-primary);
-    --bg-card: var(--color-bg-elevated);
-    --bg-card-hover: var(--color-bg-secondary);
+    --bg-card: rgba(255,255,255,0.03);
+    --bg-card-hover: rgba(255,255,255,0.06);
     --accent: var(--color-accent-green);
-    --accent-dim: var(--color-primary-glow);
+    --accent-dim: rgba(0,255,136,0.15);
     --violet: var(--color-primary);
-    --violet-dim: var(--color-primary-glow);
+    --violet-dim: rgba(139,92,246,0.15);
     --text: var(--color-text-primary);
     --text-muted: var(--color-text-muted);
     --border: var(--color-border);
