@@ -13,6 +13,9 @@
         if (typeof lucide !== 'undefined') lucide.createIcons({nodes: [icon]});
     };
 
+    var pwToggle = document.getElementById('password-toggle');
+    if (pwToggle) pwToggle.addEventListener('click', toggleLoginPassword);
+
     if (new URLSearchParams(window.location.search).get('setup') === 'complete') {
         var successMsg = document.getElementById('success-msg');
         successMsg.textContent = 'Setup complete! Please log in with your admin credentials.';
