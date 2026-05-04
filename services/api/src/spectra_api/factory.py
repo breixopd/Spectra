@@ -60,14 +60,22 @@ def _is_timeout_exempt_path(path: str) -> bool:
 
 
 def _safe_rate_limit_handler(request: Request, exc: Exception) -> StarletteResponse:
-    """Guard slowapi: only delegate real RateLimitExceeded; else 503."""
+    """Render nice HTML page for browsers, JSON for API clients."""
     if isinstance(exc, RateLimitExceeded):
+        if request.headers.get("accept", "").find("text/html") != -1 and not request.url.path.startswith("/api/"):
+            try:
+                templates = Jinja2Templates(directory="services/api/templates")
+                return HTMLResponse(
+                    templates.get_template("errors/429.html").render(
+                        detail="You have made too many requests. Please wait a moment and try again.",
+                        request=request,
+                    ),
+                    status_code=429,
+                )
+            except Exception:
+                pass
         return rate_limit_exceeded_handler_sync(request, exc)
-    logger.warning(
-        "slowapi handler received non-RateLimitExceeded exception: %s: %s",
-        type(exc).__name__,
-        exc,
-    )
+    logger.warning("slowapi handler received non-RateLimitExceeded: %s", type(exc).__name__)
     return JSONResponse({"error": "Service temporarily unavailable"}, status_code=503)
 
 
