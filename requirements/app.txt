@@ -6,35 +6,35 @@
 
 # Core Framework (all services)
 fastapi==0.136.1
-uvicorn[standard]==0.34.2
-pydantic[email]==2.12.5
-pydantic-settings==2.13.1
+uvicorn[standard]==0.46.0
+pydantic[email]==2.13.3
+pydantic-settings==2.14.0
 
 # Database (all services)
-sqlalchemy[asyncio]==2.0.48
+sqlalchemy[asyncio]==2.0.49
 asyncpg==0.31.0
 alembic==1.18.4
 
 # AI / LLM (API + AI service)
-openai==2.26.0
-tensorzero==2025.6.0
+openai==2.33.0
+tensorzero==2026.4.1
 httpx==0.28.1
 fastembed==0.8.0
 
 # Web & Templates (API only)
 jinja2==3.1.6
-nh3==0.3.4
-python-multipart==0.0.26
-websockets==14.2
+nh3==0.3.5
+python-multipart==0.0.27
+websockets==16.0
 aiohttp==3.13.5
 aiofiles==25.1.0
 
 # Rate Limiting (API only)
 slowapi==0.1.9
-redis[hiredis]==5.2.1
+redis[hiredis]==7.4.0
 
 # Security (all services)
-bcrypt==4.3.0
+bcrypt==5.0.0
 PyJWT[crypto]==2.12.1
 cryptography==47.0.0
 
@@ -46,8 +46,8 @@ python-dotenv==1.2.2
 psutil==7.2.2
 asyncssh==2.22.0
 jsonschema==4.26.0
-orjson==3.11.7
-json-repair==0.58.5
+orjson==3.11.8
+json-repair==0.59.5
 defusedxml==0.7.1
 
 # S3/MinIO (API only)
@@ -61,4 +61,4 @@ xhtml2pdf==0.2.17
 blinker==1.9.0
 
 # Email (API only — SMTP provider)
-aiosmtplib==3.0.0
+aiosmtplib==5.1.0
