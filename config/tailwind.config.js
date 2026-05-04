@@ -4,6 +4,13 @@ module.exports = {
     "./services/api/templates/**/*.html",
     "./services/api/static/js/**/*.js",
   ],
+  safelist: [
+    'md:flex-row', 'md:flex-col', 'lg:flex-row', 'sm:flex-row',
+    'lg:grid-cols-2', 'lg:grid-cols-4', 'lg:grid-cols-6', 'md:grid-cols-2', 'md:grid-cols-4',
+    'md:w-1/3', 'md:w-2/3', 'lg:w-1/2', 'md:w-1/2',
+    'hidden', 'md:hidden', 'lg:hidden', 'sm:hidden', 'lg:flex', 'md:flex', 'sm:flex',
+    'md:overflow-hidden', 'md:min-h-0', 'md:p-6', 'md:px-6', 'md:py-4',
+  ],
   theme: {
     extend: {
       colors: {
