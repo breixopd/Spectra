@@ -238,16 +238,21 @@ async def work_loop():
     queue_name = os.environ.get("QUEUE_NAME", "default")
 
     await startup()
+    crash_count = 0
+    max_backoff = 300
     try:
         while True:
             try:
                 await worker_loop(_WORKER_FUNCTIONS, queue_name=queue_name)
+                crash_count = 0
                 break  # Normal exit (e.g. cancelled)
             except asyncio.CancelledError:
                 raise
             except Exception:
-                logger.exception("Work loop crashed unexpectedly, restarting in 5s")
-                await asyncio.sleep(5)
+                crash_count += 1
+                delay = min(2 ** min(crash_count, 8), max_backoff)
+                logger.exception("Work loop crashed (attempt %d), restarting in %ds", crash_count, delay)
+                await asyncio.sleep(delay)
     finally:
         await shutdown()
 

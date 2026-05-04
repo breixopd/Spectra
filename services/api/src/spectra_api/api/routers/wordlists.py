@@ -90,9 +90,11 @@ async def list_wordlists(
         if f.is_file() and not f.name.startswith("."):
             lines = 0
             try:
+                line_count = 0
                 async with aiofiles.open(f, errors="ignore") as fh:
-                    content = await fh.read()
-                lines = len(content.splitlines())
+                    async for _ in fh:
+                        line_count += 1
+                lines = line_count
             except (OSError, ValueError) as e:
                 logger.debug("Failed to count wordlist lines: %s", e)
             system.append(
@@ -113,9 +115,11 @@ async def list_wordlists(
         if f.is_file() and not f.name.startswith("."):
             lines = 0
             try:
+                line_count = 0
                 async with aiofiles.open(f, errors="ignore") as fh:
-                    content = await fh.read()
-                lines = len(content.splitlines())
+                    async for _ in fh:
+                        line_count += 1
+                lines = line_count
             except (OSError, ValueError) as e:
                 logger.debug("Failed to count wordlist lines: %s", e)
             user_local.append(

@@ -95,6 +95,7 @@ class JobQueue(InfrastructureBase):
 
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
     max_retries: Mapped[int] = mapped_column(Integer, default=3)
+    next_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(id={self.id!r})>"

@@ -75,6 +75,15 @@ _ERROR_HANDLERS: list[tuple] = [
     (504, "Request timeout", "errors/504.html"),
 ]
 
+# status_code -> (default_detail, template, log_exception)
+_HTTP_ERROR_META: dict[int, tuple[str, str, bool]] = {}
+for row in _ERROR_HANDLERS:
+    code = row[0]
+    default_detail = row[1]
+    template = row[2]
+    log_exc = row[3] if len(row) > 3 else False
+    _HTTP_ERROR_META[code] = (default_detail, template, log_exc)
+
 
 def register_exception_handlers(app: FastAPI, templates: Jinja2Templates) -> None:
     @app.exception_handler(SpectraError)
@@ -112,5 +121,53 @@ def register_exception_handlers(app: FastAPI, templates: Jinja2Templates) -> Non
             content=error_response.model_dump(exclude_none=True),
         )
 
-    for entry in _ERROR_HANDLERS:
-        app.exception_handler(StarletteHTTPException)(make_error_handler(templates, *entry))
+    @app.exception_handler(StarletteHTTPException)
+    async def starlette_http_exception_handler(
+        request: Request, exc: StarletteHTTPException
+    ) -> StarletteResponse:
+        """Handle Starlette/FastAPI HTTPException using the *exception's* status code.
+
+        A single registration is required: registering the same exception type in a loop
+        leaves only the last handler (previously 504), which turned every API error into a timeout.
+        """
+        status_code = exc.status_code
+
+        if status_code == 429 and request.url.path.startswith("/api/"):
+            if isinstance(exc, RateLimitExceeded):
+                return rate_limit_exceeded_handler_sync(request, exc)
+            exc_headers = getattr(exc, "headers", None)
+            detail = getattr(exc, "detail", None) or "Too many requests"
+            if not isinstance(detail, str):
+                detail = str(detail)
+            error_response = ErrorResponse(detail=detail, status_code=429)
+            return JSONResponse(
+                error_response.model_dump(exclude_none=True),
+                status_code=429,
+                headers=exc_headers,
+            )
+
+        meta = _HTTP_ERROR_META.get(status_code)
+        if meta is None:
+            detail = getattr(exc, "detail", None) or "Error"
+            if not isinstance(detail, str):
+                detail = str(detail)
+            error_response = ErrorResponse(detail=detail, status_code=status_code)
+            return JSONResponse(error_response.model_dump(exclude_none=True), status_code=status_code)
+
+        default_detail, template, log_exc = meta
+        if log_exc:
+            logger.exception("HTTP %s: %s", status_code, exc)
+
+        detail = getattr(exc, "detail", None) or default_detail
+        if status_code >= 500:
+            detail = default_detail
+        if not isinstance(detail, str):
+            detail = str(detail)
+
+        if wants_html(request):
+            return HTMLResponse(
+                content=templates.get_template(template).render(detail=detail),
+                status_code=status_code,
+            )
+        error_response = ErrorResponse(detail=detail, status_code=status_code)
+        return JSONResponse(error_response.model_dump(exclude_none=True), status_code=status_code)

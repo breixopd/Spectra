@@ -9,7 +9,7 @@ FROM ${PYTHON_BASE_IMAGE} AS builder
 WORKDIR /build
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     pkg-config \
@@ -20,13 +20,14 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements/ai.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r ai.txt
 
 # ── Runtime stage ──
 FROM ${PYTHON_BASE_IMAGE}
 
-ARG BUILD_VERSION=2026.05.03
+ARG BUILD_VERSION=dev
 LABEL org.opencontainers.image.title="Spectra AI" \
       org.opencontainers.image.description="AI-Driven Security Assessment Platform — AI Service" \
       org.opencontainers.image.source="https://github.com/breixopd14/spectra" \
@@ -36,7 +37,9 @@ ENV SPECTRA_BUILD_VERSION="${BUILD_VERSION}"
 
 WORKDIR /app
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
     netcat-openbsd \

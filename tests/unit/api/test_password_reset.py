@@ -131,6 +131,8 @@ class TestResetPasswordEndpoint:
             with (
                 patch("spectra_api.api.routers.auth.password.limiter") as mock_limiter,
                 patch("spectra_platform.repositories.user.UserRepository.get_by_id", new_callable=AsyncMock, return_value=fake_user),
+                patch("spectra_api.api.routers.auth.password.audit_log_event", new_callable=AsyncMock),
+                patch("spectra_api.api.routers.auth.password.invalidate_token", new_callable=AsyncMock),
             ):
                 mock_limiter.limit.return_value = lambda f: f
                 resp = client.post(

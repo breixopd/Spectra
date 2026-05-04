@@ -18,4 +18,4 @@ root_domain = ".web.garage.localhost"
 
 [admin]
 api_bind_addr = "[::]:3903"
-admin_token = "test-admin"
+# admin_token is injected via GARAGE_ADMIN_TOKEN environment variable.

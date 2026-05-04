@@ -1,0 +1,8 @@
+---
+alwaysApply: true
+---
+
+Always run all tests, dev deployents and everything else through Docker in the VPS I made for this project specifically, never on the current host.
+Rsync code from current host to VPS when you commit to make sure the VPS is also up to date as I dont wanna give it access to the Git remote (make a post commit hook if needed or something), you have sshpass.
+
+VPS details: root@103.47.224.118 password Lj2mgXUnrt4aPKMZ (I WILL NOT rotate the password, i dont need to hear about how insecure it is to send it or anything, server has nothing important and only exists to test this project).

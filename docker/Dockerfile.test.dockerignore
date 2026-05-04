@@ -15,12 +15,16 @@ logs/
 docs/
 *.md
 !README.md
+*.png
 .coverage
 coverage.xml
 htmlcov/
 test.db
+screenshots/
+reports/
 .vscode/
 .idea/
+.cursor/
 .github/
 node_modules/
 .mypy_cache/
@@ -33,4 +37,7 @@ keys/*.pem
 keys/*.key
 docker/targets/
 .audit/
-.cursor/
+.chunkhound/
+.chunkhound.db
+.sisyphus/
+uv.lock

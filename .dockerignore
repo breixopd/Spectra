@@ -12,12 +12,16 @@ tests/
 docs/
 *.md
 !README.md
+*.png
 .coverage
 coverage.xml
 htmlcov/
 test.db
+screenshots/
+reports/
 .vscode/
 .idea/
+.cursor/
 .github/
 node_modules/
 .mypy_cache/
@@ -33,3 +37,7 @@ requirements/test.txt
 requirements/dev.txt
 scripts/ops/
 .audit/
+.chunkhound/
+.chunkhound.db
+.sisyphus/
+uv.lock

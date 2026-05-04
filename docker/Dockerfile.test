@@ -51,10 +51,13 @@ COPY config/ config/
 COPY alembic/ alembic/
 COPY services/api/static/ spectra_api/static/
 COPY services/api/templates/ spectra_api/templates/
+COPY services/api/static/ services/api/static/
+COPY services/api/templates/ services/api/templates/
 COPY pyproject.toml .
 
 # Add non-root user for security
-RUN useradd --create-home --shell /bin/bash testuser
+RUN useradd --create-home --shell /bin/bash testuser \
+    && mkdir -p /app/.ruff_cache && chown testuser:testuser /app/.ruff_cache
 USER testuser
 
 # Health check for the test container

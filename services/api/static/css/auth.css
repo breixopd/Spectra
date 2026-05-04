@@ -1,13 +1,7 @@
 /* auth.css — Shared styles for register, forgot_password, reset_password */
 
+@import url('/static/css/tokens.css');
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-:root {
-    --bg: #0a0a0f; --accent: #00ff88; --accent-dim: rgba(0,255,136,0.12);
-    --violet: #8b5cf6; --violet-dim: rgba(139,92,246,0.15);
-    --text: #e2e8f0; --text-muted: #64748b;
-    --border: rgba(255,255,255,0.06); --border-hover: rgba(255,255,255,0.12);
-    --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
-}
 body {
     margin: 0;
     min-height: 100vh;

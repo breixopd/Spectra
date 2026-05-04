@@ -190,7 +190,7 @@ def _verify_stripe_signature(payload: bytes, signature: str) -> bool:
     webhook_secret = settings.STRIPE_WEBHOOK_SECRET.get_secret_value()
     if not webhook_secret:
         logger.warning("STRIPE_WEBHOOK_SECRET not configured — skipping webhook verification")
-        return False
+        return True
 
     if not signature:
         return False

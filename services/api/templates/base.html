@@ -31,7 +31,7 @@
     <script src="/static/js/shared-utils.js?v=20260503"></script>
     <script src="/static/js/confirm.js?v=20260503" nonce="{{ request.state.csp_nonce }}"></script>
 </head>
-<body class="bg-[#0a0e1a] text-slate-300 font-sans antialiased overflow-y-auto md:overflow-hidden h-screen selection:bg-violet-500/30 selection:text-violet-200">
+<body class="bg-[#0a0e1a] text-slate-300 font-sans antialiased min-h-screen md:overflow-hidden selection:bg-violet-500/30 selection:text-violet-200">
     <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-violet-600 focus:text-white">Skip to content</a>
     <!-- Global system status bar -->
     <div id="global-status-bar" class="hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-violet-900/90 via-indigo-900/90 to-violet-900/90 backdrop-blur-md border-b border-violet-500/20 px-4 py-2 text-center text-sm text-white shadow-lg">
@@ -48,12 +48,12 @@
         {% if not is_public_page %}
         <!-- Mobile header -->
         <div class="mobile-header">
-            <button class="hamburger-btn" data-action="toggleSidebar" aria-label="Toggle navigation">
+            <button class="hamburger-btn" data-action="toggleSidebar" aria-label="Toggle navigation" aria-expanded="false">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
             <span class="text-white font-semibold text-lg">Spectra</span>
         </div>
-        <aside id="sidebar" class="sidebar" data-testid="sidebar">
+        <aside id="sidebar" class="sidebar" data-testid="sidebar" aria-label="Main navigation">
             <div class="p-4 h-full flex flex-col">
                 <!-- Logo -->
                 <div class="flex items-center gap-3 px-3 mb-8">
