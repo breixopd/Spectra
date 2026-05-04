@@ -9,6 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from slowapi.errors import RateLimitExceeded
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import Response as StarletteResponse
 
 from spectra_api.api.schemas.common import ErrorResponse
@@ -112,4 +113,4 @@ def register_exception_handlers(app: FastAPI, templates: Jinja2Templates) -> Non
         )
 
     for entry in _ERROR_HANDLERS:
-        app.exception_handler(entry[0])(make_error_handler(templates, *entry))
+        app.exception_handler(StarletteHTTPException)(make_error_handler(templates, *entry))
