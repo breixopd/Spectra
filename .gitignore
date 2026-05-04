@@ -53,3 +53,5 @@ test.db
 admin-dashboard-final.png
 dashboard-fixed.png
 .playwright-mcp/
+package-lock.json
+package.json
