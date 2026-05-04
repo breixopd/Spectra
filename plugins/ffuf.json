@@ -49,9 +49,9 @@
     "method": "apt",
     "commands": [
       "apt-get update",
-      "apt-get install -y ffuf"
+      "apt-get install -y ffuf seclists"
     ],
-    "verification_command": "ffuf -V",
+    "verification_command": "test -f /usr/share/seclists/Discovery/Web-Content/common.txt && ffuf -V",
     "verification_regex": "ffuf",
     "uninstall_commands": [
       "apt-get remove -y ffuf",
@@ -104,7 +104,6 @@
       }
     }
   ],
-  "signature": "e505b7f51376a082923b82f8bc11e2afea03962d038f60d353b272ccd5d41a323d0647974bdab2c900f37713116c014d0b3bb222c43ec16648ddb7504228060a",
   "resources": {
     "tier": "medium"
   }

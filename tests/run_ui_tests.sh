@@ -1,15 +1,45 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-COMPOSE_FILE="docker/docker-compose.test.yml"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+COMPOSE_FILE="docker/compose.yaml"
+export GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}"
+export GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
+
+cleanup() {
+    echo ""
+    echo "Cleaning up test environment..."
+    docker compose -f "$COMPOSE_FILE" --profile app --profile test down -v --remove-orphans 2>/dev/null || true
+}
+
+trap cleanup EXIT
 
 echo "=== Spectra UI Tests ==="
+echo "Resetting test environment..."
+
+cd "$PROJECT_DIR"
+
+# Match integration/e2e: use .env.test for compose env_file so RATE_LIMIT_*, API keys, etc. apply.
+if [[ -f "$PROJECT_DIR/.env.test" ]]; then
+  export ENV_FILE="$PROJECT_DIR/.env.test"
+fi
+
+docker compose -f "$COMPOSE_FILE" --profile app --profile test down -v --remove-orphans 2>/dev/null || true
+
 echo "Starting test environment..."
 
-cd "$(dirname "$0")/.."
+# Start prerequisites and bootstrap Garage before app startup
+docker compose -f "$COMPOSE_FILE" up -d --force-recreate db redis garage
 
-# Start services
-docker compose -f "$COMPOSE_FILE" up -d --force-recreate db app
+GARAGE_CONTAINER="$(docker compose -f "$COMPOSE_FILE" ps -q garage)"
+GARAGE_CONTAINER="$GARAGE_CONTAINER" \
+GARAGE_ACCESS_KEY="$GARAGE_ACCESS_KEY" \
+GARAGE_SECRET_KEY="$GARAGE_SECRET_KEY" \
+bash ./docker/garage-init.sh
+
+docker compose -f "$COMPOSE_FILE" --profile app build app
+docker compose -f "$COMPOSE_FILE" --profile app up -d --force-recreate app
 
 # Wait for app to be ready
 echo "Waiting for app to be ready..."
@@ -23,7 +53,7 @@ done
 
 # Run setup if needed
 echo "Setting up test user..."
-docker compose -f "$COMPOSE_FILE" exec -T app python3 -c "import json, sys, urllib.error, urllib.request; req = urllib.request.Request('http://127.0.0.1:5000/api/auth/setup', data=json.dumps({'user': {'username': 'admin', 'email': 'admin@test.com', 'password': 'TestPassword123!'}, 'provider_profiles': {'default': {'provider': 'mock', 'model': 'mock'}}, 'provider_routing': {'default': 'default'}, 'provider_fallbacks': {'default': []}}).encode(), headers={'Content-Type': 'application/json'}); 
+docker compose -f "$COMPOSE_FILE" exec -T app python3 -c "import json, sys, urllib.error, urllib.request; req = urllib.request.Request('http://127.0.0.1:5000/api/v1/auth/setup', data=json.dumps({'user': {'username': 'admin', 'email': 'admin@test.com', 'password': 'TestPassword123!'}, 'provider_profiles': {'default': {'provider': 'mock', 'model': 'mock'}}, 'provider_routing': {'default': 'default'}, 'provider_fallbacks': {'default': []}}).encode(), headers={'Content-Type': 'application/json'}); 
 try:
     urllib.request.urlopen(req, timeout=10)
     print('Setup completed.')
@@ -36,7 +66,9 @@ except urllib.error.HTTPError as exc:
 
 # Run Playwright tests
 echo "Running UI tests..."
-docker compose -f "$COMPOSE_FILE" build ui-test-runner
-docker compose -f "$COMPOSE_FILE" run --rm ui-test-runner "$@"
+docker compose -f "${COMPOSE_FILE}" --profile test build ui-test-runner
+# Playwright runs in ui-test-runner on the compose network: reach the API as service `app:5000`
+# (Caddy on host :15080 is for manual browser testing, not this job.)
+docker compose -f "${COMPOSE_FILE}" --profile test run --rm -e APP_BASE_URL=http://app:5000 ui-test-runner tests/e2e/ui/ -v --tb=short -x -p no:cov --confcutdir=tests/e2e/ui --override-ini=addopts= "$@"
 
 echo "=== Done ==="

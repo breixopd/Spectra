@@ -1,0 +1,61 @@
+import Caddyfile.snippets
+
+{
+	auto_https off
+	admin off
+}
+
+:80 {
+	import security_headers
+
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+
+	route {
+		request_body {
+			max_size 50MB
+		}
+
+		handle /static/* {
+			header Cache-Control "public, max-age=3600"
+			reverse_proxy app:5000 app-replica:5000
+		}
+
+		handle @websocket {
+			reverse_proxy app:5000 app-replica:5000
+		}
+
+		# High limits for burst/load testing
+		import rate_limit_public 10000
+
+		rate_limit {
+			zone setup_status_edge {
+				match {
+					path /api/v1/auth/setup/status
+				}
+				key {remote_host}
+				events 10000
+				window 1m
+			}
+		}
+
+		reverse_proxy app:5000 app-replica:5000 {
+			lb_policy round_robin
+			health_uri /api/health
+			health_interval 10s
+			health_timeout 5s
+
+			import proxy_defaults
+		}
+	}
+
+	import error_pages
+
+	log {
+		output stdout
+		format console
+		level DEBUG
+	}
+}

@@ -16,10 +16,12 @@ Each mission runs in its own ephemeral Docker container with a dedicated worker.
 
 | Layer | Image | Contents |
 | ------- | ------- | ---------- |
-| Base | `spectra-tools:base` | Dockerfile.tools — Kali + core OS tools (nmap, nikto, sqlmap, etc.) |
-| Latest | `spectra-tools:latest` | Base + all plugin tools installed |
+| Base | `spectra-tools:base` | `docker/Dockerfile.worker` base tooling — Kali rolling + OS essentials (curl, git, networking, VPN tools). No security tools preinstalled. |
+| Golden | `spectra-tools:latest` | Base plus Dockerfile `RUN` layers generated from current `plugins/*.json` install steps (built image), not a runtime “install everything on first boot” step |
 
-**Rebuild trigger**: When plugins change (upload/remove), the golden image is automatically rebuilt (`SANDBOX_AUTO_BUILD_IMAGE=true`).
+The base image is intentionally minimal (~1.1 GB). Security scanners and similar tools are added when the golden pipeline rebuilds `spectra-tools:latest` from plugin definitions; new sandboxes pull that tag. Individual tool runs can still trigger installs if a plugin marks something missing.
+
+**Rebuild trigger**: When plugins change (upload/remove via the API or `PLUGIN_UPDATED` event), the golden image is rebuilt automatically — required for ephemeral workers to pull consistent tool images.
 
 **Build process**:
 
@@ -27,9 +29,9 @@ Each mission runs in its own ephemeral Docker container with a dedicated worker.
 2. Generate ephemeral Dockerfile `FROM spectra-tools:base`
 3. `docker build` → tag as `spectra-tools:latest`
 4. Docker layer caching keeps unchanged layers fast
-5. Background task — sandboxes use existing `:latest` until new build completes
+5. Until the new image is ready, sandboxes keep using the previous `:latest`; swap happens when the build finishes
 
-**Image scanning**: Golden images are scanned for CVEs after each build (`SANDBOX_IMAGE_SCAN_ENABLED=true`).
+**Image scanning**: Golden images are scanned for CVEs after each successful build when Grype is available.
 
 ---
 
@@ -43,7 +45,7 @@ Network: spectra-network
 Capabilities: NET_ADMIN, NET_RAW (all others dropped)
 Devices: /dev/net/tun
 Volumes: reports/missions/{id}/ (rw)
-Entrypoint: python -m app.worker --queue=mission_{id}
+Entrypoint: `uvicorn spectra_worker.main:app` (queue via `QUEUE_NAME`); ephemeral sandboxes use images produced from the golden-image pipeline.
 Resource limits: memory (2GB default), CPU (512 shares default)
 Name: spectra-sandbox-{mission_id[:8]}
 ```
@@ -100,7 +102,7 @@ When a tool exits with code 137 (OOM killed), the sandbox is automatically recre
 | ----------- | --------- | ------------------------------- |
 | stdout/stderr | Job result in PostgreSQL | Yes |
 | Parsed findings | Mission object + DB | Yes |
-| Output files (nmap XML, etc.) | S3/MinIO or mounted volume | Yes |
+| Output files (nmap XML, etc.) | S3 or mounted volume | Yes |
 | Mission logs | DB | Yes |
 | Tool cache | App container CacheService | Yes (shared) |
 
@@ -108,14 +110,14 @@ When a tool exits with code 137 (OOM killed), the sandbox is automatically recre
 
 When `S3_ENDPOINT_URL` is configured, mission artifacts are stored in S3-compatible storage instead of local volumes. This enables multi-server setups where sandboxes run on different hosts.
 
-See [Scaling](scaling.md) for MinIO/S3 setup details.
+See [Scaling](scaling.md) for Garage/S3 setup details.
 
 ---
 
 ## Wordlist Management
 
-- **Seclists** are baked into the golden image (~700MB, installed via apt)
-- Plugin `args_templates` reference `/usr/share/seclists/` paths
+- **Seclists** and other wordlists are installed on demand via plugin install commands — they are not baked into the base image
+- Plugin `args_templates` reference `/usr/share/seclists/` paths (available after the relevant tool installs its dependencies)
 - **User wordlists** go on a named volume `spectra_wordlists` mounted read-only into sandboxes
 - The app container mounts the same volume read-write for uploads via the API
 
@@ -184,11 +186,12 @@ Sandboxes are destroyed if no heartbeat is received within `SANDBOX_IDLE_TIMEOUT
 
 ## Warm Pool
 
-Pre-warmed idle containers for instant mission start (`SANDBOX_WARM_POOL_ENABLED=false` by default):
+Pre-warmed idle containers for instant mission start (always active):
 
-- Maintains `SANDBOX_WARM_POOL_SIZE` idle containers ready for assignment
+- Maintains an automatically sized idle warm pool (from registered sandbox_worker nodes)
 - When a mission requests a sandbox, assign a pre-warmed one
 - Spin up a replacement in the background
+- Pool size follows registered **sandbox_worker** hosts (see configuration wiki)
 
 ---
 

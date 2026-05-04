@@ -1,26 +1,31 @@
 """Tests for manual mode backend services and API endpoints."""
 
-import json
+from types import SimpleNamespace
 
 import pytest
+from pydantic import ValidationError
 
-from app.services.system.checklists import (
+from spectra_api.api.routers.manual_helpers import (
+    GenerateReportRequest,
+    _build_report_source_from_mission,
+)
+from spectra_platform.services.system.checklists import (
     BUILTIN_CHECKLISTS,
     get_checklist,
     list_checklists,
 )
-from app.services.system.cvss import calculate_cvss31
-from app.services.system.gtfobins import GTFOBINS, search_gtfobins
-from app.services.system.payloads import (
+from spectra_platform.services.system.cvss import calculate_cvss31
+from spectra_platform.services.system.gtfobins import GTFOBINS, search_gtfobins
+from spectra_platform.services.system.payloads import (
     LFI_PAYLOADS,
     SQLI_PAYLOADS,
     XSS_PAYLOADS,
     get_payloads,
     list_payload_types,
 )
-from app.services.system.report_templates import (
+from spectra_platform.services.system.report_templates import (
     REPORT_TEMPLATES,
-    generate_report_data,
+    build_report_data,
     get_report_template,
     list_report_templates,
 )
@@ -217,33 +222,54 @@ class TestReportTemplates:
     def test_get_template_not_found(self):
         assert get_report_template("nonexistent") is None
 
-    def test_generate_report_unknown_template(self, tmp_path):
-        with pytest.raises(ValueError, match="Unknown template"):
-            generate_report_data(tmp_path / "session.json", "bad_template")
 
-    def test_generate_report_missing_session(self, tmp_path):
-        with pytest.raises(FileNotFoundError):
-            generate_report_data(tmp_path / "missing.json", "executive")
+class TestGenerateReportRequest:
+    def test_accepts_mission_with_template_id(self):
+        req = GenerateReportRequest(mission_id="mission-1", template_id="executive")
 
-    def test_generate_report_success(self, tmp_path):
-        session_file = tmp_path / "test.json"
-        session_file.write_text(
-            json.dumps(
-                {
-                    "id": "test",
-                    "name": "Test Session",
-                    "target": "192.168.1.1",
-                    "findings": [
-                        {"title": "SQLi", "severity": "high"},
-                        {"title": "XSS", "severity": "medium"},
-                    ],
-                    "tools_used": ["nmap"],
-                    "command_history": [],
-                }
-            )
+        assert req.mission_id == "mission-1"
+        assert req.template_id == "executive"
+
+    def test_rejects_missing_template_id(self):
+        with pytest.raises(ValidationError, match="template_id is required"):
+            GenerateReportRequest(mission_id="mission-1")
+
+    def test_rejects_missing_report_source(self):
+        with pytest.raises(ValidationError, match="Provide exactly one of session_id or mission_id"):
+            GenerateReportRequest(template_id="technical")
+
+    def test_rejects_ambiguous_report_source(self):
+        with pytest.raises(ValidationError, match="Provide exactly one of session_id or mission_id"):
+            GenerateReportRequest(session_id="session-1", mission_id="mission-1", template_id="technical")
+
+
+class TestMissionReportSourceMapping:
+    def test_build_report_source_from_mission_maps_expected_fields(self):
+        mission = SimpleNamespace(
+            id="mission-1",
+            target="corp.internal",
+            directive="Internal assessment",
+            logs=[{"message": "scanned"}],
+            attack_surface={"hosts": ["corp.internal"]},
+            summary={
+                "tools_run": ["nmap", "nuclei"],
+                "findings": [
+                    {
+                        "title": "SQL Injection",
+                        "severity": "high",
+                        "description": "Unsanitized query",
+                        "tool_source": "sqlmap",
+                    }
+                ],
+            },
         )
-        result = generate_report_data(session_file, "technical")
-        assert result["template"] == "technical"
-        assert result["total_findings"] == 2
-        assert result["severity_counts"]["high"] == 1
-        assert result["severity_counts"]["medium"] == 1
+
+        source = _build_report_source_from_mission(mission)
+        result = build_report_data(source, "technical")
+
+        assert result["session_id"] == "mission-1"
+        assert result["session_name"] == "Internal assessment"
+        assert result["target"] == "corp.internal"
+        assert result["tools_used"] == ["nmap", "nuclei"]
+        assert result["command_history"] == [{"message": "scanned"}]
+        assert result["total_findings"] == 1

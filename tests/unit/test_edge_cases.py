@@ -1,29 +1,26 @@
 """Additional edge case tests for RBAC, encryption, token blacklist, and lockout."""
 
-import time
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
 
-from app.api.routers.auth import (
+from spectra_api.api.routers.auth._helpers import (
     LOCKOUT_THRESHOLD_1,
     LOCKOUT_THRESHOLD_2,
     _check_lockout,
-    _lockout_lock,
-    _login_failures,
     _record_failure,
-    _reset_failures,
 )
-from app.core.encryption import (
+from spectra_api.authz import ROLE_PERMISSIONS, Permission, has_permission
+from spectra_platform.auth.encryption import (
     decrypt_field,
     decrypt_sensitive_fields,
     encrypt_field,
     encrypt_sensitive_fields,
     is_sensitive_key,
 )
-from app.core.rbac import ROLE_PERMISSIONS, Permission, has_permission
-from app.core.security import (
-    _blacklist_lock,
+from spectra_platform.auth.security import (
     _blacklisted_tokens,
     _user_token_blacklist,
     create_access_token,
@@ -39,7 +36,7 @@ class TestRBACPermissions:
         for perm in Permission:
             assert has_permission("admin", perm), f"Admin missing {perm}"
 
-    def test_viewer_cannot_write(self):
+    def test_staff_cannot_write(self):
         write_perms = [
             Permission.CREATE_MISSIONS,
             Permission.MANAGE_MISSIONS,
@@ -47,30 +44,36 @@ class TestRBACPermissions:
             Permission.MANAGE_TARGETS,
             Permission.USE_TOOLS,
             Permission.MANAGE_SETTINGS,
-            Permission.MANAGE_USERS,
+            Permission.SHELL_ACCESS,
+            Permission.ROLLBACK_OWN_ACTIONS,
         ]
         for perm in write_perms:
-            assert not has_permission("viewer", perm), f"Viewer should not have {perm}"
+            assert not has_permission("staff", perm), f"Staff should not have {perm}"
 
-    def test_viewer_can_read(self):
+    def test_staff_can_read(self):
         read_perms = [
             Permission.VIEW_MISSIONS,
             Permission.VIEW_FINDINGS,
             Permission.VIEW_TARGETS,
             Permission.VIEW_REPORTS,
+            Permission.MANAGE_USERS,
+            Permission.VIEW_AUDIT_LOG,
+            Permission.VIEW_MONITORING,
         ]
         for perm in read_perms:
-            assert has_permission("viewer", perm), f"Viewer missing {perm}"
+            assert has_permission("staff", perm), f"Staff missing {perm}"
 
-    def test_operator_can_do_missions(self):
-        assert has_permission("operator", Permission.CREATE_MISSIONS)
-        assert has_permission("operator", Permission.MANAGE_MISSIONS)
-        assert has_permission("operator", Permission.USE_TOOLS)
+    def test_user_can_do_missions(self):
+        assert has_permission("user", Permission.CREATE_MISSIONS)
+        assert has_permission("user", Permission.MANAGE_MISSIONS)
+        assert has_permission("user", Permission.USE_TOOLS)
 
-    def test_operator_cannot_manage_settings(self):
-        assert not has_permission("operator", Permission.MANAGE_SETTINGS)
-        assert not has_permission("operator", Permission.MANAGE_USERS)
-        assert not has_permission("operator", Permission.VIEW_AUDIT_LOG)
+    def test_user_cannot_manage_settings(self):
+        assert not has_permission("user", Permission.MANAGE_SETTINGS)
+        assert not has_permission("user", Permission.MANAGE_USERS)
+
+    def test_user_cannot_view_audit_log(self):
+        assert not has_permission("user", Permission.VIEW_AUDIT_LOG)
 
     def test_unknown_role_has_no_permissions(self):
         for perm in Permission:
@@ -78,8 +81,8 @@ class TestRBACPermissions:
 
     def test_role_permissions_dict_has_expected_roles(self):
         assert "admin" in ROLE_PERMISSIONS
-        assert "operator" in ROLE_PERMISSIONS
-        assert "viewer" in ROLE_PERMISSIONS
+        assert "staff" in ROLE_PERMISSIONS
+        assert "user" in ROLE_PERMISSIONS
 
 
 # --- Encryption Tests ---
@@ -109,7 +112,7 @@ class TestEncryption:
 
     def test_different_secrets_incompatible(self):
         encrypted = encrypt_field("data", "key1")
-        with pytest.raises((ValueError, TypeError, Exception)):  # noqa: B017
+        with pytest.raises((ValueError, TypeError, Exception)):
             decrypt_field(encrypted, "key2")
 
     def test_is_sensitive_key_true(self):
@@ -168,93 +171,99 @@ class TestEncryption:
     def test_decrypt_invalid_token_returns_as_is(self):
         data = {"password": "not-a-valid-fernet-token"}
         result = decrypt_sensitive_fields(data, "key")
-        assert result["password"] == "not-a-valid-fernet-token"
+        assert result["password"] is None
 
 
 # --- Token Blacklist Extended Tests ---
 
 
 @pytest.fixture(autouse=True)
-def _clear_state():
-    """Clear blacklist and lockout state."""
-    with _blacklist_lock:
-        _blacklisted_tokens.clear()
-        _user_token_blacklist.clear()
-    with _lockout_lock:
-        _login_failures.clear()
+def _clear_blacklist_state():
+    """Clear in-memory token blacklist state between tests."""
+    from spectra_platform.auth.security import _blacklist_ready
+
+    _blacklisted_tokens.clear()
+    _user_token_blacklist.clear()
+    _blacklist_ready.set()
     yield
-    with _blacklist_lock:
-        _blacklisted_tokens.clear()
-        _user_token_blacklist.clear()
-    with _lockout_lock:
-        _login_failures.clear()
+    _blacklisted_tokens.clear()
+    _user_token_blacklist.clear()
 
 
 class TestTokenBlacklistExtended:
-    def test_multiple_tokens_blacklisted(self):
+    @pytest.mark.asyncio
+    async def test_multiple_tokens_blacklisted(self):
         t1 = create_access_token(data={"sub": "user1"})
         t2 = create_access_token(data={"sub": "user2"})
-        invalidate_token(t1)
-        invalidate_token(t2)
-        assert is_token_blacklisted(t1)
-        assert is_token_blacklisted(t2)
+        await invalidate_token(t1)
+        await invalidate_token(t2)
+        assert await is_token_blacklisted(t1)
+        assert await is_token_blacklisted(t2)
 
-    def test_blacklist_does_not_affect_other_tokens(self):
+    @pytest.mark.asyncio
+    async def test_blacklist_does_not_affect_other_tokens(self):
         t1 = create_access_token(data={"sub": "user1"})
         t2 = create_access_token(data={"sub": "user2"})
-        invalidate_token(t1)
-        assert is_token_blacklisted(t1)
-        assert not is_token_blacklisted(t2)
+        await invalidate_token(t1)
+        assert await is_token_blacklisted(t1)
+        assert not await is_token_blacklisted(t2)
 
 
-# --- Account Lockout Extended Tests ---
+# --- Account Lockout Tests (DB-based) ---
 
 
-class TestAccountLockoutExtended:
-    def test_progressive_lockout_5_attempts(self):
-        ip = "172.16.0.1"
-        for _ in range(LOCKOUT_THRESHOLD_1):
-            _record_failure(ip)
+def _make_user(fail_count=0, locked_until=None):
+    """Create a mock User object for lockout testing."""
+    user = MagicMock()
+    user.login_fail_count = fail_count
+    user.locked_until = locked_until
+    return user
 
+
+class TestAccountLockout:
+    @pytest.mark.asyncio
+    async def test_check_lockout_raises_when_locked(self):
+        now = datetime.now(UTC)
+        user = _make_user(locked_until=now + timedelta(minutes=5))
         with pytest.raises(HTTPException) as exc:
-            _check_lockout(ip)
+            await _check_lockout(user)
         assert exc.value.status_code == 429
 
-    def test_progressive_lockout_10_attempts(self):
-        ip = "172.16.0.2"
-        for _ in range(LOCKOUT_THRESHOLD_2):
-            _record_failure(ip)
+    @pytest.mark.asyncio
+    async def test_check_lockout_passes_when_not_locked(self):
+        user = _make_user(locked_until=None)
+        await _check_lockout(user)  # Should not raise
 
-        with pytest.raises(HTTPException) as exc:
-            _check_lockout(ip)
-        assert exc.value.status_code == 429
+    @pytest.mark.asyncio
+    async def test_check_lockout_passes_when_lock_expired(self):
+        past = datetime.now(UTC) - timedelta(seconds=1)
+        user = _make_user(locked_until=past)
+        await _check_lockout(user)  # Should not raise — lock has expired
 
-    def test_unlock_after_timeout(self):
-        ip = "172.16.0.3"
-        for _ in range(LOCKOUT_THRESHOLD_1):
-            _record_failure(ip)
+    @pytest.mark.asyncio
+    async def test_record_failure_increments_count(self):
+        user = _make_user(fail_count=0)
+        session = AsyncMock()
+        await _record_failure(user, session)
+        assert user.login_fail_count == 1
+        session.commit.assert_called_once()
 
-        # Set lockout to past
-        with _lockout_lock:
-            _login_failures[ip]["locked_until"] = time.time() - 1
+    @pytest.mark.asyncio
+    async def test_record_failure_applies_lockout_at_threshold_1(self):
+        user = _make_user(fail_count=LOCKOUT_THRESHOLD_1 - 1)
+        session = AsyncMock()
+        await _record_failure(user, session)
+        assert user.login_fail_count == LOCKOUT_THRESHOLD_1
+        assert user.locked_until is not None
 
-        _check_lockout(ip)  # Should not raise
+    @pytest.mark.asyncio
+    async def test_record_failure_applies_extended_lockout_at_threshold_2(self):
+        user = _make_user(fail_count=LOCKOUT_THRESHOLD_2 - 1)
+        session = AsyncMock()
+        await _record_failure(user, session)
+        assert user.login_fail_count == LOCKOUT_THRESHOLD_2
+        assert user.locked_until is not None
 
-    def test_different_ips_independent(self):
-        ip1 = "172.16.0.4"
-        ip2 = "172.16.0.5"
-        for _ in range(LOCKOUT_THRESHOLD_1):
-            _record_failure(ip1)
-
-        with pytest.raises(HTTPException):
-            _check_lockout(ip1)
-
-        _check_lockout(ip2)  # Different IP should be fine
-
-    def test_reset_clears_all_failures(self):
-        ip = "172.16.0.6"
-        for _ in range(LOCKOUT_THRESHOLD_1):
-            _record_failure(ip)
-
-        _reset_failures(ip)
-        _check_lockout(ip)  # Should not raise after reset
+    def test_lockout_threshold_1_less_than_threshold_2(self):
+        # Sanity check on constants
+        assert LOCKOUT_THRESHOLD_1 < LOCKOUT_THRESHOLD_2

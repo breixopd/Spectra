@@ -14,15 +14,15 @@ from unittest.mock import patch
 import pytest
 import pytest_asyncio
 
-from app.services.ai.agents.base import ActionRisk, AgentContext, ToolAction
-from app.services.ai.agents.safety import (
+from spectra_platform.services.ai.agents.base import ActionRisk, AgentContext, ToolAction
+from spectra_platform.services.ai.agents.safety import (
     SafetyAction,
     SafetyInput,
     SafetySupervisorAgent,
 )
-from app.services.ai.consensus import ConsensusStatus, QualityGate, VotingSystem
-from app.services.mission.manager import MissionManager
-from app.services.mission.mission import Mission
+from spectra_platform.services.ai.consensus import ConsensusStatus, QualityGate, VotingSystem
+from spectra_platform.services.mission.manager import MissionManager
+from spectra_platform.services.mission.mission import Mission
 from tests.mocks.llm import MockLLMClient
 
 pytestmark = [
@@ -301,14 +301,14 @@ class TestTaskFailureHandling:
         await mission_manager._ensure_agents()
 
         # Track if MissionController is called with is_steering=True
-        from app.services.ai.agents.mission_controller import MissionInput
+        from spectra_platform.services.ai.agents.mission_controller import MissionInput
 
         async def mock_execute(context, input_data):
             nonlocal replan_triggered
             if isinstance(input_data, MissionInput) and input_data.is_steering:
                 replan_triggered = True
                 # Return a successful steering action
-                from app.services.ai.agents.base import (
+                from spectra_platform.services.ai.agents.base import (
                     ActionRisk,
                     AgentResult,
                     SteeringAction,
@@ -324,8 +324,8 @@ class TestTaskFailureHandling:
                     ),
                 )
             # For non-steering calls, return a basic plan
-            from app.services.ai.agents.base import AgentResult
-            from app.services.ai.agents.mission_controller import (
+            from spectra_platform.services.ai.agents.base import AgentResult
+            from spectra_platform.services.ai.agents.mission_controller import (
                 MissionPlan,
                 MissionType,
             )
@@ -341,7 +341,7 @@ class TestTaskFailureHandling:
 
         # Mock the consensus to approve everything
         async def mock_consensus(*args, **kwargs):
-            from app.services.ai.consensus import ConsensusResult, ConsensusStatus
+            from spectra_platform.services.ai.consensus import ConsensusResult, ConsensusStatus
 
             return ConsensusResult(
                 status=ConsensusStatus.APPROVED,
@@ -357,57 +357,54 @@ class TestTaskFailureHandling:
             mission_manager.execution.mission_controller,
             "execute",
             side_effect=mock_execute,
+        ), patch.object(
+            mission_manager.execution.consensus,
+            "validate_at_gate",
+            side_effect=mock_consensus,
         ):
-            with patch.object(
-                mission_manager.execution.consensus,
-                "validate_at_gate",
-                side_effect=mock_consensus,
-            ):
-                with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-                    with patch("app.core.events.events.emit_sync"):
-                        # Create a mission manually without going through start_mission
-                        mission = Mission(target=test_target_ip, directive="Test failure handling")
-                        mission_manager.active_missions[mission.id] = mission
+            with patch("spectra_platform.infrastructure.events.events.emit_sync"):
+                # Create a mission manually without going through start_mission
+                mission = Mission(target=test_target_ip, directive="Test failure handling")
+                mission_manager.active_missions[mission.id] = mission
 
-                        from app.services.ai.agents.mission_controller import (
-                            AssessmentPhase,
-                            Task,
-                        )
+                from spectra_platform.services.ai.agents.mission_controller import (
+                    AssessmentPhase,
+                    Task,
+                )
 
-                        # Create a failed task
-                        task = Task(
-                            task_id="failed-task",
-                            description="This task will fail",
-                            agent_type="tool_selector",
-                            phase=AssessmentPhase.DISCOVERY,
-                            priority=1,
-                        )
+                # Create a failed task
+                task = Task(
+                    task_id="failed-task",
+                    description="This task will fail",
+                    agent_type="tool_selector",
+                    phase=AssessmentPhase.DISCOVERY,
+                    priority=1,
+                )
 
-                        context = AgentContext(
-                            mission_id=mission.id,
-                            session_id=mission.id,
-                            target=test_target_ip,
-                            mission="Test",
-                            phase="discovery",
-                            stealth_mode=False,
-                            max_concurrency=1,
-                        )
+                context = AgentContext(
+                    mission_id=mission.id,
+                    session_id=mission.id,
+                    target=test_target_ip,
+                    mission="Test",
+                    phase="discovery",
+                    stealth_mode=False,
+                    max_concurrency=1,
+                )
 
-                        # Trigger failure handling directly via execution manager
-                        await mission_manager.execution._handle_task_failure(
-                            mission,
-                            task,
-                            "Connection refused",
-                            context,
-                        )
+                # Trigger failure handling directly via execution manager
+                await mission_manager.execution._handle_task_failure(
+                    mission,
+                    task,
+                    "Connection refused",
+                    context,
+                )
 
         # Replan should have been triggered
         assert replan_triggered, "Replanning was not triggered on task failure"
 
     async def test_failure_logged(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that failures are properly logged."""
-        with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+        with patch("spectra_platform.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Logging test",
@@ -415,7 +412,7 @@ class TestTaskFailureHandling:
 
                 mission = await mission_manager.get_mission(mission_id)
                 if mission:
-                    from app.services.ai.agents.mission_controller import (
+                    from spectra_platform.services.ai.agents.mission_controller import (
                         AssessmentPhase,
                         Task,
                     )
@@ -451,8 +448,7 @@ class TestTaskFailureHandling:
 
     async def test_multiple_failures_handled(self, mission_manager: MissionManager, test_target_ip: str):
         """Test handling multiple consecutive failures."""
-        with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync"):
+        with patch("spectra_platform.infrastructure.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Multiple failures test",
@@ -460,7 +456,7 @@ class TestTaskFailureHandling:
 
                 mission = await mission_manager.get_mission(mission_id)
                 if mission:
-                    from app.services.ai.agents.mission_controller import (
+                    from spectra_platform.services.ai.agents.mission_controller import (
                         AssessmentPhase,
                         Task,
                     )
@@ -518,12 +514,15 @@ class TestIntegratedSafety:
         """Test that tool execution includes safety check logic."""
         import inspect
 
-        from app.services.tools.service import ToolExecutionService
+        from spectra_platform.services.tools.service import ToolExecutionService
 
         # Verify the execute_request method contains safety check logic
         source = inspect.getsource(ToolExecutionService.execute_request)
 
         assert "safety" in source.lower(), "execute_request should reference safety"
-        assert "SafetyInput" in source or "safety_supervisor" in source or "_perform_safety_check" in source, (
-            "execute_request should use safety supervisor"
-        )
+        assert (
+            "SafetyInput" in source
+            or "safety_supervisor" in source
+            or "_perform_safety_check" in source
+            or "_apply_safety_and_consensus" in source
+        ), "execute_request should use safety supervisor"

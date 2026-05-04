@@ -1,0 +1,67 @@
+# Lightweight test runner — not for production use.
+# Keeps test dependencies out of the app image.
+ARG PYTHON_BASE_IMAGE=python:3.11.13-slim-bookworm
+
+FROM ${PYTHON_BASE_IMAGE} AS test-runner
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_ROOT_USER_ACTION=ignore
+
+WORKDIR /app
+
+# System deps for asyncpg, psycopg2, etc.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc libpq-dev git docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install all dependencies including test deps.
+# base.txt pins pytest 9 + pytest-asyncio 0.24 which have a resolver
+# conflict (pytest-asyncio 0.24 declares pytest<9). They're compatible at
+# runtime, so install deps first then force the asyncio pin. Add API runtime
+# extras imported by unit tests without pulling PDF/native build-only deps.
+COPY requirements/ requirements/
+RUN grep -v -E 'pytest-asyncio|pytest==' requirements/base.txt > /tmp/base-filtered.txt \
+    && pip install --no-cache-dir -r /tmp/base-filtered.txt numpy pytest==8.3.5 \
+    && pip install --no-cache-dir aiofiles==25.1.0 aiohttp==3.13.5 aioboto3==15.5.0 docker==7.1.0 asyncssh==2.22.0 aiosmtplib==3.0.0 psutil==7.2.2 aiosqlite==0.21.0 \
+    && pip install --no-cache-dir pytest-asyncio==0.25.3 \
+    && pip install --no-cache-dir pytest-cov pytest-dotenv pytest-timeout httpx redis websockets ruff "bandit[toml]"
+
+# Copy source
+COPY packages/platform/src/ packages/platform/src/
+COPY services/api/src/spectra_api/ spectra_api/
+COPY services/ai/src/spectra_ai/ spectra_ai/
+COPY services/scheduler/src/spectra_scheduler/ spectra_scheduler/
+COPY services/worker/src/spectra_worker/ spectra_worker/
+# Repo-relative trees for scripts/check_import_boundaries.py (SERVICE_BOUNDARIES + lazy imports).
+COPY services/api/src/ services/api/src/
+COPY services/ai/src/ services/ai/src/
+COPY services/scheduler/src/ services/scheduler/src/
+COPY services/worker/src/ services/worker/src/
+COPY packages/tools-core/src/spectra_tools_core/ spectra_tools_core/
+COPY packages/common/src/spectra_common/ spectra_common/
+COPY packages/domain/src/spectra_domain/ spectra_domain/
+COPY packages/common/src/ packages/common/src/
+COPY packages/domain/src/ packages/domain/src/
+COPY packages/tools-core/src/ packages/tools-core/src/
+COPY tests/ tests/
+COPY scripts/ scripts/
+COPY plugins/ plugins/
+COPY config/ config/
+COPY alembic/ alembic/
+COPY services/api/static/ spectra_api/static/
+COPY services/api/templates/ spectra_api/templates/
+COPY services/api/static/ services/api/static/
+COPY services/api/templates/ services/api/templates/
+COPY pyproject.toml .
+
+# Add non-root user for security
+RUN useradd --create-home --shell /bin/bash testuser \
+    && mkdir -p /app/.ruff_cache && chown testuser:testuser /app/.ruff_cache
+USER testuser
+
+# Health check for the test container
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 CMD python -c "import sys; sys.exit(0)"
+
+# Default: run unit tests
+CMD ["python3", "-m", "pytest", "tests/unit/", "-q", "--no-cov"]

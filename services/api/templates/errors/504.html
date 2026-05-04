@@ -1,0 +1,23 @@
+{% extends "errors/base_error.html" %}
+{% block title %}504 — Request Timeout{% endblock %}
+{% block body_class %}error-amber{% endblock %}
+{% block pre_code %}
+        <div class="timer-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+        </div>
+{% endblock %}
+{% block error_code %}504{% endblock %}
+{% block error_title %}Request Timeout{% endblock %}
+{% block error_message %}{{ detail or "The request took too long to process. Please try again or reduce the scope of your request." }}{% endblock %}
+{% block error_actions %}
+            <a href="/dashboard" class="btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                Go to Dashboard
+            </a>
+            <button class="btn-ghost" data-action="reloadPage">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                Try Again
+            </button>
+{% endblock %}

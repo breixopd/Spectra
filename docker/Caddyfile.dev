@@ -1,0 +1,51 @@
+import Caddyfile.snippets
+
+{
+	auto_https off
+	admin off
+}
+
+{$PLATFORM_DOMAIN::80} {
+	import security_headers
+
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+
+	route {
+		request_body {
+			max_size 50MB
+		}
+
+		handle /static/* {
+			header Cache-Control "public, max-age=3600"
+			reverse_proxy {$APP_UPSTREAM:spectra-app:5000}
+		}
+
+		handle @websocket {
+			reverse_proxy {$APP_UPSTREAM:spectra-app:5000}
+		}
+
+		import rate_limit_public 30
+
+		reverse_proxy {$APP_UPSTREAM:spectra-app:5000} {
+			health_uri /api/health
+			health_interval 10s
+			health_timeout 5s
+
+			import proxy_defaults
+		}
+	}
+
+	import error_pages
+
+	log {
+		output file /data/access.log {
+			roll_size 100mb
+			roll_keep 5
+		}
+		format console
+		level INFO
+	}
+}

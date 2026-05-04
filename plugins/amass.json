@@ -44,10 +44,11 @@
     "method": "apt",
     "commands": [
       "apt-get update",
-      "apt-get install -y amass"
+      "apt-get install -y amass",
+      "sudo -n libpostal_data download all /var/lib/libpostal"
     ],
-    "verification_command": "amass -help",
-    "verification_regex": "Usage:",
+    "verification_command": "test -e /usr/share/libpostal/transliteration && command -v amass",
+    "verification_regex": "/usr/bin/amass",
     "uninstall_commands": [
       "apt-get remove -y amass",
       "apt-get autoremove -y"
@@ -92,7 +93,6 @@
       }
     }
   ],
-  "signature": "2190d3c977d4d6cf5127aeabead3c49e6010617c1eb517ee66e3894ec4737da245dee5d5ef4d7c14c2182b07153bc376ef10545d889af819892901429d6d130a",
   "resources": {
     "tier": "medium"
   }

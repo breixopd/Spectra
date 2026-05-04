@@ -1,0 +1,52 @@
+[project]
+name = "spectra-platform"
+version = "0.1.0"
+description = "Spectra shared domain kernel: ORM, repositories, mission and tool orchestration."
+requires-python = ">=3.11"
+dependencies = [
+    "spectra-common",
+    "spectra-domain",
+    "spectra-tools-core",
+    "sqlalchemy[asyncio]>=2.0.48",
+    "asyncpg>=0.31.0",
+    "alembic>=1.18.0",
+    "pydantic[email]>=2.12.0",
+    "pydantic-settings>=2.13.0",
+    "httpx>=0.28.0",
+    "redis[hiredis]>=5.2.0",
+    "python-dotenv>=1.0.0",
+    "bcrypt>=4.0.0",
+    "PyJWT[crypto]>=2.8.0",
+    "cryptography>=42.0.0",
+    "orjson>=3.9.0",
+    "jsonschema>=4.20.0",
+    "defusedxml>=0.7.1",
+    "blinker>=1.7.0",
+    "fastapi>=0.115.0",
+    "starlette>=0.40.0",
+    "slowapi>=0.1.9",
+    "jinja2>=3.1.0",
+    "nh3>=0.2.0",
+    "openai>=2.0.0",
+    "tensorzero>=2025.1.0",
+    "json-repair>=0.58.0",
+    "aiofiles>=23.0.0",
+    "aiohttp>=3.9.0",
+    "websockets>=14.0",
+    "python-multipart>=0.0.9",
+    "docker>=7.0.0",
+    "asyncssh>=2.14.0",
+    "psutil>=5.9.0",
+    "aioboto3>=12.0.0",
+    "aiosmtplib>=3.0.0",
+    "fastembed>=0.3.0",
+    "pyotp>=2.9.0",
+    "xhtml2pdf>=0.2.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/spectra_platform"]

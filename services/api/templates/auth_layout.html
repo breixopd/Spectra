@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% include "partials/head.html" %}
+    <title>{% block title %}Spectra{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/output.css">
+    <link rel="stylesheet" href="/static/css/auth.css">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    {% block auth_body %}{% endblock %}
+    <script src="/static/vendor/js/lucide.min.js"></script>
+    <script nonce="{{ request.state.csp_nonce }}">lucide.createIcons();</script>
+    {% block auth_scripts %}{% endblock %}
+</body>
+</html>

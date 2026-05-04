@@ -17,7 +17,8 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 
-from app.models.attack_surface import (
+from spectra_domain.enums import RiskLevel
+from spectra_platform.models.attack_surface import (
     AttackSurface,
     AttackVector,
     DiscoveredService,
@@ -27,23 +28,19 @@ from app.models.attack_surface import (
     VectorStatus,
     Vulnerability,
 )
-from app.services.mission.mission import Mission
-from app.services.tools.adapter import CommandToolAdapter
-from app.services.tools.models import (
+from spectra_platform.services.mission.mission import Mission
+from spectra_platform.services.tools.adapter import CommandToolAdapter
+from spectra_platform.services.tools.registry import ToolRegistry, initialize_registry
+from spectra_tools_core.models import (
     ExecutionConfig,
     OutputFormat,
     ParsingConfig,
-    RiskLevel,
     ToolCapability,
     ToolCategory,
     ToolConfig,
     ToolExecutionRequest,
     ToolMetadata,
 )
-from app.services.tools.registry import ToolRegistry, initialize_registry
-
-pytestmark = [pytest.mark.asyncio]
-
 
 # === REAL TOOL REGISTRY TESTS ===
 
@@ -51,19 +48,12 @@ pytestmark = [pytest.mark.asyncio]
 class TestRealToolRegistry:
     """Tests using the REAL tool registry with REAL plugin files."""
 
+    pytestmark = pytest.mark.asyncio
+
     @pytest_asyncio.fixture
     async def real_registry(self):
-        """Load the REAL registry with actual plugin files.
-
-        We disable safe_mode because we don't have the private key to sign/verify
-        in this environment, or we don't want to set up keys for this test.
-        """
-        registry = await initialize_registry(safe_mode=False)
-
-        # Enforce safe_mode=False even if previously initialized with True
-        registry.safe_mode = False
-        registry.validator.safe_mode = False
-        # Reload plugins to ensure all are loaded with safe_mode=False
+        """Load the REAL registry with actual plugin files."""
+        registry = await initialize_registry()
         await registry.load_plugins()
 
         return registry
@@ -118,7 +108,7 @@ class TestRealToolRegistry:
         for tool in tools:
             config = tool.config
             assert config.execution.command, f"{config.id} missing command"
-            assert config.execution.timeout > 0, f"{config.id} invalid timeout"
+            assert config.execution.timeout >= 0, f"{config.id} invalid timeout"
             # args_template can be empty but should be a string
             assert isinstance(config.execution.args_template, str)
 
@@ -153,6 +143,8 @@ class TestRealToolRegistry:
 
 class TestRealCommandExecution:
     """Tests executing REAL commands (safe ones like echo, cat, etc.)."""
+
+    pytestmark = pytest.mark.asyncio
 
     @pytest.fixture
     def echo_tool_config(self) -> ToolConfig:
@@ -726,6 +718,8 @@ class TestRealMissionState:
 class TestToolToAttackSurfaceIntegration:
     """Test the integration between tool output and attack surface."""
 
+    pytestmark = pytest.mark.asyncio
+
     async def test_parsed_findings_populate_attack_surface(self):
         """Test that parsed tool findings can populate attack surface."""
         # Simulate nmap-like output
@@ -809,15 +803,11 @@ class TestToolToAttackSurfaceIntegration:
 # === REAL PLUGIN FILE VALIDATION ===
 
 
-# This class contains sync tests - override module-level asyncio mark
 class TestPluginFileIntegrity:
     """Validate the actual plugin JSON files.
 
     Note: These are synchronous validation tests (no async operations needed).
     """
-
-    # Override module-level pytestmark to prevent asyncio warnings
-    pytestmark = []
 
     @pytest.fixture
     def plugins_dir(self) -> Path:

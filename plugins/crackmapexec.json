@@ -54,16 +54,16 @@
     ]
   },
   "installation": {
-    "method": "pipx",
+    "method": "apt",
     "commands": [
       "apt-get update",
-      "apt-get install -y libffi-dev libssl-dev",
-      "pip3 install crackmapexec || pip3 install netexec"
+      "apt-get install -y crackmapexec"
     ],
-    "verification_command": "crackmapexec --version || netexec --version",
-    "verification_regex": "(CrackMapExec|NetExec)",
+    "verification_command": "crackmapexec -h",
+    "verification_regex": "usage: crackmapexec",
     "uninstall_commands": [
-      "pip3 uninstall -y crackmapexec netexec"
+      "apt-get remove -y crackmapexec",
+      "apt-get autoremove -y"
     ]
   },
   "execution": {
@@ -136,7 +136,6 @@
       }
     }
   ],
-  "signature": null,
   "resources": {
     "tier": "heavy"
   }

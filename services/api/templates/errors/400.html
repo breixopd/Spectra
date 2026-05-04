@@ -1,0 +1,7 @@
+{% extends "errors/base_error.html" %}
+{% block title %}400 — Bad Request{% endblock %}
+{% block body_class %}error-glitch{% endblock %}
+{% block body_prefix %}<div class="scan-line"></div>{% endblock %}
+{% block error_code %}400{% endblock %}
+{% block error_title %}Bad Request{% endblock %}
+{% block error_message %}{{ detail or "The server couldn't understand the request due to invalid syntax. Please check the request parameters and try again." }}{% endblock %}

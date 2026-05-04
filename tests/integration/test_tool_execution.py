@@ -15,19 +15,19 @@ from pathlib import Path
 
 import pytest
 
-from app.services.tools.adapter import CommandToolAdapter
-from app.services.tools.models import (
+from spectra_domain.enums import RiskLevel
+from spectra_platform.services.tools.adapter import CommandToolAdapter
+from spectra_platform.services.tools.registry import get_registry, initialize_registry
+from spectra_tools_core.models import (
     ExecutionConfig,
     OutputFormat,
     ParsingConfig,
-    RiskLevel,
     ToolCapability,
     ToolCategory,
     ToolConfig,
     ToolExecutionRequest,
     ToolMetadata,
 )
-from app.services.tools.registry import get_registry, initialize_registry
 
 pytestmark = [
     pytest.mark.e2e,
@@ -59,7 +59,7 @@ class TestToolRegistry:
     @pytest.fixture(autouse=True)
     def reset_registry(self):
         """Reset registry singleton before each test."""
-        import app.services.tools.registry as registry_module
+        import spectra_platform.services.tools.registry as registry_module
 
         registry_module._registry_instance = None
         yield
@@ -72,7 +72,7 @@ class TestToolRegistry:
         root_dir = Path(__file__).parent.parent.parent
         plugins_dir = root_dir / "plugins"
 
-        registry = await initialize_registry(plugins_dir=plugins_dir, safe_mode=False)
+        registry = await initialize_registry(plugins_dir=plugins_dir)
 
         # Should have loaded some plugins
         tools = registry.list_tools()
@@ -86,7 +86,7 @@ class TestToolRegistry:
         # Ensure consistent plugins loading
         root_dir = Path(__file__).parent.parent.parent
         plugins_dir = root_dir / "plugins"
-        registry = await initialize_registry(plugins_dir=plugins_dir, safe_mode=False)
+        registry = await initialize_registry(plugins_dir=plugins_dir)
 
         # Try to get nmap (should exist)
         nmap = registry.get_tool("nmap")
@@ -97,7 +97,7 @@ class TestToolRegistry:
         """Test listing available tools."""
         root_dir = Path(__file__).parent.parent.parent
         plugins_dir = root_dir / "plugins"
-        registry = await initialize_registry(plugins_dir=plugins_dir, safe_mode=False)
+        registry = await initialize_registry(plugins_dir=plugins_dir)
 
         available = registry.get_available_tools()
 
@@ -110,7 +110,7 @@ class TestToolRegistry:
         """Test filtering tools by category."""
         root_dir = Path(__file__).parent.parent.parent
         plugins_dir = root_dir / "plugins"
-        registry = await initialize_registry(plugins_dir=plugins_dir, safe_mode=False)
+        registry = await initialize_registry(plugins_dir=plugins_dir)
 
         # Get discovery tools
         discovery_tools = [t for t in registry.list_tools() if t.config.category == ToolCategory.DISCOVERY]
@@ -123,7 +123,7 @@ class TestToolRegistry:
         """Test filtering tools by capability."""
         root_dir = Path(__file__).parent.parent.parent
         plugins_dir = root_dir / "plugins"
-        registry = await initialize_registry(plugins_dir=plugins_dir, safe_mode=False)
+        registry = await initialize_registry(plugins_dir=plugins_dir)
 
         # Get all tools and filter by capability
         all_tools = registry.list_tools()
@@ -354,6 +354,7 @@ class TestRealToolExecution:
             capture_output=True,
             text=True,
             timeout=10,
+            check=False,
         )
 
         assert "nuclei" in result.stdout.lower() or "nuclei" in result.stderr.lower()
@@ -365,8 +366,8 @@ class TestToolIntegrationWithMission:
 
     async def test_tool_selector_uses_registry(self):
         """Test that tool selector uses the registry."""
-        from app.services.ai.agents.base import AgentContext
-        from app.services.ai.agents.tool_selector import (
+        from spectra_platform.services.ai.agents.base import AgentContext
+        from spectra_platform.services.ai.agents.tool_selector import (
             ToolSelectorAgent,
             ToolSelectorInput,
         )
@@ -416,7 +417,7 @@ class TestToolIntegrationWithMission:
 
     async def test_findings_parsed_from_tool_output(self):
         """Test that findings are extracted from tool output."""
-        from app.services.tools.models import OutputFormat
+        from spectra_tools_core.models import OutputFormat
 
         # Create a config that mimics nuclei output
         config = ToolConfig(
@@ -516,11 +517,19 @@ class TestPluginLoading:
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(os.geteuid() != 0, reason="Tool installation requires root privileges")
+    @pytest.mark.skipif(
+        os.environ.get("IS_TOOLS_CONTAINER", "").lower() != "true",
+        reason="Full tool verification must run inside the Kali tools container",
+    )
+    @pytest.mark.skipif(
+        os.environ.get("SKIP_TOOL_VERIFY") == "1",
+        reason="Tool verification skipped in this environment",
+    )
     async def test_all_tools_verification(self):
         """Test that all registered tools can be verified (installed and runnable)."""
         root_dir = Path(__file__).parent.parent.parent
         plugins_dir = root_dir / "plugins"
-        registry = await initialize_registry(plugins_dir=plugins_dir, safe_mode=False)
+        registry = await initialize_registry(plugins_dir=plugins_dir)
         tools = registry.list_tools()
 
         assert len(tools) > 0, "No tools found in registry"
@@ -550,12 +559,10 @@ class TestPluginLoading:
                 else:
                     args = shlex.split(cmd)
 
-                result = subprocess.run(args, capture_output=True, text=True, timeout=10)
+                result = subprocess.run(args, capture_output=True, text=True, timeout=10, check=False)
 
                 success = result.returncode == 0
-                if not success and tool.config.installation.verification_regex:
-                    # Check regex if provided
-                    if re.search(
+                if not success and tool.config.installation.verification_regex and re.search(
                         tool.config.installation.verification_regex,
                         result.stdout + result.stderr,
                     ):
@@ -567,15 +574,14 @@ class TestPluginLoading:
                     try:
                         await registry.install_tool(tool.config.id)
                         # Verify again with same safe approach
-                        result = subprocess.run(args, capture_output=True, text=True, timeout=10)
+                        result = subprocess.run(args, capture_output=True, text=True, timeout=10, check=False)
 
                         success = result.returncode == 0
-                        if not success and tool.config.installation.verification_regex:
-                            if re.search(
+                        if not success and tool.config.installation.verification_regex and re.search(
                                 tool.config.installation.verification_regex,
                                 result.stdout + result.stderr,
                             ):
-                                success = True
+                            success = True
 
                         if not success:
                             failed_tools.append(
@@ -584,13 +590,13 @@ class TestPluginLoading:
                         else:
                             print(f"  OK (after install): {tool.config.id}")
                     except Exception as e:
-                        failed_tools.append(f"{tool.config.id} (install failed): {str(e)}")
+                        failed_tools.append(f"{tool.config.id} (install failed): {e!s}")
                 else:
                     print(f"  OK: {tool.config.id}")
 
             except subprocess.TimeoutExpired:
                 failed_tools.append(f"{tool.config.id}: Timeout")
             except Exception as e:
-                failed_tools.append(f"{tool.config.id}: {str(e)}")
+                failed_tools.append(f"{tool.config.id}: {e!s}")
 
         assert not failed_tools, f"Tool verification failed for: {', '.join(failed_tools)}"

@@ -1,3 +1,44 @@
+[project]
+name = "spectra"
+version = "0.1.0"
+description = "AI-powered penetration testing platform"
+requires-python = ">=3.11"
+readme = "README.md"
+license = { text = "MIT" }
+keywords = ["security", "penetration-testing", "vulnerability-assessment", "ai", "automation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+]
+
+[tool.uv.workspace]
+members = [
+    "packages/common",
+    "packages/domain",
+    "packages/platform",
+    "packages/tools-core",
+    "services/api",
+    "services/ai",
+    "services/scheduler",
+    "services/worker",
+]
+
+[tool.uv.sources]
+spectra-common = { workspace = true }
+spectra-domain = { workspace = true }
+spectra-tools-core = { workspace = true }
+spectra-platform = { workspace = true }
+spectra-api = { workspace = true }
+spectra-ai = { workspace = true }
+spectra-scheduler = { workspace = true }
+spectra-worker = { workspace = true }
+
 [tool.bandit]
 exclude_dirs = ["tests", "alembic"]
 skips = ["B101"]  # assert is fine in non-production code
@@ -10,36 +51,142 @@ target-version = "py311"
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "S", "B", "UP"]
+select = ["E", "F", "W", "I", "S", "B", "UP", "C4", "SIM", "PIE", "RUF", "PLE", "PLW"]
 ignore = [
-    "E501",   # line too long (handled by formatter)
-    "E741",   # ambiguous variable name
-    "E402",   # module-level import not at top (deferred imports)
-    "S101",   # assert usage
-    "S104",   # binding to all interfaces (expected for server)
-    "S105",   # hardcoded password (false positives for config defaults)
-    "S106",   # hardcoded password in func arg
-    "S108",   # hardcoded temp file
-    "S110",   # try-except-pass
-    "S112",   # try-except-continue
-    "S311",   # pseudo-random (not used for crypto)
-    "S314",   # xml parsing (needed functionality)
-    "S608",   # SQL injection (false positives with SQLAlchemy)
-    "B008",   # function call in default arg (FastAPI Depends)
-    "B024",   # abstract class without abstract methods
-    "B027",   # empty method in abstract class
-    "B904",   # raise without from in except (too noisy)
+    "E501",    # line too long (handled by formatter)
+    "E741",    # ambiguous variable name
+    "E402",    # module-level import not at top (deferred imports)
+    "S101",    # assert usage
+    "S104",    # binding to all interfaces (expected for server)
+    "S105",    # hardcoded password (false positives for config defaults)
+    "S106",    # hardcoded password in func arg
+    "S108",    # hardcoded temp file
+    "S110",    # try-except-pass
+    "S112",    # try-except-continue
+    "S311",    # pseudo-random (not used for crypto)
+    "S314",    # xml parsing (needed functionality)
+    "S608",    # SQL injection (false positives with SQLAlchemy)
+    "B008",    # function call in default arg (FastAPI Depends)
+    "B024",    # abstract class without abstract methods
+    "B027",    # empty method in abstract class
+    "B904",    # raise without from in except (too noisy)
+    "PLW0603", # global statement (intentional singleton/module-state patterns)
+    "PLW2901", # loop variable overwrite (often intentional)
+    "RUF012",  # mutable ClassVar annotation (noisy for ORMs/dataclasses)
 ]
 # S = bandit rules via ruff (security)
 # B = bugbear (common bugs)
 # UP = pyupgrade
+# C4 = unnecessary comprehension/list/dict calls
+# SIM = simplifiable conditions/expressions
+# PIE = misc. pie lints
+# RUF = ruff-specific rules
+# PLE = pylint errors
+# PLW = pylint warnings
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S106"]
+"tests/**" = ["S101", "S106", "S107", "S603", "S607", "SIM117"]
 "**/__init__.py" = ["F401"]  # re-exports
+# `import docker` must precede `from docker.errors` (docker-py); isort I001 reorders unsafely.
+"packages/platform/src/spectra_platform/services/scaling/docker_client.py" = ["I001"]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+    "spectra_platform",
+    "scripts",
+    "spectra_api",
+    "spectra_ai",
+    "spectra_common",
+    "spectra_domain",
+    "spectra_scheduler",
+    "spectra_tools_core",
+    "spectra_worker",
+]
 
 [tool.pyright]
 pythonVersion = "3.11"
 typeCheckingMode = "basic"
+include = ["packages/platform/src", "services", "packages"]
+exclude = ["tests"]
 reportMissingImports = "none"
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+exclude = ["tests/"]
+ignore_missing_imports = true
+warn_unused_ignores = false
 reportMissingModuleSource = "none"
+
+
+# =============================================================================
+# pytest configuration (merged from pytest.ini)
+# =============================================================================
+[tool.pytest.ini_options]
+markers = [
+    "asyncio: async test requiring asyncio event loop",
+    "e2e: end-to-end test",
+    "integration: integration test",
+    "load: burst/load/rate-limit harness against the live Docker test stack",
+    "slow: slow-running test",
+    "live: live test (real DB and LLM, no mocking)",
+    "network: test that requires outbound network access",
+    "performance: moderate-concurrency latency or throughput smoke test",
+    "soak: longer-running mixed-traffic stability test against the live Docker stack",
+    "timeout: per-test timeout override",
+    "ui: browser UI test (Playwright)",
+    "property: property-based test (hypothesis)",
+]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+log_cli = false
+addopts = [
+    "--verbose",
+    "--tb=short",
+    "--strict-markers",
+    "--cov=spectra_platform",
+    "--cov=spectra_api",
+    "--cov=spectra_worker",
+    "--cov=spectra_ai",
+    "--cov=spectra_scheduler",
+    "--cov-report=term-missing",
+    "--cov-fail-under=70",
+]
+filterwarnings = [
+    # AsyncMock returns awaitable proxies; GC can warn from unittest.mock internals.
+    "ignore:coroutine '.*' was never awaited:RuntimeWarning:unittest.mock",
+]
+pythonpath = [".", "packages/platform/src", "services/ai/src", "services/api/src"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+# =============================================================================
+# coverage configuration (merged from .coveragerc)
+# =============================================================================
+[tool.coverage.run]
+source = ["spectra_platform", "spectra_api", "spectra_worker", "spectra_ai", "spectra_scheduler"]
+data_file = "/tmp/spectra-coverage/.coverage"
+omit = [
+    "spectra_platform/*/migrations/*",
+    "alembic/*",
+    "tests/*",
+    "scripts/*",
+    "*/conftest.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "pass",
+    "\\.\\.\\.",
+]
+show_missing = true
+precision = 2
+
+[tool.coverage.html]
+directory = "/tmp/spectra-coverage/html"

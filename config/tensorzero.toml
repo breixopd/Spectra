@@ -1,0 +1,194 @@
+# =============================================================================
+# TensorZero Gateway Configuration for Spectra
+# =============================================================================
+#
+# All AI inference routes through TensorZero. Configure models, providers,
+# and API keys here. The Spectra app only needs the gateway URL.
+#
+# Default: OpenRouter free model router (no API cost).
+# Set OPENAI_API_KEY to your OpenRouter key.
+# Set OPENAI_BASE_URL to https://openrouter.ai/api/v1 (done in docker-compose).
+#
+# Fast tier:      openrouter/free
+# Balanced tier:  openrouter/free
+# Capable tier:   openrouter/free
+#
+# Free OpenRouter endpoints are useful for development and smoke tests, but
+# providers may log prompts. Use paid/private routes for customer production data.
+#
+# To use paid models: change model_name values to e.g. "openai/gpt-4.1",
+# "anthropic/claude-sonnet-4", etc. Models are hot-swappable.
+#
+
+[gateway]
+bind_address = "0.0.0.0:3000"
+
+# =============================================================================
+# Models — Three tiers with automatic fallbacks
+# =============================================================================
+
+# Tier 1: Fast — cheap structured tasks (scope, parsing, tool selection)
+[models.fast]
+routing = ["primary", "fallback"]
+
+[models.fast.providers.primary]
+type = "openai"
+model_name = "openrouter/free"
+api_base = "https://openrouter.ai/api/v1"
+api_key_location = "env::OPENAI_API_KEY"
+
+[models.fast.providers.fallback]
+type = "openai"
+model_name = "openai/gpt-oss-120b:free"
+api_base = "https://openrouter.ai/api/v1"
+api_key_location = "env::OPENAI_API_KEY"
+
+# Tier 2: Balanced — reasoning tasks (planning, steering, reporting)
+[models.balanced]
+routing = ["primary", "fallback"]
+
+[models.balanced.providers.primary]
+type = "openai"
+model_name = "openrouter/free"
+api_base = "https://openrouter.ai/api/v1"
+api_key_location = "env::OPENAI_API_KEY"
+
+[models.balanced.providers.fallback]
+type = "openai"
+model_name = "openai/gpt-oss-120b:free"
+api_base = "https://openrouter.ai/api/v1"
+api_key_location = "env::OPENAI_API_KEY"
+
+# Tier 3: Capable — complex creative tasks (exploit crafting, PoC)
+[models.capable]
+routing = ["primary", "fallback"]
+
+[models.capable.providers.primary]
+type = "openai"
+model_name = "openrouter/free"
+api_base = "https://openrouter.ai/api/v1"
+api_key_location = "env::OPENAI_API_KEY"
+
+[models.capable.providers.fallback]
+type = "openai"
+model_name = "openai/gpt-oss-120b:free"
+api_base = "https://openrouter.ai/api/v1"
+api_key_location = "env::OPENAI_API_KEY"
+
+# =============================================================================
+# Functions — Map Spectra tasks to model tiers
+# =============================================================================
+
+# Tier 1: Simple, deterministic tasks
+[functions.scope]
+type = "chat"
+
+[functions.scope.variants.default]
+type = "chat_completion"
+model = "fast"
+
+[functions.tool_selection]
+type = "chat"
+
+[functions.tool_selection.variants.default]
+type = "chat_completion"
+model = "fast"
+
+[functions.safety_check]
+type = "chat"
+
+[functions.safety_check.variants.default]
+type = "chat_completion"
+model = "fast"
+
+[functions.parsing]
+type = "chat"
+
+[functions.parsing.variants.default]
+type = "chat_completion"
+model = "fast"
+
+# Tier 2: Moderate reasoning
+[functions.planning]
+type = "chat"
+
+[functions.planning.variants.default]
+type = "chat_completion"
+model = "balanced"
+
+[functions.steering]
+type = "chat"
+
+[functions.steering.variants.default]
+type = "chat_completion"
+model = "balanced"
+
+[functions.consensus]
+type = "chat"
+
+[functions.consensus.variants.default]
+type = "chat_completion"
+model = "balanced"
+
+[functions.vector_generation]
+type = "chat"
+
+[functions.vector_generation.variants.default]
+type = "chat_completion"
+model = "balanced"
+
+[functions.reporting]
+type = "chat"
+
+[functions.reporting.variants.default]
+type = "chat_completion"
+model = "balanced"
+
+# Tier 3: Complex creative tasks
+[functions.exploit_crafting]
+type = "chat"
+
+[functions.exploit_crafting.variants.default]
+type = "chat_completion"
+model = "capable"
+
+[functions.poc_generation]
+type = "chat"
+
+[functions.poc_generation.variants.default]
+type = "chat_completion"
+model = "capable"
+
+[functions.post_exploitation]
+type = "chat"
+
+[functions.post_exploitation.variants.default]
+type = "chat_completion"
+model = "capable"
+
+# Default function for unclassified tasks
+[functions.default]
+type = "chat"
+
+[functions.default.variants.default]
+type = "chat_completion"
+model = "balanced"
+
+# =============================================================================
+# Metrics — Feedback for continuous optimization
+# =============================================================================
+
+[metrics.task_success]
+type = "boolean"
+level = "inference"
+optimize = "max"
+
+[metrics.exploit_success]
+type = "boolean"
+level = "inference"
+optimize = "max"
+
+[metrics.response_quality]
+type = "float"
+level = "inference"
+optimize = "max"

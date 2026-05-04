@@ -1,0 +1,94 @@
+        <div id="section-training" class="section-panel space-y-5" role="tabpanel" aria-labelledby="tab-training">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-semibold text-white">Model Training</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Consent-gated mission samples, provider readiness, and queued fine-tuning jobs</p>
+                </div>
+                <div class="flex gap-2">
+                    <a href="/api/v1/admin/training/export?format=jsonl" class="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-xs font-medium border border-white/10">
+                        <i data-lucide="download" class="w-3.5 h-3.5 inline-block mr-1"></i> Export JSONL
+                    </a>
+                    <button type="button" data-action="loadTraining" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 inline-block mr-1"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="glass-panel rounded-xl p-4">
+                    <p class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Total Samples</p>
+                    <p id="training-total-samples" class="text-2xl font-bold text-white mt-2">&mdash;</p>
+                </div>
+                <div class="glass-panel rounded-xl p-4">
+                    <p class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Sample Types</p>
+                    <p id="training-sample-types" class="text-2xl font-bold text-white mt-2">&mdash;</p>
+                </div>
+                <div class="glass-panel rounded-xl p-4">
+                    <p class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Providers</p>
+                    <p id="training-provider-count" class="text-2xl font-bold text-white mt-2">&mdash;</p>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-white">Start Fine-Tuning Job</h3>
+                    <button type="button" data-action="createTrainingJob" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium">
+                        <i data-lucide="play" class="w-3.5 h-3.5 inline-block mr-1"></i> Queue Job
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                    <input id="training-job-name" class="form-input" placeholder="Job name">
+                    <input id="training-base-model" class="form-input" placeholder="Base model">
+                    <select id="training-provider" class="form-input form-select"></select>
+                    <input id="training-sample-types-input" class="form-input" placeholder="sample types, comma-separated">
+                    <input id="training-min-quality" type="number" min="0" max="1" step="0.05" value="0.5" class="form-input" aria-label="Minimum quality">
+                </div>
+                <p class="text-xs text-slate-500 mt-2">Jobs use approved samples only. Mission completion samples are created only when users opt in to training data sharing.</p>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <div class="glass-panel rounded-xl overflow-hidden">
+                    <div class="flex items-center justify-between px-4 py-3 border-b border-white/5">
+                        <h3 class="text-sm font-semibold text-white">Recent Samples</h3>
+                        <button type="button" data-action="bulkApproveTrainingSamples" class="text-xs text-violet-400 hover:text-violet-300">Approve high quality</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="admin-table w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-white/5">
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Type</th>
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Preview</th>
+                                    <th scope="col" class="text-right px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Quality</th>
+                                    <th scope="col" class="text-right px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="training-samples-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-xl overflow-hidden">
+                    <div class="px-4 py-3 border-b border-white/5">
+                        <h3 class="text-sm font-semibold text-white">Fine-Tuning Jobs</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="admin-table w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-white/5">
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Name</th>
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Provider</th>
+                                    <th scope="col" class="text-right px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Samples</th>
+                                    <th scope="col" class="text-right px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="training-jobs-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-xl p-5">
+                <h3 class="text-sm font-semibold text-white mb-3">Training Providers</h3>
+                <div id="training-providers-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+            </div>
+        </div>

@@ -1,9 +1,11 @@
 # Spectra Makefile — developer convenience targets
 # All test targets run inside Docker containers.
+# lint/import-boundaries are fast local conveniences; CI-parity validation runs through docker/Dockerfile.test.
 
 .PHONY: test test-unit test-integration test-all test-coverage test-compose \
+	test-load test-performance test-soak test-live-smoke test-full-matrix \
        lint format check clean docker-build docker-up docker-down \
-       deploy rollback deploy-check help
+       deploy rollback deploy-check help css-build css-build-prod css-watch
 
 SHELL := /bin/bash
 
@@ -28,30 +30,47 @@ test-coverage: ## Run unit tests with coverage report
 test-compose: ## Run full test stack via docker-compose
 	@./scripts/test.sh compose
 
-lint: ## Run ruff linter on app/
-	@ruff check app/
+test-load: ## Run the load/rate-limit harness in Docker
+	@./scripts/test.sh load
+
+test-performance: ## Run the performance smoke harness in Docker
+	@./scripts/test.sh performance
+
+test-soak: ## Run the soak/stability harness in Docker
+	@./scripts/test.sh soak
+
+test-live-smoke: ## Run live API/UI/LLM smoke tests (START_STACK=1 optional)
+	@./scripts/test.sh live-smoke
+
+test-full-matrix: ## CI parity + load/perf/soak + Playwright + live targets; see script for SKIP_*
+	@./scripts/runbooks/full-test-matrix.sh
+
+lint: import-boundaries ## Run import boundary check + ruff linter
+	@ruff check packages/ services/ tests/
 
 format: ## Format code with ruff
-	@ruff format app/ tests/
+	@ruff format packages/ services/ tests/
 
-check: lint test-unit ## Run lint + unit tests in sequence
+check: lint import-boundaries test-unit ## Run lint + import boundaries + unit tests in sequence
 
 clean: ## Clean caches and build artifacts
 	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name .ruff_cache -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name '*.pyc' -delete 2>/dev/null || true
-	@rm -rf reports/coverage htmlcov .coverage 2>/dev/null || true
+	@rm -rf reports/live-smoke reports/coverage reports/playwright htmlcov .coverage coverage.xml test-results playwright-report 2>/dev/null || true
+	@rm -rf logs/spectra_testing.log 2>/dev/null || true
 	@echo "Cleaned."
 
-docker-build: ## Build Docker images
-	@docker compose -f docker/docker-compose.yml build
+docker-build: ## Build Docker images (auto-sets date-based version)
+	@BUILD_VERSION=$(BUILD_VERSION) docker compose -f docker/compose.yaml build \
+		--build-arg BUILD_VERSION=$${BUILD_VERSION:-$$(date +%Y.%m.%d)-dev}
 
 docker-up: ## Start Docker Compose services
-	@docker compose -f docker/docker-compose.yml up -d
+	@docker compose -f docker/compose.yaml up -d
 
 docker-down: ## Stop Docker Compose services
-	@docker compose -f docker/docker-compose.yml down
+	@docker compose -f docker/compose.yaml down
 
 deploy: ## Deploy to production (usage: make deploy VERSION=2026.03.12)
 	@./scripts/deploy.sh $(VERSION)
@@ -62,9 +81,25 @@ rollback: ## Rollback to previous version (usage: make rollback VERSION=2026.03.
 deploy-check: ## Run pre-deploy checks without deploying
 	@echo "Running pre-deploy checks..."
 	@docker info > /dev/null 2>&1 || { echo "ERROR: Docker not running"; exit 1; }
-	@test -f docker/docker-compose.yml || { echo "ERROR: Compose file missing"; exit 1; }
+	@test -f docker/compose.yaml || { echo "ERROR: Compose file missing"; exit 1; }
 	@test -x scripts/deploy.sh || { echo "ERROR: deploy.sh not executable"; exit 1; }
 	@test -x scripts/health_check.sh || { echo "ERROR: health_check.sh not executable"; exit 1; }
 	@echo "All pre-deploy checks passed."
+
+
+# --- CSS (Tailwind) ---
+# Tailwind and PostCSS deps live in config/; run npx from there.
+css-build: ## Build Tailwind CSS (production, minified)
+	@cd config && npx tailwindcss -i ../services/api/static/css/input.css -o ../services/api/static/css/output.css --minify
+
+css-build-prod: ## Build Tailwind CSS with PostCSS pipeline (autoprefixer + cssnano)
+	@cd config && NODE_ENV=production npx postcss ../services/api/static/css/input.css -o ../services/api/static/css/output.css --config postcss.config.js
+
+css-watch: ## Watch and rebuild Tailwind CSS on changes
+	@cd config && npx tailwindcss -i ../services/api/static/css/input.css -o ../services/api/static/css/output.css --watch
+
+.PHONY: import-boundaries
+import-boundaries: ## Check import boundary enforcement
+	@python3 scripts/check_import_boundaries.py
 
 

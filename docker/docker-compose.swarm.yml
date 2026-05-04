@@ -1,19 +1,103 @@
-# docker/docker-compose.swarm.yml
-# Docker Swarm stack for multi-host deployment
+# Spectra — Docker Swarm stack
 # Usage: docker stack deploy -c docker-compose.swarm.yml spectra
-version: "3.8"
+# Secrets and node labels: docs/wiki/deployment-guide.md
+#
+# Autoscaling: Swarm has no built-in metric-driven autoscaling. The usual pattern
+# is Prometheus/cAdvisor (or similar) plus a small controller that calls the
+# Docker API / `docker service scale` on thresholds. Restart policies here react
+# to process exit, not to `unhealthy` alone — pair healthchecks with monitoring
+# or a watchdog if you need heal-on-unhealthy behaviour. See also
+# .audit/2026-05-01--full-codebase-audit/research/02-swarm-self-healing-agents.md
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-security: &security-defaults
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
+x-security-stateful: &security-stateful
+  cap_drop: [ALL]
+  cap_add: [SETUID, SETGID, CHOWN, FOWNER, DAC_OVERRIDE]
+  security_opt: ["no-new-privileges:true"]
+
+x-common-env: &common-env
+  APP_ENV: production
+  DATABASE_URL_FILE: /run/secrets/db_url
+  S3_ENDPOINT_URL: http://garage:3900
+  S3_ACCESS_KEY_FILE: /run/secrets/garage_access_key
+  S3_SECRET_KEY_FILE: /run/secrets/garage_secret_key
+  GARAGE_ADMIN_TOKEN_FILE: /run/secrets/garage_admin_token
+  GARAGE_ADMIN_URL: http://garage:3903
+  REDIS_PASSWORD_FILE: /run/secrets/redis_password
+  TENSORZERO_GATEWAY_URL: http://tensorzero:3000
 
 services:
+  redis:
+    image: redis:7-alpine
+    entrypoint: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$(cat /run/secrets/redis_password)\""]
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.spectra.app == true
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+        order: stop-first
+      resources:
+        limits:
+          memory: 512M
+    volumes:
+      - redis_data:/data
+    networks:
+      - frontend
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$(cat /run/secrets/redis_password)\" ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    secrets:
+      - redis_password
+    logging: *default-logging
+    <<: *security-stateful
+
   db:
     image: pgvector/pgvector:pg16
     deploy:
       replicas: 1
       placement:
         constraints:
-          - node.labels.role == db
+          - node.labels.spectra.db == true
       restart_policy:
         condition: on-failure
         delay: 5s
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+        order: stop-first
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
     environment:
       POSTGRES_USER: spectra
       POSTGRES_PASSWORD_FILE: /run/secrets/db_password
@@ -21,7 +105,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
-      - spectra-net
+      - backend
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U spectra"]
       interval: 10s
@@ -29,153 +113,555 @@ services:
       retries: 5
     secrets:
       - db_password
+    logging: *default-logging
+    <<: *security-stateful
 
   app:
-    image: ${REGISTRY:-}spectra-app:${VERSION:-latest}
+    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-app:${VERSION:?set VERSION for swarm deploys}
     deploy:
-      replicas: 2
+      replicas: ${APP_REPLICAS:-2}
       placement:
         constraints:
-          - node.labels.role == app
+          - node.labels.spectra.app == true
       restart_policy:
         condition: on-failure
       update_config:
         parallelism: 1
         delay: 10s
         order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+      resources:
+        limits:
+          cpus: '1'
+          memory: 3G
     environment:
-      DATABASE_URL: postgresql+asyncpg://spectra:${DB_PASSWORD}@db:5432/spectra
+      <<: *common-env
+      SERVICE_MODE: api
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
       JWT_SECRET_KEY_FILE: /run/secrets/jwt_secret
-      AI_SERVICE_URL: http://ai-service:8001
-      SCHEDULER_URL: http://scheduler:8002
-    ports:
-      - "5000:5000"
+      SECRET_KEY_FILE: /run/secrets/secret_key
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+      AI_SERVICE_URL: http://ai-svc:5010
+      SCHEDULER_SERVICE_URL: http://scheduler:5011
+      WORKER_SERVICE_URL: http://worker:5012
+      CONNECT_BACK_HOST: ${CALLBACK_RELAY_HOST:?set CALLBACK_RELAY_HOST to worker or callback-relay egress address}
+      SHELL_ROUTING_MODE: proxy
+      TMPDIR: /tmp
+      TMP: /tmp
+      TEMP: /tmp
+    expose:
+      - "5000"
+    volumes:
+      - type: volume
+        source: app_data
+        target: /app/data
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 268435456
+      - type: tmpfs
+        target: /var/tmp
+        tmpfs:
+          size: 268435456
+      - type: tmpfs
+        target: /app/logs
+        tmpfs:
+          size: 67108864
     networks:
-      - spectra-net
+      frontend:
+        aliases:
+          - spectra-app
+      backend:
+        aliases:
+          - spectra-app
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 300s
     secrets:
       - service_auth
       - jwt_secret
       - db_password
+      - db_url
+      - secret_key
+      - encryption_key
+      - garage_access_key
+      - garage_secret_key
+      - garage_admin_token
+      - redis_password
+    read_only: true
+    logging: *default-logging
+    <<: *security-stateful
 
-  ai-service:
-    image: ${REGISTRY:-}spectra-app:${VERSION:-latest}
-    command: ["python", "-m", "uvicorn", "app.ai_service:app", "--host", "0.0.0.0", "--port", "8001"]
+  ai-svc:
+    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-ai-svc:${VERSION:?set VERSION for swarm deploys}
     deploy:
       replicas: 1
       placement:
         constraints:
-          - node.labels.role == ai
+          - node.labels.spectra.ai == true
       restart_policy:
         condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+      resources:
+        limits:
+          cpus: '1'
+          memory: 3G
     environment:
-      DATABASE_URL: postgresql+asyncpg://spectra:${DB_PASSWORD}@db:5432/spectra
+      <<: *common-env
+      SERVICE_MODE: ai
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
+      SECRET_KEY_FILE: /run/secrets/secret_key
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       SKIP_MIGRATIONS: "true"
+      TMPDIR: /tmp
+      TMP: /tmp
+      TEMP: /tmp
+    volumes:
+      - type: volume
+        source: app_data
+        target: /app/data
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 268435456
+      - type: tmpfs
+        target: /var/tmp
+        tmpfs:
+          size: 268435456
+      - type: tmpfs
+        target: /app/logs
+        tmpfs:
+          size: 67108864
     networks:
-      - spectra-net
+      - frontend
+      - backend
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5010/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 120s
     secrets:
       - service_auth
+      - secret_key
+      - encryption_key
+      - db_url
+      - garage_access_key
+      - garage_secret_key
+      - garage_admin_token
+      - redis_password
+    read_only: true
+    logging: *default-logging
+    <<: *security-stateful
 
   scheduler:
-    image: ${REGISTRY:-}spectra-app:${VERSION:-latest}
-    command: ["python", "-m", "uvicorn", "app.scheduler_service:app", "--host", "0.0.0.0", "--port", "8002"]
+    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-scheduler:${VERSION:?set VERSION for swarm deploys}
     deploy:
       replicas: 1
       placement:
         constraints:
-          - node.labels.role == app
+          - node.role == manager
       restart_policy:
         condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
     environment:
-      DATABASE_URL: postgresql+asyncpg://spectra:${DB_PASSWORD}@db:5432/spectra
+      <<: *common-env
+      SERVICE_MODE: scheduler
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
+      SECRET_KEY_FILE: /run/secrets/secret_key
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       BACKUP_ENABLED: "true"
       SKIP_MIGRATIONS: "true"
+      TMPDIR: /tmp
+      TMP: /tmp
+      TEMP: /tmp
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+      - type: volume
+        source: app_data
+        target: /app/data
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 268435456
+      - type: tmpfs
+        target: /var/tmp
+        tmpfs:
+          size: 268435456
+      - type: tmpfs
+        target: /app/logs
+        tmpfs:
+          size: 67108864
     networks:
-      - spectra-net
+      - frontend
+      - backend
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5011/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 90s
     secrets:
       - service_auth
+      - secret_key
+      - encryption_key
+      - db_url
+      - garage_access_key
+      - garage_secret_key
+      - garage_admin_token
+      - redis_password
+    read_only: true
+    logging: *default-logging
+    <<: *security-stateful
 
   worker:
-    image: ${REGISTRY:-}spectra-app:${VERSION:-latest}
-    command: ["python", "-m", "uvicorn", "app.worker_service:app", "--host", "0.0.0.0", "--port", "8003"]
+    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-worker:${VERSION:?set VERSION for swarm deploys}
     deploy:
       replicas: 2
       placement:
         constraints:
-          - node.labels.role == worker
+          - node.labels.spectra.worker == true
       restart_policy:
         condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
     environment:
-      DATABASE_URL: postgresql+asyncpg://spectra:${DB_PASSWORD}@db:5432/spectra
+      <<: *common-env
+      SERVICE_MODE: worker
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
       SKIP_MIGRATIONS: "true"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      CONNECT_BACK_HOST: ${CALLBACK_RELAY_HOST:?set CALLBACK_RELAY_HOST to worker or callback-relay egress address}
+      SHELL_ROUTING_MODE: direct
+      SHELL_LISTEN_HOST: 0.0.0.0
     networks:
-      - spectra-net
+      - backend
+      - engagement
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5012/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 90s
     secrets:
       - service_auth
+      - db_url
+      - garage_access_key
+      - garage_secret_key
+      - garage_admin_token
+      - redis_password
+    <<: *security-defaults
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    logging: *default-logging
 
   caddy:
-    image: caddy:2-alpine
+    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-caddy:${VERSION:?set VERSION for swarm deploys}
     deploy:
       replicas: 1
       placement:
         constraints:
-          - node.labels.role == app
+          - node.labels.spectra.app == true
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      APP_UPSTREAM: app:5000
+      PLATFORM_DOMAIN: "${PLATFORM_DOMAIN:-localhost}"
+      TLS_MODE: "${TLS_MODE:-internal}"
     volumes:
       - caddy_data:/data
       - caddy_config:/config
     configs:
       - source: caddyfile
         target: /etc/caddy/Caddyfile
+      - source: caddyfile_snippets
+        target: /etc/caddy/Caddyfile.snippets
     networks:
-      - spectra-net
+      - frontend
+    healthcheck:
+      test: ["CMD-SHELL", "echo | nc -w1 localhost 80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging: *default-logging
+    <<: *security-defaults
+    cap_add:
+      - NET_BIND_SERVICE
+
+  # Garage — RPC secret via env interpolation (distroless, no _FILE support)
+  garage:
+    image: dxflrs/garage:v2.2.0
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-}
+      GARAGE_ADMIN_URL: http://garage:3903
+    ports:
+      - "127.0.0.1:3900:3900"
+      - "127.0.0.1:3903:3903"
+    volumes:
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+    configs:
+      - source: garage_config
+        target: /etc/garage.toml
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "/garage", "node", "id"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.spectra.db == true
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+        order: stop-first
+      resources:
+        limits:
+          memory: 512M
+    secrets:
+      - garage_rpc_secret
+    logging: *default-logging
+    <<: *security-stateful
+
+  # ClickHouse
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.11-alpine
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.spectra.ai == true
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+        order: stop-first
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1536M
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_DB: tensorzero
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+      MAX_SERVER_MEMORY_USAGE_TO_RAM_RATIO: "0.8"
+    entrypoint: ["sh", "-c", "export CLICKHOUSE_PASSWORD=$$(cat /run/secrets/clickhouse_password 2>/dev/null || echo '') && exec /entrypoint.sh"]
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8123/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    secrets:
+      - clickhouse_password
+    logging: *default-logging
+    <<: *security-stateful
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SYS_NICE
+
+  # TensorZero gateway
+  tensorzero:
+    image: ${TENSORZERO_IMAGE:-tensorzero/gateway:latest}
+    entrypoint: ["/bin/sh", "/app/init.sh"]
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.spectra.ai == true
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+        order: stop-first
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+    environment:
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
+    configs:
+      - source: tensorzero_config
+        target: /app/config/tensorzero.toml
+      - source: tensorzero_init
+        target: /app/init.sh
+        mode: 0555
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 180s
+    secrets:
+      - service_auth
+      - clickhouse_password
+      - openai_api_key
+      - anthropic_api_key
+    logging: *default-logging
+    <<: *security-stateful
 
 networks:
-  spectra-net:
+  frontend:
     driver: overlay
     attachable: true
+    driver_opts:
+      encrypted: "true"
+  backend:
+    driver: overlay
+    internal: true
+    attachable: true
+    driver_opts:
+      encrypted: "true"
+  engagement:
+    driver: overlay
+    attachable: true
+    driver_opts:
+      encrypted: "true"
 
 volumes:
   pgdata:
     driver: local
   caddy_data:
   caddy_config:
+  clickhouse_data:
+  garage_meta:
+  garage_data:
+  redis_data:
+  app_data:
 
 secrets:
   db_password:
+    external: true
+  db_url:
     external: true
   service_auth:
     external: true
   jwt_secret:
     external: true
+  secret_key:
+    external: true
+  encryption_key:
+    external: true
+  redis_password:
+    external: true
+  garage_access_key:
+    external: true
+  garage_secret_key:
+    external: true
+  garage_rpc_secret:
+    external: true
+  garage_admin_token:
+    external: true
+  clickhouse_password:
+    external: true
+  openai_api_key:
+    external: true
+  anthropic_api_key:
+    external: true
 
 configs:
   caddyfile:
     file: ./Caddyfile.prod
+  caddyfile_snippets:
+    file: ./Caddyfile.snippets
+  tensorzero_config:
+    file: ../config/tensorzero.toml
+  tensorzero_init:
+    file: ./targets/tensorzero-init.sh
+  garage_config:
+    file: ./garage.toml

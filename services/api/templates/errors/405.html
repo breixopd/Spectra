@@ -1,0 +1,7 @@
+{% extends "errors/base_error.html" %}
+{% block title %}405 — Method Not Allowed{% endblock %}
+{% block body_class %}error-glitch{% endblock %}
+{% block body_prefix %}<div class="scan-line"></div>{% endblock %}
+{% block error_code %}405{% endblock %}
+{% block error_title %}Method Not Allowed{% endblock %}
+{% block error_message %}{{ detail or "The HTTP method used is not supported for this endpoint. Please verify the request method and try again." }}{% endblock %}

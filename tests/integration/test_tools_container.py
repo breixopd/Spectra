@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from app.services.tools.adapter import CommandToolAdapter, ToolExecutionRequest
-from app.services.tools.registry import get_registry
+from spectra_platform.services.tools.adapter import CommandToolAdapter, ToolExecutionRequest
+from spectra_platform.services.tools.registry import get_registry
 
 if TYPE_CHECKING:
-    from app.services.tools.registry import ToolRegistry
+    from spectra_platform.services.tools.registry import ToolRegistry
 
 pytestmark = pytest.mark.integration
 
@@ -21,10 +21,6 @@ pytestmark = pytest.mark.integration
 def tool_registry() -> ToolRegistry:
     """Get the tool registry singleton."""
     registry = get_registry()
-    # Disable safe mode for integration tests running without keys
-    registry.safe_mode = False
-    if hasattr(registry, "validator"):
-        registry.validator.safe_mode = False
     return registry
 
 
@@ -54,7 +50,7 @@ async def test_load_all_plugins(tool_registry: ToolRegistry) -> None:
 @pytest.mark.asyncio
 async def test_execute_tool_version(tool_registry: ToolRegistry) -> None:
     """Test executing a simple command (version check) for available tools."""
-    from app.services.tools.models import (
+    from spectra_tools_core.models import (
         ExecutionConfig,
         InstallationConfig,
         InstallationMethod,
@@ -131,13 +127,7 @@ async def test_hot_load_plugin(tool_registry: ToolRegistry) -> None:
         },
     }
 
-    original_safe_mode = tool_registry.safe_mode
-    original_validator_safe_mode = tool_registry.validator.safe_mode
     try:
-        # Disable safe mode for this test
-        tool_registry.safe_mode = False
-        tool_registry.validator.safe_mode = False
-
         # Write new plugin
         new_plugin_path.write_text(json.dumps(plugin_data, indent=2), encoding="utf-8")
 
@@ -153,9 +143,6 @@ async def test_hot_load_plugin(tool_registry: ToolRegistry) -> None:
         # Cleanup: always remove file and restore state
         if new_plugin_path.exists():
             new_plugin_path.unlink()
-
-        tool_registry.safe_mode = original_safe_mode
-        tool_registry.validator.safe_mode = original_validator_safe_mode
 
         # Reload to clear the registry of test plugin
         await tool_registry.load_plugins()

@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name }} | Security Assessments in One Place</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="stylesheet" href="/static/css/base.css?v={{ version }}">
+    <link rel="stylesheet" href="/static/css/landing.css">
+    <link rel="prefetch" href="/static/css/output.css">
+    <link rel="prefetch" href="/static/css/auth.css">
+    <meta name="theme-color" content="#8b5cf6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- SEO Meta -->
+    <meta name="description" content="{{ app_name }} helps security teams run assessments, review findings, and export reports from one place.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ request.url.scheme }}://{{ request.url.netloc }}/">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="{{ app_name }} | Security Assessments in One Place">
+    <meta property="og:description" content="Plan work, run tools, review findings, and export reports in one security assessment workspace.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.url.scheme }}://{{ request.url.netloc }}/">
+    <meta property="og:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/og-image.svg">
+    <meta property="og:site_name" content="{{ app_name }}">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ app_name }} | Security Assessments in One Place">
+    <meta name="twitter:description" content="Run assessments, track findings, and export reports from one workspace.">
+    <meta name="twitter:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/og-image.svg">
+
+    <!-- Structured Data -->
+    <script nonce="{{ request.state.csp_nonce }}" type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "{{ app_name }}",
+        "applicationCategory": "SecurityApplication",
+        "operatingSystem": "Web",
+        "description": "Security assessment platform for planning work, reviewing findings, and exporting reports.",
+        "url": "{{ request.url.scheme }}://{{ request.url.netloc }}/"
+    }
+    </script>
+</head>
+<body>
+
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<!-- ====== NAVIGATION ====== -->
+<header>
+<nav id="nav" role="navigation" aria-label="Main navigation">
+    <a href="/" class="nav-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="rgba(0,255,136,0.1)" stroke="var(--accent)"/>
+        </svg>
+        {{ app_name }}
+    </a>
+    <ul class="nav-links" id="navLinks">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="/login">Sign In</a></li>
+        <li><a href="/register" class="nav-cta">Get Started</a></li>
+    </ul>
+    <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+    </button>
+</nav>
+</header>
+
+<!-- ====== HERO ====== -->
+<main id="main-content">
+<section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-grid"></div>
+    <div class="hero-content">
+        <h1>
+            Run security assessments<br>
+            <span class="gradient">faster, with clear reports</span>
+        </h1>
+        <p>
+            Set a target, choose the scope, and let {{ app_name }} handle the recon, testing, and reporting work.
+            Your team can watch progress live and review the findings in one place.
+        </p>
+        <div class="hero-actions">
+            <a href="/register" class="btn-primary">
+                Get Started Free
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </a>
+            <a href="#how-it-works" class="btn-secondary">See How It Works</a>
+        </div>
+
+        <!-- Dashboard preview -->
+        <div class="hero-preview" aria-hidden="true">
+            <div class="preview-bar">
+                <span class="preview-dot r"></span>
+                <span class="preview-dot y"></span>
+                <span class="preview-dot g"></span>
+                <div class="preview-address-bar">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>{{ request.url.netloc }}/dashboard</span>
+                </div>
+            </div>
+            <div class="preview-body preview-layout" style="flex-direction:column;gap:0;padding:0;">
+                <!-- Mission control bar -->
+                <div style="display:flex;gap:0.25rem;padding:0.5rem 0.625rem;background:rgba(15,23,42,0.6);border-bottom:1px solid rgba(255,255,255,0.05);align-items:center;flex-wrap:wrap;">
+                    <!-- Target input -->
+                    <div style="display:flex;align-items:center;gap:0.125rem;background:rgba(15,23,42,0.8);border:1px solid rgba(255,255,255,0.08);border-radius:4px;padding:0.15rem 0.375rem;height:22px;width:70px;">
+                        <span style="font-size:0.5rem;color:#64748b;">⌖</span>
+                        <span style="font-size:0.5rem;color:#64748b;font-family:var(--font-mono);">10.0.0.1</span>
+                    </div>
+                    <!-- Directive -->
+                    <div style="display:flex;align-items:center;background:rgba(15,23,42,0.8);border:1px solid rgba(255,255,255,0.08);border-radius:4px;padding:0.15rem 0.375rem;height:22px;flex:1;min-width:60px;">
+                        <span style="font-size:0.5rem;color:#64748b;">Full assessment</span>
+                    </div>
+                    <!-- VPN select -->
+                    <div style="height:22px;padding:0 0.25rem;background:rgba(15,23,42,0.8);border:1px solid rgba(255,255,255,0.08);border-radius:4px;display:flex;align-items:center;width:44px;">
+                        <span style="font-size:0.4375rem;color:#64748b;">VPN</span>
+                    </div>
+                    <!-- Playbook select -->
+                    <div style="height:22px;padding:0 0.25rem;background:rgba(15,23,42,0.8);border:1px solid rgba(255,255,255,0.08);border-radius:4px;display:flex;align-items:center;width:50px;">
+                        <span style="font-size:0.4375rem;color:#64748b;">Standard</span>
+                    </div>
+                    <!-- Presets -->
+                    <div style="height:22px;padding:0 0.375rem;background:rgba(15,23,42,0.8);border:1px solid rgba(255,255,255,0.08);border-radius:4px;display:flex;align-items:center;gap:0.125rem;width:44px;">
+                        <span style="font-size:0.4375rem;color:#a78bfa;">⚡</span>
+                        <span style="font-size:0.4375rem;color:#cbd5e1;">Preset</span>
+                    </div>
+                    <!-- Launch button -->
+                    <div class="preview-mini-launch-btn" style="animation:preview-pulse 3s ease-in-out infinite;">
+                        <span>Launch</span>
+                    </div>
+                </div>
+                <!-- Auth + config row -->
+                <div style="display:flex;gap:0.5rem;padding:0.25rem 0.625rem;background:rgba(2,6,23,0.5);border-bottom:1px solid rgba(255,255,255,0.03);align-items:center;flex-wrap:wrap;">
+                    <span style="font-size:0.4375rem;color:#475569;">☐ Authorized</span>
+                    <span style="font-size:0.4375rem;color:#475569;">☐ PTES</span>
+                    <span style="font-size:0.4375rem;color:#475569;">☐ Approval</span>
+                </div>
+                <!-- Stats row -->
+                <div style="display:flex;gap:0.375rem;padding:0.5rem 0.625rem;">
+                    <div style="flex:1;background:rgba(15,23,42,0.6);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.5rem 0.625rem;display:flex;flex-direction:column;gap:0.125rem;min-width:0;">
+                        <div style="display:flex;gap:0.125rem;align-items:center;">
+                            <span style="font-size:0.4375rem;color:#64748b;">Findings</span>
+                        </div>
+                        <div style="display:flex;gap:0.375rem;align-items:baseline;">
+                            <span style="font-size:0.9375rem;font-weight:700;color:#fff;">48</span>
+                            <span style="font-size:0.4375rem;color:#10b981;">+12 new</span>
+                        </div>
+                        <div style="display:flex;gap:0.25rem;margin-top:0.25rem;">
+                            <span style="font-size:0.375rem;color:#f87171;background:rgba(248,113,113,0.1);padding:0.0625rem 0.25rem;border-radius:2px;">3 Crit</span>
+                            <span style="font-size:0.375rem;color:#fbbf24;background:rgba(251,191,36,0.1);padding:0.0625rem 0.25rem;border-radius:2px;">8 High</span>
+                            <span style="font-size:0.375rem;color:#60a5fa;background:rgba(96,165,250,0.1);padding:0.0625rem 0.25rem;border-radius:2px;">37 Info</span>
+                        </div>
+                    </div>
+                    <div style="flex:1;background:rgba(15,23,42,0.6);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.5rem 0.625rem;display:flex;flex-direction:column;gap:0.125rem;min-width:0;">
+                        <span style="font-size:0.4375rem;color:#64748b;">Progress</span>
+                        <span style="font-size:0.9375rem;font-weight:700;color:#a78bfa;">92%</span>
+                        <div style="height:3px;background:rgba(255,255,255,0.05);border-radius:2px;margin-top:0.375rem;overflow:hidden;">
+                            <div class="preview-progress-fill" style="width:0%;height:100%;background:linear-gradient(90deg,#8b5cf6,#a78bfa);border-radius:2px;"></div>
+                        </div>
+                    </div>
+                    <div style="flex:1;background:rgba(15,23,42,0.6);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.5rem 0.625rem;display:flex;flex-direction:column;gap:0.125rem;min-width:0;">
+                        <span style="font-size:0.4375rem;color:#64748b;">Active Agents</span>
+                        <span style="font-size:0.9375rem;font-weight:700;color:#34d399;">4</span>
+                        <div style="display:flex;gap:0.25rem;margin-top:0.25rem;">
+                            <span style="font-size:0.375rem;color:#34d399;">● Recon</span>
+                            <span style="font-size:0.375rem;color:#fbbf24;">● Vuln</span>
+                            <span style="font-size:0.375rem;color:#22d3ee;">● Exploit</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Live activity log -->
+                <div style="margin:0 0.625rem 0.5rem;padding:0.5rem 0.625rem;background:rgba(15,23,42,0.6);border:1px solid rgba(255,255,255,0.05);border-radius:6px;display:flex;flex-direction:column;gap:2px;">
+                    <span style="font-size:0.4375rem;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;margin-bottom:2px;">Live Activity</span>
+                    <div class="mini-log"><span class="log-time">14:32:01</span> <span style="color:#34d399;">ReconIntel</span> Discovered 12 services on ports 22,80,443,8080</div>
+                    <div class="mini-log"><span class="log-time">14:32:18</span> <span style="color:#fbbf24;">VulnScanner</span> Running Nuclei with 1,245 templates</div>
+                    <div class="mini-log"><span class="log-time">14:32:45</span> <span style="color:#22d3ee;">ToolSelector</span> Queuing SQLMap for injection testing</div>
+                    <div class="mini-log"><span class="log-time">14:33:02</span> <span style="color:#f87171;">⚠ CRITICAL</span> SQL Injection in /api/search — CVSS 9.8</div>
+                    <div class="mini-log"><span class="log-time">14:33:19</span> <span style="color:#34d399;">ReconIntel</span> Port scan complete — 65535 ports in 42s</div>
+                    <div class="mini-log" style="animation-delay:2.8s;"><span class="log-time">14:33:35</span> <span style="color:#a78bfa;">Scanning</span> <span class="preview-mini-scanning-anim">▌</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ====== SOCIAL PROOF + STATS ====== -->
+<section id="social-proof">
+    <div class="section-inner" style="text-align:center;">
+        <p class="reveal" style="font-size:0.8125rem;color:var(--text-muted);margin-bottom:2rem;letter-spacing:0.04em;text-transform:uppercase;font-weight:600;">
+            Built for security teams worldwide
+        </p>
+        <div class="stats-bar reveal">
+            <div class="stat-cell">
+                <div class="stat-number">{{ stats.total_findings or '0' }}</div>
+                <div class="stat-label">Findings Detected</div>
+            </div>
+            <div class="stat-cell">
+                <div class="stat-number">{{ stats.total_missions or '0' }}</div>
+                <div class="stat-label">Assessments Completed</div>
+            </div>
+            <div class="stat-cell">
+                <div class="stat-number">{{ stats.total_users or '0' }}</div>
+                <div class="stat-label">Active Users</div>
+            </div>
+            <div class="stat-cell">
+                <div class="stat-number">{{ stats.total_tools or '0' }}</div>
+                <div class="stat-label">Integrated Tools</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ====== FEATURES ====== -->
+<section id="features">
+    <div class="section-inner">
+        <span class="section-label reveal">Capabilities</span>
+        <h2 class="section-title reveal">Everything you need for<br>modern security assessments</h2>
+        <p class="section-desc reveal">
+            AI-driven planning, automated tool execution,
+            and real-time analysis in one workspace.
+        </p>
+        <div class="features-grid">
+            <div class="feature-card reveal">
+                <div class="feature-icon green">
+                    <i data-lucide="network" style="width:28px;height:28px;"></i>
+                </div>
+                <h3>Multi-Agent AI System</h3>
+                <p>Multiple AI agents split the work: planning, scanning, exploitation, and reporting.</p>
+            </div>
+            <div class="feature-card reveal">
+                <div class="feature-icon violet">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                    </svg>
+                </div>
+                <h3>Automated Exploitation</h3>
+                <p>Safely executes attacks in sandboxed containers with full rollback capability, using real penetration testing tools.</p>
+            </div>
+            <div class="feature-card reveal">
+                <div class="feature-icon blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                    </svg>
+                </div>
+                <h3>Real-Time Monitoring</h3>
+                <p>Watch assessments as they run. Live dashboards show tool output, findings, and agent decisions.</p>
+            </div>
+            <div class="feature-card reveal">
+                <div class="feature-icon amber">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>
+                    </svg>
+                </div>
+                <h3>Comprehensive Reporting</h3>
+                <p>Auto-generated PDF reports with CVSS scoring, evidence, remediation guidance, and executive summaries ready for stakeholders.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ====== HOW IT WORKS ====== -->
+<section id="how-it-works">
+    <div class="section-inner" style="text-align:center;">
+        <span class="section-label reveal">Process</span>
+        <h2 class="section-title reveal">Three steps to a complete assessment</h2>
+        <p class="section-desc reveal" style="margin-left:auto;margin-right:auto;">
+            From target configuration to a finished report, the platform handles the full workflow.
+        </p>
+        <div class="steps">
+            <div class="step reveal">
+                <div class="step-number">1</div>
+                <div class="step-connector"></div>
+                <h3>Configure Targets</h3>
+                <p>Define scope, targets, and rules of engagement. The platform validates everything before starting.</p>
+            </div>
+            <div class="step reveal">
+                <div class="step-number">2</div>
+                <div class="step-connector"></div>
+                <h3>AI Plans &amp; Executes</h3>
+                <p>Intelligent agents coordinate reconnaissance, vulnerability scanning, and exploitation in sandboxed containers.</p>
+            </div>
+            <div class="step reveal">
+                <div class="step-number">3</div>
+                <h3>Review Reports</h3>
+                <p>Receive detailed findings with severity ratings, evidence, and actionable remediation steps.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ====== PRICING ====== -->
+<section id="pricing">
+    <div class="section-inner" style="text-align:center;">
+        <span class="section-label reveal">Pricing</span>
+        <h2 class="section-title reveal">Choose your plan</h2>
+        <p class="section-desc reveal" style="margin-left:auto;margin-right:auto;">
+            Flexible tiers for solo researchers and teams alike.
+        </p>
+
+        {% if plans %}
+        {# Build a unified feature key list across all plans for the comparison table #}
+        {% set ns = namespace(all_feat_keys=[]) %}
+        {% for plan in plans %}
+            {% if plan.features %}
+                {% for k in plan.features.keys() %}
+                    {% if k not in ns.all_feat_keys %}
+                        {% set ns.all_feat_keys = ns.all_feat_keys + [k] %}
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        {% endfor %}
+
+        <div class="pricing-table-wrap reveal overflow-x-auto">
+            <table class="pricing-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        {% for plan in plans %}
+                        <th {% if loop.index == 2 and plans|length > 1 %}class="popular-col"{% endif %}>
+                            {{ plan.display_name }}
+                            {% if loop.index == 2 and plans|length > 1 %}
+                            <div class="plan-badge-inline">Most Popular</div>
+                            {% endif %}
+                            {% if plan.description %}
+                            <div class="plan-desc-cell">{{ plan.description }}</div>
+                            {% endif %}
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Limits section -->
+                    <tr class="section-row"><td colspan="{{ plans|length + 1 }}">Limits</td></tr>
+                    <tr>
+                        <td class="row-label">Concurrent Missions</td>
+                        {% for plan in plans %}
+                        <td {% if loop.index == 2 and plans|length > 1 %}class="popular-col"{% endif %}>
+                            <span class="val">{{ plan.max_concurrent_missions }}</span>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    <tr>
+                        <td class="row-label">Missions / Month</td>
+                        {% for plan in plans %}
+                        <td {% if loop.index == 2 and plans|length > 1 %}class="popular-col"{% endif %}>
+                            <span class="val">{{ plan.max_missions_per_month if plan.max_missions_per_month else 'Unlimited' }}</span>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    <tr>
+                        <td class="row-label">Targets</td>
+                        {% for plan in plans %}
+                        <td {% if loop.index == 2 and plans|length > 1 %}class="popular-col"{% endif %}>
+                            <span class="val">{{ ('Up to ' ~ plan.max_targets) if plan.max_targets else 'Unlimited' }}</span>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    <tr>
+                        <td class="row-label">API Requests / Hour</td>
+                        {% for plan in plans %}
+                        <td {% if loop.index == 2 and plans|length > 1 %}class="popular-col"{% endif %}>
+                            <span class="val">{{ plan.max_api_requests_per_hour }}</span>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    <tr>
+                        <td class="row-label">Storage</td>
+                        {% for plan in plans %}
+                        <td {% if loop.index == 2 and plans|length > 1 %}class="popular-col"{% endif %}>
+                            <span class="val">{% if plan.max_storage_mb >= 1024 %}{{ (plan.max_storage_mb / 1024)|round(0)|int }} GB{% else %}{{ plan.max_storage_mb }} MB{% endif %}</span>
+                        </td>
+                        {% endfor %}
+                    </tr>
+
+                    <!-- Features section -->
+                    {% if ns.all_feat_keys %}
+                    <tr class="section-row"><td colspan="{{ plans|length + 1 }}">Features</td></tr>
+                    {% for feat_key in ns.all_feat_keys %}
+                    <tr>
+                        <td class="row-label">{{ feat_key | feature_label }}</td>
+                        {% for plan in plans %}
+                        <td {% if loop.index == 2 and plans|length > 1 %}class="popular-col"{% endif %}>
+                            {% if plan.features and plan.features.get(feat_key) %}
+                            <span class="check">&#x2713;</span>
+                            {% else %}
+                            <span class="cross">&mdash;</span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                    {% endif %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td></td>
+                        {% for plan in plans %}
+                        <td {% if loop.index == 2 and plans|length > 1 %}class="popular-col"{% endif %}>
+                            {% if plan.name == 'enterprise' %}
+                            <a href="mailto:contact@spectra.security" class="plan-cta-cell enterprise">Contact Us</a>
+                            {% elif loop.index == 2 and plans|length > 1 %}
+                            <a href="/register" class="plan-cta-cell primary">Get Started</a>
+                            {% else %}
+                            <a href="/register" class="plan-cta-cell secondary">Get Started</a>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<div id="sticky-cta" class="fixed bottom-0 left-0 right-0 bg-slate-950/95 border-t border-white/10 p-4 md:hidden z-50" style="display:none;">
+    <a href="/register" class="block w-full text-center bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-3 font-semibold transition-colors">Get Started Free</a>
+</div>
+
+<!-- ====== TESTIMONIALS ====== -->
+<section id="testimonials">
+    <div class="section-inner" style="text-align:center;">
+        <span class="section-label reveal">Why Teams Choose Us</span>
+        <h2 class="section-title reveal">Built for security professionals</h2>
+        <p class="section-desc reveal" style="margin-left:auto;margin-right:auto;">
+            Security teams use {{ app_name }} to accelerate assessments without sacrificing depth or control.
+        </p>
+        {% if reviews %}
+        <div class="testimonial-grid" style="text-align:left;">
+            {% for review in reviews %}
+            <div class="testimonial-card reveal">
+                <div class="testimonial-quote">{{ review.quote }}</div>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar {% if loop.index % 3 == 1 %}testimonial-avatar-accent{% elif loop.index % 3 == 2 %}testimonial-avatar-violet{% else %}testimonial-avatar-sky{% endif %}">{{ review.initials }}</div>
+                    <div>
+                        <div class="testimonial-name">{{ review.author_name }}</div>
+                        <div class="testimonial-role">{{ review.author_role }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- ====== FAQ ====== -->
+<section id="faq">
+    <div class="section-inner" style="text-align:center;">
+        <span class="section-label reveal">FAQ</span>
+        <h2 class="section-title reveal">Frequently asked questions</h2>
+        <p class="section-desc reveal" style="margin-left:auto;margin-right:auto;">
+            Everything you need to know about getting started with {{ app_name }}.
+        </p>
+        <div class="faq-list" style="text-align:left;" role="list">
+            {% set faqs = [
+                ("What types of security assessments can " ~ app_name ~ " perform?",
+                 app_name ~ " supports network reconnaissance, vulnerability scanning, web app testing, service enumeration, and exploitation. All tools run in isolated sandbox containers. You control the scope and rules of engagement."),
+                ("Is it safe to run automated exploits?",
+                 "Absolutely. All tools execute in isolated, sandboxed containers with strict target boundaries and scope limits. You can enable human-in-the-loop approval for high-risk actions, or use fully autonomous mode if your plan supports it. We recommend testing against staging environments first."),
+                ("Can I bring my own API key?",
+                 "Yes. Professional and Enterprise plans let you connect your own OpenAI, Anthropic, or other LLM provider API keys."),
+                ("How are assessment reports generated?",
+                 "Reports are automatically generated with CVSS-scored findings, evidence screenshots, remediation guidance, and executive summaries. Each finding includes detailed reproduction steps and is mapped to relevant CVE identifiers when applicable. Export in PDF, JSON, or Markdown."),
+                ("What security tools are available?",
+                 "25+ tools are included: Nmap, Nuclei, Nikto, SQLMap, Feroxbuster, Hydra, and more. New tools are added regularly by the " ~ app_name ~ " team. Enterprise plans can request custom tool integrations.")
+            ] %}
+            {% for question, answer in faqs %}
+            <div class="faq-item reveal" role="listitem">
+                <button class="faq-question" aria-expanded="false" aria-controls="faq-a{{ loop.index }}">
+                    {{ question }}
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+                <div class="faq-answer" id="faq-a{{ loop.index }}" role="region">
+                    <p>{{ answer }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+</main>
+
+<!-- ====== FOOTER ====== -->
+<footer class="footer-full">
+    <div class="footer-grid">
+        <div class="footer-brand footer-col">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                <span style="font-weight:700;font-size:1.125rem;color:#fff;">{{ app_name }}</span>
+            </div>
+            <p>Security testing, evidence, and reports in one place.</p>
+        </div>
+        <div class="footer-col">
+            <h4>Product</h4>
+            <ul>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#pricing">Pricing</a></li>
+                <li><a href="#how-it-works">How It Works</a></li>
+                <li><a href="/register">Get Started</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Resources</h4>
+            <ul>
+                <li><a href="#faq">FAQ</a></li>
+                <li><a href="/#faq">Help &amp; FAQ</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Company</h4>
+            <ul>
+                <li><a href="#social-proof">About</a></li>
+                <li><a href="mailto:contact@spectra.security">Contact</a></li>
+                <li><a href="/login">Sign In</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Legal</h4>
+            <ul>
+                <li><a href="/legal/terms">Terms of Service</a></li>
+                <li><a href="/legal/privacy">Privacy Policy</a></li>
+                <li><a href="/legal/cookies">Cookie Policy</a></li>
+                <li><a href="#" data-action="reopenCookieConsent">Cookie Preferences</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <span class="footer-bottom-copy">&copy; 2026 {{ app_name }} v{{ version }}. All rights reserved.</span>
+        <ul class="footer-bottom-links">
+            <li><a href="/legal/terms">Terms</a></li>
+            <li><a href="/legal/privacy">Privacy</a></li>
+            <li><a href="/legal/cookies">Cookies</a></li>
+            <li><a href="#" data-action="reopenCookieConsent">Cookie Preferences</a></li>
+        </ul>
+    </div>
+</footer>
+
+<script nonce="{{ request.state.csp_nonce }}" src="/static/vendor/js/lucide.min.js"></script>
+<script nonce="{{ request.state.csp_nonce }}" src="/static/js/landing.js"></script>
+<script nonce="{{ request.state.csp_nonce }}">lucide.createIcons();</script>
+    {% include 'partials/_cookie_consent.html' %}
+</body>
+</html>

@@ -1,14 +1,34 @@
+import importlib.util
+import os
+
 import pytest
 import pytest_asyncio
 
-from app.services.ai.rag import Document, RAGService
+from spectra_ai.rag import Document, RAGService
+from spectra_platform.core.config import settings
+
+pytestmark = [
+    pytest.mark.asyncio,
+    pytest.mark.skipif(
+        "sqlite" in os.environ.get("DATABASE_URL", "sqlite"),
+        reason="RAG requires PostgreSQL with pgvector",
+    ),
+]
+
+
+def _requires_local_fastembed() -> bool:
+    return settings.EMBEDDING_MODEL.lower().startswith("local/") or not settings.EMBEDDING_API_KEY.get_secret_value()
 
 
 @pytest_asyncio.fixture
 async def rag_service():
     """Get an initialized RAG service (PostgreSQL-backed)."""
+    if _requires_local_fastembed() and importlib.util.find_spec("fastembed") is None:
+        pytest.skip("RAG local embeddings require optional dependency 'fastembed'")
+
     service = RAGService()
-    await service.initialize()
+    result = await service.initialize()
+    assert result, "RAG initialization failed (PostgreSQL/pgvector not available)"
     yield service
 
 

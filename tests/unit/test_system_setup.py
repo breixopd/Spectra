@@ -3,10 +3,11 @@ from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas import SystemSetupRequest, UserCreate
-from app.models.config import SystemConfig
-from app.models.user import User
-from app.services.system.setup import SystemSetupService
+from spectra_api.api.schemas.auth import UserCreate
+from spectra_api.api.schemas.system import SystemSetupRequest
+from spectra_api.services.system.setup import SystemSetupService
+from spectra_platform.models.config import SystemConfig
+from spectra_platform.models.user import User
 
 
 @pytest.fixture
@@ -31,21 +32,17 @@ def setup_request():
             email="admin@example.com",
             password="SecurePassword123!",  # Meets complexity reqs
         ),
-        llm_provider="litellm",
-        llm_model="gpt-4",
-        llm_api_key="sk-test",
+        tensorzero_gateway_url="http://tensorzero:3000",
         use_custom_db=False,
     )
 
 
 @pytest.mark.asyncio
-@patch("app.services.system.setup.get_password_hash")
-@patch("app.services.system.setup.hydrate_runtime_settings_from_db", new_callable=AsyncMock)
-@patch("app.services.system.setup.SystemSetupService._generate_signing_keys")
-@patch("app.services.system.setup.SystemSetupService._save_infra_config")
+@patch("spectra_api.services.system.setup.get_password_hash")
+@patch("spectra_api.services.system.setup.hydrate_runtime_settings_from_db", new_callable=AsyncMock)
+@patch("spectra_api.services.system.setup.SystemSetupService._save_infra_config")
 async def test_perform_setup_success(
     mock_save_infra,
-    mock_gen_keys,
     mock_hydrate,
     mock_hash,
     service,
@@ -67,13 +64,12 @@ async def test_perform_setup_success(
     mock_session.refresh.assert_called_once_with(user)
 
     mock_hydrate.assert_awaited_once()
-    mock_gen_keys.assert_called_once()
     mock_save_infra.assert_not_called()  # No infra changes
 
 
 @pytest.mark.asyncio
 async def test_create_admin_user(service, setup_request, mock_session):
-    with patch("app.services.system.setup.get_password_hash") as mock_hash:
+    with patch("spectra_api.services.system.setup.get_password_hash") as mock_hash:
         mock_hash.return_value = "hashed"
         user = await service._create_admin_user(setup_request)
 
@@ -89,39 +85,15 @@ async def test_configure_system(service, setup_request, mock_session):
 
 
 @pytest.mark.asyncio
-async def test_configure_system_persists_db_backed_profiles_and_fallbacks(service, mock_session):
+async def test_configure_system_persists_tensorzero_config(service, mock_session):
     setup_request = SystemSetupRequest(
         user=UserCreate(
             username="admin",
             email="admin@example.com",
             password="SecurePassword123!",
         ),
-        provider_profiles={
-            "default": {
-                "provider": "litellm",
-                "model": "gpt-4o-mini",
-                "base_url": "https://example.test/v1",
-                "api_key": "sk-primary",
-            },
-            "tier1": {
-                "provider": "ollama",
-                "model": "qwen2.5:3b",
-                "base_url": "http://ollama:11434",
-            },
-            "fallback_1": {
-                "provider": "litellm",
-                "model": "gpt-4.1-mini",
-                "base_url": "https://backup.test/v1",
-                "api_key": "sk-backup",
-            },
-        },
-        provider_routing={
-            "default": "default",
-            "tier1": "tier1",
-        },
-        provider_fallbacks={
-            "default": ["fallback_1"],
-        },
+        tensorzero_gateway_url="http://tensorzero:3000",
+        tensorzero_api_key="tz-key-test",
         embedding_model="all-MiniLM-L6-v2",
     )
 
@@ -130,37 +102,22 @@ async def test_configure_system_persists_db_backed_profiles_and_fallbacks(servic
     added_configs = [call.args[0] for call in mock_session.add.call_args_list if isinstance(call.args[0], SystemConfig)]
     config_map = {config.key: config for config in added_configs}
 
-    assert "AI_PROVIDER_PROFILES" in config_map
-    assert "AI_PROVIDER_ROUTING" in config_map
-    assert "AI_PROVIDER_FALLBACKS" in config_map
-    assert '"tier1": "tier1"' in config_map["AI_PROVIDER_ROUTING"].value
-    assert '"fallback_1"' in config_map["AI_PROVIDER_FALLBACKS"].value
-
-
-def test_system_setup_request_normalizes_legacy_api_provider_to_litellm():
-    request = SystemSetupRequest(
-        user=UserCreate(
-            username="admin",
-            email="admin@example.com",
-            password="SecurePassword123!",
-        ),
-        llm_provider="api",
-        llm_model="gpt-4o-mini",
-        llm_api_key="sk-test",
-    )
-
-    assert request.llm_provider == "litellm"
+    assert "TENSORZERO_GATEWAY_URL" in config_map
+    assert config_map["TENSORZERO_GATEWAY_URL"].value == "http://tensorzero:3000"
+    assert "EMBEDDING_MODEL" in config_map
 
 
 @pytest.mark.asyncio
-@patch("app.services.system.setup.json.dump")
+@patch("spectra_api.services.system.setup.json.dump")
 @patch("builtins.open", new_callable=mock_open)
-@patch("app.services.system.setup.Path.exists")
-async def test_save_infra_config(mock_exists, mock_file, mock_json_dump, service):
+@patch("spectra_api.services.system.setup.Path.mkdir")
+@patch("spectra_api.services.system.setup.Path.exists")
+async def test_save_infra_config(mock_exists, mock_mkdir, mock_file, mock_json_dump, service):
     mock_exists.return_value = False
 
     service._save_infra_config({"TEST_KEY": "TEST_VAL"})
 
+    mock_mkdir.assert_called_once()
     mock_file.assert_called()
     mock_json_dump.assert_called()
 
@@ -176,37 +133,12 @@ async def test_check_database_success(service, mock_session):
 @pytest.mark.asyncio
 async def test_check_directories(service):
     with (
-        patch("app.services.system.setup.Path.mkdir"),
-        patch("app.services.system.setup.Path.exists") as mock_exists,
+        patch("spectra_api.services.system.setup.Path.mkdir"),
+        patch("spectra_api.services.system.setup.Path.exists") as mock_exists,
     ):
         mock_exists.return_value = True
         result = await service.check_directories()
         assert result is True
 
 
-@pytest.mark.asyncio
-async def test_generate_signing_keys_exists(service):
-    with patch("app.services.system.setup.Path.exists") as mock_exists:
-        mock_exists.return_value = True
-        with patch("app.services.system.setup.logger") as mock_logger:
-            await service._generate_signing_keys()
-            mock_logger.info.assert_any_call("Signing keys already exist")
 
-
-@pytest.mark.asyncio
-async def test_generate_signing_keys_new(service):
-    with (
-        patch("app.services.system.setup.Path.exists") as mock_exists,
-        patch("app.services.system.setup.Path.mkdir"),
-        patch("builtins.open", new_callable=mock_open),
-        patch("cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey.generate") as mock_gen,
-        patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread,
-    ):
-        mock_exists.return_value = False
-        mock_key = MagicMock()
-        mock_gen.return_value = mock_key
-
-        await service._generate_signing_keys()
-
-        mock_gen.assert_called_once()
-        assert mock_to_thread.call_count == 2  # Two write_bytes calls

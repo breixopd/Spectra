@@ -1,47 +1,63 @@
-# Spectra Production Caddyfile
-# Replace {$SPECTRA_DOMAIN} with your actual domain, or set the env var.
-# Caddy automatically provisions TLS via Let's Encrypt.
+import Caddyfile.snippets
 
-{$SPECTRA_DOMAIN:localhost} {
-	# Security headers
-	header {
-		X-Content-Type-Options nosniff
-		X-Frame-Options DENY
-		X-XSS-Protection "1; mode=block"
-		Referrer-Policy strict-origin-when-cross-origin
-		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
-		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org; connect-src 'self' ws: wss:; font-src 'self';"
-		-Server
-	}
+{
+	admin off
+	default_sni {$PLATFORM_DOMAIN:localhost}
+}
 
-	# WebSocket upgrade
+{$PLATFORM_DOMAIN:localhost} {
+	tls {$TLS_MODE:internal}
+
+	import security_headers
+
+	header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+
 	@websocket {
 		header Connection *Upgrade*
 		header Upgrade websocket
 	}
-	handle @websocket {
-		reverse_proxy spectra-app:5000
+
+	@private_docs {
+		path /docs /redoc /openapi.json
+	}
+	handle @private_docs {
+		respond "Not found" 404
 	}
 
-	# Proxy to Spectra
-	reverse_proxy spectra-app:5000 {
-		health_uri /api/health
-		health_interval 15s
-		health_timeout 5s
-
-		transport http {
-			read_timeout 300s
-			write_timeout 300s
-			dial_timeout 10s
+	route {
+		request_body {
+			max_size 50MB
 		}
 
-		header_up X-Real-IP {remote_host}
-		header_up X-Forwarded-For {remote_host}
-		header_up X-Forwarded-Proto {scheme}
+		handle /static/* {
+			header Cache-Control "public, max-age=604800, immutable"
+			reverse_proxy {$APP_UPSTREAM:spectra-app:5000}
+		}
+
+		handle @websocket {
+			reverse_proxy {$APP_UPSTREAM:spectra-app:5000}
+		}
+
+		import rate_limit_public 30
+
+		reverse_proxy {$APP_UPSTREAM:spectra-app:5000} {
+			lb_policy cookie
+			lb_try_duration 5s
+			health_uri /api/health
+			health_interval 10s
+			health_timeout 5s
+
+			import proxy_defaults
+		}
 	}
 
+	import error_pages
+
 	log {
-		output stdout
+		output file /data/access.log {
+			roll_size 50mb
+			roll_keep 10
+		}
 		format json
 		level WARN
 	}

@@ -42,7 +42,7 @@ async def api_client():
 async def auth_token(api_client: httpx.AsyncClient):
     """Get authentication token (creates user if needed)."""
     # Check if setup is needed
-    setup_response = await api_client.get(f"{API_BASE_URL}/api/auth/setup/status")
+    setup_response = await api_client.get(f"{API_BASE_URL}/api/v1/auth/setup/status")
 
     if setup_response.status_code == 200:
         is_setup = setup_response.json().get("is_setup", False)
@@ -50,12 +50,14 @@ async def auth_token(api_client: httpx.AsyncClient):
         if not is_setup:
             # Create admin user
             setup_data = {
-                "username": "admin",
-                "email": "admin@spectra.local",
-                "password": "AdminPass123!",
+                "user": {
+                    "username": "admin",
+                    "email": "admin@spectra.local",
+                    "password": "AdminPass123!",
+                }
             }
             response = await api_client.post(
-                f"{API_BASE_URL}/api/auth/setup",
+                f"{API_BASE_URL}/api/v1/auth/setup",
                 json=setup_data,
             )
             if response.status_code not in (200, 201):
@@ -68,7 +70,7 @@ async def auth_token(api_client: httpx.AsyncClient):
     }
 
     response = await api_client.post(
-        f"{API_BASE_URL}/api/auth/token",
+        f"{API_BASE_URL}/api/v1/auth/token",
         data=login_data,  # OAuth2 form data
     )
 
@@ -131,7 +133,7 @@ class TestFullWorkflow:
         }
 
         response = await api_client.post(
-            f"{API_BASE_URL}/api/targets",
+            f"{API_BASE_URL}/api/v1/targets",
             json=target_data,
             headers=headers,
         )
@@ -146,7 +148,7 @@ class TestFullWorkflow:
             print(f"   Target may already exist: {response.text}")
             # Try to list targets and find our test target
             list_response = await api_client.get(
-                f"{API_BASE_URL}/api/targets",
+                f"{API_BASE_URL}/api/v1/targets",
                 headers=headers,
             )
             if list_response.status_code == 200:
@@ -171,7 +173,7 @@ class TestFullWorkflow:
         }
 
         response = await api_client.post(
-            f"{API_BASE_URL}/api/missions",
+            f"{API_BASE_URL}/api/v1/missions",
             json=mission_data,
             headers=headers,
         )
@@ -198,7 +200,7 @@ class TestFullWorkflow:
             elapsed += poll_interval
 
             response = await api_client.get(
-                f"{API_BASE_URL}/api/missions/{mission_id}",
+                f"{API_BASE_URL}/api/v1/missions/{mission_id}",
                 headers=headers,
             )
 
@@ -230,14 +232,14 @@ class TestFullWorkflow:
             print(f"\n   Mission timeout after {max_wait_time}s")
             # Try to stop the mission
             await api_client.post(
-                f"{API_BASE_URL}/api/missions/{mission_id}/stop",
+                f"{API_BASE_URL}/api/v1/missions/{mission_id}/stop",
                 headers=headers,
             )
 
         # Step 4: Verify mission results
         print("\nStep 4: Checking mission results...")
         response = await api_client.get(
-            f"{API_BASE_URL}/api/missions/{mission_id}",
+            f"{API_BASE_URL}/api/v1/missions/{mission_id}",
             headers=headers,
         )
 
@@ -258,7 +260,7 @@ class TestFullWorkflow:
         # Step 5: Check findings
         print("\nStep 5: Checking findings...")
         response = await api_client.get(
-            f"{API_BASE_URL}/api/findings",
+            f"{API_BASE_URL}/api/v1/findings",
             headers=headers,
         )
 
@@ -288,7 +290,7 @@ class TestFullWorkflow:
         headers = get_headers(auth_token)
 
         response = await api_client.get(
-            f"{API_BASE_URL}/api/tools",
+            f"{API_BASE_URL}/api/v1/tools",
             headers=headers,
         )
 
@@ -319,7 +321,7 @@ class TestFullWorkflow:
         }
 
         response = await api_client.post(
-            f"{API_BASE_URL}/api/missions",
+            f"{API_BASE_URL}/api/v1/missions",
             json=mission_data,
             headers=headers,
         )
@@ -340,7 +342,7 @@ class TestFullWorkflow:
         }
 
         response = await api_client.post(
-            f"{API_BASE_URL}/api/missions/{mission_id}/steer",
+            f"{API_BASE_URL}/api/v1/missions/{mission_id}/steer",
             json=steer_data,
             headers=headers,
         )
@@ -353,7 +355,7 @@ class TestFullWorkflow:
 
         # Stop the mission
         await api_client.post(
-            f"{API_BASE_URL}/api/missions/{mission_id}/stop",
+            f"{API_BASE_URL}/api/v1/missions/{mission_id}/stop",
             headers=headers,
         )
 
@@ -376,7 +378,7 @@ class TestTargetCRUD:
         }
 
         response = await api_client.post(
-            f"{API_BASE_URL}/api/targets",
+            f"{API_BASE_URL}/api/v1/targets",
             json=target_data,
             headers=headers,
         )
@@ -390,7 +392,7 @@ class TestTargetCRUD:
 
         # Read
         response = await api_client.get(
-            f"{API_BASE_URL}/api/targets/{target_id}",
+            f"{API_BASE_URL}/api/v1/targets/{target_id}",
             headers=headers,
         )
         assert response.status_code == 200
@@ -399,7 +401,7 @@ class TestTargetCRUD:
         # Update
         update_data = {"notes": "Updated via test"}
         response = await api_client.patch(
-            f"{API_BASE_URL}/api/targets/{target_id}",
+            f"{API_BASE_URL}/api/v1/targets/{target_id}",
             json=update_data,
             headers=headers,
         )
@@ -410,7 +412,7 @@ class TestTargetCRUD:
 
         # Delete
         response = await api_client.delete(
-            f"{API_BASE_URL}/api/targets/{target_id}",
+            f"{API_BASE_URL}/api/v1/targets/{target_id}",
             headers=headers,
         )
         if response.status_code in (200, 204):
