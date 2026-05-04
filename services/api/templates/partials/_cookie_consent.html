@@ -1,0 +1,18 @@
+{# Cookie consent banner — include at the bottom of base.html, landing.html, and public legal pages #}
+<div id="cookie-consent" class="cookie-consent is-hidden" role="dialog" aria-label="Cookie consent" aria-describedby="cookie-consent-copy">
+  <div class="cookie-consent__panel">
+    <div class="cookie-consent__copy">
+      <span class="cookie-consent__eyebrow">Your privacy matters</span>
+      <p id="cookie-consent-copy">We use essential cookies only to keep the platform working. We <strong>never</strong> use external trackers, sell your data, or share information with advertisers. Optional cookies help us improve the experience — nothing more. You can change your cookie preferences at any time via the link in the footer. Read our <a href="/legal/cookies">Cookie Policy</a>.</p>
+    </div>
+    <div class="cookie-consent__actions">
+      <button type="button" data-cookie-consent="essential" class="cookie-consent__button cookie-consent__button--secondary">
+        Essential only
+      </button>
+      <button type="button" data-cookie-consent="all" class="cookie-consent__button cookie-consent__button--primary">
+        Accept all
+      </button>
+    </div>
+  </div>
+</div>
+<script src="/static/js/cookie-consent.js" defer></script>

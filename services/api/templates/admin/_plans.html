@@ -1,0 +1,127 @@
+        <div id="section-plans" class="section-panel space-y-4" role="tabpanel" aria-labelledby="tab-plans">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-white">Subscription Plans</h2>
+                <button data-action="openCreatePlanModal" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors">
+                    <i data-lucide="plus" class="w-4 h-4 inline-block mr-1"></i> Create Plan
+                </button>
+            </div>
+            <div id="plans-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+        </div>
+
+        <!-- Services -->
+<!-- Create/Edit Plan Modal -->
+<div class="modal-backdrop hidden" id="plan-modal">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="plan-modal-title">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="plan-modal-title" class="text-lg font-semibold text-white">Create Plan</h3>
+            <button data-action="closeModal" data-value="plan-modal" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4 inline-block"></i></button>
+        </div>
+        <form id="plan-form" class="space-y-3">
+            <input type="hidden" id="plan-form-id">
+            <div>
+                <label class="form-label">Name (slug)</label>
+                <input id="plan-form-name" class="form-input" type="text" required maxlength="100" autocomplete="off">
+            </div>
+            <div>
+                <label class="form-label">Display Name</label>
+                <input id="plan-form-display-name" class="form-input" type="text" required maxlength="200" autocomplete="off">
+            </div>
+            <div>
+                <label class="form-label">Description</label>
+                <textarea id="plan-form-description" class="form-input" rows="2"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="form-label">Concurrent Missions</label>
+                    <input id="plan-form-concurrent" class="form-input" type="number" min="1" value="1">
+                </div>
+                <div>
+                    <label class="form-label">Missions/Month</label>
+                    <input id="plan-form-monthly" class="form-input" type="number" min="0" placeholder="Unlimited">
+                </div>
+                <div>
+                    <label class="form-label">Max Targets</label>
+                    <input id="plan-form-targets" class="form-input" type="number" min="0" placeholder="Unlimited">
+                </div>
+                <div>
+                    <label class="form-label">API Req/Hour</label>
+                    <input id="plan-form-api-hour" class="form-input" type="number" min="1" value="100">
+                </div>
+                <div>
+                    <label class="form-label">API Req/Day</label>
+                    <input id="plan-form-api-day" class="form-input" type="number" min="1" value="1000">
+                </div>
+                <div>
+                    <label class="form-label">Sandbox Containers</label>
+                    <input id="plan-form-sandboxes" class="form-input" type="number" min="1" value="1">
+                </div>
+                <div>
+                    <label class="form-label">Storage (MB)</label>
+                    <input id="plan-form-storage" class="form-input" type="number" min="1" value="500">
+                </div>
+                <div>
+                    <label class="form-label">Sort Order</label>
+                    <input id="plan-form-sort" class="form-input" type="number" value="0">
+                </div>
+                <div>
+                    <label class="form-label">Resource Tier</label>
+                    <select id="plan-form-resource-tier" class="form-input form-select">
+                        <option value="light">Light</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="heavy">Heavy</option>
+                        <option value="extreme">Extreme</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="form-label">Feature Toggles</label>
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="plan-feat-api-access" class="rounded bg-slate-800 border-white/10 plan-feature-toggle" data-feature="api_access"> API Access
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="plan-feat-byok" class="rounded bg-slate-800 border-white/10 plan-feature-toggle" data-feature="byok"> BYOK (Bring Your Own Key)
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="plan-feat-custom-plugins" class="rounded bg-slate-800 border-white/10 plan-feature-toggle" data-feature="custom_plugins"> Custom Plugins
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="plan-feat-priority-support" class="rounded bg-slate-800 border-white/10 plan-feature-toggle" data-feature="priority_support"> Priority Support
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="plan-feat-advanced-reporting" class="rounded bg-slate-800 border-white/10 plan-feature-toggle" data-feature="advanced_reporting"> Advanced Reporting
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="plan-feat-team-collab" class="rounded bg-slate-800 border-white/10 plan-feature-toggle" data-feature="team_collaboration"> Team Collaboration
+                    </label>
+                </div>
+                <div class="mt-2 flex items-center gap-2 text-sm text-slate-500 border-t border-white/5 pt-2">
+                    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-500/60 inline-block flex-shrink-0"></i>
+                    <span>VPN (per-mission) — enabled on all plans by default; configured in Settings › VPN</span>
+                </div>
+            </div>
+            <div>
+                <label class="form-label">Additional Features (JSON)</label>
+                <textarea id="plan-form-features" class="form-input font-mono text-xs" rows="3" placeholder='{"rag_enabled": true, "export_pdf": true}'></textarea>
+                <p class="text-xs text-slate-500 mt-1">Extra feature flags merged with toggles above</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <input id="plan-form-active" type="checkbox" class="rounded bg-slate-800 border-white/10" checked>
+                <label for="plan-form-active" class="text-sm text-slate-300">Active (visible to users)</label>
+            </div>
+            <div class="flex items-center gap-2">
+                <input id="plan-form-default" type="checkbox" class="rounded bg-slate-800 border-white/10">
+                <label for="plan-form-default" class="text-sm text-slate-300">Default plan for new users</label>
+            </div>
+            <div class="flex items-center gap-2">
+                <input id="plan-form-self-service" type="checkbox" class="rounded bg-slate-800 border-white/10">
+                <label for="plan-form-self-service" class="text-sm text-slate-300">Allow automatic self-service assignment on signup</label>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" data-action="closeModal" data-value="plan-modal" class="px-4 py-2 rounded-lg text-sm text-slate-400 hover:bg-white/5 transition-colors">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+

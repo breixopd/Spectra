@@ -1,40 +1,37 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.config import settings
-from app.services.ai.agents.base import AgentContext, ToolAction
-from app.services.ai.agents.scope import ScopeAgent, ScopeInput
-from app.services.ai.agents.tool_selector import (
+from spectra_platform.services.ai.agents.base import AgentContext, ToolAction
+from spectra_platform.services.ai.agents.scope import ScopeAgent, ScopeInput
+from spectra_platform.services.ai.agents.tool_selector import (
     ToolSelectorAgent,
     ToolSelectorInput,
 )
-
-# Force Mock Provider
-settings.AI_PROVIDER = "mock"
+from tests.mocks.llm import MockLLMClient
 
 
 @pytest.fixture
 def mock_llm():
-    from app.services.ai.llm import get_llm_client
-
-    # Reset singleton if needed or just get new one
-    client = get_llm_client(provider="mock")
+    client = MockLLMClient()
     client.reset()
     return client
 
 
 @pytest.fixture
 def mock_registry():
-    with patch("app.services.ai.agents.tool_selector.get_registry") as mock_get:
+    with patch("spectra_platform.services.ai.agents.tool_selector.get_registry") as mock_get:
         registry = MagicMock()
         mock_tool = MagicMock()
         mock_tool.config.id = "nmap"
         mock_tool.config.metadata.capabilities = ["port_scan"]
         mock_tool.config.metadata.prerequisites = []
         mock_tool.config.metadata.risk_level = "low"
+        mock_tool.config.execution.min_timeout = 10
         mock_tool.config.get_ai_summary.return_value = "Nmap port scanner"
 
+        registry.sync_status_from_cache = AsyncMock()
+        registry.list_tools.return_value = [mock_tool]
         registry.get_available_tools.return_value = [mock_tool]
         registry.get_tool.return_value = mock_tool
         mock_get.return_value = registry
@@ -63,9 +60,7 @@ async def test_tool_selector_flow(mock_llm, mock_registry):
 
     # Input
     inp = ToolSelectorInput(target="1.1.1.1", current_phase="discovery")
-    context = MagicMock(spec=AgentContext)
-    context.stealth_mode = False
-    context.session_id = "test-session"
+    context = AgentContext(mission_id="test-mission", session_id="test-session")
 
     # Execute
     result = await agent.execute(context, inp)
@@ -102,8 +97,7 @@ async def test_scope_agent_flow(mock_llm):
 
     agent = ScopeAgent(mock_llm)
     inp = ScopeInput(raw_input="Include 1.1.1.1 but check for others")
-    context = MagicMock(spec=AgentContext)
-    context.session_id = "test-session"
+    context = AgentContext(mission_id="test-mission", session_id="test-session")
 
     result = await agent.execute(context, inp)
 
@@ -115,14 +109,14 @@ async def test_scope_agent_flow(mock_llm):
 @pytest.mark.asyncio
 async def test_exploit_crafter_flow(mock_llm):
     """Test ExploitCrafter using Mock LLM."""
-    from app.services.ai.agents.exploit_crafter import (
-        ExploitAction,
+    from spectra_platform.services.ai.agents.exploit_crafter import (
         ExploitCrafter,
-        ExploitInput,
+        ExploitCrafterInput,
+        ExploitCrafterOutput,
     )
 
     mock_llm.structured_responses = {
-        "ExploitAction": {
+        "ExploitCrafterOutput": {
             "action_type": "execute_exploit",
             "exploit_name": "test_exploit",
             "payload_type": "reverse_tcp",
@@ -135,27 +129,25 @@ async def test_exploit_crafter_flow(mock_llm):
     }
 
     agent = ExploitCrafter(mock_llm)
-    inp = ExploitInput(target="1.1.1.1", vulnerability_id="CVE-2024-0001", service_info={"port": 80})
-    context = MagicMock(spec=AgentContext)
-    context.session_id = "test-session"
-    context.previous_actions = []
+    inp = ExploitCrafterInput(target="1.1.1.1", vulnerability_id="CVE-2024-0001", service_info={"port": 80})
+    context = AgentContext(mission_id="test-mission", session_id="test-session", target="1.1.1.1")
 
     # Mock specialized methods via patching if needed or rely on MockLLM for simple flow
     # _find_exploit_candidates calls RAG which might fail if not mocked
-    with patch("app.services.ai.agents.exploit_crafter.ExploitCrafter._find_exploit_candidates") as mock_find:
+    with patch("spectra_platform.services.ai.agents.exploit_crafter.ExploitCrafter._find_exploit_candidates") as mock_find:
         mock_find.return_value = [{"name": "test_exploit", "type": "cve"}]
 
         result = await agent.execute(context, inp)
 
         assert result.success is True
-        assert isinstance(result.action, ExploitAction)
+        assert isinstance(result.action, ExploitCrafterOutput)
         assert result.action.exploit_name == "test_exploit"
 
 
 @pytest.mark.asyncio
 async def test_mission_controller_planning(mock_llm):
     """Test MissionController planning logic."""
-    from app.services.ai.agents.mission_controller import (
+    from spectra_platform.services.ai.agents.mission_controller import (
         MissionController,
         MissionInput,
         MissionPlan,
@@ -185,11 +177,11 @@ async def test_mission_controller_planning(mock_llm):
     # Mock dependency imports inside execute method
     with (
         patch(
-            "app.services.ai.knowledge.get_available_tools_context",
-            new_callable=MagicMock,
+            "spectra_platform.services.ai.knowledge.get_available_tools_context",
+            new_callable=AsyncMock,
         ) as mock_tools,
-        patch("app.services.ai.knowledge.get_mission_context", new_callable=MagicMock) as mock_ctx,
-        patch("app.services.ai.knowledge.get_full_methodology", new_callable=MagicMock) as mock_meth,
+        patch("spectra_platform.services.ai.knowledge.get_mission_context", new_callable=AsyncMock) as mock_ctx,
+        patch("spectra_platform.services.ai.knowledge.get_full_methodology", new_callable=MagicMock) as mock_meth,
     ):
         mock_tools.return_value = "Tools available"
         mock_ctx.return_value = "Context"
@@ -197,9 +189,7 @@ async def test_mission_controller_planning(mock_llm):
 
         agent = MissionController(mock_llm)
         inp = MissionInput(directive="Hack everything")
-        context = MagicMock(spec=AgentContext)
-        context.session_id = "test-session"
-        context.target = "1.1.1.1"
+        context = AgentContext(mission_id="test-mission", session_id="test-session", target="1.1.1.1")
 
         result = await agent.execute(context, inp)
 

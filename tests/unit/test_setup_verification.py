@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.services.system.setup import SystemSetupService
+from spectra_api.services.system.setup import SystemSetupService
 
 
 @pytest.fixture

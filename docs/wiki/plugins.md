@@ -11,10 +11,9 @@ Comprehensive guide to creating, configuring, and managing tool plugins in Spect
 Spectra uses a **Dynamic Plugin System** to integrate security tools. Each tool is defined in a JSON configuration file stored in the `plugins/` directory. The system supports:
 
 - **Hot Loading**: Drop a `.json` file into `plugins/` to instantly register a new tool
-- **Cryptographic Signing**: Ed25519 signatures to verify plugin integrity
 - **AI-Driven Selection**: Rich metadata helps the AI choose the right tool for each situation
 - **Stealth Profiles**: Per-tool configurations for stealthy operation
-- **Auto-Installation**: Tools are installed in sandbox containers on first boot
+- **Golden image**: Plugin `installation` blocks drive rebuilds of `spectra-tools:latest`; changing plugins emits `PLUGIN_UPDATED` and regenerates the Dockerfile layers from `plugins/*.json`
 
 ---
 
@@ -32,8 +31,7 @@ Spectra uses a **Dynamic Plugin System** to integrate security tools. Each tool 
   "execution": { ... },
   "parsing": { ... },
   "stealth": { ... },
-  "ui": { ... },
-  "signature": "hex-encoded-signature"
+  "ui": { ... }
 }
 ```
 
@@ -61,8 +59,8 @@ Spectra uses a **Dynamic Plugin System** to integrate security tools. Each tool 
 | `parsing` | object | `{}` | Output parsing configuration |
 | `stealth` | object | `{}` | Stealth mode configuration |
 | `ui` | object | `{}` | UI display configuration |
-| `signature` | string | `null` | Ed25519 signature (required when `PLUGIN_SAFE_MODE=true`) |
 | `is_system` | boolean | `false` | Whether this is a built-in system tool |
+| `enabled` | boolean | `true` | When `false`, the registry marks the tool disabled and skips availability checks |
 
 ---
 
@@ -234,32 +232,6 @@ Supported formats: `json`, `xml`, `text`, `ndjson`, `csv`.
 
 ---
 
-## Security & Signing
-
-### Plugin Signing
-
-All plugins must be signed in production (`PLUGIN_SAFE_MODE=true`). The signature is an Ed25519 signature of the canonicalized JSON (without the signature field).
-
-**Generate Keys:**
-
-```bash
-python scripts/sign_plugin.py keygen --key-dir keys
-```
-
-**Sign a Plugin:**
-
-```bash
-python scripts/sign_plugin.py sign --plugin plugins/my-tool.json --key-dir keys
-```
-
-**Verification Process:**
-
-1. Load public key from `keys/plugin_signing.pub`
-2. Remove `signature` field from plugin JSON
-3. Canonicalize JSON (sort keys, remove whitespace)
-4. Verify Ed25519 signature
-5. Reject if verification fails (in safe mode)
-
 ---
 
 ## Included Plugins
@@ -337,14 +309,12 @@ Spectra ships with 25+ tool plugins:
     "delay_ms": 500,
     "extra_args": {}
   },
-  "ui": { "icon": "terminal", "color": "violet" },
-  "signature": null
+  "ui": { "icon": "terminal", "color": "violet" }
 }
 ```
 
 ### Adding a New Tool
 
-1. Create `plugins/my-tool.json` following the schema above
-2. Sign it: `python3 scripts/sign_plugin.py sign --plugin plugins/my-tool.json`
-3. Restart: `docker compose restart tools app`
-4. The tool appears in the registry and is auto-installed in sandbox containers
+1. Create `plugins/my-tool.json` following the schema above.
+2. Restart the **app** and **worker** services (or reload plugins via the API) so the registry picks up the file; golden-image rebuild follows plugin updates.
+3. The tool appears in the registry. Execution installs into sandboxes as needed (see [Sandboxes](sandboxes.md#golden-image-system)).

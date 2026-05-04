@@ -7,7 +7,7 @@
 #   - Lock file to prevent concurrent deploys
 #   - Pre-deploy health check against current running version
 #   - Database backup via pg_dump before migration
-#   - Blue-green deployment: start new, health check, swap, stop old
+#   - In-place rolling restart: pull new images, restart containers, health check
 #   - Post-deploy health check with exponential backoff
 #   - Automatic rollback on failure
 #   - Deploy notification via webhooks (optional)
@@ -22,8 +22,8 @@ LOCK_FILE="/tmp/spectra-deploy.lock"
 LOG_DIR="$PROJECT_DIR/logs"
 LOG_FILE="$LOG_DIR/deploy.log"
 BACKUP_DIR="$PROJECT_DIR/data/backups"
-COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_DIR/docker/docker-compose.yml}"
-HEALTH_URL="${HEALTH_URL:-http://localhost:80/api/health}"
+COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_DIR/docker/compose.yaml}"
+HEALTH_URL="${HEALTH_URL:-http://localhost:80/api/v1/health?scope=public}"
 VERSION="${1:-latest}"
 DEPLOY_WEBHOOK_URL="${DEPLOY_WEBHOOK_URL:-}"
 OLD_CONTAINER=""
@@ -40,9 +40,9 @@ Arguments:
   version   Docker image version tag to deploy (default: latest)
 
 Environment variables:
-  COMPOSE_FILE        Docker compose file (default: docker/docker-compose.yml)
+  COMPOSE_FILE        Docker compose file (default: docker/compose.yaml)
   DEPLOY_WEBHOOK_URL  Webhook URL for deploy notifications (optional)
-  HEALTH_URL          Health check URL (default: http://localhost:80/api/health)
+  HEALTH_URL          Health check URL (default: http://localhost:80/api/v1/health?scope=public)
   DATABASE_URL        PostgreSQL connection URL (for pg_dump)
 
 Examples:
@@ -68,13 +68,14 @@ notify() {
     local status="$1" message="$2"
     if [ -n "$DEPLOY_WEBHOOK_URL" ]; then
         local payload
-        payload=$(printf '{"text":"[Spectra Deploy] %s: %s (version: %s)"}' "$status" "$message" "$VERSION")
+        payload=$(python3 -c "import json,sys; print(json.dumps({'text': '[Spectra Deploy] ' + sys.argv[1] + ': ' + sys.argv[2] + ' (version: ' + sys.argv[3] + ')'}))" "$status" "$message" "$VERSION")
         curl -sf --max-time 10 -X POST -H 'Content-Type: application/json' \
             -d "$payload" "$DEPLOY_WEBHOOK_URL" > /dev/null 2>&1 || true
     fi
 }
 
 cleanup_lock() {
+    # flock is released automatically when fd 9 is closed (process exit)
     rm -f "$LOCK_FILE"
 }
 
@@ -97,19 +98,13 @@ trap 'exit 143' TERM
 # ── Lock ─────────────────────────────────────────────────────────
 
 acquire_lock() {
-    if [ -f "$LOCK_FILE" ]; then
-        local lock_pid
-        lock_pid=$(cat "$LOCK_FILE" 2>/dev/null || echo "")
-        if [ -n "$lock_pid" ] && kill -0 "$lock_pid" 2>/dev/null; then
-            log "ERROR: Another deploy is running (PID: $lock_pid)"
-            # Exit without triggering rollback—we never started
-            trap - EXIT
-            exit 1
-        fi
-        log "WARN: Stale lock file found, removing"
-        rm -f "$LOCK_FILE"
+    exec 9>"$LOCK_FILE"
+    if ! flock -n 9; then
+        log "ERROR: Another deploy is running"
+        # Exit without triggering rollback—we never started
+        trap - EXIT
+        exit 1
     fi
-    echo $$ > "$LOCK_FILE"
     log "Lock acquired (PID: $$)"
 }
 
@@ -149,7 +144,7 @@ rollback() {
     # Restore DB if backup exists and migration may have run
     if [ -n "$DB_BACKUP_FILE" ] && [ -f "$DB_BACKUP_FILE" ]; then
         log "Restoring database from backup: $DB_BACKUP_FILE"
-        if gunzip -c "$DB_BACKUP_FILE" | docker exec -i spectra-db psql -U spectra -d spectra > /dev/null 2>&1; then
+        if gunzip -c "$DB_BACKUP_FILE" | docker exec -i spectra-db psql --set ON_ERROR_STOP=1 -U spectra -d spectra; then
             log "Database restored successfully"
         else
             log "ERROR: Database restore failed — manual intervention required"
@@ -215,7 +210,7 @@ deploy() {
     log "Pulling images for version: $VERSION"
     VERSION="$VERSION" docker compose -f "$COMPOSE_FILE" pull
 
-    # Blue-green: bring up new containers alongside old
+    # In-place restart: pull new images and recreate containers
     log "Starting new containers..."
     VERSION="$VERSION" docker compose -f "$COMPOSE_FILE" up -d --remove-orphans
 
@@ -246,6 +241,35 @@ deploy() {
     fi
 }
 
+# ── Post-deploy: verify maintenance services ────────────────────
+
+verify_maintenance_services() {
+    log "Verifying maintenance services..."
+
+    # Ensure BACKUP_ENABLED is set if not already configured
+    if ! grep -q "BACKUP_ENABLED" "$PROJECT_DIR/.env" 2>/dev/null; then
+        log "Setting BACKUP_ENABLED=true in .env (not previously configured)"
+        echo "BACKUP_ENABLED=true" >> "$PROJECT_DIR/.env"
+    fi
+
+    # Verify scheduler service is running and healthy
+    local scheduler_healthy=false
+    for i in 1 2 3 4 5; do
+        local scheduler_url="http://localhost:5011/health"
+        if curl -sf --max-time 5 "$scheduler_url" 2>/dev/null | grep -q '"status"'; then
+            scheduler_healthy=true
+            break
+        fi
+        sleep 3
+    done
+
+    if [ "$scheduler_healthy" = true ]; then
+        log "Scheduler service is healthy — automated maintenance active"
+    else
+        log "WARN: Scheduler health check failed — maintenance tasks may not be running"
+    fi
+}
+
 # ── Main ─────────────────────────────────────────────────────────
 
 main() {
@@ -254,6 +278,7 @@ main() {
     pre_deploy_check
     backup_database
     deploy
+    verify_maintenance_services
     log "=== Deploy finished ==="
 }
 

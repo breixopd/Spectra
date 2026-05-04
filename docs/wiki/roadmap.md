@@ -10,6 +10,20 @@ Future improvements plan. Items prioritized by impact and complexity.
 
 ## Completed
 
+### ✅ Microservices Split
+
+**Status**: Core implementation complete.
+
+- Core API router mounting — `spectra_api.routing`: full surface for `api` / `all` / `""`; other values health-only (fail closed). AI/worker/scheduler use separate ASGI apps.
+- Per-service Dockerfiles (`docker/Dockerfile.api`, `docker/Dockerfile.ai`, `docker/Dockerfile.scheduler`, `docker/Dockerfile.worker`)
+- Per-service requirements files (`requirements/ai.txt`, `requirements/scheduler.txt`, `requirements/worker.txt`)
+- Per-service image optimization — scheduler: ~558 MB, AI: ~1.13 GB, API: ~1.34 GB, worker: ~4.13 GB
+- Import boundary enforcement (`scripts/check_import_boundaries.py`) — shared packages cannot import service-specific code
+- `SERVICE_MODE` env var on each image for shared settings (e.g. DB pool hints in `spectra_platform.core.config`) and lifespan branches; **not** six-way router modes on one process
+- Shared package layout: **`packages/common`**, **`packages/domain`**, **`packages/tools-core`**, and **`packages/platform`** (the `spectra_platform` kernel) are workspace members; larger areas inside the platform package migrate incrementally when it reduces coupling.
+
+See [Microservices Architecture](microservices-split.md) for full documentation.
+
 ### ✅ Per-Mission Ephemeral Sandbox Containers
 
 **Status**: Core implementation complete.
@@ -27,8 +41,8 @@ See [Sandboxes](sandboxes.md) for full documentation.
 
 **Status**: Implemented.
 
-- MinIO/S3 integration for mission artifacts, sessions, knowledge base, and backups
-- Local filesystem fallback when `S3_ENDPOINT_URL` is empty
+- Garage/S3 integration for mission artifacts, sessions, knowledge base, and backups
+- S3-compatible object storage required for mission artifacts, sessions, knowledge, and backups
 - Four dedicated buckets: missions, sessions, knowledge, backups
 
 See [Configuration](configuration.md) for S3 settings.
@@ -49,17 +63,24 @@ See [Scaling](scaling.md) for usage guide.
 
 ## Planned
 
-### 1. MCP Server with API Key Auth
+### 1. MCP Server with API Key Auth ✅
+
+**Status**: Implemented
 
 **Goal**: Expose Spectra functionality as a Model Context Protocol (MCP) server so external AI agents can trigger assessments, query findings, and retrieve reports.
 
-**Scope**:
+**Delivered**:
 
-- MCP server endpoint (SSE or stdio transport) behind API key authentication
-- Tools exposed: `start_mission`, `get_findings`, `get_report`, `list_targets`, `search_rag`
-- Resources exposed: mission status, target inventory, knowledge base
+- MCP JSON-RPC 2.0 endpoint at `/api/mcp` with API key authentication (Bearer or X-API-Key)
+- Tools exposed: `start_mission`, `get_mission_status`, `get_findings`, `list_targets`, `search_knowledge_base`, `list_tools`
+- Constant-time API key comparison to prevent timing attacks
+- Configuration via `MCP_API_KEY` environment variable
+
+**Remaining** (future enhancements):
+
 - Per-key rate limiting and audit logging
 - Admin UI page to create/revoke API keys with granular permissions
+- SSE streaming transport for long-running operations
 
 **Complexity**: Medium | **Impact**: High
 
@@ -85,7 +106,7 @@ See [Scaling](scaling.md) for usage guide.
 - OOM-based automatic escalation (exit 137 → recreate at next tier)
 - Golden image builder — rebuild image when plugins change
 - Priority queue with per-user sandbox limits
-- Container image scanning (Trivy/Grype on rebuild)
+- Container image scanning (Grype on rebuild)
 
 ### 4. Infrastructure Scaling
 
@@ -107,5 +128,4 @@ See [Scaling](scaling.md) for usage guide.
 | **Custom Model Fine-Tuning** | In-app LoRA adapter fine-tuning + A/B testing |
 | **Multi-User Missions** | Team assignments, role-based views, real-time collaboration |
 | **Compliance Templates** | PCI-DSS, HIPAA, SOC2, ISO 27001 report templates |
-| **Plugin Marketplace** | Community plugin repository with signed submissions |
 | **Notification Integrations** | Slack, Discord, Teams, PagerDuty webhooks |

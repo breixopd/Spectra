@@ -1,0 +1,100 @@
+# Spectra API — FastAPI web application
+# Purpose-built image for the main API service.
+
+ARG PYTHON_BASE_IMAGE=python:3.11.13-slim-bookworm
+
+# ── Builder stage ──
+FROM ${PYTHON_BASE_IMAGE} AS builder
+
+WORKDIR /build
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    libcairo2-dev \
+    pkg-config \
+    python3-dev \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements/app.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r app.txt
+
+# Build Tailwind CSS with PostCSS pipeline in builder stage
+COPY config/package.json config/package-lock.json config/postcss.config.js config/tailwind.config.js ./config/
+COPY services/api/static/css/input.css ./services/api/static/css/input.css
+COPY services/api/templates/ ./services/api/templates/
+COPY services/api/static/js/ ./services/api/static/js/
+RUN cp config/package.json config/package-lock.json . && npm install && \
+    NODE_ENV=production npx postcss services/api/static/css/input.css -o services/api/static/css/output.css --config config/postcss.config.js
+
+# ── Runtime stage ──
+FROM ${PYTHON_BASE_IMAGE}
+
+ARG BUILD_VERSION=dev
+LABEL org.opencontainers.image.title="Spectra API" \
+      org.opencontainers.image.description="AI-Driven Security Assessment Platform — API" \
+      org.opencontainers.image.source="https://github.com/breixopd14/spectra" \
+      org.opencontainers.image.vendor="breixopd14" \
+      org.opencontainers.image.version="${BUILD_VERSION}"
+
+WORKDIR /app
+RUN printf '%s' "${BUILD_VERSION}" > /app/.build-version
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    gnupg \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /etc/apt/trusted.gpg.d/postgresql.asc \
+    && echo "deb http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    postgresql-client-16 \
+    libcairo2 \
+    netcat-openbsd \
+    gosu \
+    && apt-get purge -y --auto-remove gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN useradd --create-home --shell /bin/bash spectra && \
+    mkdir -p /app/data /app/data/backups /app/logs && \
+    chown -R spectra:spectra /app
+
+COPY --chown=spectra:spectra scripts/ ./scripts/
+COPY --chown=spectra:spectra services/api/src/spectra_api/ ./spectra_api/
+COPY --chown=spectra:spectra services/ai/src/spectra_ai/ ./spectra_ai/
+COPY --chown=spectra:spectra packages/tools-core/src/spectra_tools_core/ ./spectra_tools_core/
+COPY --chown=spectra:spectra packages/common/src/spectra_common/ ./spectra_common/
+COPY --chown=spectra:spectra packages/domain/src/spectra_domain/ ./spectra_domain/
+COPY --chown=spectra:spectra packages/platform/src/spectra_platform/ ./spectra_platform/
+COPY --chown=spectra:spectra services/api/static/ ./spectra_api/static/
+COPY --chown=spectra:spectra services/api/templates/ ./spectra_api/templates/
+COPY --chown=spectra:spectra alembic/ ./alembic/
+COPY --chown=spectra:spectra config/alembic.ini ./config/alembic.ini
+COPY --chown=spectra:spectra plugins/ ./plugins/
+COPY --chown=spectra:spectra config/tailwind.config.js ./config/tailwind.config.js
+COPY --chown=spectra:spectra config/postcss.config.js ./config/postcss.config.js
+RUN chmod +x /app/scripts/start.sh
+
+# Copy pre-built CSS from builder stage
+COPY --from=builder --chown=spectra:spectra /build/services/api/static/css/output.css ./spectra_api/static/css/output.css
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV SERVICE_MODE=api
+
+ENTRYPOINT ["/app/scripts/start.sh"]
+EXPOSE 5000
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5000/api/health || exit 1
+CMD ["uvicorn", "spectra_api.main:app", "--host", "0.0.0.0", "--port", "5000", "--workers", "1", "--proxy-headers", "--forwarded-allow-ips", "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.1"]

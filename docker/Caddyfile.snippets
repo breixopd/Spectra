@@ -1,0 +1,59 @@
+# Shared Caddy snippets — imported by all environment Caddyfiles.
+
+(security_headers) {
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		-Server
+	}
+}
+
+(proxy_defaults) {
+	transport http {
+		read_timeout 300s
+		write_timeout 300s
+		dial_timeout 10s
+	}
+
+	header_up X-Real-IP {remote_host}
+	header_up X-Forwarded-For {remote_host}
+	header_up X-Forwarded-Proto {scheme}
+}
+
+(rate_limit_public) {
+	rate_limit {
+		zone public_auth {
+			match {
+				path_regexp public_auth ^(?:/(?:login|setup|forgot-password|reset-password)|/api(?:/v1)?/auth/(?:token|refresh|setup|forgot-password|reset-password|mfa/(?:verify|cancel)))$
+			}
+			key {remote_host}
+			events {args[0]}
+			window 1m
+		}
+
+		zone public_register {
+			match {
+				path_regexp public_register ^(?:/register|/api/public/register)$
+			}
+			key {remote_host}
+			events {args[0]}
+			window 1m
+		}
+	}
+}
+
+(error_pages) {
+	handle_errors {
+		@api path /api/*
+		handle @api {
+			header Content-Type application/json
+			respond `{"error":"service_unavailable","message":"Server is starting up or temporarily unavailable"}` {err.status_code}
+		}
+		handle {
+			header Content-Type "text/html; charset=utf-8"
+			respond `<!DOCTYPE html><html><head><title>Spectra — Starting Up</title><meta http-equiv="refresh" content="5"><style>body{background:#0f172a;color:#e2e8f0;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}.card{text-align:center;max-width:480px;padding:2rem}h1{font-size:1.5rem;margin-bottom:.5rem}p{color:#94a3b8}.spinner{border:3px solid #334155;border-top:3px solid #3b82f6;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:1.5rem auto}@keyframes spin{to{transform:rotate(360deg)}}</style></head><body><div class="card"><div class="spinner"></div><h1>Spectra is starting up</h1><p>This page will refresh automatically...</p></div></body></html>` {err.status_code}
+		}
+	}
+}

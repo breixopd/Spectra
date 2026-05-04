@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ title | default(app_name + " | Dashboard") }}{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#8b5cf6">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="csrf-token" content="{{ request.cookies.get('csrf_token', '') }}">
+    <meta property="og:image" content="/static/og-image.svg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:type" content="website">
+
+    <!-- Tailwind CSS (compiled) -->
+    <link rel="stylesheet" href="/static/css/output.css?v=20260503">
+
+    <!-- Design tokens (single source of truth) -->
+    <link rel="stylesheet" href="/static/css/tokens.css?v=20260503">
+
+    <!-- Fonts (local) -->
+    <link rel="stylesheet" href="/static/vendor/css/fonts.css?v=20260503">
+    
+    <link rel="stylesheet" href="/static/css/base.css?v=20260503">
+    {% block extra_css %}{% endblock %}
+    <!-- Centralized API client (must load before confirm bootstrap) -->
+    <script src="/static/js/api.js?v=20260503"></script>
+    <script nonce="{{ request.state.csp_nonce }}">window.escapeHtml=function(s){var d=document.createElement('div');d.textContent=String(s);return d.innerHTML};</script>
+    <script src="/static/js/shared-utils.js?v=20260503"></script>
+    <script src="/static/js/confirm.js?v=20260503" nonce="{{ request.state.csp_nonce }}"></script>
+</head>
+<body class="bg-[#0a0e1a] text-slate-300 font-sans antialiased min-h-screen md:overflow-hidden selection:bg-violet-500/30 selection:text-violet-200">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-violet-600 focus:text-white">Skip to content</a>
+    <!-- Global system status bar -->
+    <div id="global-status-bar" class="hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-violet-900/90 via-indigo-900/90 to-violet-900/90 backdrop-blur-md border-b border-violet-500/20 px-4 py-2 text-center text-sm text-white shadow-lg">
+        <div class="flex items-center justify-center gap-3 max-w-4xl mx-auto">
+            <svg class="animate-spin h-4 w-4 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+            <span id="status-message">System initializing...</span>
+            <span id="status-details" class="text-violet-300/70 text-xs"></span>
+        </div>
+        <div id="status-progress" class="hidden mt-1 mx-auto max-w-xs h-1 bg-white/10 rounded-full overflow-hidden">
+            <div id="progress-bar" class="h-full bg-violet-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+    </div>
+    <div class="app-layout">
+        {% if not is_public_page %}
+        <!-- Mobile header -->
+        <div class="mobile-header">
+            <button class="hamburger-btn" data-action="toggleSidebar" aria-label="Toggle navigation" aria-expanded="false">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <span class="text-white font-semibold text-lg">Spectra</span>
+        </div>
+        <aside id="sidebar" class="sidebar" data-testid="sidebar" aria-label="Main navigation">
+            <div class="p-4 h-full flex flex-col">
+                <!-- Logo -->
+                <div class="flex items-center gap-3 px-3 mb-8">
+                    <a href="/dashboard" class="flex items-center gap-3 text-xl font-bold text-white hover:text-violet-400 transition-colors">
+                        {% include 'partials/shield_svg.html' %}
+                        <span>Spectra</span>
+                    </a>
+                </div>
+
+                <!-- Navigation -->
+                {% from "macros/navigation.html" import nav_item %}
+                <nav class="flex flex-col gap-1">
+                    <div class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Main</div>
+                    {{ nav_item("/dashboard", "layout-dashboard", "Dashboard", active=(request.url.path == '/dashboard')) }}
+                    {{ nav_item("/history", "history", "History", active=(request.url.path == '/history')) }}
+                    
+                    <div class="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Assessment</div>
+                    {{ nav_item("/targets", "target", "Targets", active=(request.url.path == '/targets')) }}
+                    {{ nav_item("/toolbox", "package", "Toolbox", active=(request.url.path == '/toolbox' or request.url.path.startswith('/toolbox/'))) }}
+                    {{ nav_item("/manual", "terminal-square", "Manual Tools", active=(request.url.path == '/manual')) }}
+                    {{ nav_item("/overseer", "bot", "Agents", active=(request.url.path == '/overseer')) }}
+                    {{ nav_item("/reports", "file-text", "Reports", active=(request.url.path == '/reports')) }}
+                    
+                    <div class="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Settings</div>
+                    {{ nav_item("/profile", "user-circle", "Account", active=(request.url.path == '/profile')) }}
+                    {{ nav_item("/settings", "settings-2", "Settings", active=(request.url.path == '/settings')) }}
+                    
+                    <div class="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Advanced</div>
+                    {{ nav_item("/docs/api", "book-open", "Documentation", active=(request.url.path == '/docs/api')) }}
+                    {{ nav_item("/help", "help-circle", "Help Center", active=(request.url.path == '/help')) }}
+                    <a id="observability-nav-link" href="/observability" data-testid="observability-nav-link" class="hidden {% if request.url.path == '/observability' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg transition-colors group">
+                        <i data-lucide="line-chart" class="w-4 h-4"></i>
+                        <span class="ml-3 text-sm font-medium">Observability</span>
+                    </a>
+                    <a id="admin-nav-link" href="/admin" data-testid="admin-nav-link" class="hidden {% if request.url.path == '/admin' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg transition-colors group">
+                        <i data-lucide="shield-check" class="w-4 h-4"></i>
+                        <span class="ml-3 text-sm font-medium">Admin</span>
+                    </a>
+                </nav>
+
+                <!-- User Status -->
+                <div class="mt-auto px-3">
+                    <div class="bg-black/20 rounded-xl p-3 border border-white/5">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-xs text-slate-400 border border-white/5">
+                                <i data-lucide="user" class="w-4 h-4"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p id="sidebar-username" class="text-xs font-medium text-white">User</p>
+                                <p class="text-xs text-emerald-400 flex items-center mt-0.5">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                                    Connected
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 mt-3">
+                            <a href="/changelog" class="text-xs text-slate-500 hover:text-violet-400 transition-colors cursor-pointer" title="View changelog">v{{ version }}</a>
+                            <button id="sidebar-signout-btn" type="button" class="w-7 h-7 rounded bg-slate-800 hover:bg-rose-500/20 flex items-center justify-center text-slate-500 hover:text-rose-400 border border-white/5 transition-all" title="Sign out" aria-label="Sign out">
+                                <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        <!-- Sidebar overlay for mobile -->
+        <div id="sidebar-overlay" class="sidebar-overlay" data-action="toggleSidebar"></div>
+        {% endif %}
+
+        <!-- Main Content -->
+        <main id="main-content" tabindex="-1" class="{% if is_public_page %}w-full max-w-lg px-4{% else %}main-content flex-1 p-4 md:p-6 h-full overflow-y-auto overflow-x-hidden flex flex-col{% endif %}">
+            <!-- Live region for dynamic content announcements -->
+            <div id="live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+            {% block breadcrumbs %}{% endblock %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    <!-- Native WebSocket (for real-time updates) -->
+    {% if not is_public_page %}
+    <script src="/static/js/reconnecting-ws.js?v=20260503"></script>
+    <script nonce="{{ request.state.csp_nonce }}">
+        function clearSpectraLocalStorage() {
+            try {
+                Object.keys(localStorage)
+                    .filter((key) => key.startsWith('spectra_'))
+                    .forEach((key) => localStorage.removeItem(key));
+            } catch (_) {}
+        }
+
+        function logoutFromSpectra() {
+            clearSpectraLocalStorage();
+
+            try {
+                const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
+                const csrfToken = csrfMatch ? (() => { try { return decodeURIComponent(csrfMatch[1]); } catch (_) { return csrfMatch[1]; } })() : null;
+                const headers = csrfToken ? { 'X-CSRF-Token': csrfToken } : {};
+                fetch('/api/v1/auth/logout', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers,
+                    keepalive: true,
+                }).catch(() => {});
+            } catch (_) {
+                // Preserve best-effort logout behavior.
+            }
+
+            window.location.href = '/login';
+        }
+
+        document.getElementById('sidebar-signout-btn')?.addEventListener('click', logoutFromSpectra);
+
+        // Use ReconnectingWebSocket for automatic reconnection
+        const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${location.host}/ws`;
+        const socket = new ReconnectingWebSocket(wsUrl, {
+            maxRetries: 10,
+            baseDelay: 1000,
+            maxDelay: 30000,
+            onMessage: function(event) {
+                try {
+                    // Legacy callback support
+                    if (window.onSocketMessage) {
+                        window.onSocketMessage(event.data);
+                    }
+                    // Modern event-based API — allows multiple listeners without chaining
+                    document.dispatchEvent(new CustomEvent('spectra:ws-message', { detail: event.data }));
+                } catch (e) {
+                    console.error('[ws] parse error', e);
+                }
+            },
+            onOpen: function() {
+                console.log('[ws] Connected');
+                if (window.onSocketConnect) window.onSocketConnect();
+            },
+            onClose: function(event) {
+                if (event.code === 4001) {
+                    // Auth failure — redirect to login
+                    window.location.href = '/login';
+                }
+            }
+        });
+
+        // --- Global System Status Polling ---
+        const STATUS_BASE_MS = 30000;       // 30s normal interval
+        const STATUS_BACKOFF_BASE = 5000;   // 5s initial backoff
+        const STATUS_BACKOFF_MAX = 60000;   // 60s max backoff
+        const STATUS_GIVEUP_MS = 120000;    // 120s after giving up
+        const STATUS_GIVEUP_AFTER = 15;     // 15 consecutive failures
+
+        let statusRetryMs = STATUS_BASE_MS;
+        let statusFailCount = 0;
+        let statusTimer = null;
+        let statusInFlight = false;
+        let systemReady = false;
+
+        // Cross-tab coordination via BroadcastChannel
+        let statusChannel = null;
+        try { statusChannel = new BroadcastChannel('spectra-status'); } catch(e) {}
+        if (statusChannel) {
+            statusChannel.onmessage = (e) => {
+                if (e.data?.type === 'status-update') {
+                    updateStatusUI(e.data.payload);
+                    statusFailCount = 0;
+                    rescheduleStatus(STATUS_BASE_MS);
+                }
+            };
+        }
+
+        function addJitter(ms) {
+            return Math.round(ms * (0.8 + Math.random() * 0.4));
+        }
+
+        function rescheduleStatus(ms) {
+            clearTimeout(statusTimer);
+            statusTimer = setTimeout(checkSystemStatus, addJitter(ms));
+        }
+
+        function updateStatusUI(data) {
+            const statusBar = document.getElementById('global-status-bar');
+            const statusMsg = document.getElementById('status-message');
+            const statusDetails = document.getElementById('status-details');
+            const statusProgress = document.getElementById('status-progress');
+            const progressBar = document.getElementById('progress-bar');
+            if (!statusBar) return;
+
+            if (data.status === 'ready' && !data.tools_installing && !data.embeddings_loading) {
+                statusBar.classList.add('hidden');
+                if (!systemReady) {
+                    systemReady = true;
+                }
+            } else {
+                systemReady = false;
+                statusBar.classList.remove('hidden');
+                statusMsg.textContent = data.message || data.setup_message || 'System initializing...';
+
+                const detailParts = [];
+                if (data.tool_stats) {
+                    const ts = data.tool_stats;
+                    if (ts.installing > 0) {
+                        detailParts.push(`Installing: ${ts.installing}/${ts.total}`);
+                    } else {
+                        detailParts.push(`Tools: ${ts.ready}/${ts.total} ready`);
+                    }
+                }
+                if (data.embeddings_loading) {
+                    detailParts.push('Loading AI models...');
+                }
+                statusDetails.textContent = detailParts.join(' | ');
+
+                if (data.operations && data.operations.length > 0) {
+                    const op = data.operations[0];
+                    if (op.progress != null) {
+                        statusProgress.classList.remove('hidden');
+                        progressBar.style.width = `${Math.round(op.progress * 100)}%`;
+                    } else {
+                        statusProgress.classList.add('hidden');
+                    }
+                } else if (data.tool_stats && data.tool_stats.total > 0) {
+                    const ts = data.tool_stats;
+                    const progress = (ts.ready + ts.failed) / ts.total;
+                    if (progress < 1) {
+                        statusProgress.classList.remove('hidden');
+                        progressBar.style.width = `${Math.round(progress * 100)}%`;
+                    } else {
+                        statusProgress.classList.add('hidden');
+                    }
+                } else {
+                    statusProgress.classList.add('hidden');
+                }
+            }
+        }
+
+        function showStatusBanner(msg, _level) {
+            const statusBar = document.getElementById('global-status-bar');
+            const statusMsg = document.getElementById('status-message');
+            const statusDetails = document.getElementById('status-details');
+            if (!statusBar) return;
+            statusBar.classList.remove('hidden');
+            statusMsg.textContent = msg;
+            statusDetails.textContent = '';
+        }
+
+        async function checkSystemStatus() {
+            if (window.PUBLIC_PATHS && window.PUBLIC_PATHS.includes(window.location.pathname)) return;
+            if (statusInFlight) return;
+            statusInFlight = true;
+
+            const statusBar = document.getElementById('global-status-bar');
+            if (!statusBar) { statusInFlight = false; return; }
+
+            try {
+                const { data, error, status } = await spectraApi.get('/api/v1/system/status/quick');
+
+                if (error) {
+                    if (status === 429) {
+                        statusRetryMs = STATUS_GIVEUP_MS;
+                        showStatusBanner('Rate limited \u2014 retrying shortly', 'warning');
+                        return;
+                    }
+                    if (status === 401) {
+                        statusBar.classList.add('hidden');
+                        return;
+                    }
+                    throw new Error(error);
+                }
+
+                // Success — ramp down slowly if recovering from backoff
+                statusFailCount = 0;
+                statusRetryMs = statusRetryMs > STATUS_BASE_MS
+                    ? Math.max(STATUS_BASE_MS, Math.round(statusRetryMs * 0.7))
+                    : STATUS_BASE_MS;
+
+                updateStatusUI(data);
+
+                // Broadcast to other tabs
+                if (statusChannel) {
+                    try { statusChannel.postMessage({ type: 'status-update', payload: data }); } catch(e) {}
+                }
+            } catch (e) {
+                statusFailCount++;
+                if (statusFailCount >= STATUS_GIVEUP_AFTER) {
+                    statusRetryMs = STATUS_GIVEUP_MS;
+                    showStatusBanner('Connection lost \u2014 retrying every 2 min', 'error');
+                } else {
+                    statusRetryMs = Math.min(
+                        STATUS_BACKOFF_BASE * Math.pow(2, statusFailCount - 1),
+                        STATUS_BACKOFF_MAX
+                    );
+                    showStatusBanner('Checking server status\u2026', 'warning');
+                }
+            } finally {
+                statusInFlight = false;
+                rescheduleStatus(statusRetryMs);
+            }
+        }
+
+        // Start polling — first check 1s after page load
+        rescheduleStatus(1000);
+
+        // Pause polling when tab is hidden, resume with small delay when visible
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                clearTimeout(statusTimer);
+            } else {
+                rescheduleStatus(2000);
+            }
+        });
+    </script>
+    <script src="/static/js/modules/sidebar.js"></script>
+    <script src="/static/js/modules/accordion.js"></script>
+    <script src="/static/js/modules/delegated-events.js"></script>
+    <script src="/static/js/modules/modal.js" type="module"></script>
+    <script src="/static/js/modules/tabs.js" type="module"></script>
+    <script src="/static/js/modules/toast.js" type="module"></script>
+    {% endif %}
+    <!-- Lucide Icons — locally hosted, same-origin (SRI would add no cross-origin benefit) -->
+    <script src="/static/vendor/js/lucide.min.js"></script>
+    <script nonce="{{ request.state.csp_nonce }}">
+      document.addEventListener('DOMContentLoaded', () => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+    </script>
+    <script nonce="{{ request.state.csp_nonce }}">
+      document.addEventListener('submit', function(e) {
+        const form = e.target;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn && (submitBtn.classList.contains('loading') || submitBtn.dataset.loadingText)) {
+          const loadingText = submitBtn.dataset.loadingText || 'Loading...';
+          const originalHTML = submitBtn.innerHTML;
+          submitBtn.classList.add('loading');
+          submitBtn.disabled = true;
+          submitBtn.dataset.originalHTML = originalHTML;
+          submitBtn.innerHTML = '<span class="spinner"></span>' + loadingText;
+          form.dataset.restoreBtn = submitBtn;
+        }
+      });
+      document.addEventListener('click', function(e) {
+        const btn = e.target.closest('[data-action]');
+        if (btn && btn.dataset.loadingText && !btn.classList.contains('loading')) {
+          const originalHTML = btn.innerHTML;
+          btn.classList.add('loading');
+          btn.disabled = true;
+          btn.dataset.originalHTML = originalHTML;
+          btn.innerHTML = '<span class="spinner"></span>' + btn.dataset.loadingText;
+        }
+      });
+    </script>
+    {% block scripts %}{% endblock %}
+    {% block extra_js %}{% endblock %}
+    {% block page_module %}{% endblock %}
+    {% include 'partials/_cookie_consent.html' %}
+</body>
+</html>

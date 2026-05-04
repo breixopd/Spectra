@@ -10,14 +10,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.tools.models import (
+from spectra_platform.services.tools.registry import ToolRegistry
+from spectra_tools_core.models import (
     ExecutionConfig,
     RegisteredTool,
     ToolConfig,
     ToolStatus,
 )
-from app.services.tools.registry import ToolRegistry
-from app.services.tools.registry.exceptions import PluginValidationError
+from spectra_tools_core.registry_exceptions import PluginValidationError
 
 # --- Helpers ---
 
@@ -48,9 +48,7 @@ def _make_tool(
     category: str = "discovery",
 ) -> RegisteredTool:
     """Create a RegisteredTool with given status."""
-    config = _make_config(
-        tool_id, name=tool_id.title(), category=category, is_system=is_system
-    )
+    config = _make_config(tool_id, name=tool_id.title(), category=category, is_system=is_system)
     return RegisteredTool(config=config, status=status)
 
 
@@ -59,8 +57,8 @@ def _make_tool(
 
 @pytest.fixture
 def registry(tmp_path):
-    """Create a ToolRegistry with temp plugins dir and safe_mode=False."""
-    reg = ToolRegistry(plugins_dir=tmp_path, safe_mode=False)
+    """Create a ToolRegistry with temp plugins dir."""
+    reg = ToolRegistry(plugins_dir=tmp_path)
 
     # Pre-populate with test tools
     reg._tools["nmap"] = _make_tool("nmap", ToolStatus.READY)
@@ -69,6 +67,25 @@ def registry(tmp_path):
     reg._tools["builtin"] = _make_tool("builtin", ToolStatus.READY, is_system=True)
 
     return reg
+
+
+@pytest.mark.asyncio
+async def test_sync_status_from_cache_uses_direct_cache_when_global_missing(registry):
+    cache = MagicMock()
+    cache.get = AsyncMock(
+        side_effect=lambda key: {"status": "ready", "error": ""}
+        if key == "spectra:tool_status:nikto"
+        else None
+    )
+
+    with (
+        patch("spectra_platform.infrastructure.cache.get_cache", return_value=None),
+        patch("spectra_platform.infrastructure.cache.CacheService", return_value=cache),
+    ):
+        updated = await registry.sync_status_from_cache()
+
+    assert updated == 1
+    assert registry.get_tool("nikto").status == ToolStatus.READY
 
 
 # ===========================
@@ -84,7 +101,7 @@ class TestListTools:
         assert ids == {"nmap", "hydra", "nikto", "builtin"}
 
     def test_returns_empty_when_no_tools(self, tmp_path):
-        reg = ToolRegistry(plugins_dir=tmp_path, safe_mode=False)
+        reg = ToolRegistry(plugins_dir=tmp_path)
         assert reg.list_tools() == []
 
 
@@ -129,7 +146,7 @@ class TestGetAvailableTools:
         assert "nikto" not in ids  # PENDING, not READY
 
     def test_empty_if_none_ready(self, tmp_path):
-        reg = ToolRegistry(plugins_dir=tmp_path, safe_mode=False)
+        reg = ToolRegistry(plugins_dir=tmp_path)
         reg._tools["a"] = _make_tool("aa", ToolStatus.PENDING)
         reg._tools["b"] = _make_tool("bb", ToolStatus.FAILED)
         assert reg.get_available_tools() == []
@@ -257,7 +274,7 @@ class TestSavePlugin:
     async def test_writes_to_disk(self, registry, tmp_path):
         config = _make_config("new-tool", name="New Tool")
 
-        with patch("app.services.tools.registry.aiofiles.open") as mock_aiofiles:
+        with patch("spectra_platform.services.tools.registry.aiofiles.open") as mock_aiofiles:
             mock_file = AsyncMock()
             mock_aiofiles.return_value.__aenter__ = AsyncMock(return_value=mock_file)
             mock_aiofiles.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -280,10 +297,10 @@ class TestSavePlugin:
     @pytest.mark.asyncio
     async def test_creates_plugins_dir(self, tmp_path):
         nested_dir = tmp_path / "subdir" / "plugins"
-        reg = ToolRegistry(plugins_dir=nested_dir, safe_mode=False)
+        reg = ToolRegistry(plugins_dir=nested_dir)
         config = _make_config("test-tool")
 
-        with patch("app.services.tools.registry.aiofiles.open") as mock_aiofiles:
+        with patch("spectra_platform.services.tools.registry.aiofiles.open") as mock_aiofiles:
             mock_file = AsyncMock()
             mock_aiofiles.return_value.__aenter__ = AsyncMock(return_value=mock_file)
             mock_aiofiles.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -336,7 +353,7 @@ class TestListToolsForAI:
             assert "summary" in tool_dict
 
     def test_empty_when_none_available(self, tmp_path):
-        reg = ToolRegistry(plugins_dir=tmp_path, safe_mode=False)
+        reg = ToolRegistry(plugins_dir=tmp_path)
         assert reg.list_tools_for_ai() == []
 
 

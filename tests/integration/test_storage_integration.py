@@ -1,8 +1,7 @@
-"""Integration tests for StorageService with actual MinIO/S3.
+"""Integration tests for StorageService with actual Garage/S3.
 
 Requires:
-- MinIO container running (MINIO_TEST_URL env var)
-- Or S3_ENDPOINT_URL configured in environment
+- Garage container running or S3_ENDPOINT_URL configured in environment
 
 Skip if not available.
 """
@@ -11,21 +10,29 @@ import os
 
 import pytest
 
+from spectra_platform.core.config import settings
+
+REQUIRED_S3_ENV_VARS = ("S3_ENDPOINT_URL", "S3_ACCESS_KEY", "S3_SECRET_KEY")
+TEST_BUCKET = settings.S3_BUCKET_MISSIONS
+
 pytestmark = [
     pytest.mark.asyncio,
     pytest.mark.integration,
-    pytest.mark.skipif(not os.environ.get("S3_ENDPOINT_URL"), reason="S3/MinIO not configured"),
+    pytest.mark.skipif(
+        not all(os.environ.get(var) for var in REQUIRED_S3_ENV_VARS),
+        reason="S3/Garage not fully configured",
+    ),
 ]
 
 
 async def test_upload_download_roundtrip():
     """Upload data and download it back."""
-    from app.services.storage import get_storage_service
+    from spectra_platform.services.storage import get_storage_service
 
     storage = get_storage_service()
 
     test_data = b"integration test data"
-    bucket = "spectra-test"
+    bucket = TEST_BUCKET
     key = "integration/test.txt"
 
     uri = await storage.upload(bucket, key, test_data)
@@ -41,11 +48,11 @@ async def test_upload_download_roundtrip():
 
 async def test_list_objects_with_prefix():
     """List objects filtered by prefix."""
-    from app.services.storage import get_storage_service
+    from spectra_platform.services.storage import get_storage_service
 
     storage = get_storage_service()
 
-    bucket = "spectra-test"
+    bucket = TEST_BUCKET
     await storage.upload(bucket, "list-test/a.txt", b"a")
     await storage.upload(bucket, "list-test/b.txt", b"b")
     await storage.upload(bucket, "other/c.txt", b"c")
@@ -61,7 +68,7 @@ async def test_list_objects_with_prefix():
 
 async def test_health_check():
     """Health check when S3 is configured."""
-    from app.services.storage import get_storage_service
+    from spectra_platform.services.storage import get_storage_service
 
     storage = get_storage_service()
     result = await storage.health_check()

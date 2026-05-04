@@ -2,22 +2,22 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.ai.agents.base import (
+from spectra_platform.services.ai.agents.base import (
     ActionRisk,
     AgentContext,
     AgentResult,
     ToolAction,
 )
-from app.services.ai.agents.mission_controller import AssessmentPhase, Task
-from app.services.mission.executor import MissionExecutor
-from app.services.mission.mission import Mission
-from app.services.tools.models import (
+from spectra_platform.services.ai.agents.mission_controller import AssessmentPhase, Task
+from spectra_platform.services.mission.executor import MissionExecutor
+from spectra_platform.services.mission.mission import Mission
+from spectra_platform.services.tools.registry import RegisteredTool, ToolRegistry
+from spectra_tools_core.models import (
     ExecutionConfig,
     ToolCategory,
     ToolConfig,
     ToolStatus,
 )
-from app.services.tools.registry import RegisteredTool, ToolRegistry
 
 # --- Dummy Tool Config ---
 DUMMY_TOOL_CONFIG = ToolConfig(
@@ -62,10 +62,10 @@ def integration_context(mock_registry):
     # Actually, we keep ToolExecutionService real, but mock its dependencies: Safety, Voting.
 
     with (
-        patch("app.services.tools.service.get_registry", return_value=mock_registry),
-        patch("app.services.tools.service.SafetySupervisorAgent") as MockSafetyAgent,
-        patch("app.services.tools.service.VotingSystem") as MockVotingSystem,
-        patch("app.services.ai.agents.tool_selector.ToolSelectorAgent") as MockToolSelector,
+        patch("spectra_platform.services.tools.validation.get_registry", return_value=mock_registry),
+        patch("spectra_platform.services.tools.service.SafetySupervisorAgent") as MockSafetyAgent,
+        patch("spectra_platform.services.tools.service.VotingSystem") as MockVotingSystem,
+        patch("spectra_platform.services.ai.agents.tool_selector.ToolSelectorAgent") as MockToolSelector,
     ):
         # Setup Safety Supervisor to always approve
         mock_safety = MockSafetyAgent.return_value

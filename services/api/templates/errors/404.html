@@ -1,0 +1,7 @@
+{% extends "errors/base_error.html" %}
+{% block title %}404 — Page Not Found{% endblock %}
+{% block body_class %}error-glitch{% endblock %}
+{% block body_prefix %}<div class="scan-line"></div>{% endblock %}
+{% block error_code %}404{% endblock %}
+{% block error_title %}Target Not Found{% endblock %}
+{% block error_message %}{{ detail or "The page you're looking for doesn't exist or has been moved. It may have been part of a previous assessment that's no longer active." }}{% endblock %}

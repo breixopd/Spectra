@@ -14,22 +14,22 @@ class TestModelUserIdColumns:
     """All user-scoped models must have a user_id column."""
 
     def test_mission_model_has_user_id(self):
-        from app.models.mission import Mission
+        from spectra_platform.models.mission import Mission
 
         assert hasattr(Mission, "user_id")
 
     def test_target_model_has_user_id(self):
-        from app.models.target import Target
+        from spectra_platform.models.target import Target
 
         assert hasattr(Target, "user_id")
 
     def test_finding_model_has_user_id(self):
-        from app.models.finding import Finding
+        from spectra_platform.models.finding import Finding
 
         assert hasattr(Finding, "user_id")
 
     def test_exploit_model_has_user_id(self):
-        from app.models.exploit import Exploit
+        from spectra_platform.models.exploit import Exploit
 
         assert hasattr(Exploit, "user_id")
 
@@ -39,7 +39,7 @@ class TestModelUserIdColumns:
 # ---------------------------------------------------------------------------
 
 
-def _make_user(user_id="user-1", is_superuser=False, role="operator"):
+def _make_user(user_id="user-1", is_superuser=False, role="user"):
     u = MagicMock()
     u.id = user_id
     u.is_superuser = is_superuser
@@ -54,37 +54,38 @@ class TestMissionOwnerCheck:
     """_check_mission_owner enforces user isolation."""
 
     async def test_owner_can_access(self):
-        from app.api.routers.missions import _check_mission_owner
+        from spectra_api.api.dependencies import check_resource_owner
 
         mission = MagicMock(user_id="user-1")
         user = _make_user("user-1")
         # Should not raise
-        _check_mission_owner(mission, user)
+        check_resource_owner(mission, user, "mission")
 
     async def test_non_owner_blocked(self):
-        from app.api.routers.missions import _check_mission_owner
+        from spectra_api.api.dependencies import check_resource_owner
 
         mission = MagicMock(user_id="user-1")
         user = _make_user("user-2")
         with pytest.raises(HTTPException) as exc_info:
-            _check_mission_owner(mission, user)
+            check_resource_owner(mission, user, "mission")
         assert exc_info.value.status_code == 403
 
     async def test_superuser_bypasses_check(self):
-        from app.api.routers.missions import _check_mission_owner
+        from spectra_api.api.dependencies import check_resource_owner
 
         mission = MagicMock(user_id="user-1")
         admin = _make_user("admin-1", is_superuser=True)
         # Should not raise
-        _check_mission_owner(mission, admin)
+        check_resource_owner(mission, admin, "mission")
 
-    async def test_mission_without_user_id_accessible(self):
-        from app.api.routers.missions import _check_mission_owner
+    async def test_mission_without_user_id_denied(self):
+        from spectra_api.api.dependencies import check_resource_owner
 
         mission = MagicMock(user_id=None)
         user = _make_user("user-1")
-        # Legacy missions without user_id should not block
-        _check_mission_owner(mission, user)
+        with pytest.raises(HTTPException) as exc_info:
+            check_resource_owner(mission, user, "mission")
+        assert exc_info.value.status_code == 403
 
 
 # ---------------------------------------------------------------------------
@@ -97,34 +98,36 @@ class TestTargetOwnerCheck:
     """_check_target_owner enforces user isolation."""
 
     async def test_owner_can_access(self):
-        from app.api.routers.targets import _check_target_owner
+        from spectra_api.api.dependencies import check_resource_owner
 
         target = MagicMock(user_id="user-1")
         user = _make_user("user-1")
-        _check_target_owner(target, user)
+        check_resource_owner(target, user, "target")
 
     async def test_non_owner_blocked(self):
-        from app.api.routers.targets import _check_target_owner
+        from spectra_api.api.dependencies import check_resource_owner
 
         target = MagicMock(user_id="user-1")
         user = _make_user("user-2")
         with pytest.raises(HTTPException) as exc_info:
-            _check_target_owner(target, user)
+            check_resource_owner(target, user, "target")
         assert exc_info.value.status_code == 403
 
     async def test_superuser_bypasses_check(self):
-        from app.api.routers.targets import _check_target_owner
+        from spectra_api.api.dependencies import check_resource_owner
 
         target = MagicMock(user_id="user-1")
         admin = _make_user("admin-1", is_superuser=True)
-        _check_target_owner(target, admin)
+        check_resource_owner(target, admin, "target")
 
-    async def test_target_without_user_id_accessible(self):
-        from app.api.routers.targets import _check_target_owner
+    async def test_target_without_user_id_denied(self):
+        from spectra_api.api.dependencies import check_resource_owner
 
         target = MagicMock(user_id=None)
         user = _make_user("user-1")
-        _check_target_owner(target, user)
+        with pytest.raises(HTTPException) as exc_info:
+            check_resource_owner(target, user, "target")
+        assert exc_info.value.status_code == 403
 
 
 # ---------------------------------------------------------------------------
@@ -136,27 +139,27 @@ class TestIsAdminUser:
     """_is_admin_user returns True for superusers and admin-role users."""
 
     def test_superuser_is_admin(self):
-        from app.api.dependencies import _is_admin_user
+        from spectra_api.api.dependencies import _is_admin_user
 
-        user = _make_user(is_superuser=True, role="operator")
+        user = _make_user(is_superuser=True, role="user")
         assert _is_admin_user(user) is True
 
     def test_admin_role_is_admin(self):
-        from app.api.dependencies import _is_admin_user
+        from spectra_api.api.dependencies import _is_admin_user
 
         user = _make_user(is_superuser=False, role="admin")
         assert _is_admin_user(user) is True
 
     def test_operator_is_not_admin(self):
-        from app.api.dependencies import _is_admin_user
+        from spectra_api.api.dependencies import _is_admin_user
 
-        user = _make_user(is_superuser=False, role="operator")
+        user = _make_user(is_superuser=False, role="user")
         assert _is_admin_user(user) is False
 
-    def test_viewer_is_not_admin(self):
-        from app.api.dependencies import _is_admin_user
+    def test_staff_is_not_admin(self):
+        from spectra_api.api.dependencies import _is_admin_user
 
-        user = _make_user(is_superuser=False, role="viewer")
+        user = _make_user(is_superuser=False, role="staff")
         assert _is_admin_user(user) is False
 
 
@@ -193,9 +196,9 @@ class TestMissionCreationSetsUserId:
         fake_mission.attack_surface = None
 
         with (
-            patch("app.api.routers.missions.check_mission_limit", new_callable=AsyncMock),
-            patch("app.api.routers.missions.mission_manager") as mm,
-            patch("app.api.routers.missions.audit_log_event", new_callable=AsyncMock),
+            patch("spectra_api.api.routers.missions.core.check_mission_limit", new_callable=AsyncMock),
+            patch("spectra_api.api.routers.missions.core.mission_manager") as mm,
+            patch("spectra_api.api.routers.missions.core.audit_log_event", new_callable=AsyncMock),
         ):
             mm.start_mission = AsyncMock(side_effect=fake_start)
             mm.get_mission = AsyncMock(return_value=fake_mission)
@@ -219,7 +222,7 @@ class TestTargetCreationSetsUserId:
     """create_target assigns user_id from the current user."""
 
     async def test_create_target_passes_user_id(self):
-        from app.api.routers.targets import create_target
+        from spectra_api.api.routers.targets import create_target
 
         user = _make_user("user-42")
         mock_db = AsyncMock()
@@ -239,16 +242,19 @@ class TestTargetCreationSetsUserId:
         fake_target.created_at = MagicMock()
         fake_target.created_at.isoformat.return_value = "2026-01-01T00:00:00"
 
+        mock_db.add = MagicMock()  # session.add is sync
+
         with (
-            patch("app.api.routers.targets.check_target_limit", new_callable=AsyncMock),
-            patch("app.api.routers.targets.TargetRepository") as MockRepo,
+            patch("spectra_api.api.routers.targets.check_target_limit", new_callable=AsyncMock),
+            patch("spectra_api.api.routers.targets.TargetRepository") as MockRepo,
+            patch("spectra_api.api.routers.targets.audit_log_event", new_callable=AsyncMock),
         ):
             repo_instance = AsyncMock()
             MockRepo.return_value = repo_instance
             repo_instance.find_one_by = AsyncMock(return_value=None)
             repo_instance.create = AsyncMock(return_value=fake_target)
 
-            await create_target(target_in=target_in, db=mock_db, _current_user=user)
+            await create_target(request=MagicMock(), target_in=target_in, db=mock_db, _current_user=user)
 
             repo_instance.create.assert_called_once()
             call_kwargs = repo_instance.create.call_args

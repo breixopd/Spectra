@@ -1,0 +1,20 @@
+{% extends "errors/base_error.html" %}
+{% block title %}401 — Unauthorized{% endblock %}
+{% block head_extra %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block body_class %}error-amber{% endblock %}
+{% block pre_code %}
+        <div class="lock-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+        </div>
+{% endblock %}
+{% block error_code %}401{% endblock %}
+{% block error_title %}Unauthorized{% endblock %}
+{% block error_message %}{{ detail or "Your session has expired or you need to sign in to access this page." }}{% endblock %}
+{% block error_actions %}
+            <a href="/login" class="btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                Sign In
+            </a>
+{% endblock %}

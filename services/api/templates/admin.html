@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/admin.css">
+{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="Breadcrumb" class="text-sm text-slate-400 mb-4">
+  <a href="/dashboard" class="hover:text-white">Home</a> / <span class="text-white">Admin</span>
+</nav>
+{% endblock %}
+
+{% block content %}
+<!-- Maintenance Mode Banner -->
+<div id="maintenance-banner" class="mb-5 p-4 rounded-xl border transition-all duration-300 animate-fade-in-up {{ 'bg-amber-500/10 border-amber-500/30' if maintenance_active else 'bg-slate-800/50 border-white/5' }}">
+    <div class="flex items-center justify-between flex-wrap gap-3">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center {{ 'bg-amber-500/20 text-amber-400' if maintenance_active else 'bg-slate-700 text-slate-400' }}">
+                <i data-lucide="wrench" class="w-5 h-5 inline-block"></i>
+            </div>
+            <div>
+                <h3 class="text-sm font-semibold text-white">Maintenance Mode</h3>
+                <p class="text-xs {{ 'text-amber-300' if maintenance_active else 'text-slate-500' }}">{{ 'Active — users see maintenance page' if maintenance_active else 'Inactive — platform operating normally' }}</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <input type="text" id="maintenance-msg-input" placeholder="Custom message (optional)" class="bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs w-64 focus:border-violet-500 focus:outline-none">
+            <button data-action="toggleMaintenance" id="maintenance-toggle-btn"
+                data-active="{{ 'true' if maintenance_active else 'false' }}"
+                class="px-4 py-2 rounded-lg text-xs font-semibold transition-colors {{ 'bg-emerald-600 hover:bg-emerald-500 text-white' if maintenance_active else 'bg-amber-600 hover:bg-amber-500 text-white' }}">
+                {{ 'Disable Maintenance' if maintenance_active else 'Enable Maintenance' }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="flex items-center justify-between mb-5 animate-fade-in-up">
+    <h1 class="text-2xl font-semibold text-white tracking-tight">Admin Panel</h1>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 animate-fade-in-up stagger-1 flex-1 min-h-0">
+    {% include "admin/_sidebar.html" %}
+
+    <!-- Content -->
+    <div class="md:col-span-9 lg:col-span-10 overflow-y-auto pr-1" style="max-height:calc(100vh - 10rem);">
+        {% include "admin/_dashboard.html" %}
+        {% include "admin/_users.html" %}
+        {% include "admin/_plans.html" %}
+        {% include "admin/_services.html" %}
+        {% include "admin/_scaling.html" %}
+        {% include "admin/_training.html" %}
+        {% include "admin/_other_sections.html" %}
+    </div>
+</div>
+
+{% block page_module %}
+<script src="/static/js/pages/admin/core.js"></script>
+<script src="/static/js/pages/admin/dashboard.js"></script>
+<script src="/static/js/pages/admin/users.js"></script>
+<script src="/static/js/pages/admin/plans.js"></script>
+<script src="/static/js/pages/admin/services.js"></script>
+<script src="/static/js/pages/admin/scaling.js"></script>
+<script src="/static/js/pages/admin/audit.js"></script>
+<script src="/static/js/pages/admin/usage.js"></script>
+<script src="/static/js/pages/admin/content.js"></script>
+<script src="/static/js/pages/admin/ai-gateway.js"></script>
+<script src="/static/js/pages/admin/training.js"></script>
+<script src="/static/js/pages/admin/backups.js"></script>
+<script src="/static/js/pages/admin/email.js"></script>
+<script src="/static/js/pages/admin/tensorzero.js"></script>
+<script src="/static/js/pages/admin/rollback.js"></script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,92 @@
+# Spectra Scheduler — Background task coordination service
+# Purpose-built image for the scheduler microservice.
+
+ARG PYTHON_BASE_IMAGE=python:3.11.13-slim-bookworm
+
+# ── Builder stage ──
+FROM ${PYTHON_BASE_IMAGE} AS builder
+
+WORKDIR /build
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    pkg-config \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements/scheduler.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r scheduler.txt
+
+# ── Runtime stage ──
+FROM ${PYTHON_BASE_IMAGE}
+
+ARG BUILD_VERSION=dev
+LABEL org.opencontainers.image.title="Spectra Scheduler" \
+      org.opencontainers.image.description="AI-Driven Security Assessment Platform — Scheduler" \
+      org.opencontainers.image.source="https://github.com/breixopd14/spectra" \
+      org.opencontainers.image.vendor="breixopd14" \
+      org.opencontainers.image.version="${BUILD_VERSION}"
+ENV SPECTRA_BUILD_VERSION="${BUILD_VERSION}"
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    gnupg \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /etc/apt/trusted.gpg.d/postgresql.asc \
+    && echo "deb http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    postgresql-client-16 \
+    netcat-openbsd \
+    gosu \
+    && apt-get purge -y --auto-remove gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN useradd --create-home --shell /bin/bash spectra && \
+    mkdir -p /app/data /app/data/backups /app/logs && \
+    chown -R spectra:spectra /app
+
+COPY --chown=spectra:spectra scripts/ ./scripts/
+COPY --chown=spectra:spectra services/scheduler/src/spectra_scheduler/ ./spectra_scheduler/
+COPY --chown=spectra:spectra services/ai/src/spectra_ai/ ./spectra_ai/
+COPY --chown=spectra:spectra packages/tools-core/src/spectra_tools_core/ ./spectra_tools_core/
+COPY --chown=spectra:spectra packages/common/src/spectra_common/ ./spectra_common/
+COPY --chown=spectra:spectra packages/domain/src/spectra_domain/ ./spectra_domain/
+COPY --chown=spectra:spectra packages/platform/src/spectra_platform/__init__.py ./spectra_platform/
+COPY --chown=spectra:spectra packages/platform/src/spectra_platform/_meta/ ./spectra_platform/_meta/
+COPY --chown=spectra:spectra packages/platform/src/spectra_platform/auth/ ./spectra_platform/auth/
+COPY --chown=spectra:spectra packages/platform/src/spectra_platform/core/ ./spectra_platform/core/
+COPY --chown=spectra:spectra packages/platform/src/spectra_platform/di/ ./spectra_platform/di/
+COPY --chown=spectra:spectra packages/platform/src/spectra_platform/infrastructure/ ./spectra_platform/infrastructure/
+COPY --chown=spectra:spectra packages/platform/src/spectra_platform/mission/ ./spectra_platform/mission/
+COPY --chown=spectra:spectra packages/platform/src/spectra_platform/models/ ./spectra_platform/models/
+COPY --chown=spectra:spectra packages/platform/src/spectra_platform/telemetry/ ./spectra_platform/telemetry/
+COPY --chown=spectra:spectra packages/platform/src/spectra_platform/repositories/ ./spectra_platform/repositories/
+COPY --chown=spectra:spectra packages/platform/src/spectra_platform/runtime/ ./spectra_platform/runtime/
+COPY --chown=spectra:spectra packages/platform/src/spectra_platform/services/ ./spectra_platform/services/
+COPY --chown=spectra:spectra packages/platform/src/spectra_platform/utils/ ./spectra_platform/utils/
+COPY --chown=spectra:spectra alembic/ ./alembic/
+COPY --chown=spectra:spectra config/alembic.ini ./config/alembic.ini
+COPY --chown=spectra:spectra plugins/ ./plugins/
+RUN chmod +x /app/scripts/start.sh
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV SERVICE_MODE=scheduler
+
+ENTRYPOINT ["/app/scripts/start.sh"]
+EXPOSE 5011
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5011/healthz || exit 1
+CMD ["uvicorn", "spectra_scheduler.main:app", "--host", "0.0.0.0", "--port", "5011"]

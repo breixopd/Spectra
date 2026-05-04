@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex flex-col h-full">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-white tracking-tight">Plugin Creator</h1>
+            <p class="text-slate-400 text-sm mt-1">Design, test, and sign new security tool plugins</p>
+        </div>
+        <div class="flex gap-3">
+            <button data-action="loadExample" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-sm transition-colors">
+                Load Example
+            </button>
+            <a href="/toolbox" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-sm transition-colors">
+                Cancel
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-6 flex-1 overflow-hidden">
+        
+        <!-- Form Section -->
+        <div class="md:col-span-7 overflow-y-auto pr-2 space-y-6 pb-10">
+            
+            <!-- Basic Info -->
+            <div class="glass-panel p-6 rounded-xl">
+                <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <i data-lucide="info" class="w-5 h-5 inline-block text-violet-400"></i> Basic Information
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label for="tool-id" class="block text-xs font-bold text-slate-500 uppercase mb-1">Tool ID</label>
+                        <input type="text" id="tool-id" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-violet-500 focus:outline-none font-mono text-sm" placeholder="e.g., nmap-scanner">
+                    </div>
+                    <div>
+                        <label for="tool-name" class="block text-xs font-bold text-slate-500 uppercase mb-1">Name</label>
+                        <input type="text" id="tool-name" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-violet-500 focus:outline-none" placeholder="e.g., Nmap Scanner">
+                    </div>
+                    <div>
+                        <label for="tool-version" class="block text-xs font-bold text-slate-500 uppercase mb-1">Version</label>
+                        <input type="text" id="tool-version" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-violet-500 focus:outline-none" placeholder="1.0.0">
+                    </div>
+                    <div class="col-span-2">
+                        <label for="tool-desc" class="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
+                        <textarea id="tool-desc" rows="2" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-violet-500 focus:outline-none" placeholder="Brief description of what the tool does..."></textarea>
+                    </div>
+                    <div>
+                        <label for="tool-category" class="block text-xs font-bold text-slate-500 uppercase mb-1">Category</label>
+                        <select id="tool-category" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-violet-500 focus:outline-none">
+                            <option value="discovery">Discovery</option>
+                            <option value="enumeration">Enumeration</option>
+                            <option value="vulnerability">Vulnerability Scanning</option>
+                            <option value="exploitation">Exploitation</option>
+                            <option value="post_exploitation">Post-Exploitation</option>
+                            <option value="web">Web</option>
+                            <option value="network">Network</option>
+                            <option value="secrets">Secrets</option>
+                            <option value="custom">Custom / Utility</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="tool-author" class="block text-xs font-bold text-slate-500 uppercase mb-1">Author</label>
+                        <input type="text" id="tool-author" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-violet-500 focus:outline-none" placeholder="Your Name">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Execution -->
+            <div class="glass-panel p-6 rounded-xl">
+                <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <i data-lucide="terminal" class="w-5 h-5 inline-block text-emerald-400"></i> Execution
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label for="exec-command" class="block text-xs font-bold text-slate-500 uppercase mb-1">Command</label>
+                        <input type="text" id="exec-command" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-emerald-500 focus:outline-none font-mono text-sm" placeholder="e.g., nmap">
+                    </div>
+                    <div>
+                        <label for="exec-args" class="block text-xs font-bold text-slate-500 uppercase mb-1">Arguments Template</label>
+                        <input type="text" id="exec-args" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-emerald-500 focus:outline-none font-mono text-sm" placeholder="e.g., -sV -p {port} {target}">
+                        <p class="text-xs text-slate-500 mt-1">Use {placeholder} for dynamic arguments.</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="exec-timeout" class="block text-xs font-bold text-slate-500 uppercase mb-1">Timeout (seconds)</label>
+                            <input type="number" id="exec-timeout" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" value="300">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Installation -->
+            <div class="glass-panel p-6 rounded-xl">
+                <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <i data-lucide="download" class="w-5 h-5 inline-block text-blue-400"></i> Installation
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label for="install-method" class="block text-xs font-bold text-slate-500 uppercase mb-1">Method</label>
+                        <select id="install-method" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+                            <option value="apt">APT (Debian/Ubuntu)</option>
+                            <option value="pipx">Pipx (Python)</option>
+                            <option value="go">Go Install</option>
+                            <option value="binary">Binary Download</option>
+                            <option value="script">Shell Script</option>
+                            <option value="none">Pre-installed / None</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="install-cmd-0" class="block text-xs font-bold text-slate-500 uppercase mb-1">Installation Commands</label>
+                        <div id="install-cmds-container" class="space-y-2">
+                            <div class="flex gap-2">
+                                <input type="text" id="install-cmd-0" class="install-cmd w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none font-mono text-sm" placeholder="Command 1">
+                                <button data-action="addInstallCmd" class="px-3 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300" aria-label="Add installation command"><i data-lucide="plus" class="w-4 h-4 inline-block"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="verify-cmd" class="block text-xs font-bold text-slate-500 uppercase mb-1">Verification Command</label>
+                        <input type="text" id="verify-cmd" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none font-mono text-sm" placeholder="e.g., nmap --version">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metadata -->
+            <div class="glass-panel p-6 rounded-xl">
+                <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <i data-lucide="tags" class="w-5 h-5 inline-block text-amber-400"></i> Metadata
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="meta-risk" class="block text-xs font-bold text-slate-500 uppercase mb-1">Risk Level</label>
+                        <select id="meta-risk" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-amber-500 focus:outline-none">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="ui-icon" class="block text-xs font-bold text-slate-500 uppercase mb-1">UI Icon (Phosphor)</label>
+                        <input type="text" id="ui-icon" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-amber-500 focus:outline-none" placeholder="e.g., radar">
+                    </div>
+                    <div>
+                        <label for="ui-color" class="block text-xs font-bold text-slate-500 uppercase mb-1">UI Color</label>
+                        <select id="ui-color" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-amber-500 focus:outline-none">
+                            <option value="violet">Violet</option>
+                            <option value="emerald">Emerald</option>
+                            <option value="amber">Amber</option>
+                            <option value="rose">Rose</option>
+                            <option value="blue">Blue</option>
+                            <option value="cyan">Cyan</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Preview & Actions -->
+        <div class="md:col-span-5 flex flex-col gap-6 h-full">
+            
+            <!-- JSON Preview -->
+            <div class="glass-panel p-6 rounded-xl flex-1 flex flex-col min-h-0">
+                <h3 class="text-lg font-semibold text-white mb-4 flex items-center justify-between">
+                    <span><i data-lucide="code" class="w-5 h-5 inline-block text-slate-400 mr-2"></i> Config Preview</span>
+                    <button data-action="updatePreview" class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-slate-300">Refresh</button>
+                </h3>
+                <div class="flex-1 relative">
+                    <textarea id="json-preview" class="w-full h-full bg-slate-950/50 border border-white/10 rounded-lg p-4 font-mono text-xs text-emerald-400 focus:outline-none resize-none" readonly></textarea>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="glass-panel p-6 rounded-xl">
+                <div class="flex flex-col gap-3">
+                    <button data-action="validatePlugin" class="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors flex items-center justify-center gap-2">
+                        <i data-lucide="check-circle" class="w-4 h-4 inline-block"></i> Validate Config
+                    </button>
+                    <button data-action="savePlugin" class="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors flex items-center justify-center gap-2">
+                        <i data-lucide="save" class="w-4 h-4 inline-block"></i> Save Plugin
+                    </button>
+                </div>
+                <div id="action-status" class="mt-4 text-center text-sm hidden"></div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/plugin_creator.js"></script>
+{% endblock %}

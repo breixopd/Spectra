@@ -1,0 +1,107 @@
+        <div id="section-users" class="section-panel space-y-4" role="tabpanel" aria-labelledby="tab-users">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div class="flex items-center gap-2 flex-1">
+                    <div class="relative flex-1 max-w-sm">
+                        <i data-lucide="search" class="w-3.5 h-3.5 inline-block absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                        <input id="user-search" type="text" placeholder="Search users..." class="form-input pl-9 py-2" aria-label="Search users">
+                    </div>
+                    <select id="user-role-filter" class="form-input form-select w-32" aria-label="Filter by role">
+                        <option value="">All Roles</option>
+                        <option value="admin">Admin</option>
+                        <option value="staff">Staff</option>
+                        <option value="user">User</option>
+                    </select>
+                    <select id="user-status-filter" class="form-input form-select w-32" aria-label="Filter by status">
+                        <option value="">All Status</option>
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                    </select>
+                </div>
+                <button data-action="openCreateUserModal" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
+                    <i data-lucide="user-plus" class="w-4 h-4 inline-block mr-1"></i> Create User
+                </button>
+            </div>
+            <div class="glass-panel rounded-xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="admin-table w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-white/5">
+                                <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">User</th>
+                                <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Email</th>
+                                <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Role</th>
+                                <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Status</th>
+                                <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Created</th>
+                                <th scope="col" class="text-right px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody"></tbody>
+                    </table>
+                </div>
+                <div id="users-empty" class="hidden text-center py-8">
+                    <i data-lucide="users" class="w-10 h-10 inline-block text-slate-600 mb-3"></i>
+                    <p class="text-sm text-slate-400">No additional users.</p>
+                    <p class="text-xs text-slate-500 mt-1">Invite team members to get started.</p>
+                </div>
+                <div id="users-pagination" class="flex items-center justify-between px-4 py-3 border-t border-white/5">
+                    <span id="users-info" class="text-xs text-slate-500"></span>
+                    <div class="flex items-center gap-1">
+                        <button id="users-prev" class="px-2.5 py-1 rounded text-xs text-slate-400 hover:bg-white/5 disabled:opacity-30" disabled>Prev</button>
+                        <span id="users-page-num" class="text-xs text-slate-300 px-2">1</span>
+                        <button id="users-next" class="px-2.5 py-1 rounded text-xs text-slate-400 hover:bg-white/5 disabled:opacity-30" disabled>Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plans -->
+<!-- Create/Edit User Modal -->
+<div class="modal-backdrop hidden" id="user-modal">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="user-modal-title" class="text-lg font-semibold text-white">Create User</h3>
+            <button data-action="closeModal" data-value="user-modal" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4 inline-block"></i></button>
+        </div>
+        <form id="user-form" class="space-y-3">
+            <input type="hidden" id="user-form-id">
+            <div id="user-form-username-group">
+                <label class="form-label">Username</label>
+                <input id="user-form-username" class="form-input" type="text" required minlength="3" maxlength="50" autocomplete="off">
+            </div>
+            <div>
+                <label class="form-label">Email</label>
+                <input id="user-form-email" class="form-input" type="email" required autocomplete="off">
+            </div>
+            <div id="user-form-password-group">
+                <label class="form-label">Password</label>
+                <input id="user-form-password" class="form-input" type="password" minlength="8" autocomplete="new-password">
+                <p class="text-xs text-slate-500 mt-1">Min 8 chars, uppercase, lowercase, digit</p>
+            </div>
+            <div>
+                <label class="form-label">Role</label>
+                <select id="user-form-role" class="form-input form-select">
+                    <option value="user">User</option>
+                    <option value="staff">Staff</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <div id="user-form-plan-group">
+                <label class="form-label">Plan (optional)</label>
+                <select id="user-form-plan" class="form-input form-select">
+                    <option value="">None</option>
+                </select>
+            </div>
+            <div id="user-form-status-group" class="hidden">
+                <label class="form-label">Status</label>
+                <select id="user-form-status" class="form-input form-select">
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" data-action="closeModal" data-value="user-modal" class="px-4 py-2 rounded-lg text-sm text-slate-400 hover:bg-white/5 transition-colors">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+

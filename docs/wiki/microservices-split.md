@@ -6,16 +6,28 @@
 
 ## Current Architecture
 
-Spectra runs as four independently deployable services sharing a PostgreSQL database. All services use the same codebase (`spectra-app` image) with different entry points.
+Spectra runs as four independently deployable services sharing a PostgreSQL database. Each service has its own Docker build target and per-service requirements file, sharing the same codebase but deployed independently. The `SERVICE_MODE` environment variable is set on **every** image (see Dockerfiles) so shared code in `app.core.config` (for example DB pool sizing) can branch. **Router mounting** for the public Core API is implemented only in `spectra_api.routing.include_routers` and applies only to the **API** container (`spectra_api.main:app`).
+
+### Core API router policy (`spectra_api` only)
+
+The AI, worker, and scheduler processes use **separate** FastAPI applications (`spectra_ai.main`, `spectra_worker`, `spectra_scheduler`); they do **not** load `include_routers`. For `spectra_api`, only these values select the full router surface:
+
+| Mode | Value | Description |
+|------|-------|-------------|
+| **API** | `api` | Core API + auth + pages + WebSocket (default in `Dockerfile.api`) |
+| **ALL** | `all` | Same full surface — local / single-node / integration runners |
+| **(empty)** | `""` | Treated like full API for compatibility |
+
+Any other value for this process is **misconfiguration**: only health routes are mounted (fail closed).
 
 ### Implemented Services
 
-| Service | Entry Point | Port | Purpose | Status |
-|---------|-------------|------|---------|--------|
-| **App (Core API)** | `scripts/start.sh` | 5000 | Web UI, REST API, mission orchestration | **Done** |
-| **AI Service** | `app.ai_service:app` | 5010 | LLM routing, embeddings, RAG queries | **Done** |
-| **Scheduler** | `app.scheduler_service:app` | 5011 | Background tasks, backups, sandbox watchdog, metrics | **Done** |
-| **Worker** | `app.worker_service:app` | 5012 | Tool execution from PG job queue | **Done** |
+| Service | Entry Point | Port | Image Size | Purpose | Status |
+|---------|-------------|------|------------|---------|--------|
+| **App (Core API)** | `scripts/start.sh` | 5000 | ~1.34 GB | Web UI, REST API, mission orchestration | **Done** |
+| **AI Service** | `spectra_ai.main:app` | 5010 | ~1.13 GB | LLM routing, embeddings, RAG queries | **Done** |
+| **Scheduler** | `spectra_scheduler.main:app` | 5011 | ~558 MB | Background tasks, backups, sandbox watchdog, metrics | **Done** |
+| **Worker** | `spectra_worker.main:app` | 5012 | ~4.13 GB | Tool execution from PG job queue | **Done** |
 
 Supporting infrastructure:
 
@@ -23,17 +35,69 @@ Supporting infrastructure:
 |---------|-------|---------|
 | **PostgreSQL** | `pgvector/pgvector:pg16` | Data store, cache, job queue, pub/sub, RAG vectors |
 | **Caddy** | `caddy:2-alpine` | Reverse proxy, TLS termination, security headers |
-| **MinIO** | `minio/minio` | S3-compatible object storage (optional) |
+| **Garage** | `dxflrs/garage:v2.2.0` | S3-compatible object storage |
+| **TensorZero** | `tensorzero/gateway` | AI gateway — provider-agnostic model routing, observability, optimization |
+| **ClickHouse** | `clickhouse/clickhouse-server:24.11-alpine` | Analytics and inference storage for TensorZero |
+| **Redis** | `redis:7-alpine` | Shared distributed rate-limiting backend |
+
+### Per-Service Dockerfiles
+
+Production services use dedicated Dockerfiles with per-service dependency files:
+
+```text
+docker/Dockerfile.api        → installs requirements/app.txt, runs spectra_api.main:app
+docker/Dockerfile.ai         → installs requirements/ai.txt, runs spectra_ai.main:app
+docker/Dockerfile.scheduler  → installs requirements/scheduler.txt, runs spectra_scheduler.main:app
+docker/Dockerfile.worker     → installs requirements/worker.txt, runs spectra_worker.main:app
+```
+
+Build a specific service image:
+
+```bash
+docker build -f docker/Dockerfile.api -t spectra-api:local .
+docker build -f docker/Dockerfile.ai -t spectra-ai:local .
+docker build -f docker/Dockerfile.scheduler -t spectra-scheduler:local .
+docker build -f docker/Dockerfile.worker -t spectra-worker:local .
+```
+
+### Per-Service Requirements Files
+
+Each service has its own requirements file with only the dependencies it needs:
+
+| File | Service | Key Deps |
+|------|---------|----------|
+| `requirements/app.txt` | API (app) | Full stack — FastAPI, Jinja2, WeasyPrint, all services |
+| `requirements/ai.txt` | AI Service | LLM providers, embeddings, RAG, fastembed |
+| `requirements/scheduler.txt` | Scheduler | Minimal — DB, HTTP client, scheduling |
+| `requirements/worker.txt` | Worker | Tool execution, Docker SDK, parsing |
+| `requirements/base.txt` | Shared | Core deps included by all service files |
+
+### Import Boundary Enforcement
+
+Shared packages (`packages/platform/src/spectra_platform/core/`, `packages/platform/src/spectra_platform/models/`) must not import service-specific code. This is enforced by `scripts/check_import_boundaries.py`:
+
+```bash
+python3 scripts/check_import_boundaries.py
+```
+
+Forbidden top-level imports in shared packages:
+- `spectra_api.api.*`
+- `spectra_worker.*`
+- `spectra_ai.*`
+- `spectra_scheduler.*`
+- `spectra_worker.__main__`
+
+Lazy imports inside functions are allowed. This keeps the dependency direction clean: services depend on shared code, never the reverse.
 
 ### Running
 
 All services run as microservices by default:
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/compose.yaml up -d
 ```
 
-The main compose file includes `app`, `ai-svc`, `scheduler`, and `worker` as separate containers.
+The main compose file includes `app`, `ai-svc`, `scheduler`, and `worker` as separate containers, each with `SERVICE_MODE` set in their environment.
 
 ---
 
@@ -45,7 +109,9 @@ The main service handling all user-facing functionality.
 
 | Attribute | Value |
 |-----------|-------|
-| **Source** | `app/main.py` (full monolith) or `SERVICE_MODE=api` (API-only) |
+| **Source** | `services/api/src/spectra_api/` + `SERVICE_MODE=api` (`spectra_api.main:app`) |
+| **Dockerfile** | `docker/Dockerfile.api` |
+| **Requirements** | `requirements/app.txt` |
 | **Port** | 5000 |
 | **Responsibilities** | Web UI, REST API, mission orchestration, user management, admin panel |
 | **Dependencies** | PostgreSQL, AI Service (when `AI_SERVICE_URL` is set) |
@@ -58,13 +124,15 @@ Dedicated LLM routing, embedding generation, and RAG queries.
 
 | Attribute | Value |
 |-----------|-------|
-| **Source** | `app/ai_service.py` |
+| **Source** | `services/ai/src/spectra_ai/main.py` (implementation still under `spectra_platform/services/ai/`) |
+| **Dockerfile** | `docker/Dockerfile.ai` |
+| **Requirements** | `requirements/ai.txt` |
 | **Port** | 5010 |
-| **API Surface** | `POST /api/v1/ai/chat`, `POST /api/v1/ai/embed`, `GET /health` |
+| **API Surface** | `POST /api/v1/ai/chat`, `POST /api/v1/ai/embeddings`, `POST /api/v1/ai/rag`, `GET /health` |
 | **Dependencies** | PostgreSQL (pgvector for RAG), LLM provider (configurable) |
 | **Resource Limits** | 1 CPU, 1 GB RAM (configurable) |
 
-Uses the `SmartRouter` (`app/services/ai/router.py`) with LiteLLM for provider-agnostic model routing across tiers.
+Uses the `SmartRouter` (`spectra_platform/services/ai/router.py`) with TensorZero for provider-agnostic model routing across tiers.
 
 ### Scheduler — `spectra-scheduler`
 
@@ -72,7 +140,9 @@ Headless background task runner.
 
 | Attribute | Value |
 |-----------|-------|
-| **Source** | `app/scheduler_service.py` |
+| **Source** | `services/scheduler/src/spectra_scheduler/main.py` (implementation still under `spectra_platform/services/**`) |
+| **Dockerfile** | `docker/Dockerfile.scheduler` |
+| **Requirements** | `requirements/scheduler.txt` |
 | **Port** | 5011 (health endpoint only) |
 | **Responsibilities** | Sandbox watchdog (cleanup stale containers), warm pool maintenance, quota resets, metrics aggregation, automated backups |
 | **Dependencies** | PostgreSQL, Docker socket (for container cleanup) |
@@ -84,7 +154,9 @@ Executes tool jobs from the PostgreSQL job queue.
 
 | Attribute | Value |
 |-----------|-------|
-| **Source** | `app/worker_service.py` |
+| **Source** | `services/worker/src/spectra_worker/` |
+| **Dockerfile** | `docker/Dockerfile.worker` |
+| **Requirements** | `requirements/worker.txt` |
 | **Port** | 5012 (health endpoint only) |
 | **Responsibilities** | Pull jobs from PG queue, execute security tools in sandbox containers, parse output, write results |
 | **Dependencies** | PostgreSQL, Docker socket (for sandbox container management) |
@@ -107,12 +179,13 @@ Direct service-to-service calls use HTTP with a shared secret for authentication
 ```
 
 Configuration:
+
 ```bash
 SERVICE_AUTH_SECRET=<shared-secret>   # Same value on all services
 AI_SERVICE_URL=http://ai-svc:5010    # Core API → AI Service
 ```
 
-The `ServiceAuthMiddleware` (`app/core/service_auth.py`) validates the `X-Service-Auth` header on incoming requests.
+The `ServiceAuthMiddleware` (`spectra_platform/core/service_auth.py`) validates the `X-Service-Auth` header on incoming requests.
 
 ### 2. PostgreSQL Job Queue
 
@@ -147,7 +220,7 @@ await conn.add_listener("spectra_events", handle_event)
 
 ### Event Types
 
-Events map to the `EventType` enum in `app/core/events.py`:
+Events map to the `EventType` enum in `spectra_platform/core/events.py`:
 
 | Event | Publisher | Subscribers |
 |-------|-----------|-------------|
@@ -188,7 +261,7 @@ The codebase uses a gateway pattern for service abstraction. When a service URL 
 | Sandbox Orchestrator | `SANDBOX_ORCHESTRATOR_URL` | In-process `SandboxPool` |
 | AI Service | `AI_SERVICE_URL` | In-process AI handlers |
 
-The `ServiceRegistry` (`app/services/gateway/service_registry.py`) manages this routing transparently. The `GatewayClient` base class (`app/services/gateway/http_client.py`) provides retry with exponential backoff, connection pooling, and bearer-token auth.
+The `ServiceRegistry` (`spectra_platform/services/gateway/service_registry.py`) manages this routing transparently. The `GatewayClient` base class (`spectra_platform/services/gateway/http_client.py`) provides retry with exponential backoff, connection pooling, and bearer-token auth.
 
 ---
 
@@ -213,7 +286,7 @@ Docker Compose health checks poll these endpoints to determine container readine
 
 ```bash
 # All services (microservices by default):
-docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/compose.yaml up -d
 ```
 
 ### Multi-Server (Docker Swarm)
@@ -222,7 +295,37 @@ docker compose -f docker/docker-compose.yml up -d
 docker stack deploy -c docker/docker-compose.swarm.yml spectra
 ```
 
-See [Deployment Guide](deployment-guide.md) for full instructions.
+See [Deployment Guide](deployment-guide.md) for full instructions. See [Topology](topology.md) for visual architecture diagrams.
+
+---
+
+## Auto-Scaling
+
+The scheduler includes a reactive auto-scaling engine that adjusts service replica counts based on queue depth and utilization metrics. Auto-scaling defaults **on** (`AUTOSCALE_ENABLED=true` in `Settings`); set `AUTOSCALE_ENABLED=false` only as an emergency override. It works with both Docker Compose and Docker Swarm. API, worker, and AI containers also start a lightweight **embedded ops** loop (disk metrics and optional Docker prune when the socket is mounted); full DB/heal/image loops remain scheduler-owned.
+
+See [Scaling](scaling.md#auto-scaling) for full configuration and policy details.
+
+---
+
+## Communication Patterns Summary
+
+| Pattern | Used For | Mechanism |
+|---------|----------|-----------|
+| **Request/Response** | API calls, AI chat, embeddings | HTTP + `X-Service-Auth` header |
+| **Job Queue** | Tool execution, notifications, reports | PostgreSQL `job_queue` + `SELECT ... FOR UPDATE SKIP LOCKED` |
+| **Pub/Sub** | Cross-service events (mission lifecycle, sandbox events) | PostgreSQL `NOTIFY`/`LISTEN` |
+| **Health Polling** | Readiness, liveness, capacity monitoring | HTTP `GET /health` endpoints |
+| **Advisory Locks** | Scheduler leader election, task deduplication | PostgreSQL `pg_try_advisory_lock` |
+| **Rate-Limit Counters** | Distributed rate limiting across replicas | Redis |
+| **TLS** | Service-to-service HTTP on untrusted networks | Use **https://** URLs for `AI_SERVICE_URL`, `WORKER_SERVICE_URL`, `SCHEDULER_SERVICE_URL`, etc.; terminate TLS at the edge (e.g. Caddy) or mesh. `X-Service-Auth` is a shared secret — treat transport as untrusted without TLS. |
+
+No external message broker is required — PostgreSQL handles queueing, pub/sub, and coordination.
+
+---
+
+## Build plane / image registry (roadmap)
+
+Golden-image builds and worker image promotion (`spectra_platform/services/tools/sandbox/golden_image.py`, worker/orchestrator paths) can become **CPU- and disk-heavy** and may need a **dedicated host** or service: isolated build VMs, a private container registry, and signed promotion into the runtime cluster. That is **not** a separate shipped service today; when you split it out, wire it the same way as other gateways (URL env + `GatewayClient`-style client), keep **registry auth** (token or mTLS) distinct from `SERVICE_AUTH_SECRET`, and restrict network paths so only the worker/orchestrator can pull promoted images.
 
 ---
 

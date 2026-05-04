@@ -6,7 +6,6 @@ Create Date: 2026-03-09
 
 """
 
-
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
@@ -47,8 +46,21 @@ def upgrade() -> None:
     op.create_table(
         "subscriptions",
         sa.Column("id", postgresql.UUID(as_uuid=False), primary_key=True),
-        sa.Column("user_id", postgresql.UUID(as_uuid=False), sa.ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False, index=True),
-        sa.Column("plan_id", postgresql.UUID(as_uuid=False), sa.ForeignKey("plans.id", ondelete="RESTRICT"), nullable=False, index=True),
+        sa.Column(
+            "user_id",
+            postgresql.UUID(as_uuid=False),
+            sa.ForeignKey("users.id", ondelete="CASCADE"),
+            unique=True,
+            nullable=False,
+            index=True,
+        ),
+        sa.Column(
+            "plan_id",
+            postgresql.UUID(as_uuid=False),
+            sa.ForeignKey("plans.id", ondelete="RESTRICT"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("status", sa.String(20), nullable=False, server_default="active"),
         sa.Column("trial_ends_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("current_period_start", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
@@ -65,7 +77,13 @@ def upgrade() -> None:
     op.create_table(
         "api_keys",
         sa.Column("id", postgresql.UUID(as_uuid=False), primary_key=True),
-        sa.Column("user_id", postgresql.UUID(as_uuid=False), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "user_id",
+            postgresql.UUID(as_uuid=False),
+            sa.ForeignKey("users.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("name", sa.String(100), nullable=False),
         sa.Column("key_hash", sa.String(255), nullable=False),
         sa.Column("key_prefix", sa.String(10), nullable=False),
@@ -81,7 +99,13 @@ def upgrade() -> None:
     op.create_table(
         "usage_records",
         sa.Column("id", postgresql.UUID(as_uuid=False), primary_key=True),
-        sa.Column("user_id", postgresql.UUID(as_uuid=False), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "user_id",
+            postgresql.UUID(as_uuid=False),
+            sa.ForeignKey("users.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("period_start", sa.DateTime(timezone=True), nullable=False, index=True),
         sa.Column("period_type", sa.String(20), nullable=False),
         sa.Column("api_requests", sa.Integer(), nullable=False, server_default=sa.text("0")),
@@ -94,7 +118,12 @@ def upgrade() -> None:
     )
 
     # Add plan_id and api_key_prefix to users table
-    op.add_column("users", sa.Column("plan_id", postgresql.UUID(as_uuid=False), sa.ForeignKey("plans.id", ondelete="SET NULL"), nullable=True))
+    op.add_column(
+        "users",
+        sa.Column(
+            "plan_id", postgresql.UUID(as_uuid=False), sa.ForeignKey("plans.id", ondelete="SET NULL"), nullable=True
+        ),
+    )
     op.create_index(op.f("ix_users_plan_id"), "users", ["plan_id"])
     op.add_column("users", sa.Column("api_key_prefix", sa.String(10), nullable=True))
 

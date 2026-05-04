@@ -4,8 +4,16 @@ Requires PostgreSQL.
 """
 
 import os
+from unittest.mock import AsyncMock
 
 import pytest
+from sqlalchemy import delete
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from spectra_common.orm.base import Base
+from spectra_platform.core.config import settings
+from spectra_platform.models.server_node import ServerNode
+from spectra_platform.services.scaling.pool_manager import ServerPoolManager
 
 pytestmark = [
     pytest.mark.asyncio,
@@ -16,30 +24,41 @@ pytestmark = [
 
 async def test_full_node_lifecycle():
     """Add, list, update, health check, remove a node."""
-    from app.core.database import async_session_maker
-    from app.services.scaling import get_pool_manager
+    database_url = os.environ.get("DATABASE_URL") or settings.DATABASE_URL.get_secret_value()
+    engine = create_async_engine(database_url)
+    pool = ServerPoolManager()
+    pool._auto_enable_autoscale = AsyncMock(return_value=None)
 
-    pool = get_pool_manager()
-    async with async_session_maker() as session:
-        node = await pool.add_node(
-            session,
-            "sandbox_worker",
-            "test-worker-1",
-            "http://localhost:8080",
-            weight=2,
-            max_capacity=5,
-        )
-        await session.commit()
-        assert node["name"] == "test-worker-1"
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(lambda sync_conn: Base.metadata.create_all(sync_conn, tables=[ServerNode.__table__]))
 
-        nodes = await pool.list_nodes(session, service_type="sandbox_worker")
-        assert any(n["name"] == "test-worker-1" for n in nodes)
+        session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        async with session_maker() as session:
+            await session.execute(delete(ServerNode))
+            await session.commit()
 
-        updated = await pool.update_node(session, node["id"], weight=5)
-        await session.commit()
-        assert updated is not None
-        assert updated["weight"] == 5
+            node = await pool.add_node(
+                session,
+                "sandbox_worker",
+                "test-worker-1",
+                "http://localhost:8080",
+                weight=2,
+                max_capacity=5,
+            )
+            await session.commit()
+            assert node["name"] == "test-worker-1"
 
-        removed = await pool.remove_node(session, node["id"])
-        await session.commit()
-        assert removed is True
+            nodes = await pool.list_nodes(session, service_type="sandbox_worker")
+            assert any(n["name"] == "test-worker-1" for n in nodes)
+
+            updated = await pool.update_node(session, node["id"], weight=5)
+            await session.commit()
+            assert updated is not None
+            assert updated["weight"] == 5
+
+            removed = await pool.remove_node(session, node["id"])
+            await session.commit()
+            assert removed is True
+    finally:
+        await engine.dispose()

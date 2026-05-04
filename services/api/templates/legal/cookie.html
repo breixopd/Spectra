@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie Policy — {{ app_name }}</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="csrf-token" content="{{ csrf_token() if csrf_token is defined else '' }}">
+    <meta name="robots" content="noindex, follow">
+    <link rel="stylesheet" href="/static/css/legal.css">
+</head>
+<body class="legal-page">
+<nav>
+    <a href="/" class="nav-logo">
+        {% include 'partials/shield_svg.html' %}
+        <span class="nav-logo-text">{{ app_name }}</span>
+    </a>
+    <a href="/" class="nav-back">&larr; Back to Home</a>
+</nav>
+
+<div class="legal-container">
+    <h1>Cookie Policy</h1>
+    <p class="legal-meta">Last updated: March 10, 2026</p>
+
+    {% if content_override %}
+    {{ content_override | safe }}
+    {% else %}
+
+    <h2>1. What Are Cookies?</h2>
+    <p>Cookies are small text files stored on your device when you visit a website. They help websites remember your preferences and improve your browsing experience.</p>
+
+    <h2>2. How We Use Cookies</h2>
+    <p>{{ app_name }} uses cookies and similar technologies for the following purposes:</p>
+
+    <table>
+        <tr><th>Cookie</th><th>Type</th><th>Purpose</th><th>Duration</th></tr>
+        <tr>
+            <td><code>access_token</code></td>
+            <td>Essential</td>
+            <td>Authentication — keeps you signed in</td>
+            <td>24 hours</td>
+        </tr>
+        <tr>
+            <td><code>csrf_token</code></td>
+            <td>Essential</td>
+            <td>Security — prevents cross-site request forgery</td>
+            <td>Session</td>
+        </tr>
+        <tr>
+            <td><code>cookie_consent</code></td>
+            <td>Essential</td>
+            <td>Records your cookie preferences</td>
+            <td>1 year</td>
+        </tr>
+    </table>
+
+    <h2>3. Types of Cookies</h2>
+
+    <p><strong>Essential Cookies:</strong> Required for basic platform functionality including authentication, security, and session management. These cannot be disabled.</p>
+
+    <p><strong>Functional Cookies:</strong> Remember your preferences such as theme settings and dashboard layout. These enhance your experience but are not strictly necessary.</p>
+
+    <p><strong>Analytics Cookies:</strong> Help us understand how users interact with the platform. We use this data to improve features and performance. All analytics data is anonymized.</p>
+
+    <h2>4. Local Storage</h2>
+    <p>In addition to cookies, we use browser Local Storage for:</p>
+    <ul>
+        <li><strong>Authentication tokens:</strong> JWT tokens for API authentication</li>
+        <li><strong>UI preferences:</strong> Sidebar state, theme settings</li>
+    </ul>
+    <p>Local Storage data remains until explicitly cleared by you or upon logout.</p>
+
+    <h2>5. Third-Party Cookies</h2>
+    <p>{{ app_name }} does not currently use third-party cookies. If we integrate third-party services in the future (analytics, support chat), this policy will be updated accordingly.</p>
+
+    <h2>6. Managing Cookies</h2>
+    <p>You can control cookies through your browser settings:</p>
+    <ul>
+        <li><strong>Chrome:</strong> Settings &gt; Privacy and security &gt; Cookies</li>
+        <li><strong>Firefox:</strong> Settings &gt; Privacy &amp; Security &gt; Cookies</li>
+        <li><strong>Safari:</strong> Preferences &gt; Privacy &gt; Manage Website Data</li>
+        <li><strong>Edge:</strong> Settings &gt; Cookies and site permissions</li>
+    </ul>
+    <p>Note: Disabling essential cookies will prevent you from using the platform.</p>
+
+    <h2>7. Changes to This Policy</h2>
+    <p>We may update this Cookie Policy as our practices or applicable laws change. Updates will be posted on this page with a revised "Last updated" date.</p>
+
+    <h2>8. Contact</h2>
+    <p>Questions about our use of cookies? Contact us at <a href="mailto:support@spectra.security">support@spectra.security</a>.</p>
+    <p>For more information about how we handle your data, see our <a href="/legal/privacy">Privacy Policy</a>.</p>
+
+    {% endif %}
+</div>
+
+{% include 'partials/_cookie_consent.html' %}
+<footer>&copy; 2026 {{ app_name }}. All rights reserved.</footer>
+</body>
+</html>

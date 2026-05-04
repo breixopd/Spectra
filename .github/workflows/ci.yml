@@ -6,45 +6,57 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 permissions:
   contents: read
 
 jobs:
-  lint:
-    name: Lint
+  # One image build (Dockerfile.test): Ruff, import boundaries, Pyright, Bandit — avoids
+  # duplicating the same docker build across separate jobs on fresh runners.
+  static-analysis:
+    name: Static analysis
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: pip install ruff
-      - run: ruff check app/
+      - name: Build Docker test runner
+        run: docker build -f docker/Dockerfile.test -t spectra-test-ci .
+      - name: Ruff
+        run: docker run --rm spectra-test-ci python -m ruff check packages/platform/src/spectra_platform tests/ services/ packages/
+      - name: Import boundaries
+        run: docker run --rm spectra-test-ci python scripts/check_import_boundaries.py
+      - name: Pyright
+        run: docker run --rm spectra-test-ci sh -c "pip install --no-cache-dir pyright >/dev/null && pyright"
+      - name: Bandit
+        run: docker run --rm spectra-test-ci bandit -r packages/platform/src/spectra_platform -c pyproject.toml --severity-level high --confidence-level high
 
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
+    env:
+      ENCRYPTION_KEY: test-encryption-key
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-      - run: pip install -r requirements.txt numpy
-      - name: Run unit tests with coverage
+      - name: Ensure .env.test for Docker Compose
+        run: test -f .env.test || cp .env.test.example .env.test
+      - name: Build Docker unit runner
+        run: docker compose -f docker/compose.yaml --profile test build unit-test-runner
+      - name: Validate TensorZero config
         run: |
-          python3 -m pytest tests/unit/ -q \
-            --cov=app \
-            --cov-config=.coveragerc \
-            --cov-report=term-missing \
-            --cov-report=xml:coverage.xml \
-            --cov-fail-under=60
-        env:
-          AI_PROVIDER: mock
-          DATABASE_URL: "sqlite+aiosqlite:///test.db"
-          JWT_SECRET_KEY: test-key
-          PLUGIN_SAFE_MODE: "false"
-          FULLY_AUTOMATED: "true"
+          docker compose -f docker/compose.yaml --profile test run --rm --no-deps unit-test-runner "python -c \"import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')\""
+      - name: Run unit tests with coverage in Docker
+        run: |
+          set +e
+          docker compose -f docker/compose.yaml --profile test run --name spectra-unit-coverage unit-test-runner \
+            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_platform --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=70"
+          status=$?
+          docker cp spectra-unit-coverage:/tmp/coverage.xml coverage.xml 2>/dev/null || true
+          docker rm -f spectra-unit-coverage >/dev/null 2>&1 || true
+          exit "$status"
+      - name: Run settings tests in Docker
+        run: |
+          docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner
       - name: Coverage summary
         if: always()
         run: |
@@ -67,56 +79,144 @@ jobs:
           name: coverage-report
           path: coverage.xml
           retention-days: 30
+      - name: Remove copied coverage artifact
+        if: always()
+        run: rm -f coverage.xml
 
   integration-test:
     name: Integration Tests
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: spectra
-          POSTGRES_PASSWORD: spectra_test
-          POSTGRES_DB: spectra_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U spectra -d spectra_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    env:
+      ENCRYPTION_KEY: test-encryption-key
+      ENV_FILE: ../.env.test
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-      - run: pip install -r requirements.txt numpy pytest-timeout
-      - name: Run integration tests
-        continue-on-error: true  # Integration tests may fail due to missing tools/services
+      - name: Ensure .env.test for Docker Compose
+        run: test -f .env.test || cp .env.test.example .env.test
+      - name: Build Docker integration runner
+        run: docker compose -f docker/compose.yaml --profile app --profile test build test-runner
+      - name: Bootstrap Garage for integration tests
         run: |
-          python3 -m pytest tests/integration/ -v --tb=short \
-            --timeout=120 \
-            -k "not live and not e2e"
-        env:
-          AI_PROVIDER: mock
-          DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5432/spectra_test"
-          JWT_SECRET_KEY: test-key
-          PLUGIN_SAFE_MODE: "false"
-          FULLY_AUTOMATED: "true"
+          ENV_FILE=../.env.test docker compose -f docker/compose.yaml --profile app --profile test up -d garage
+          GARAGE_CONTAINER="$(docker compose -f docker/compose.yaml ps -q garage)" \
+          GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}" \
+          GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}" \
+          GARAGE_PRINT_CREDENTIALS=0 \
+            bash docker/garage-init.sh
+      - name: Run integration tests in Docker
+        run: |
+          docker compose -f docker/compose.yaml --profile app --profile test run --rm test-runner \
+            "python -m pytest tests/integration/ -v --tb=short --timeout=120 --override-ini=addopts= -k 'not live and not e2e'"
 
-  security:
-    name: Security Scan
+  docker-build:
+    name: Docker Build Verification
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: docker/setup-buildx-action@v3
+      - name: Ensure .env.test for Docker Compose
+        run: test -f .env.test || cp .env.test.example .env.test
+      - name: Validate Compose config
+        run: ENV_FILE=../.env.example docker compose --env-file .env.example -f docker/compose.yaml --profile app --profile test --profile targets config --quiet
+      - name: Validate Swarm compose
+        run: docker compose --env-file .env.example -f docker/docker-compose.swarm.yml config --quiet
+      - name: Free hosted runner tool cache before image builds
+        run: df -h
+      - name: Build Caddy image
+        uses: docker/build-push-action@v6
         with:
-          python-version: "3.11"
-          cache: pip
-      - run: pip install bandit[toml]
-      - run: bandit -r app/ -c pyproject.toml -f json -o bandit-report.json || true
-      - run: bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high
+          context: .
+          file: docker/Dockerfile.caddy
+          push: false
+          load: true
+          tags: spectra-caddy:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Scan Caddy image for critical CVEs
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        with:
+          image-ref: spectra-caddy:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Free Docker cache after Caddy scan
+        run: docker rmi spectra-caddy:ci || true; df -h
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.api
+          push: false
+          load: true
+          tags: spectra-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Scan API image for critical CVEs
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        with:
+          image-ref: spectra-api:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Free Docker cache after API scan
+        run: docker rmi spectra-api:ci || true; df -h
+      - name: Build AI image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.ai
+          push: false
+          load: true
+          tags: spectra-ai:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Scan AI image for critical CVEs
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        with:
+          image-ref: spectra-ai:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Free Docker cache after AI scan
+        run: docker rmi spectra-ai:ci || true; docker builder prune -af || true; docker system prune -f || true; df -h
+      - name: Build scheduler image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.scheduler
+          push: false
+          load: true
+          tags: spectra-scheduler:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Scan scheduler image for critical CVEs
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        with:
+          image-ref: spectra-scheduler:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Free Docker cache after scheduler scan
+        run: docker rmi spectra-scheduler:ci || true; df -h
+      - name: Build worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.worker
+          push: false
+          load: true
+          tags: spectra-worker:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Scan worker image for critical CVEs
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        with:
+          image-ref: spectra-worker:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Free Docker cache after worker scan
+        run: docker rmi spectra-worker:ci || true; df -h
 
   deps:
     name: Dependency Audit
@@ -127,12 +227,13 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+      - run: python -m pip install --upgrade pip
       - run: pip install pip-audit
       - run: sudo apt-get update && sudo apt-get install -y libcairo2-dev pkg-config python3-dev
-      - run: pip install -r requirements-app.txt
-      # pip-audit: keep || true because transitive dependency vulns in pinned
-      # packages shouldn't block CI; ignore known disputed advisories.
-      - run: pip-audit --fix --dry-run -l --ignore-vuln PYSEC-2024-65 --ignore-vuln PYSEC-2024-66 || true
+      - run: pip install -r requirements/app.txt
+      # pip-audit: hard gate for project dependencies; ignore known disputed advisories
+      # and the runner's transient pip advisory when no fixed pip release is available.
+      - run: pip-audit --fix --dry-run -l --ignore-vuln PYSEC-2024-65 --ignore-vuln PYSEC-2024-66 --ignore-vuln CVE-2026-3219
 
   version-check:
     name: Version file check
@@ -142,6 +243,92 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Verify app/version.py exists and has __version__
+      - name: Verify packages/platform/src/spectra_platform/_meta/version.py exists and has __version__
         run: |
-          python3 -c "exec(open('app/version.py').read()); print('Version:', __version__)"
+          python3 -c "exec(open('packages/platform/src/spectra_platform/_meta/version.py').read()); print('Version:', __version__)"
+
+  compose-smoke:
+    name: Compose Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [test, integration-test]
+    if: github.event_name == 'push'
+    env:
+      ENCRYPTION_KEY: test-encryption-key
+      ENV_FILE: ../.env.test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure .env.test for Docker Compose
+        run: test -f .env.test || cp .env.test.example .env.test
+      - name: Start test stack
+        run: |
+          docker compose -f docker/compose.yaml --profile app --profile targets --profile test up -d --build
+      - name: Bootstrap Garage buckets
+        run: |
+          GARAGE_CONTAINER="$(docker compose -f docker/compose.yaml ps -q garage)" \
+          GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}" \
+          GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}" \
+          GARAGE_PRINT_CREDENTIALS=0 \
+            bash docker/garage-init.sh
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for services to become healthy..."
+          for i in $(seq 1 90); do
+            containers=$(docker ps --filter "label=spectra.managed=true" --format "{{.Names}}	{{.Status}}")
+            if [ -z "$containers" ]; then
+              echo "No managed containers found yet..."
+              sleep 5
+              continue
+            fi
+            explicitly_unhealthy=$(docker ps --filter "label=spectra.managed=true" --filter "health=unhealthy" --format "{{.Names}}" || true)
+            if [ -n "$explicitly_unhealthy" ]; then
+              echo "Unhealthy containers found:"
+              echo "$explicitly_unhealthy"
+              exit 1
+            fi
+            all_running=$(docker ps --filter "label=spectra.managed=true" --format "{{.Names}}" | wc -l)
+            if [ "$all_running" -ge 10 ]; then
+              echo "All $all_running managed containers are running."
+              echo "$containers"
+              break
+            fi
+            echo "Waiting... ($i/90) - $all_running containers running"
+            sleep 5
+          done
+      # Performance runs first: it calls ensure_admin_setup() so a fresh postgres volume has an
+      # admin user before e2e tests authenticate (see tests/platform_harness.py defaults).
+      - name: Run performance smoke tests
+        run: |
+          docker compose -f docker/compose.yaml --profile app --profile targets --profile test run --rm \
+            -e LOAD_TEST_APP_URL=http://app:5000 \
+            test-runner \
+            "python -m pytest tests/performance/test_api_latency.py -v --tb=short --timeout=120 --override-ini=addopts="
+      - name: Run e2e API live tests
+        run: |
+          docker compose -f docker/compose.yaml --profile app --profile targets --profile test run --rm \
+            -e APP_BASE_URL=http://app:5000 \
+            test-runner \
+            "python -m pytest tests/e2e/test_api_live.py -v --tb=short --timeout=120 --override-ini=addopts="
+      - name: Run health endpoint integration test
+        run: |
+          docker compose -f docker/compose.yaml --profile app --profile targets --profile test run --rm \
+            -e APP_BASE_URL=http://app:5000 \
+            test-runner \
+            "python -m pytest tests/integration/test_api_health_live.py -v --tb=short --timeout=120 --override-ini=addopts="
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          mkdir -p compose-logs
+          for container in $(docker ps -aq --filter "label=spectra.managed=true"); do
+            name=$(docker inspect --format '{{.Name}}' "$container" | sed 's/^\///')
+            docker logs "$container" > "compose-logs/${name}.log" 2>&1 || true
+          done
+      - name: Upload container logs as artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compose-smoke-logs
+          path: compose-logs/
+      - name: Stop test stack
+        if: always()
+        run: |
+          docker compose -f docker/compose.yaml --profile app --profile targets --profile test down -v --remove-orphans

@@ -1,0 +1,512 @@
+{% extends "base.html" %}
+
+{% block breadcrumbs %}
+<nav aria-label="Breadcrumb" class="text-sm text-slate-400 mb-4">
+  <a href="/dashboard" class="hover:text-white">Home</a> / <span class="text-white">Settings</span>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6 animate-fade-in-up">
+    <h1 class="text-2xl font-semibold text-white tracking-tight">System Settings</h1>
+    <button type="submit" form="settings-form" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors" title="Saves the General Configuration form">
+        <span class="spinner"></span>Save General Settings
+    </button>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 animate-fade-in-up stagger-1">
+    <!-- Sidebar Navigation -->
+    <div class="md:col-span-3">
+        <nav class="space-y-1" aria-label="Settings sections">
+            <button type="button" id="tab-general" data-settings-section="general" aria-current="location" class="flex items-center px-3 py-2 rounded-lg bg-white/5 text-white font-medium text-sm">
+                <i data-lucide="sliders-horizontal" class="w-4 h-4 inline-block mr-3 text-violet-400"></i>
+                General
+            </button>
+            <button type="button" id="tab-data-sources" data-settings-section="data-sources" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+                <i data-lucide="download" class="w-4 h-4 inline-block mr-3 text-slate-500"></i>
+                Data Sources
+            </button>
+            <button type="button" id="tab-system" data-settings-section="system" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+                <i data-lucide="server" class="w-4 h-4 inline-block mr-3 text-slate-500"></i>
+                System Status
+            </button>
+            <button type="button" id="tab-vpn" data-settings-section="vpn" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+                <i data-lucide="shield" class="w-4 h-4 inline-block mr-3 text-slate-500"></i>
+                Shared VPN
+            </button>
+            <button type="button" id="tab-platform" data-settings-section="platform" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+                <i data-lucide="globe" class="w-4 h-4 inline-block mr-3 text-slate-500"></i>
+                Platform
+            </button>
+        </nav>
+    </div>
+
+    <!-- Content Area -->
+    <div class="md:col-span-9 space-y-6">
+        
+        <!-- General Settings -->
+        <div class="glass-panel rounded-xl p-6" id="general">
+            <h2 class="text-lg font-semibold text-white mb-4">General Configuration</h2>
+            <form id="settings-form" class="space-y-5">
+                <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] gap-4">
+                    <div class="space-y-4">
+                        <div class="rounded-xl border border-white/10 bg-slate-950/40 p-4 space-y-4">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p class="text-sm font-medium text-white">AI Gateway</p>
+                                    <p class="text-xs text-slate-500 mt-1">All AI inference routes through TensorZero. Configure models in the Admin Panel.</p>
+                                </div>
+                                <button type="button" id="test-default-profile-btn" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs font-medium transition-colors">
+                                    Test Gateway
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">TensorZero Gateway URL</label>
+                                    <input type="text" name="tensorzero_gateway_url" id="tensorzero_gateway_url" placeholder="http://tensorzero:3000" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">Request Timeout (seconds)</label>
+                                    <input type="number" name="llm_timeout" id="llm_timeout" min="30" max="1200" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">Embedding Model</label>
+                                    <input type="text" name="embedding_model" id="embedding_model" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                    <p class="text-xs text-slate-500 mt-1">Prefix with <code class="text-violet-400">local/</code> for free offline embeddings</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">Embedding API Key</label>
+                                    <input type="password" name="embedding_api_key" id="embedding_api_key" placeholder="Only needed for API-based embeddings" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Log Level</label>
+                                <select name="log_level" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                    <option value="DEBUG">DEBUG</option>
+                                    <option value="INFO">INFO</option>
+                                    <option value="WARNING">WARNING</option>
+                                    <option value="ERROR">ERROR</option>
+                                    <option value="CRITICAL">CRITICAL</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Connect Back Host (LHOST)</label>
+                                    <input type="text" name="connect_back_host" id="connect_back_host" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            </div>
+                        </div>
+
+                        <div class="border border-white/10 rounded-lg p-4">
+                            <h3 class="text-sm font-medium text-white mb-3">Advanced Configuration</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">Notification Webhook</label>
+                                    <input type="text" name="notification_webhook" id="notification_webhook" placeholder="https://ntfy.sh/your-topic or Slack/Discord webhook URL" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                </div>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-4">
+                                Human approval for risky steps is configured per-user under Profile &rarr; Mission Defaults,
+                                plus an optional launch override on the Dashboard. Operators can enforce approval platform-wide via
+                                the <code class="text-violet-400">REQUIRE_APPROVAL</code> environment variable only (not exposed here).
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl border border-white/10 bg-gradient-to-br from-violet-500/10 to-cyan-500/5 p-4 space-y-3 h-fit" id="resolved-ai-summary">
+                        <p class="text-sm font-medium text-white">AI Gateway</p>
+                        <div class="text-xs text-slate-400">All AI inference routes through TensorZero. Configure models and providers in <code class="text-violet-400">config/tensorzero.toml</code> or the Admin Panel &rarr; AI Config.</div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end mt-4">
+                    <button type="submit" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
+                        <span class="spinner"></span>Save Configuration
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Platform Settings -->
+        <div id="platform" class="glass-panel rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="globe" class="w-5 h-5 inline-block text-sky-400"></i>
+                Platform
+            </h2>
+            <form id="platform-form" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Domain</label>
+                        <input type="text" name="platform_domain" id="platform_domain" placeholder="spectra.example.com" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                        <p class="text-xs text-slate-500 mt-1">Public domain name for this instance</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Base URL</label>
+                        <input type="text" name="platform_base_url" id="platform_base_url" placeholder="https://spectra.example.com" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                        <p class="text-xs text-slate-500 mt-1">Full base URL (auto-populated from domain)</p>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between py-2">
+                    <div>
+                        <p class="text-sm font-medium text-white">Platform is publicly exposed</p>
+                        <p class="text-xs text-slate-500">Enable if this instance is accessible from the internet</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="platform_exposed" id="platform_exposed" class="sr-only peer" data-on-change="togglePlatformExposedWarning">
+                        <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
+                    </label>
+                </div>
+                <div id="platform-exposed-warning" class="hidden p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                    <p class="text-xs text-amber-400"><i data-lucide="alert-triangle" class="w-3.5 h-3.5 inline-block mr-1"></i> Ensure HTTPS is configured via reverse proxy (e.g. Caddy, nginx) before exposing to the internet.</p>
+                </div>
+            </form>
+        </div>
+
+        <!-- Sandbox Pool Settings -->
+        <div class="glass-panel rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="box" class="w-5 h-5 inline-block text-emerald-400"></i>
+                Sandbox Pool
+            </h2>
+            <p class="text-sm text-slate-400 mb-4">Configure per-mission ephemeral containers. Each mission spins up its own isolated sandbox running security tools.</p>
+
+            <div id="sandbox-status" class="mb-4 p-3 rounded-lg border border-white/10 bg-slate-900/50">
+                <div class="flex items-center gap-2">
+                    <div id="sandbox-status-dot" class="inline-block w-2 h-2 rounded-full bg-slate-500" style="width: 0.5rem; height: 0.5rem;" aria-hidden="true"></div>
+                    <span id="sandbox-status-text" class="text-xs text-slate-400">Checking sandbox pool...</span>
+                </div>
+            </div>
+
+            <form id="sandbox-form" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Max Concurrent Containers</label>
+                        <input type="number" name="sandbox_max_containers" min="1" max="50" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                        <p class="text-xs text-slate-500 mt-1">Maximum missions running simultaneously (1-50)</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Memory Limit</label>
+                        <select name="sandbox_memory_limit" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <option value="512m">512 MB</option>
+                            <option value="1g">1 GB</option>
+                            <option value="2g">2 GB (default)</option>
+                            <option value="4g">4 GB</option>
+                            <option value="8g">8 GB</option>
+                        </select>
+                        <p class="text-xs text-slate-500 mt-1">RAM allocated per sandbox container</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">CPU Shares</label>
+                        <select name="sandbox_cpu_shares" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <option value="256">Low (256)</option>
+                            <option value="512">Normal (512, default)</option>
+                            <option value="1024">High (1024)</option>
+                            <option value="2048">Very High (2048)</option>
+                        </select>
+                        <p class="text-xs text-slate-500 mt-1">Relative CPU weight per container</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Max Lifetime (seconds)</label>
+                        <input type="number" name="sandbox_max_lifetime" min="300" max="86400" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                        <p class="text-xs text-slate-500 mt-1">Auto-destroy container after this duration (300-86400s)</p>
+                    </div>
+                </div>
+
+                <!-- Separator -->
+                <div class="border-t border-white/10 pt-4 mt-4">
+                    <h3 class="text-sm font-medium text-slate-300 mb-3">Security & Isolation</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="text-xs font-medium text-slate-400">Network Isolation</label>
+                                <p class="text-xs text-slate-500">Each sandbox gets its own Docker network</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="sandbox_network_isolation" class="sr-only peer">
+                                <div class="w-9 h-5 bg-slate-700 peer-focus:ring-2 peer-focus:ring-violet-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="text-xs font-medium text-slate-400">OOM Auto-Escalation</label>
+                                <p class="text-xs text-slate-500">Auto-upgrade tier on out-of-memory (exit 137)</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="sandbox_oom_escalation_enabled" class="sr-only peer">
+                                <div class="w-9 h-5 bg-slate-700 peer-focus:ring-2 peer-focus:ring-violet-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Resource Tiers (JSON)</label>
+                        <textarea name="sandbox_resource_tiers" rows="4" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs font-mono focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder='{"light": {"memory": "512m", "cpu_shares": 256}, ...}'></textarea>
+                        <p class="text-xs text-slate-500 mt-1">Tier definitions mapping: light, medium, heavy, extreme</p>
+                    </div>
+                </div>
+
+                <!-- Performance -->
+                <div class="border-t border-white/10 pt-4 mt-4">
+                    <h3 class="text-sm font-medium text-slate-300 mb-3">Performance</h3>
+                    <p class="text-xs text-slate-500 mb-3">Warm pool size is set automatically from registered <strong>sandbox_worker</strong> hosts (capped), with a small fallback when none are registered.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Idle Timeout (seconds)</label>
+                            <input type="number" name="sandbox_idle_timeout" min="60" max="7200" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <p class="text-xs text-slate-500 mt-1">Destroy sandbox if no heartbeat for this long (60-7200s)</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Heartbeat Interval (seconds)</label>
+                            <input type="number" name="sandbox_heartbeat_interval" min="5" max="300" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <p class="text-xs text-slate-500 mt-1">Worker heartbeat frequency (5-300s)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Image Management -->
+                <div class="border-t border-white/10 pt-4 mt-4">
+                    <h3 class="text-sm font-medium text-slate-300 mb-3">Image Management</h3>
+                    <p class="text-xs text-slate-500 mb-3">Golden images are scanned with Grype after each successful build when Grype is installed on the API host.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-1 gap-4 max-w-md">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="text-xs font-medium text-slate-400">Block Critical CVEs</label>
+                                <p class="text-xs text-slate-500">Prevent deploy if critical vulns</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="sandbox_image_scan_block_critical" class="sr-only peer">
+                                <div class="w-9 h-5 bg-slate-700 peer-focus:ring-2 peer-focus:ring-violet-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Limits & Priority -->
+                <div class="border-t border-white/10 pt-4 mt-4">
+                    <h3 class="text-sm font-medium text-slate-300 mb-3">Limits & Priority</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Per-User Sandbox Limit</label>
+                            <input type="number" name="sandbox_per_user_limit" min="0" max="20" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <p class="text-xs text-slate-500 mt-1">Max concurrent sandboxes per user (0 = unlimited)</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Default Job Priority</label>
+                            <input type="number" name="sandbox_default_priority" min="1" max="10" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <p class="text-xs text-slate-500 mt-1">1 = highest, 10 = lowest priority</p>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- External Services Summary -->
+        <div class="glass-panel rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                <i data-lucide="git-branch" class="w-5 h-5 inline-block text-sky-400"></i>
+                External Services
+            </h2>
+            <p class="text-sm text-slate-400 mb-4">At-a-glance view of service modes and health. Full configuration is available in the Admin Panel.</p>
+
+            <div id="svc-topology-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mb-4">
+                <div class="col-span-full text-center py-6 text-slate-500 text-sm">
+                    <i data-lucide="loader" class="w-4 h-4 inline-block animate-spin mr-1"></i> Loading service topology...
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-3 border-t border-white/5">
+                <a href="/admin#services" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">
+                    <i data-lucide="external-link" class="w-3.5 h-3.5 inline-block mr-1"></i> Manage in Admin Panel
+                </a>
+                <span id="svc-topology-refresh-info" class="text-xs text-slate-600"></span>
+            </div>
+        </div>
+
+        <!-- Data Management Section -->
+        <div class="glass-panel rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="database" class="w-5 h-5 inline-block text-rose-400"></i>
+                Data Management
+            </h2>
+            <p class="text-sm text-slate-400 mb-4">Clear stored data and caches. These actions cannot be undone.</p>
+            
+            <div class="space-y-4">
+                <!-- Clear Tool Stats -->
+                <div class="flex items-center justify-between py-3 border-b border-white/5">
+                    <div>
+                        <p class="text-sm font-medium text-white">Tool Statistics</p>
+                        <p class="text-xs text-slate-500">Clear execution counts, timings, and success rates</p>
+                    </div>
+                    <button data-action="clearToolStats" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs font-medium transition-colors">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i> Clear Stats
+                    </button>
+                </div>
+
+                <!-- Clear Missions -->
+                <div class="flex items-center justify-between py-3 border-b border-white/5">
+                    <div>
+                        <p class="text-sm font-medium text-white">Mission History</p>
+                        <p class="text-xs text-slate-500">Delete all mission data, findings, and reports</p>
+                    </div>
+                    <button data-action="showClearMissionsConfirm" class="px-3 py-1.5 bg-rose-700 hover:bg-rose-600 text-white rounded text-xs font-medium transition-colors">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i> Clear Missions
+                    </button>
+                </div>
+
+                <!-- Clear Cache -->
+                <div class="flex items-center justify-between py-3 border-b border-white/5">
+                    <div>
+                        <p class="text-sm font-medium text-white">Application Cache</p>
+                        <p class="text-xs text-slate-500">Clear cached data (RAG embeddings, tool configs)</p>
+                    </div>
+                    <button data-action="clearCache" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs font-medium transition-colors">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i> Clear Cache
+                    </button>
+                </div>
+
+                <!-- Reinstall All Tools -->
+                <div class="flex items-center justify-between py-3">
+                    <div>
+                        <p class="text-sm font-medium text-white">Reinstall Tools</p>
+                        <p class="text-xs text-slate-500">Force reinstall all security tools</p>
+                    </div>
+                    <button data-action="reinstallTools" class="px-3 py-1.5 bg-amber-700 hover:bg-amber-600 text-white rounded text-xs font-medium transition-colors">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 inline-block mr-1"></i> Reinstall
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Sources Section -->
+        <div id="data-sources" class="glass-panel rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="download" class="w-5 h-5 inline-block text-amber-400"></i>
+                Data Sources
+            </h2>
+            <p class="text-sm text-slate-400 mb-4">Update exploit intelligence and CVE databases to ensure accurate vulnerability detection.</p>
+
+            <!-- Source Status Cards -->
+            <div id="data-sources-status" class="space-y-3 mb-4">
+                <div class="animate-pulse flex items-center gap-2 text-slate-500">
+                    <i data-lucide="loader" class="w-4 h-4 inline-block animate-spin"></i> Loading data source status...
+                </div>
+            </div>
+
+            <!-- Download Button -->
+            <div class="flex items-center gap-3 pt-3 border-t border-white/5">
+                <button id="download-sources-btn" data-action="downloadDataSources" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm font-medium transition-colors">
+                    <i data-lucide="refresh-cw" class="w-4 h-4 inline-block mr-1"></i> Update All Sources
+                </button>
+                <span id="download-sources-status" class="text-xs text-slate-500"></span>
+            </div>
+        </div>
+
+        <!-- VPN Management -->
+        <div id="vpn" class="glass-panel rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="shield" class="w-5 h-5 inline-block text-emerald-400"></i>
+                Shared Tools VPN
+            </h2>
+            <p class="text-sm text-slate-400 mb-4">This status and the connect or disconnect actions apply to the shared tools container and worker runtime, not to a private per-user tunnel.</p>
+
+            <!-- VPN Status -->
+            <div class="flex items-center gap-3 mb-4 p-3 rounded-lg bg-slate-900/50 border border-white/5">
+                <div id="vpn-status-dot" class="w-3 h-3 rounded-full bg-slate-600"></div>
+                <span id="vpn-status-text" class="text-sm text-slate-400">Checking shared tools container VPN...</span>
+            </div>
+
+            <!-- Upload Config -->
+            <div class="border border-white/10 rounded-lg p-4 mb-4">
+                <h3 class="text-sm font-medium text-white mb-3">Upload Shared VPN Config</h3>
+                <form id="vpn-upload-form" class="space-y-3">
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Config Name</label>
+                            <input type="text" name="vpn_name" placeholder="my-vpn" pattern="[a-zA-Z0-9][a-zA-Z0-9\-]{0,63}" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Type</label>
+                            <select name="vpn_type" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                <option value="wireguard">WireGuard</option>
+                                <option value="openvpn">OpenVPN</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Config File</label>
+                            <input type="file" name="vpn_file" accept=".conf,.ovpn" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-violet-600 file:text-white">
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-xs font-medium transition-colors">
+                            <i data-lucide="upload" class="w-4 h-4 inline-block mr-1"></i> Upload
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Config List -->
+            <div id="vpn-configs-list" class="space-y-2">
+                <div class="text-sm text-slate-500">Loading configs...</div>
+            </div>
+
+            <!-- Test Button -->
+            <div class="mt-4 pt-3 border-t border-white/5">
+                <button data-action="testVpnConnection" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs font-medium transition-colors">
+                    <i data-lucide="wifi" class="w-3.5 h-3.5 inline-block mr-1"></i> Test Shared Connection
+                </button>
+            </div>
+        </div>
+
+        <!-- System Status -->
+        <div id="system" class="glass-panel rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="server" class="w-5 h-5 inline-block text-cyan-400"></i>
+                System Status
+            </h2>
+            <div id="system-status-content" class="space-y-3">
+                <div class="animate-pulse flex items-center gap-2 text-slate-500">
+                    <i data-lucide="loader" class="w-4 h-4 inline-block animate-spin"></i> Loading status...
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Clear Missions Confirmation Modal -->
+<div id="clear-missions-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50" role="dialog" aria-modal="true" aria-labelledby="clear-missions-modal-title">
+    <div class="w-full h-full flex items-center justify-center">
+    <div class="glass-panel rounded-xl p-6 max-w-md w-full mx-4">
+        <h3 id="clear-missions-modal-title" class="text-lg font-semibold text-white mb-2">
+            <i data-lucide="alert-triangle" class="w-5 h-5 inline-block text-rose-400 mr-2"></i>
+            Confirm Delete All Missions
+        </h3>
+        <p class="text-slate-400 text-sm mb-4">
+            This will permanently delete all mission data, findings, exploits, and reports.
+            This action cannot be undone.
+        </p>
+        <div class="flex gap-3 justify-end">
+            <button data-action="hideClearMissionsConfirm" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors">
+                Cancel
+            </button>
+            <button data-action="confirmClearMissions" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-sm font-medium transition-colors">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i> Delete All
+            </button>
+        </div>
+    </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/pages/settings/data.js"></script>
+<script src="/static/js/pages/settings/vpn.js"></script>
+<script src="/static/js/pages/settings/topology.js"></script>
+<script type="module" src="/static/js/settings.js" nonce="{{ request.state.csp_nonce }}"></script>
+{% endblock %}

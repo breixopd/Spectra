@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* === Design Tokens === */
+:root {
+  /* Surfaces */
+  --surface-base: #020617;
+  --surface-raised: rgba(15, 23, 42, 0.6);
+  --surface-overlay: rgba(2, 6, 23, 0.8);
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-hover: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(139, 92, 246, 0.4);
+
+  /* Text */
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --text-muted: #8896ab; /* improved contrast on dark backgrounds */
+  --text-disabled: #475569;
+
+  /* Brand */
+  --brand-primary: #8b5cf6;
+  --brand-primary-hover: #a78bfa;
+  --brand-primary-glow: rgba(139, 92, 246, 0.2);
+
+  /* Severity */
+  --severity-critical: #f43f5e;
+  --severity-critical-bg: rgba(244, 63, 94, 0.15);
+  --severity-high: #f59e0b;
+  --severity-high-bg: rgba(245, 158, 11, 0.15);
+  --severity-medium: #fbbf24;
+  --severity-medium-bg: rgba(251, 191, 36, 0.15);
+  --severity-low: #34d399;
+  --severity-low-bg: rgba(52, 211, 153, 0.15);
+  --severity-info: #60a5fa;
+  --severity-info-bg: rgba(96, 165, 250, 0.15);
+
+  /* Status */
+  --status-success: #10b981;
+  --status-warning: #f59e0b;
+  --status-error: #ef4444;
+  --status-running: #fbbf24;
+
+  /* Glass */
+  --glass-bg: rgba(15, 23, 42, 0.6);
+  --glass-blur: 12px;
+  --glass-sidebar-bg: rgba(2, 6, 23, 0.8);
+  --glass-sidebar-blur: 16px;
+
+  /* Motion */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+}
+
+/* === Component Classes === */
+@layer components {
+  /* Buttons */
+  .btn-primary {
+    @apply px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-all shadow-lg shadow-violet-500/20;
+  }
+  .btn-danger {
+    @apply px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold transition-all;
+  }
+  .btn-cancel {
+    @apply px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold transition-all border border-white/10;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-sm rounded-md;
+  }
+
+  /* Glass panels */
+  .glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--border-subtle);
+    transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
+  }
+  .glass-panel:hover {
+    border-color: var(--border-hover);
+  }
+
+  /* Form elements */
+  .form-input {
+    @apply w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white transition-colors;
+    outline: none;
+  }
+  .form-input:focus {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 2px var(--border-focus);
+  }
+  .form-label {
+    @apply block text-sm font-medium text-slate-400 mb-1;
+  }
+
+  /* Severity badges */
+  .severity-critical {
+    color: var(--severity-critical);
+    background: var(--severity-critical-bg);
+    @apply px-2 py-0.5 rounded text-xs font-semibold;
+  }
+  .severity-high {
+    color: var(--severity-high);
+    background: var(--severity-high-bg);
+    @apply px-2 py-0.5 rounded text-xs font-semibold;
+  }
+  .severity-medium {
+    color: var(--severity-medium);
+    background: var(--severity-medium-bg);
+    @apply px-2 py-0.5 rounded text-xs font-semibold;
+  }
+  .severity-low {
+    color: var(--severity-low);
+    background: var(--severity-low-bg);
+    @apply px-2 py-0.5 rounded text-xs font-semibold;
+  }
+  .severity-info {
+    color: var(--severity-info);
+    background: var(--severity-info-bg);
+    @apply px-2 py-0.5 rounded text-xs font-semibold;
+  }
+}
+
+/* === Reduced Motion === */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

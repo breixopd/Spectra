@@ -8,29 +8,45 @@ The mocking fixtures here only apply to unit tests.
 """
 
 import asyncio
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
 
 
+@pytest.fixture(autouse=True, scope="session")
+def cleanup_test_logs():
+    """Clean up test log files before and after the test session."""
+    log_path = "logs/spectra_testing.log"
+    yield
+    if os.path.exists(log_path):
+        os.remove(log_path)
+
+
 def _is_live_test(item: pytest.Item) -> bool:
-    """Check if a test is marked as live (no mocking)."""
-    # Check for 'live' marker
+    """Check if a test should bypass unit-test mocking.
+
+    Returns True for tests marked @pytest.mark.live, files named
+    ``test_live*``, and anything under the ``tests/integration/``
+    directory (integration tests manage their own fixtures).
+    """
     if item.get_closest_marker("live"):
         return True
-    # Check if in a live test file
-    if "test_live" in str(item.fspath):
+    fspath = str(item.fspath)
+    if "test_live" in fspath:
         return True
-    return False
+    if "/integration/" in fspath or "\\integration\\" in fspath:
+        return True
+    return bool("/e2e/" in fspath or "\\e2e\\" in fspath)
 
 
 @pytest_asyncio.fixture
 async def real_mission_manager():
     """Provide a real MissionManager instance for live tests."""
-    import app.services.ai.llm as llm_module
-    from app.services.ai.llm import get_default_llm_client
-    from app.services.mission.manager import MissionManager
+    import spectra_ai.llm as llm_module
+    from spectra_ai.llm import get_default_llm_client
+    from spectra_platform.services.mission.manager import MissionManager
 
     # Use real LLM client (configured via env vars/settings)
     real_llm = get_default_llm_client()
@@ -40,16 +56,14 @@ async def real_mission_manager():
     llm_module._global_llm_client = real_llm
 
     # Patch VotingSystem to be more lenient for tests
-    from app.services.ai import consensus
+    from spectra_platform.services.ai import consensus
 
     original_init = consensus.VotingSystem.__init__
 
     def new_init(self, llm, config=None):
         if config is None:
             # Use single voter for tests to avoid timeouts and consensus issues with small models
-            config = consensus.VotingConfig(
-                num_voters=1, k_threshold=1, min_confidence=0.5
-            )
+            config = consensus.VotingConfig(num_voters=1, k_threshold=1, min_confidence=0.5)
         original_init(self, llm, config)
 
     # Apply patch
@@ -88,21 +102,63 @@ def mock_websocket_for_unit_tests(request):
     # Also mock create_task to handle cases in sync tests
     original_create_task = asyncio.create_task
 
+    # Background function names that must never run as real tasks in unit tests.
+    _BACKGROUND_CORO_NAMES = frozenset(
+        {
+            "cache_cleanup_loop",
+            "periodic_cleanup_loop",
+            "load_embeddings_with_status",
+            "_initialize_services.<locals>.load_embeddings_with_status",
+            "_initialize_services.<locals>._init_exploit_db",
+            "_init_exploit_db",
+            "_keepalive",
+            "AsyncMockMixin._execute_mock_call",
+            "sandbox_watchdog_loop",
+            "warm_pool_maintain_loop",
+            "run_startup_tasks",
+        }
+    )
+
     def safe_create_task(coro, **kwargs):
-        """Wrap create_task to handle mock coroutines safely."""
+        """Wrap create_task: close known background coroutines, schedule the rest."""
+        if asyncio.iscoroutine(coro):
+            name = getattr(coro, "__qualname__", "") or ""
+            if any(bg in name for bg in _BACKGROUND_CORO_NAMES):
+                # Use throw(GeneratorExit) instead of close() to suppress
+                # Python 3.12 "coroutine never awaited" warnings.
+                try:
+                    coro.throw(GeneratorExit)
+                except (GeneratorExit, StopIteration):
+                    pass
+                except Exception:
+                    pass
+                return MagicMock()
         try:
             asyncio.get_running_loop()
             return original_create_task(coro, **kwargs)
         except RuntimeError:
-            # No running loop - we're in sync context
-            # Just consume the coroutine to avoid warnings
             if asyncio.iscoroutine(coro):
                 coro.close()
             return MagicMock()
 
-    with patch("app.core.websocket.manager.broadcast", mock_broadcast):
-        with patch("asyncio.create_task", safe_create_task):
-            yield
+    mock_broadcast_event = AsyncMock(return_value=None)
+
+    mock_emit_sync = MagicMock()
+    mock_cache_loop = AsyncMock(return_value=None)
+    mock_periodic_loop = AsyncMock(return_value=None)
+    mock_lifespan_create_task = MagicMock(return_value=None)
+
+    with (
+        patch("spectra_platform.mission.core.websocket.manager.broadcast", mock_broadcast),
+        patch("spectra_platform.mission.core.websocket.manager.broadcast_event", mock_broadcast_event),
+        patch("spectra_platform.infrastructure.events.EventBus.emit_sync", mock_emit_sync),
+        patch("spectra_platform.infrastructure.background_tasks.cache_cleanup_loop", mock_cache_loop),
+        patch("spectra_platform.infrastructure.background_tasks.periodic_cleanup_loop", mock_periodic_loop),
+        patch("spectra_api.bootstrap.lifespan.asyncio.create_task", mock_lifespan_create_task),
+        patch("spectra_api.api.routers.shell.asyncio.create_task", mock_lifespan_create_task),
+        patch("asyncio.create_task", safe_create_task),
+    ):
+        yield
 
 
 @pytest.fixture(autouse=True)
@@ -111,11 +167,41 @@ def disable_rate_limiting_for_unit_tests(request):
     if _is_live_test(request.node):
         yield
         return
-    from app.core.rate_limit import limiter
+    from spectra_platform.auth.rate_limit import limiter
+
     original = limiter.enabled
     limiter.enabled = False
     yield
     limiter.enabled = original
+
+
+@pytest.fixture(autouse=True)
+def mock_llm_for_unit_tests(request):
+    """
+    Provide mock LLM client for unit tests.
+
+    The mock LLM client was removed from the production app — it now
+    lives in tests/mocks/llm.py and is injected here.
+    """
+    if _is_live_test(request.node):
+        yield
+        return
+
+    from tests.mocks.llm import MockLLMClient
+
+    mock_instance = MockLLMClient()
+
+    def patched_get_llm_client(provider: str = "tensorzero", **kwargs):
+        return mock_instance
+
+    def patched_get_default_llm_client():
+        return mock_instance
+
+    with (
+        patch("spectra_ai.llm.get_llm_client", patched_get_llm_client),
+        patch("spectra_ai.llm.get_default_llm_client", patched_get_default_llm_client),
+    ):
+        yield
 
 
 @pytest.fixture(autouse=True)
@@ -150,7 +236,7 @@ def mock_database_for_unit_tests(request):
         async def __aexit__(self, *args):
             pass
 
-    with patch("app.core.database.async_session_maker", MockSessionMaker()):
+    with patch("spectra_platform.core.database.async_session_maker", MockSessionMaker()):
         yield mock_session
 
 
@@ -162,7 +248,7 @@ async def mission_manager(mock_websocket_for_unit_tests, mock_database_for_unit_
     For live tests, this returns a real instance (via real_mission_manager).
     For unit/integration tests, it returns an instance with mocked dependencies.
     """
-    from app.services.mission.manager import MissionManager
+    from spectra_platform.services.mission.manager import MissionManager
     from tests.mocks.llm import MockLLMClient
 
     # If it's a live test, we should ideally use real_mission_manager,
@@ -179,10 +265,10 @@ async def mission_manager(mock_websocket_for_unit_tests, mock_database_for_unit_
 
     # Initialize agents with a mock LLM to avoid None errors in tests
     mock_llm = MockLLMClient()
-    from app.services.ai.agents.mission_controller import MissionController
-    from app.services.ai.agents.scope import ScopeAgent
-    from app.services.ai.consensus import VotingSystem
-    from app.services.mission.executor import MissionExecutor
+    from spectra_platform.services.ai.agents.mission_controller import MissionController
+    from spectra_platform.services.ai.agents.scope import ScopeAgent
+    from spectra_platform.services.ai.consensus import VotingSystem
+    from spectra_platform.services.mission.executor import MissionExecutor
 
     manager.execution.mission_controller = MissionController(mock_llm)
     manager.execution.scope_agent = ScopeAgent(mock_llm)
@@ -193,7 +279,55 @@ async def mission_manager(mock_websocket_for_unit_tests, mock_database_for_unit_
     yield manager
 
 
+@pytest.fixture(autouse=True)
+def reset_service_singletons():
+    """Reset service singletons and caches between tests to prevent state leakage."""
+    yield
+    try:
+        import spectra_platform.services.exploit_db as _edb_mod
+
+        _edb_mod._instance = None
+    except Exception:
+        pass
+    try:
+        import spectra_platform.services.ai.cve_intel as _cve_mod
+
+        _cve_mod._cve_knowledge_base = None
+        _cve_mod._last_nvd_request = 0.0
+    except Exception:
+        pass
+
+
 @pytest.fixture
 def test_target_ip():
     """Return a test target IP."""
     return "192.168.1.100"
+
+
+@pytest.fixture(autouse=True)
+def mock_storage_for_unit_tests(request):
+    """Mock the storage service for unit tests.
+
+    S3 is required in production but unit tests should not need a running S3.
+    Live/integration tests bypass this fixture.
+    """
+    if _is_live_test(request.node):
+        yield
+        return
+
+    mock_storage = MagicMock()
+    mock_storage.is_s3 = True
+    mock_storage.upload = AsyncMock(return_value="s3://bucket/key")
+    mock_storage.upload_file = AsyncMock(return_value="s3://bucket/key")
+    mock_storage.download = AsyncMock(return_value=b"")
+    mock_storage.download_file = AsyncMock(return_value="/tmp/file")
+    mock_storage.delete = AsyncMock(return_value=True)
+    mock_storage.exists = AsyncMock(return_value=False)
+    mock_storage.list_objects = AsyncMock(return_value=[])
+    mock_storage.get_presigned_url = AsyncMock(return_value=None)
+    mock_storage.copy = AsyncMock(return_value=True)
+    mock_storage.health_check = AsyncMock(return_value={"status": "healthy", "mode": "s3"})
+    mock_storage.close = AsyncMock()
+
+    with patch("spectra_platform.services.storage.service._storage_service", mock_storage):
+        yield mock_storage

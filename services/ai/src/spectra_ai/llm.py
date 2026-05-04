@@ -1,0 +1,317 @@
+"""LLM Client Interface and Implementations."""
+
+import asyncio
+import json
+import logging
+import random
+from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
+from dataclasses import dataclass, field
+from typing import Any, TypeVar
+
+from pydantic import BaseModel
+
+from spectra_ai.settings import get_ai_settings
+
+logger = logging.getLogger(__name__)
+
+
+def _extract_json_block(text: str) -> str:
+    """Extract first complete JSON object from text using brace depth tracking."""
+    start = text.find("{")
+    if start == -1:
+        return text
+    depth = 0
+    in_string = False
+    escape = False
+    for i, ch in enumerate(text[start:], start):
+        if escape:
+            escape = False
+            continue
+        if ch == "\\" and in_string:
+            escape = True
+            continue
+        if ch == '"' and not escape:
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+    # Fallback to original approach if no balanced braces found
+    return text[start : text.rfind("}") + 1]
+
+
+# --- Response Types ---
+
+
+@dataclass
+class LLMResponse:
+    """Standard response from an LLM."""
+
+    content: str
+    model: str
+    provider: str
+    usage: dict[str, int] = field(default_factory=dict)
+    raw: dict[str, Any] = field(default_factory=dict)
+
+
+T = TypeVar("T", bound=BaseModel)
+
+
+# --- Abstract Base Client ---
+
+
+class LLMClient(ABC):
+    """Abstract base class for LLM clients."""
+
+    provider: str = "base"
+    MAX_RETRIES: int = 3
+
+    async def generate_with_retry(
+        self,
+        prompt: str,
+        system_prompt: str | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+        timeout: float | None = None,
+        task_type: str | None = None,
+    ) -> "LLMResponse":
+        """Generate with exponential backoff retry on transient failures."""
+        last_error: Exception | None = None
+        for attempt in range(self.MAX_RETRIES):
+            try:
+                return await self.generate(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    timeout=timeout,
+                    task_type=task_type,
+                )
+            except (OSError, RuntimeError, ValueError, TimeoutError) as e:
+                last_error = e
+                if attempt < self.MAX_RETRIES - 1:
+                    delay = min(2**attempt + random.uniform(0, 1), 30)
+                    logger.warning(
+                        "LLM call failed (attempt %d/%d): %s. Retrying in %.1fs...",
+                        attempt + 1,
+                        self.MAX_RETRIES,
+                        e,
+                        delay,
+                    )
+                    await asyncio.sleep(delay)
+        raise last_error  # type: ignore[misc]
+
+    @abstractmethod
+    async def generate(
+        self,
+        prompt: str,
+        system_prompt: str | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+        timeout: float | None = None,
+        task_type: str | None = None,
+    ) -> LLMResponse:
+        """
+        Generate a text response from the LLM.
+
+        Args:
+            prompt: The user prompt.
+            system_prompt: Optional system instructions.
+            temperature: Sampling temperature (0.0 - 1.0).
+            max_tokens: Maximum tokens to generate.
+            timeout: Request timeout in seconds.
+            task_type: Task type for model routing (e.g. 'scope', 'exploit_crafting').
+
+        Returns:
+            LLMResponse containing the generated text.
+        """
+
+    async def stream(
+        self,
+        prompt: str,
+        system_prompt: str | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+        timeout: float | None = None,
+        task_type: str | None = None,
+    ) -> AsyncIterator[str]:
+        """Stream tokens from the LLM. Yields text chunks.
+
+        Default implementation falls back to non-streaming generate().
+        Override in subclasses that support native streaming.
+        """
+        response = await self.generate(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            timeout=timeout,
+            task_type=task_type,
+        )
+        yield response.content
+
+    async def generate_structured(
+        self,
+        prompt: str,
+        response_model: type[T],
+        system_prompt: str | None = None,
+        temperature: float = 0.3,
+        max_tokens: int = 2048,
+        timeout: float | None = None,
+        task_type: str | None = None,
+    ) -> T:
+        """
+        Generate a structured response that conforms to a Pydantic model.
+
+        Args:
+            prompt: The user prompt.
+            response_model: Pydantic model class for response validation.
+            system_prompt: Optional system instructions.
+            temperature: Sampling temperature (lower = more deterministic).
+            max_tokens: Maximum tokens to generate.
+            timeout: Request timeout in seconds.
+            task_type: Task type for model routing.
+
+        Returns:
+            Validated Pydantic model instance.
+
+        Raises:
+            ValueError: If the response cannot be parsed into the model.
+        """
+        # Build schema-aware system prompt
+        schema = response_model.model_json_schema()
+        schema_prompt = f"""You must respond with valid JSON that matches this schema:
+{json.dumps(schema, indent=2)}
+
+Respond ONLY with the JSON object. No markdown, no explanation, just the JSON."""
+
+        full_system = f"{system_prompt}\n\n{schema_prompt}" if system_prompt else schema_prompt
+
+        response = await self.generate(
+            prompt=prompt,
+            system_prompt=full_system,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            timeout=timeout,
+            task_type=task_type,
+        )
+
+        # Parse and validate
+        try:
+            # Handle potential markdown code blocks or text before/after JSON
+            content = response.content.strip()
+
+            # Extract the first complete JSON object
+            start_idx = content.find("{")
+            if start_idx != -1:
+                content = _extract_json_block(content)
+
+            # Try standard JSON parsing first
+            try:
+                data = json.loads(content)
+            except json.JSONDecodeError:
+                # Try to repair malformed JSON from LLM
+                try:
+                    from json_repair import repair_json
+
+                    repaired = repair_json(content, return_objects=True)
+                    if isinstance(repaired, dict):
+                        data = repaired
+                        logger.info("Repaired malformed JSON from LLM")
+                    else:
+                        raise ValueError("Repaired JSON is not a dict")
+                except ImportError:
+                    raise
+                except (ValueError, TypeError, KeyError) as repair_error:
+                    logger.debug("JSON repair failed: %s", repair_error)
+                    raise
+
+            return response_model.model_validate(data)
+        except json.JSONDecodeError as e:
+            logger.error("Failed to parse LLM response as JSON: %s", e)
+            # Sanitize log injection
+            safe_content = response.content.encode("unicode_escape").decode("utf-8")
+            if len(safe_content) > 1000:
+                safe_content = safe_content[:1000] + "..."
+            logger.debug("Raw response: %s", safe_content)
+            raise ValueError(f"LLM response is not valid JSON: {e}") from e
+        except (ValueError, TypeError, KeyError) as e:
+            logger.error("Failed to validate LLM response: %s", e)
+            raise ValueError(f"LLM response failed validation: {e}") from e
+
+    @abstractmethod
+    async def health_check(self) -> bool:
+        """Check if the LLM service is available."""
+        raise NotImplementedError("Subclass must implement health_check")
+
+    async def close(self) -> None:
+        """Close any open resources (e.g., HTTP clients)."""
+
+
+# --- Factory Function ---
+
+
+def get_llm_client(
+    provider: str = "tensorzero",
+    **kwargs: Any,
+) -> LLMClient:
+    """
+    Factory function to get the appropriate LLM client.
+
+    Args:
+        provider: "tensorzero" (all providers via TensorZero gateway).
+        **kwargs: Provider-specific arguments (gateway_url, etc.).
+
+    Returns:
+        Configured LLM client instance.
+    """
+    from spectra_ai.router import TensorZeroRouter
+
+    settings = get_ai_settings()
+    gateway_url = kwargs.get("gateway_url") or settings.TENSORZERO_GATEWAY_URL
+    return TensorZeroRouter(gateway_url=gateway_url)
+
+
+def get_default_llm_client() -> LLMClient:
+    """Get the LLM client configured in settings.
+
+    Uses TensorZero gateway for all LLM routing.
+    """
+
+    settings = get_ai_settings()
+    gateway_url = settings.TENSORZERO_GATEWAY_URL
+    if not gateway_url:
+        raise ValueError(
+            "TENSORZERO_GATEWAY_URL is not configured. "
+            "Set it to the TensorZero gateway address (e.g., http://tensorzero:3000)"
+        )
+
+    client = get_llm_client(gateway_url=gateway_url)
+    logger.info("Using TensorZero smart router (provider=tensorzero)")
+    return client
+
+
+# Global singleton
+_global_llm_client: LLMClient | None = None
+
+
+async def get_global_llm_client() -> LLMClient:
+    """Get the global LLM client instance."""
+    global _global_llm_client
+    if _global_llm_client is None:
+        _global_llm_client = get_default_llm_client()
+    return _global_llm_client
+
+
+async def close_global_llm_client() -> None:
+    """Close the global LLM client."""
+    global _global_llm_client
+    if _global_llm_client:
+        await _global_llm_client.close()
+        _global_llm_client = None

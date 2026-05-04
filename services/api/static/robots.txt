@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+Allow: /changelog
+Allow: /help
+Allow: /docs/api
+Disallow: /api/
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /profile
+Disallow: /targets
+Disallow: /history
+Disallow: /reports
+Disallow: /overseer
+Disallow: /manual
+Disallow: /observability
+Disallow: /setup
+Disallow: /static/
+
+Sitemap: /sitemap.xml

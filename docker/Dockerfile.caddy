@@ -1,0 +1,37 @@
+ARG CADDY_VERSION=2.11.2
+ARG CADDY_RATELIMIT_VERSION=v0.1.0
+
+FROM caddy:${CADDY_VERSION}-builder AS builder
+
+ARG CADDY_RATELIMIT_VERSION
+ARG CADDY_VERSION
+
+RUN <<'EOF'
+set -eux
+mkdir -p /tmp/caddy-build
+cd /tmp/caddy-build
+cat > main.go <<'GOEOF'
+package main
+
+import (
+	caddycmd "github.com/caddyserver/caddy/v2/cmd"
+
+	_ "github.com/caddyserver/caddy/v2/modules/standard"
+	_ "github.com/mholt/caddy-ratelimit"
+)
+
+func main() {
+	caddycmd.Main()
+}
+GOEOF
+go mod init caddy
+go get "github.com/caddyserver/caddy/v2@v${CADDY_VERSION}"
+go get "github.com/mholt/caddy-ratelimit@${CADDY_RATELIMIT_VERSION}"
+go get "github.com/smallstep/certificates@v0.30.0" "google.golang.org/grpc@v1.79.3"
+go mod tidy
+go build -o /usr/bin/caddy -ldflags "-w -s" -trimpath -tags nobadger,nomysql,nopgx .
+EOF
+
+FROM caddy:${CADDY_VERSION}-alpine
+
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy
