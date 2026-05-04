@@ -54,13 +54,13 @@ class Target(Base):
         "Finding",
         back_populates="target",
         cascade="all, delete-orphan",
-        lazy="select",
+        lazy="selectin",
     )
     exploits: Mapped[list[Exploit]] = relationship(
         "Exploit",
         back_populates="target",
         cascade="all, delete-orphan",
-        lazy="select",
+        lazy="selectin",
     )
 
     def __repr__(self) -> str:

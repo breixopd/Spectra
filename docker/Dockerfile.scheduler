@@ -9,7 +9,7 @@ FROM ${PYTHON_BASE_IMAGE} AS builder
 WORKDIR /build
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     pkg-config \
@@ -26,7 +26,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # ── Runtime stage ──
 FROM ${PYTHON_BASE_IMAGE}
 
-ARG BUILD_VERSION=2026.05.03
+ARG BUILD_VERSION=dev
 LABEL org.opencontainers.image.title="Spectra Scheduler" \
       org.opencontainers.image.description="AI-Driven Security Assessment Platform — Scheduler" \
       org.opencontainers.image.source="https://github.com/breixopd14/spectra" \
@@ -36,7 +36,7 @@ ENV SPECTRA_BUILD_VERSION="${BUILD_VERSION}"
 
 WORKDIR /app
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     gnupg \
@@ -54,7 +54,6 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 RUN useradd --create-home --shell /bin/bash spectra && \
-    groupadd -f docker && usermod -aG docker spectra && \
     mkdir -p /app/data /app/data/backups /app/logs && \
     chown -R spectra:spectra /app
 

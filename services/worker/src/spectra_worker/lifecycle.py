@@ -172,5 +172,5 @@ async def heartbeat_loop(queue_name: str, interval: int = 30) -> None:
         except asyncio.CancelledError:
             break
         except (OSError, RuntimeError) as e:
-            logger.debug("Heartbeat update failed: %s", e)
+            logger.warning("Heartbeat update failed (will retry): %s", e)
         await asyncio.sleep(interval)

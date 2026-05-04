@@ -82,12 +82,12 @@ class Finding(Base):
         index=True,
     )
     cvss_score: Mapped[float | None] = mapped_column(nullable=True)
-    cve_id: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    cve_id: Mapped[str | None] = mapped_column(String(20), nullable=True)
     tool_source: Mapped[str] = mapped_column(String(100), nullable=False)
     evidence: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Relationship
-    target: Mapped[Target] = relationship("Target", back_populates="findings", lazy="select")
+    target: Mapped[Target] = relationship("Target", back_populates="findings", lazy="selectin")
 
     def __repr__(self) -> str:
         return f"<Finding id={self.id} title={self.title!r} severity={self.severity}>"

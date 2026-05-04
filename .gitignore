@@ -1,57 +1,88 @@
-
 # =============================================================================
-# Build Artifacts
-# Deprecated / Legacy
-# Environment & Secrets
-# IDE & Editor
-# Local-only Copilot Customization (not tracked)
 # Python
-# Runtime Data (Docker volumes, never on host)
-# Testing
-*.cpython
-*.log
+# =============================================================================
+__pycache__/
 *.py[cod]
 *.pyo
-*.swo
-*.swp
-*~
-.coverage
-.deploy/
+*.cpython
+.venv/
+
+# =============================================================================
+# Environment & Secrets
+# =============================================================================
 .env
 .env.test
 .env.test.local
+keys/plugin_signing.pem
+
+# =============================================================================
+# IDE & Editor
+# =============================================================================
+.vscode/
+.cursor/.playwright-mcp/
+.playwright-mcp/
+*.swo
+*.swp
+*~
+.markdownlint.json
+
+# =============================================================================
+# Testing
+# =============================================================================
+.coverage
+.pytest_cache/
+htmlcov/
+coverage.xml
+test.db
+test-results/
+playwright-report/
+screenshots/
+reports/
+
+# =============================================================================
+# Build Artifacts & Dependencies
+# =============================================================================
+config/node_modules/
+node_modules/
+package-lock.json
+package.json
+*.log
+
+# =============================================================================
+# Runtime Data (Docker volumes, local data)
+# =============================================================================
+data/
+docker/data/
+docker/logs/
+logs/
+cve_data/
+memories/
+
+# =============================================================================
+# Deployment
+# =============================================================================
+.deploy/
+
+# =============================================================================
+# Generated / Temporary
+# =============================================================================
+*.png
+.ruff_cache/
+
+# =============================================================================
+# AI / Agent Tooling
+# =============================================================================
+.audit/
+.chunkhound/
+.chunkhound.db
+.sisyphus/
 .github/agents/
 .github/audit/
 .github/copilot-instructions.md
 .github/instructions/
 .github/prompts/
-.markdownlint.json
-.pytest_cache/
-.venv/
-.vscode/
-__pycache__/
-config/node_modules/
-cve_data/
-data/
-docker/data/
-docker/logs/
+
+# =============================================================================
+# Docs (local-only plans)
+# =============================================================================
 docs/plan/
-htmlcov/
-keys/plugin_signing.pem
-logs/
-memories/
-node_modules/
-reports/
-reports/coverage/
-screenshots/
-test.db
-.audit/
-.chunkhound/
-.chunkhound.db
-.cursor/.playwright-mcp/
-*.png
-admin-dashboard-final.png
-dashboard-fixed.png
-.playwright-mcp/
-package-lock.json
-package.json

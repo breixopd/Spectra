@@ -4,6 +4,8 @@ Public routes — landing page, pricing, self-service auth.
 These routes do NOT require authentication.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from pathlib import Path

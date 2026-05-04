@@ -14,6 +14,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from spectra_domain.ai import ChatRequest, ChatResponse, EmbeddingRequest, EmbeddingResponse, RAGRequest, RAGResponse
 
+# Cache for the deep health check to avoid per-probe LLM token costs
+_last_deep_health: dict[str, Any] | None = None
+_last_deep_health_time: float = 0.0
+
 logger = logging.getLogger(__name__)
 
 _ai_embedded_task = None
@@ -177,6 +181,15 @@ async def health_ready(response: Response):
 
 @app.get("/health/deep")
 async def health_deep(response: Response):
+    """Deep health check — validates LLM connectivity. Results cached for 60s."""
+    global _last_deep_health, _last_deep_health_time
+
+    # Return cached result if fresh (avoids token cost on frequent probes)
+    if _last_deep_health and (time.time() - _last_deep_health_time) < 60:
+        if _last_deep_health.get("status") != "healthy":
+            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return _last_deep_health
+
     start = time.time()
     try:
         from spectra_ai.router import get_smart_router
@@ -190,16 +203,25 @@ async def health_deep(response: Response):
         )
         if result.content:
             latency_ms = round((time.time() - start) * 1000, 1)
-            return {
+            result_data = {
                 "status": "healthy",
                 "service": "ai",
                 "llm": {"status": "healthy", "latency_ms": latency_ms, "response": result.content[:50]},
             }
+            _last_deep_health = result_data
+            _last_deep_health_time = time.time()
+            return result_data
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        return {"status": "degraded", "service": "ai", "llm": {"status": "degraded", "error": "empty response"}}
+        result_data = {"status": "degraded", "service": "ai", "llm": {"status": "degraded", "error": "empty response"}}
+        _last_deep_health = result_data
+        _last_deep_health_time = time.time()
+        return result_data
     except Exception as exc:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        return {"status": "degraded", "service": "ai", "llm": {"status": "unhealthy", "error": type(exc).__name__}}
+        result_data = {"status": "degraded", "service": "ai", "llm": {"status": "unhealthy", "error": type(exc).__name__}}
+        _last_deep_health = result_data
+        _last_deep_health_time = time.time()
+        return result_data
 
 
 @app.post("/api/v1/ai/chat", response_model=ChatResponse)

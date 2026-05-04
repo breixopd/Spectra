@@ -217,6 +217,20 @@ async def tz_update_config(
     for tier_name, tier_models in tiers.items():
         primary = tier_models["primary"]
         fallback = tier_models["fallback"]
+        # Preserve provider-specific fields (api_base, api_key_location) from current config
+        current_models = current.get("models", {})
+        current_tier = current_models.get(tier_name, {})
+        current_providers = current_tier.get("providers", {})
+        primary_extra = {
+            k: v for k, v in current_providers.get("primary", {}).items()
+            if k in ("api_base", "api_key_location")
+        }
+        fallback_extra = {}
+        if fallback:
+            fallback_extra = {
+                k: v for k, v in current_providers.get("fallback", {}).items()
+                if k in ("api_base", "api_key_location")
+            }
         if fallback:
             toml_lines += [
                 f"[models.{tier_name}]",
@@ -225,10 +239,12 @@ async def tz_update_config(
                 f"[models.{tier_name}.providers.primary]",
                 f'type = "{provider_type}"',
                 f'model_name = "{primary}"',
+                *[f'{k} = "{v}"' for k, v in primary_extra.items()],
                 "",
                 f"[models.{tier_name}.providers.fallback]",
                 f'type = "{provider_type}"',
                 f'model_name = "{fallback}"',
+                *[f'{k} = "{v}"' for k, v in fallback_extra.items()],
                 "",
             ]
         else:
@@ -239,6 +255,7 @@ async def tz_update_config(
                 f"[models.{tier_name}.providers.primary]",
                 f'type = "{provider_type}"',
                 f'model_name = "{primary}"',
+                *[f'{k} = "{v}"' for k, v in primary_extra.items()],
                 "",
             ]
 

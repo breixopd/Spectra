@@ -20,6 +20,7 @@ def mock_tool_config():
     config.execution.min_timeout = 5
     config.execution.working_dir = "/tmp"
     config.execution.env = {}
+    config.execution.success_exit_codes = [0]
     config.parsing.format = "text"
     config.parsing.mapping = {}
     config.parsing.capture_stderr = True

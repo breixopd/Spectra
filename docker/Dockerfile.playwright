@@ -1,14 +1,26 @@
 FROM mcr.microsoft.com/playwright/python:v1.58.0-noble
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_ROOT_USER_ACTION=ignore \
     PYTHONPATH=/app:/app/packages/common/src:/app/packages/domain/src:/app/packages/tools-core/src
 
 WORKDIR /app
 
-COPY . .
+# Create non-root user for test execution
+RUN useradd --create-home --shell /bin/bash tester
 
-# Install the app and test dependencies needed for browser tests.
-RUN grep -vE '^(pytest|pytest-asyncio|pytest-cov|pytest-dotenv|pytest-timeout)==' requirements/base.txt > /tmp/base-no-pytest.txt \
+# Copy only what's needed for test dependencies (not entire repo)
+COPY requirements/base.txt requirements/dev.txt requirements/
+COPY pyproject.toml .
+
+# Install the app and test dependencies
+RUN --mount=type=cache,target=/root/.cache/pip \
+    grep -vE '^(pytest|pytest-asyncio|pytest-cov|pytest-dotenv|pytest-timeout)==' requirements/base.txt > /tmp/base-no-pytest.txt \
     && grep -vE '^(-r base\.txt|pytest(|-asyncio|-cov|-dotenv|-timeout|-playwright)==|playwright==)' requirements/dev.txt > /tmp/dev-no-base.txt \
     && pip install --no-cache-dir -r /tmp/base-no-pytest.txt -r /tmp/dev-no-base.txt pytest==8.3.5 pytest-asyncio==0.25.3 pytest-playwright==0.7.2 playwright==1.58.0
+
+# Copy the application source code
+COPY services/ services/
+COPY packages/ packages/
+COPY tests/ tests/
+
+USER tester

@@ -45,11 +45,11 @@ test-live-smoke: ## Run live API/UI/LLM smoke tests (START_STACK=1 optional)
 test-full-matrix: ## CI parity + load/perf/soak + Playwright + live targets; see script for SKIP_*
 	@./scripts/runbooks/full-test-matrix.sh
 
-lint: import-boundaries ## Run import boundary check + ruff linter on app/
-	@ruff check app/
+lint: import-boundaries ## Run import boundary check + ruff linter
+	@ruff check packages/ services/ tests/
 
 format: ## Format code with ruff
-	@ruff format app/ tests/
+	@ruff format packages/ services/ tests/
 
 check: lint import-boundaries test-unit ## Run lint + import boundaries + unit tests in sequence
 
@@ -62,8 +62,9 @@ clean: ## Clean caches and build artifacts
 	@rm -rf logs/spectra_testing.log 2>/dev/null || true
 	@echo "Cleaned."
 
-docker-build: ## Build Docker images
-	@docker compose -f docker/compose.yaml build
+docker-build: ## Build Docker images (auto-sets date-based version)
+	@BUILD_VERSION=$(BUILD_VERSION) docker compose -f docker/compose.yaml build \
+		--build-arg BUILD_VERSION=$${BUILD_VERSION:-$$(date +%Y.%m.%d)-dev}
 
 docker-up: ## Start Docker Compose services
 	@docker compose -f docker/compose.yaml up -d
@@ -87,20 +88,18 @@ deploy-check: ## Run pre-deploy checks without deploying
 
 
 # --- CSS (Tailwind) ---
+# Tailwind and PostCSS deps live in config/; run npx from there.
 css-build: ## Build Tailwind CSS (production, minified)
-	@npx tailwindcss -i services/api/static/css/input.css -o services/api/static/css/output.css --minify 2>/dev/null || \
-	 tailwindcss -i services/api/static/css/input.css -o services/api/static/css/output.css --minify
+	@cd config && npx tailwindcss -i ../services/api/static/css/input.css -o ../services/api/static/css/output.css --minify
 
 css-build-prod: ## Build Tailwind CSS with PostCSS pipeline (autoprefixer + cssnano)
-	@NODE_ENV=production npx postcss services/api/static/css/input.css -o services/api/static/css/output.css --config config/postcss.config.js 2>/dev/null || \
-	 NODE_ENV=production postcss services/api/static/css/input.css -o services/api/static/css/output.css --config config/postcss.config.js
+	@cd config && NODE_ENV=production npx postcss ../services/api/static/css/input.css -o ../services/api/static/css/output.css --config postcss.config.js
+
+css-watch: ## Watch and rebuild Tailwind CSS on changes
+	@cd config && npx tailwindcss -i ../services/api/static/css/input.css -o ../services/api/static/css/output.css --watch
 
 .PHONY: import-boundaries
 import-boundaries: ## Check import boundary enforcement
 	@python3 scripts/check_import_boundaries.py
-
-css-watch: ## Watch and rebuild Tailwind CSS on changes
-	@npx tailwindcss -i services/api/static/css/input.css -o services/api/static/css/output.css --watch 2>/dev/null || \
-	 tailwindcss -i services/api/static/css/input.css -o services/api/static/css/output.css --watch
 
 

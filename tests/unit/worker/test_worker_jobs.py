@@ -67,8 +67,9 @@ async def test_auto_install_pending_syncs_detected_status_without_installing():
     missing_tool = _tool("missing-tool")
     tools = [ready_tool, missing_tool]
     registry = SimpleNamespace(list_tools=MagicMock(return_value=tools))
-    sync_status = AsyncMock()
     installer_factory = MagicMock()
+
+    batch_sync = AsyncMock(return_value=["missing-tool"])
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
@@ -81,12 +82,10 @@ async def test_auto_install_pending_syncs_detected_status_without_installing():
             "spectra_platform.services.tools.installer",
             make_module("spectra_platform.services.tools.installer", ToolInstaller=installer_factory),
         )
-        mp.setattr(lifecycle, "_is_tool_installed", MagicMock(side_effect=[True, False]))
-        mp.setattr(lifecycle, "_sync_tool_status", sync_status)
+        mp.setattr(lifecycle, "_batch_sync_tool_statuses", batch_sync)
         await lifecycle._auto_install_pending()
 
-    assert has_async_update(sync_status, "ready-tool", status="ready")
-    assert has_async_update(sync_status, "missing-tool", status="pending")
+    batch_sync.assert_awaited_once()
     installer_factory.assert_not_called()
 
 
