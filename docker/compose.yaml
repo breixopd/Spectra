@@ -455,6 +455,7 @@ services:
       cache_from:
         - spectra-worker:dev
     profiles: [app, test]
+    container_name: spectra-worker
     labels:
       spectra.managed: "true"
       spectra.role: "worker"
