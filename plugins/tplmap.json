@@ -1,0 +1,135 @@
+{
+  "id": "tplmap",
+  "name": "tplmap",
+  "version": "1.0.0",
+  "category": "exploitation",
+  "description": "Server-Side Template Injection (SSTI) detection and exploitation tool. Supports multiple template engines including Jinja2, Twig, Freemarker, and more.",
+  "metadata": {
+    "ai_description": "tplmap is an automated Server-Side Template Injection detection and exploitation tool. Use it when you suspect SSTI vulnerabilities in web applications. It fingerprintes the template engine in use, then exploits the vulnerability to achieve code execution, file read/write, or OS shell access. Supports Jinja2, Twig, Smarty, Freemarker, Velocity, Jade, Mako, and more.",
+    "capabilities": [
+      "ssti",
+      "code_execution",
+      "file_access"
+    ],
+    "supported_targets": [
+      "url"
+    ],
+    "risk_level": "critical",
+    "tags": [
+      "ssti",
+      "template-injection",
+      "web",
+      "injection",
+      "rce",
+      "code-execution"
+    ],
+    "use_cases": [
+      "Detecting SSTI vulnerabilities in web parameters and headers",
+      "Identifying which template engine is in use via fingerprinting",
+      "Achieving remote code execution through SSTI exploitation",
+      "Reading sensitive files via template injection",
+      "Obtaining an interactive OS shell on the target"
+    ],
+    "limitations": [
+      "Only targets template injection vulnerabilities",
+      "Some exploit techniques depend on the templating engine version",
+      "May not support all template engines",
+      "Requires a vulnerable parameter to inject into"
+    ],
+    "complements": [
+      "nuclei",
+      "burp",
+      "sqlmap"
+    ],
+    "prerequisites": [
+      "nuclei"
+    ]
+  },
+  "installation": {
+    "method": "pip",
+    "commands": [
+      "pip install tplmap"
+    ],
+    "verification_command": "tplmap --help",
+    "verification_regex": "tplmap",
+    "uninstall_commands": [
+      "pip uninstall -y tplmap"
+    ]
+  },
+  "execution": {
+    "command": "tplmap",
+    "args_template": "-u {target} {flags}",
+    "timeout": 600,
+    "min_timeout": 30,
+    "max_timeout": 1200,
+    "arg_modifiers": {
+      "data": {
+        "prefix": "-d ",
+        "separator": "&"
+      },
+      "headers": {
+        "prefix": "-H ",
+        "separator": ","
+      }
+    }
+  },
+  "parsing": {
+    "format": "text",
+    "regex_patterns": [
+      {
+        "pattern": "\\[\\+\\]\\s+Tplmap\\s+detected.+injection\\s+in",
+        "type": "vuln"
+      },
+      {
+        "pattern": "engine:\\s+(?P<engine>.+)",
+        "type": "info"
+      },
+      {
+        "pattern": "technique:\\s+(?P<technique>.+)",
+        "type": "info"
+      },
+      {
+        "pattern": "OS\\s+shell\\s+obtained",
+        "type": "vuln"
+      }
+    ],
+    "llm_extraction": true,
+    "extraction_hint": "Extract detected template engine, injection technique used, successful exploits, OS shell access, and any code execution results"
+  },
+  "stealth": {
+    "rate_limit": 5,
+    "delay_ms": 1000,
+    "extra_args": {}
+  },
+  "ui": {
+    "icon": "code",
+    "color": "purple"
+  },
+  "examples": [
+    {
+      "description": "Detect SSTI in URL parameter",
+      "args": {
+        "target": "http://example.com/page?name=test",
+        "flags": "--level 5"
+      }
+    },
+    {
+      "description": "Attempt OS shell via SSTI",
+      "args": {
+        "target": "http://example.com/page?name=test",
+        "flags": "--os-shell"
+      }
+    },
+    {
+      "description": "Test POST data for SSTI",
+      "args": {
+        "target": "http://example.com/login",
+        "data": "username=test",
+        "flags": "--engine Jinja2"
+      }
+    }
+  ],
+  "resources": {
+    "tier": "light"
+  }
+}
