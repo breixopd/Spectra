@@ -192,3 +192,53 @@ class TrainingExampleExtractor:
             }
             for ex in examples
         ]
+
+
+# ── Dataset export for fine-tuning jobs ────────────────────────────
+
+async def export_dataset(
+    session,
+    *,
+    sample_types: list[str] | None = None,
+    min_quality: float = 0.0,
+    approved_only: bool = True,
+) -> list[dict[str, Any]]:
+    """Export approved training samples for fine-tuning.
+
+    Args:
+        session: SQLAlchemy async session
+        sample_types: Optional filter by sample type (agent_decision, tool_execution)
+        min_quality: Minimum quality score filter
+        approved_only: Only include approved samples
+
+    Returns:
+        List of training samples in Alpaca format
+    """
+    from sqlalchemy import select
+
+    from spectra_platform.models.training import TrainingSample
+
+    stmt = select(TrainingSample)
+    if approved_only:
+        stmt = stmt.where(TrainingSample.approved.is_(True))
+    if min_quality > 0:
+        stmt = stmt.where(TrainingSample.quality_score >= min_quality)
+    if sample_types:
+        stmt = stmt.where(TrainingSample.sample_type.in_(sample_types))
+
+    result = await session.execute(stmt)
+    samples = result.scalars().all()
+
+    return [
+        {
+            "instruction": s.prompt,
+            "output": s.response,
+            "metadata": {
+                "technique": s.technique,
+                "success": s.success,
+                "sample_type": s.sample_type,
+                "mission_id": s.mission_id,
+            },
+        }
+        for s in samples
+    ]
