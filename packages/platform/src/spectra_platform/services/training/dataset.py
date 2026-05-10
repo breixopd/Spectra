@@ -231,13 +231,12 @@ async def export_dataset(
 
     return [
         {
-            "instruction": s.prompt,
-            "output": s.response,
+            "type": s.sample_type,
+            "instruction": s.prompt or s.input_text,
+            "output": s.response or s.output_text,
             "metadata": {
-                "technique": s.technique,
-                "success": s.success,
-                "sample_type": s.sample_type,
                 "mission_id": s.mission_id,
+                "quality_score": s.quality_score,
             },
         }
         for s in samples
@@ -305,8 +304,10 @@ async def user_allows_training_data(session, user_id: str) -> bool:
     row = result.one_or_none()
     if row is None:
         return False
-    opt_in, restricted = row
-    return bool(opt_in) and not restricted
+    opt_in_refused, restricted = row
+    # training_opt_in=False means user has not opted OUT
+    # processing_restricted=True means user is restricted
+    return not opt_in_refused and not restricted
 
 
 async def create_mission_completion_sample(session, mission, summary: dict) -> Any | None:
@@ -379,7 +380,7 @@ async def get_dataset_stats(session) -> dict:
     )
 
     return {
-        "total_samples": total.scalar() or 0,
-        "approved_samples": approved.scalar() or 0,
+        "total": total.scalar() or 0,
+        "approved": approved.scalar() or 0,
         "by_type": {row[0]: row[1] for row in by_type.all()},
     }
