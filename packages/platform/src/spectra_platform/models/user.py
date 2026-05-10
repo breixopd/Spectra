@@ -53,8 +53,9 @@ class User(Base):
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_activity: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     invalidated_before: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    email_verified: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, server_default="true")
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
     processing_restricted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
+    training_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
 
     __exclude_fields__ = {"hashed_password", "mfa_secret"}
 
