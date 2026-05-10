@@ -1,0 +1,130 @@
+{
+  "id": "jwt_tool",
+  "name": "jwt_tool",
+  "version": "1.0.0",
+  "category": "exploitation",
+  "description": "Toolkit for testing, forging, and cracking JSON Web Tokens. Supports multiple attack modes including algorithm confusion, key confusion, and brute-force cracking.",
+  "metadata": {
+    "ai_description": "jwt_tool is a comprehensive toolkit for auditing and attacking JSON Web Token (JWT) implementations. Use it when you encounter JWT-based authentication in web applications. It can test for algorithm confusion (none algorithm), weak HMAC secrets via brute-force, RSA key confusion, JWK header injection, and kid injection. Supports crafting custom tokens with arbitrary claims.",
+    "capabilities": [
+      "auth_bypass",
+      "token_forgery",
+      "brute_force"
+    ],
+    "supported_targets": [
+      "url"
+    ],
+    "risk_level": "high",
+    "tags": [
+      "jwt",
+      "authentication",
+      "web",
+      "auth",
+      "token",
+      "forgery",
+      "cracking"
+    ],
+    "use_cases": [
+      "Testing JWT algorithm confusion (alg:none attack)",
+      "Cracking weak JWT HMAC secrets via wordlist",
+      "Forging JWTs with custom claims for privilege escalation",
+      "Testing RSA/HMAC key confusion vulnerabilities",
+      "JWK header injection and kid injection attacks"
+    ],
+    "limitations": [
+      "Requires a valid JWT token to begin testing",
+      "Brute-force cracking is only effective against weak secrets",
+      "Some attacks require knowledge of the server-side key type",
+      "May trigger rate limiting or WAF detection"
+    ],
+    "complements": [
+      "burp",
+      "sqlmap",
+      "nuclei"
+    ],
+    "prerequisites": []
+  },
+  "installation": {
+    "method": "pip",
+    "commands": [
+      "pip install jwt_tool"
+    ],
+    "verification_command": "jwt_tool --help",
+    "verification_regex": "jwt_tool",
+    "uninstall_commands": [
+      "pip uninstall -y jwt_tool"
+    ]
+  },
+  "execution": {
+    "command": "jwt_tool",
+    "args_template": "-t {target} {flags}",
+    "timeout": 600,
+    "min_timeout": 30,
+    "max_timeout": 1800,
+    "arg_modifiers": {
+      "rc": {
+        "prefix": "-rc ",
+        "separator": ","
+      }
+    }
+  },
+  "parsing": {
+    "format": "text",
+    "regex_patterns": [
+      {
+        "pattern": "\\[\\+\\]\\s+(?P<success>.+)",
+        "type": "vuln"
+      },
+      {
+        "pattern": "SECRET FOUND:\\s+(?P<secret>.+)",
+        "type": "vuln"
+      },
+      {
+        "pattern": "\\[\\*\\]\\s+(?P<info>.+)",
+        "type": "info"
+      },
+      {
+        "pattern": "\"payload\":\\s*(?P<payload>\\{.+\\})",
+        "type": "info"
+      }
+    ],
+    "llm_extraction": true,
+    "extraction_hint": "Extract cracked secrets, forged tokens, successful exploits, payload contents, and any authentication bypass findings"
+  },
+  "stealth": {
+    "rate_limit": 10,
+    "delay_ms": 500,
+    "extra_args": {}
+  },
+  "ui": {
+    "icon": "key",
+    "color": "orange"
+  },
+  "examples": [
+    {
+      "description": "Test JWT for algorithm confusion and common attacks",
+      "args": {
+        "target": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U",
+        "flags": "-M at"
+      }
+    },
+    {
+      "description": "Crack HMAC secret with wordlist",
+      "args": {
+        "target": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U",
+        "flags": "-C -d /usr/share/wordlists/rockyou.txt"
+      }
+    },
+    {
+      "description": "Forge token with custom claims",
+      "args": {
+        "target": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U",
+        "rc": "role=admin,username=admin",
+        "flags": "-I -pc role -pv admin"
+      }
+    }
+  ],
+  "resources": {
+    "tier": "light"
+  }
+}
