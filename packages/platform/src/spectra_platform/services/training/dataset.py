@@ -277,11 +277,9 @@ async def create_training_sample(
         mission_id=mission_id,
         user_id=user_id,
         sample_type=sample_type,
-        prompt=anonymize_text(input_text),
-        response=anonymize_text(output_text),
-        quality_score=quality_score,
         input_text=anonymize_text(input_text),
         output_text=anonymize_text(output_text),
+        quality_score=quality_score,
         is_approved=False,
         metadata_=metadata or {},
     )
@@ -351,7 +349,7 @@ async def create_mission_completion_sample(session, mission, summary: dict) -> A
     findings = summary.get("findings") or []
     if findings:
         high = sum(1 for f in findings if f.get("severity") == "high")
-        quality = min(1.0, 0.7 + high * 0.05)
+        quality = min(1.0, 0.7 + high * 0.15)
 
     return await create_training_sample(
         session,
