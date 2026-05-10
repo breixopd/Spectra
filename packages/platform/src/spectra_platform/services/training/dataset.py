@@ -220,7 +220,7 @@ async def export_dataset(
 
     stmt = select(TrainingSample)
     if approved_only:
-        stmt = stmt.where(TrainingSample.approved.is_(True))
+        stmt = stmt.where(TrainingSample.is_approved.is_(True))
     if min_quality > 0:
         stmt = stmt.where(TrainingSample.quality_score >= min_quality)
     if sample_types:
@@ -285,10 +285,8 @@ async def create_training_sample(
         quality_score=quality_score,
         input_text=anonymize_text(input_text),
         output_text=anonymize_text(output_text),
-        technique=(metadata or {}).get("tool", "unknown"),
-        success=True,
-        approved=False,
-        metadata=metadata or {},
+        is_approved=False,
+        metadata_=metadata or {},
     )
     session.add(sample)
     await session.flush()
@@ -302,7 +300,7 @@ async def user_allows_training_data(session, user_id: str) -> bool:
     from spectra_platform.models.user import User
 
     result = await session.execute(
-        select(User.training_opt_in, User.is_restricted).where(User.id == user_id)
+        select(User.training_opt_in, User.processing_restricted).where(User.id == user_id)
     )
     row = result.one_or_none()
     if row is None:
@@ -373,7 +371,7 @@ async def get_dataset_stats(session) -> dict:
 
     total = await session.execute(select(func.count()).select_from(TrainingSample))
     approved = await session.execute(
-        select(func.count()).select_from(TrainingSample).where(TrainingSample.approved.is_(True))
+        select(func.count()).select_from(TrainingSample).where(TrainingSample.is_approved.is_(True))
     )
     by_type = await session.execute(
         select(TrainingSample.sample_type, func.count())
