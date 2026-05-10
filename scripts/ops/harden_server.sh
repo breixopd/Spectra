@@ -4,12 +4,18 @@
 #   --yes          Skip confirmation prompt
 #   --ssh-port N   Custom SSH port (default: 22)
 #   --user USER    App user to create (default: spectra)
+#   --role ROLE    Server role: edge, db, worker, all (default: all)
+#                    edge:   SSH, HTTP, HTTPS (public-facing Caddy)
+#                    db:     SSH, Postgres/Redis/Garage (WireGuard only)
+#                    worker: SSH only, Docker network isolation
+#                    all:    SSH, HTTP, HTTPS, Swarm ports
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_PREFIX="[harden]"
 SSH_PORT="${SSH_PORT:-22}"
 APP_USER="${APP_USER:-spectra}"
+ROLE="${ROLE:-all}"
 CONFIRM=""
 
 log()  { echo "${LOG_PREFIX} $(date +%H:%M:%S) $*"; }
@@ -21,9 +27,16 @@ while [[ $# -gt 0 ]]; do
     --yes|-y|--force) CONFIRM="yes"; shift;;
     --ssh-port) SSH_PORT="$2"; shift 2;;
     --user) APP_USER="$2"; shift 2;;
+    --role) ROLE="$2"; shift 2;;
     *) die "Unknown option: $1";;
   esac
 done
+
+# Validate role
+case "${ROLE}" in
+  edge|db|worker|all) ;;
+  *) die "Invalid role '${ROLE}'. Must be one of: edge, db, worker, all";;
+esac
 
 [[ "$(id -u)" -eq 0 ]] || die "Must run as root"
 
@@ -71,17 +84,61 @@ AllowTcpForwarding no
 SSHEOF
 
 # 5. Firewall (UFW)
-log "Configuring firewall..."
+log "Configuring firewall (role: ${ROLE})..."
 ufw --force reset >/dev/null 2>&1
 ufw default deny incoming
 ufw default allow outgoing
+
+# SSH is always open
 ufw allow "${SSH_PORT}/tcp" comment "SSH"
-ufw allow 80/tcp comment "HTTP"
-ufw allow 443/tcp comment "HTTPS"
-ufw allow 2377/tcp comment "Docker Swarm management"
-ufw allow 7946/tcp comment "Docker Swarm node communication"
-ufw allow 7946/udp comment "Docker Swarm node communication"
-ufw allow 4789/udp comment "Docker overlay network"
+
+case "${ROLE}" in
+  edge)
+    # Public-facing Caddy server — HTTP/HTTPS only
+    ufw allow 80/tcp comment "HTTP"
+    ufw allow 443/tcp comment "HTTPS"
+    # Swarm ports restricted to WireGuard only
+    ufw allow in on wg0 proto tcp to any port 2377 comment "Swarm mgmt (wg0)"
+    ufw allow in on wg0 proto tcp to any port 7946 comment "Swarm node (wg0)"
+    ufw allow in on wg0 proto udp to any port 7946 comment "Swarm node (wg0)"
+    ufw allow in on wg0 proto udp to any port 4789 comment "Swarm overlay (wg0)"
+    log "Edge role: HTTP/HTTPS open, Swarm restricted to wg0"
+    ;;
+  db)
+    # Database server — internal services on WireGuard only
+    ufw allow in on wg0 proto tcp to any port 5432 comment "PostgreSQL (wg0)"
+    ufw allow in on wg0 proto tcp to any port 6379 comment "Redis (wg0)"
+    ufw allow in on wg0 proto tcp to any port 3900 comment "Garage S3 (wg0)"
+    log "DB role: Postgres/Redis/Garage on wg0 only, HTTP/HTTPS/Swarm closed"
+    ;;
+  worker)
+    # Tool execution / sandbox host — minimal exposure
+    # Docker network isolation: restrict container egress by default
+    iptables -I FORWARD 1 -i docker0 ! -o docker0 -j DROP 2>/dev/null || true
+    iptables -I FORWARD 1 -i docker0 -o wg+ -j ACCEPT 2>/dev/null || true
+    # Allow DNS from containers (UDP 53)
+    iptables -I FORWARD 2 -i docker0 -p udp --dport 53 -j ACCEPT 2>/dev/null || true
+    # Persist iptables rules
+    if command -v netfilter-persistent &>/dev/null; then
+      netfilter-persistent save >/dev/null 2>&1
+    elif command -v iptables-save &>/dev/null; then
+      mkdir -p /etc/iptables
+      iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
+    fi
+    log "Worker role: SSH only, Docker containers network-isolated"
+    ;;
+  all)
+    # Full access — current behavior unchanged
+    ufw allow 80/tcp comment "HTTP"
+    ufw allow 443/tcp comment "HTTPS"
+    ufw allow 2377/tcp comment "Docker Swarm management"
+    ufw allow 7946/tcp comment "Docker Swarm node communication"
+    ufw allow 7946/udp comment "Docker Swarm node communication"
+    ufw allow 4789/udp comment "Docker overlay network"
+    log "All role: SSH, HTTP, HTTPS, Swarm ports open"
+    ;;
+esac
+
 ufw --force enable
 log "Firewall enabled"
 
@@ -170,12 +227,21 @@ UNATTEOF
 log "Restarting SSH..."
 systemctl restart sshd || systemctl restart ssh
 
+# Build firewall summary for the role
+case "${ROLE}" in
+  edge)   FW_SUMMARY="SSH, HTTP, HTTPS (Swarm on wg0 only)";;
+  db)     FW_SUMMARY="SSH, Postgres/Redis/Garage (wg0 only)";;
+  worker) FW_SUMMARY="SSH only (Docker network-isolated)";;
+  all)    FW_SUMMARY="SSH, HTTP, HTTPS, Swarm ports";;
+esac
+
 log "Server hardening complete"
 log "Summary:"
+log "  Role: ${ROLE}"
 log "  SSH port: ${SSH_PORT}"
 log "  Root login: prohibit-password (keys only)"
 log "  Password auth: disabled"
-log "  Firewall: enabled (SSH, HTTP, HTTPS, Swarm ports)"
+log "  Firewall: enabled (${FW_SUMMARY})"
 log "  Fail2ban: enabled (SSH + Docker abuse)"
 log "  Auto-updates: enabled (security only)"
 log "  Sysctl: hardened (network, kernel)"
