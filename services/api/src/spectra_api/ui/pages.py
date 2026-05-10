@@ -4,6 +4,8 @@ UI router for serving the frontend dashboard.
 
 import logging
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, select
@@ -339,7 +341,7 @@ async def api_docs_page(
                         return "string"
                     return getattr(ann, "__name__", str(ann))
 
-                for param in getattr(route.dependant, "path_params", []):  # type: ignore[union-attr]
+                for param in getattr(route.dependant, "path_params", []) or []:
                     params.append(
                         {
                             "name": param.name,
@@ -348,7 +350,7 @@ async def api_docs_page(
                             "type": _type_name(param.field_info),
                         }
                     )
-                for param in getattr(route.dependant, "query_params", []):  # type: ignore[union-attr]
+                for param in getattr(route.dependant, "query_params", []) or []:
                     params.append(
                         {
                             "name": param.name,

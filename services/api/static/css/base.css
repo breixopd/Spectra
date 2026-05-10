@@ -1,5 +1,29 @@
 /* base.css — Shared styles extracted from base.html */
 
+/* --- App Layout (sidebar + main) --- */
+.app-layout {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.sidebar {
+    width: 256px;
+    min-width: 256px;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--glass-sidebar-bg);
+    backdrop-filter: blur(var(--glass-sidebar-blur));
+    border-right: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+}
+
+.main-content {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+}
+
 .glass-sidebar { background: var(--glass-sidebar-bg); backdrop-filter: blur(var(--glass-sidebar-blur)); border-right: 1px solid var(--border-subtle); }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #020617; }
@@ -22,12 +46,17 @@
 .hamburger-btn { display: none; }
 
 @media (max-width: 768px) {
-    .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 45; transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); width: 280px !important; }
+    .app-layout {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+    }
+    .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 45; transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); width: 280px !important; min-width: 280px; height: 100vh; }
     .sidebar.open { transform: translateX(0); }
     .mobile-header { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(2,6,23,0.95); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 30; }
     .hamburger-btn { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 0.5rem; color: #94a3b8; }
     .hamburger-btn:hover { background: rgba(255,255,255,0.05); color: white; }
-    .main-content { padding: 0.75rem !important; }
+    .main-content { padding: 0.75rem !important; overflow-y: auto; height: auto; }
     .main-content > *:first-child { margin-top: 0; }
 }
 
@@ -62,7 +91,10 @@ input:focus, select:focus, textarea:focus {
 /* Tooltip system */
 [data-tooltip] {
     position: relative;
-    cursor: help;
+    cursor: default;
+}
+.sidebar a[data-tooltip] {
+    cursor: pointer;
 }
 [data-tooltip]::before,
 [data-tooltip]::after {

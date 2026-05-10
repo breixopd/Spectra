@@ -19,11 +19,6 @@ Note: Import lifespan directly from spectra_api.bootstrap.lifespan to avoid circ
 
 import importlib as _importlib
 
-# Lazy-load submodule symbols on first access to avoid import-time coupling.
-# Consumers should import from specific submodules directly:
-#   from spectra_platform.core.config import settings
-#   from spectra_common.errors import SpectraError
-
 _SUBMODULE_MAP: dict[str, str] = {
     # cache
     "CacheService": "spectra_platform.infrastructure.cache",

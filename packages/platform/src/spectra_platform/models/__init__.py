@@ -27,6 +27,7 @@ _MODEL_EXPORTS = {
     "UserPreferences": ("spectra_platform.models.user_preferences", "UserPreferences"),
     "TrainingSample": ("spectra_platform.models.training", "TrainingSample"),
     "FineTuningJob": ("spectra_platform.models.training", "FineTuningJob"),
+    "RulesOfEngagement": ("spectra_platform.models.roe", "RulesOfEngagement"),
 }
 
 __all__ = list(_MODEL_EXPORTS)

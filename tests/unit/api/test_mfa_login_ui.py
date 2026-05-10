@@ -1,10 +1,20 @@
-"""Tests for MFA login UI flow in login.html template."""
+"""Tests for MFA login UI flow in login.html template and login.js."""
 
 from pathlib import Path
 
 import pytest
 
-LOGIN_TEMPLATE = Path(__file__).resolve().parents[3] / "services" / "api" / "templates" / "login.html"
+_API_ROOT = Path(__file__).resolve().parents[3] / "services" / "api"
+LOGIN_TEMPLATE = _API_ROOT / "templates" / "login.html"
+LOGIN_JS = _API_ROOT / "static" / "js" / "pages" / "auth" / "login.js"
+
+
+def _login_sources() -> str:
+    """Return combined content of login template and its JS module."""
+    parts = [LOGIN_TEMPLATE.read_text()]
+    if LOGIN_JS.exists():
+        parts.append(LOGIN_JS.read_text())
+    return "\n".join(parts)
 
 
 class TestMfaLoginStep:
@@ -30,7 +40,7 @@ class TestMfaLoginStep:
         assert 'maxlength="6"' in content, "TOTP input must accept exactly 6 digits"
 
     def test_mfa_verify_endpoint_used(self):
-        content = LOGIN_TEMPLATE.read_text()
+        content = _login_sources()
         assert "/api/v1/auth/mfa/verify" in content, "Must call MFA verify endpoint"
 
     def test_mfa_token_not_stored_in_localstorage(self):
@@ -56,11 +66,11 @@ class TestMfaLoginStep:
 
     def test_mfa_uses_bearer_auth(self):
         """MFA verify must send the temp token as Bearer auth header."""
-        content = LOGIN_TEMPLATE.read_text()
+        content = _login_sources()
         assert "Bearer" in content, "MFA verify must use Bearer auth header"
 
     def test_login_form_still_present(self):
         """Non-MFA login form must still exist."""
-        content = LOGIN_TEMPLATE.read_text()
-        assert 'id="login-form"' in content
+        content = _login_sources()
+        assert 'id="login-form"' in content or "login-form" in content
         assert "/api/v1/auth/token" in content

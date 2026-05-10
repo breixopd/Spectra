@@ -103,6 +103,13 @@ async def dispatch_and_process_result(
                 buffer_timeout=buffer_timeout,
             )
 
+        # Verify: compare claimed success with actual exit code
+        if hasattr(result, 'exit_code') and result.exit_code is not None:
+            if result.success and result.exit_code not in [0]:
+                logger.warning("Tool reported success but exit_code=%d (non-zero)", result.exit_code)
+            elif not result.success and result.exit_code == 0:
+                logger.warning("Tool reported failure but exit_code=0 (clean exit)")
+
         if result.success:
             result.stdout = truncate_for_llm(result.stdout, max_chars=max_stdout_chars, label="stdout")
             result.stderr = truncate_for_llm(result.stderr, max_chars=max_stderr_chars, label="stderr")

@@ -103,7 +103,13 @@ async def upload_vpn_config(
     """Upload a VPN configuration file."""
     if not settings.VPN_ENABLED:
         raise HTTPException(status_code=400, detail="VPN feature is disabled")
-    await check_feature_allowed(_user, db, "vpn_support")
+    try:
+        await check_feature_allowed(_user, db, "vpn_support")
+    except HTTPException:
+        raise HTTPException(
+            status_code=403,
+            detail="VPN support requires Pro plan or higher. Upgrade at /billing/plans",
+        )
     try:
         # Read with size limit
         MAX_VPN_CONFIG_SIZE = 1024 * 1024  # 1MB

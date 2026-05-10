@@ -64,4 +64,4 @@ services:
 networks:
   spectra-network:
     external: true
-    name: docker_spectra-network
+    name: docker_targets

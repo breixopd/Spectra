@@ -12,10 +12,3 @@ Architecture follows SOLID principles:
 - Interface Segregation: Agents have focused interfaces
 - Dependency Inversion: Services depend on abstractions (LLMClient, etc.)
 """
-
-# Note: Import specific services directly from their submodules
-# to avoid circular imports:
-#
-# from spectra_platform.services.ai import LLMClient, VotingSystem
-# from spectra_platform.services.mission import MissionManager, mission_manager
-# from spectra_platform.services.tools import ToolRegistry, get_registry

@@ -2,7 +2,18 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
+from typing import Any, TypeVar
+
+from spectra_platform.services.scaling.resource_detection import (
+    derive_autoscale_limits,
+    detect_host_resources,
+)
+
+logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
 
 
 def _as_bool(value) -> bool:
@@ -76,7 +87,9 @@ class AutoScalerConfig:
         """
         db = db_config or {}
 
-        def _cfg(db_key: str, env_attr: str, default, cast_fn=int):
+        def _cfg(db_key: str, env_attr: str, default: T, cast_fn: Any = None) -> T:
+            if cast_fn is None:
+                cast_fn = type(default) if default is not None else int
             if db_key in db:
                 try:
                     return cast_fn(db[db_key])
@@ -96,11 +109,29 @@ class AutoScalerConfig:
         cpu_down = _cfg("scaling.cpu_down_threshold", "AUTOSCALE_CPU_DOWN_THRESHOLD", 25) / 100.0
         queue_threshold = _cfg("scaling.queue_threshold", "AUTOSCALE_QUEUE_THRESHOLD", 5)
 
+        derived_enabled = _cfg("scaling.derived_enabled", "AUTOSCALE_DERIVED_ENABLED", True, cast_fn=_as_bool)
+
+        # Determine max replicas: derived from cgroups or static defaults
+        if derived_enabled:
+            resources = detect_host_resources()
+            derived = derive_autoscale_limits(resources)
+            logger.info(
+                f"Autoscaling derived limits: worker={derived['worker_max']}, "
+                f"api={derived['api_max']}, ai={derived['ai_max']}"
+            )
+            worker_max_default = derived["worker_max"]
+            api_max_default = derived["api_max"]
+            ai_max_default = derived["ai_max"]
+        else:
+            worker_max_default = 10
+            api_max_default = 8
+            ai_max_default = 4
+
         policies = {
             "worker": ServicePolicy(
                 service_name=getattr(settings, "SWARM_WORKER_SERVICE", "spectra_worker"),
                 min_replicas=_cfg("scaling.worker.min_replicas", "AUTOSCALE_WORKER_MIN", 1),
-                max_replicas=_cfg("scaling.worker.max_replicas", "AUTOSCALE_WORKER_MAX", 10),
+                max_replicas=_cfg("scaling.worker.max_replicas", "AUTOSCALE_WORKER_MAX", worker_max_default),
                 scale_up_threshold=cpu_up,
                 scale_down_threshold=cpu_down,
                 scale_up_queue_depth=queue_threshold,
@@ -110,7 +141,7 @@ class AutoScalerConfig:
             "api": ServicePolicy(
                 service_name=getattr(settings, "SWARM_API_SERVICE", "spectra_app"),
                 min_replicas=_cfg("scaling.api.min_replicas", "AUTOSCALE_API_MIN", 2),
-                max_replicas=_cfg("scaling.api.max_replicas", "AUTOSCALE_API_MAX", 8),
+                max_replicas=_cfg("scaling.api.max_replicas", "AUTOSCALE_API_MAX", api_max_default),
                 scale_up_threshold=cpu_up,
                 scale_down_threshold=cpu_down,
                 scale_up_queue_depth=0,
@@ -120,7 +151,7 @@ class AutoScalerConfig:
             "ai": ServicePolicy(
                 service_name=getattr(settings, "SWARM_AI_SERVICE", "spectra_ai-svc"),
                 min_replicas=1,
-                max_replicas=_cfg("scaling.ai.max_replicas", "AUTOSCALE_AI_MAX", 4),
+                max_replicas=_cfg("scaling.ai.max_replicas", "AUTOSCALE_AI_MAX", ai_max_default),
                 scale_up_threshold=0.80,
                 scale_down_threshold=0.20,
                 scale_up_queue_depth=3,

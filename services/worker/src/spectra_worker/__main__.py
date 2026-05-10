@@ -24,17 +24,25 @@ def _latency_ms(start: float) -> float:
 
 _worker_task: asyncio.Task | None = None
 _heartbeat_task: asyncio.Task | None = None
+_embedded_ops_task: asyncio.Task | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Start worker loops on startup."""
-    global _worker_task, _heartbeat_task
+    global _worker_task, _heartbeat_task, _embedded_ops_task
     logger.info("Worker service starting...")
     _worker_task = create_safe_task(work_loop(), name="worker_loop")
     _heartbeat_task = create_safe_task(_run_heartbeat(), name="heartbeat_loop")
+    from spectra_platform.runtime.embedded_daemon import spawn_embedded_ops_task
+
+    _embedded_ops_task = spawn_embedded_ops_task("worker")
     yield
     logger.info("Worker service shutting down...")
+    if _embedded_ops_task:
+        _embedded_ops_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await _embedded_ops_task
     if _heartbeat_task:
         _heartbeat_task.cancel()
         with suppress(asyncio.CancelledError):
@@ -230,16 +238,21 @@ async def work_loop():
     queue_name = os.environ.get("QUEUE_NAME", "default")
 
     await startup()
+    crash_count = 0
+    max_backoff = 300
     try:
         while True:
             try:
                 await worker_loop(_WORKER_FUNCTIONS, queue_name=queue_name)
+                crash_count = 0
                 break  # Normal exit (e.g. cancelled)
             except asyncio.CancelledError:
                 raise
             except Exception:
-                logger.exception("Work loop crashed unexpectedly, restarting in 5s")
-                await asyncio.sleep(5)
+                crash_count += 1
+                delay = min(2 ** min(crash_count, 8), max_backoff)
+                logger.exception("Work loop crashed (attempt %d), restarting in %ds", crash_count, delay)
+                await asyncio.sleep(delay)
     finally:
         await shutdown()
 

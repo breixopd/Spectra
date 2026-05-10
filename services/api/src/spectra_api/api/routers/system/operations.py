@@ -115,7 +115,7 @@ async def clear_missions(
         result = await db.execute(stmt)
         await db.commit()
 
-        deleted_count: int = result.rowcount or 0  # type: ignore[assignment]
+        deleted_count: int = result.rowcount or 0  # type: ignore[assignment] - SQLAlchemy 2.0 rowcount works at runtime
 
         cache_cleared = 0
         cache = _get_cache()

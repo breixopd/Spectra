@@ -13,6 +13,7 @@ import asyncio
 import json
 import logging
 import re
+from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -69,6 +70,7 @@ class ToolRegistry:
         # Registry state
         self._tools: dict[str, RegisteredTool] = {}
         self._lock = asyncio.Lock()
+        self._list_tools_for_ai_cache: list[dict[str, Any]] | None = None
 
         # Initialize components
         self.validator = PluginValidator()
@@ -86,6 +88,7 @@ class ToolRegistry:
         """Scan the plugins directory and load all valid plugins."""
         async with self._lock:
             self._tools = await self.loader.load_plugins(self._tools)
+            self._clear_caches()
             return self._tools
 
     def validate_plugin(self, data: dict[str, Any]) -> ToolConfig:
@@ -132,6 +135,7 @@ class ToolRegistry:
         if tool_id in self._tools:
             del self._tools[tool_id]
 
+        self._clear_caches()
         return True
 
     # --- Query Methods (Kept in Facade for state access) ---
@@ -202,6 +206,7 @@ class ToolRegistry:
             if isinstance(error_message, str):
                 tool.error_message = error_message or None
 
+        self._clear_caches()
         return updated
 
     async def set_enabled(self, tool_id: str, enabled: bool) -> RegisteredTool:
@@ -215,6 +220,7 @@ class ToolRegistry:
         if not enabled:
             tool.error_message = None
         await self._save_plugin(tool.config)
+        self._clear_caches()
         return tool
 
     def get_tools_by_category(self, category: str) -> list[RegisteredTool]:
@@ -228,9 +234,17 @@ class ToolRegistry:
             return None
         return self._tool_to_ai_dict(tool)
 
+    def _clear_caches(self) -> None:
+        """Clear all cached results."""
+        self._list_tools_for_ai_cache = None
+
     def list_tools_for_ai(self) -> list[dict[str, Any]]:
         """Get all available tools formatted for AI agents."""
-        return [self._tool_to_ai_dict(t) for t in self._tools.values() if t.is_available]
+        if self._list_tools_for_ai_cache is None:
+            self._list_tools_for_ai_cache = [
+                self._tool_to_ai_dict(t) for t in self._tools.values() if t.is_available
+            ]
+        return self._list_tools_for_ai_cache
 
     def _tool_to_ai_dict(self, tool: RegisteredTool) -> dict[str, Any]:
         """Convert a RegisteredTool to a dict for AI consumption."""
@@ -268,7 +282,7 @@ class ToolRegistry:
 
         # Save to disk
         await self._save_plugin(config)
-
+        self._clear_caches()
         return self._tools[config.id]
 
     async def _save_plugin(self, config: ToolConfig) -> None:
@@ -317,6 +331,7 @@ class ToolRegistry:
         except OSError as e:
             logger.warning("Failed to remove plugin file %s: %s", path, e)
 
+        self._clear_caches()
         return True
 
 

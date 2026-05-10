@@ -28,7 +28,7 @@ class BaseRepository(Generic[ModelType]):
             def __init__(self, session: AsyncSession):
                 super().__init__(Target, session)
 
-            async def find_by_value(self, value: str) -> Optional[Target]:
+            async def find_by_value(self, value: str) -> Target | None:
                 return await self.find_one_by(value=value)
     """
 

@@ -24,7 +24,7 @@ class TestEscapeHtmlConsolidation:
 
     def test_base_defines_escape_html(self):
         content = BASE.read_text()
-        matches = re.findall(r"function\s+escapeHtml\s*\(", content)
+        matches = re.findall(r"escapeHtml\s*[=:]\s*function\s*\(|function\s+escapeHtml\s*\(", content)
         assert len(matches) == 1, f"base.html must define escapeHtml exactly once, found {len(matches)}"
 
     def test_no_duplicates_in_templates(self):
@@ -32,13 +32,13 @@ class TestEscapeHtmlConsolidation:
         for tmpl in PREVIOUSLY_DUPLICATED:
             if tmpl.exists():
                 content = tmpl.read_text()
-                matches = re.findall(r"function\s+escapeHtml\s*\(", content)
+                matches = re.findall(r"escapeHtml\s*[=:]\s*function\s*\(|function\s+escapeHtml\s*\(", content)
                 assert len(matches) == 0, f"{tmpl.name} still has duplicate escapeHtml ({len(matches)} found)"
 
     def test_api_js_no_escape_html(self):
         api_js = API_STATIC / "js" / "api.js"
         content = api_js.read_text()
-        assert not re.search(r"function\s+escapeHtml\s*\(", content), (
+        assert not re.search(r"escapeHtml\s*[=:]\s*function\s*\(|function\s+escapeHtml\s*\(", content), (
             "api.js must not define escapeHtml (consolidated in base.html)"
         )
 

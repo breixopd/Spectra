@@ -12,7 +12,7 @@ import re
 import sys
 from contextvars import ContextVar
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -67,12 +67,12 @@ class _CorrelationFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         if not _logging_runtime_ok():
-            record.correlation_id = ""  # type: ignore[attr-defined]
+            cast("Any", record).correlation_id = ""
             return True
         try:
-            record.correlation_id = correlation_id_var.get() or ""  # type: ignore[attr-defined]
+            cast("Any", record).correlation_id = correlation_id_var.get() or ""
         except (LookupError, RuntimeError, ImportError, SystemError):
-            record.correlation_id = ""  # type: ignore[attr-defined]
+            cast("Any", record).correlation_id = ""
         return True
 
 

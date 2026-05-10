@@ -9,7 +9,7 @@ FROM ${PYTHON_BASE_IMAGE} AS builder
 WORKDIR /build
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     pkg-config \
@@ -20,7 +20,8 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements/ai.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r ai.txt
 
 # ── Runtime stage ──
@@ -36,7 +37,9 @@ ENV SPECTRA_BUILD_VERSION="${BUILD_VERSION}"
 
 WORKDIR /app
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
     netcat-openbsd \
@@ -67,6 +70,7 @@ COPY --chown=spectra:spectra packages/platform/src/spectra_platform/models/ ./sp
 COPY --chown=spectra:spectra packages/platform/src/spectra_platform/repositories/ ./spectra_platform/repositories/
 COPY --chown=spectra:spectra packages/platform/src/spectra_platform/services/ ./spectra_platform/services/
 COPY --chown=spectra:spectra packages/platform/src/spectra_platform/telemetry/ ./spectra_platform/telemetry/
+COPY --chown=spectra:spectra packages/platform/src/spectra_platform/runtime/ ./spectra_platform/runtime/
 COPY --chown=spectra:spectra packages/platform/src/spectra_platform/utils/ ./spectra_platform/utils/
 COPY --chown=spectra:spectra alembic/ ./alembic/
 COPY --chown=spectra:spectra config/alembic.ini ./config/alembic.ini
