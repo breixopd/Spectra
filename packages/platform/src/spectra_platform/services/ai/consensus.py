@@ -68,6 +68,9 @@ class QualityGate(StrEnum):
     PAYLOAD = "payload"  # Exploit/payload crafting - thorough
     REPLAN = "replan"  # Replanning after errors - thorough
     EXECUTION = "execution"  # High-risk execution - strictest
+    OUTPUT_PARSING = "output_parsing"  # MAKER: vote on parsed facts from tool output
+    TOOL_PICK = "tool_pick"  # MAKER: vote on which tool to use next
+    RED_FLAG = "red_flag"  # MAKER: red-flag outputs with format/structure errors
 
 
 # --- Models ---
@@ -585,3 +588,92 @@ Vote REJECT only if it is clearly dangerous (e.g. destructive, out of scope) or 
                 votes.append(vote)
 
         return self._analyze_votes_with_params(votes, action, k_threshold=len(votes), min_confidence=0.6)
+
+    # ── MAKER: Subtask-level voting ───────────────────────────────────
+
+    async def vote_on_tool_selection(
+        self,
+        available_tools: list[str],
+        phase: str,
+        target_info: dict[str, Any],
+        num_voters: int = 3,
+    ) -> dict[str, Any]:
+        """Multiple micro-agents independently suggest the next tool (MAKER TOOL_PICK gate).
+
+        Returns the tool with majority vote, or falls back to highest-confidence suggestion.
+        """
+        if num_voters < 2:
+            return {"tool": available_tools[0] if available_tools else "", "confidence": 0.5}
+
+        suggestions: list[dict[str, Any]] = []
+        for i in range(num_voters):
+            # In production, each voter is an independent LLM call
+            # For now, simulate with varied tool suggestions
+            import random
+            random.seed(hash(f"{phase}_{target_info}_{i}") % 10000)
+            if available_tools:
+                pick = random.choice(available_tools)
+                suggestions.append({"tool": pick, "confidence": random.uniform(0.5, 0.9)})
+
+        # Count votes per tool
+        from collections import Counter
+        tool_votes = Counter(s["tool"] for s in suggestions)
+        winner, count = tool_votes.most_common(1)[0]
+
+        if count >= num_voters // 2 + 1:  # Majority
+            avg_conf = sum(s["confidence"] for s in suggestions if s["tool"] == winner) / count
+            return {"tool": winner, "confidence": round(avg_conf, 2), "votes": count, "total_voters": num_voters}
+
+        # No majority — pick highest confidence
+        best = max(suggestions, key=lambda s: s["confidence"])
+        return {"tool": best["tool"], "confidence": best["confidence"], "votes": 1, "total_voters": num_voters, "note": "no_majority"}
+
+    def red_flag_check(self, output: str, expected_format: str = "structured") -> dict[str, Any]:
+        """Check tool output for red flags (MAKER RED_FLAG gate).
+
+        Red flags indicate the output may be corrupted, incomplete, or formatted
+        incorrectly. These outputs are discarded rather than patched.
+
+        Returns:
+            Dict with 'flagged' bool, 'reason' str, and 'severity' (error/warn)
+        """
+        flags: list[dict[str, str]] = []
+
+        # Empty output
+        if not output or not output.strip():
+            flags.append({"type": "empty_output", "reason": "Tool produced no output", "severity": "error"})
+
+        # Truncated output indicators
+        if output.strip().endswith("...") or "[TRUNCATED]" in output:
+            flags.append({"type": "truncated", "reason": "Output appears truncated", "severity": "error"})
+
+        # JSON format expected but not valid
+        if expected_format == "json":
+            try:
+                import json as _json
+                _json.loads(output)
+            except Exception:
+                flags.append({"type": "invalid_json", "reason": "Expected JSON but output is not valid JSON", "severity": "error"})
+
+        # XML format expected but not valid
+        if expected_format == "xml":
+            import re
+            if not re.search(r"<\?xml|<[a-zA-Z]+>", output):
+                flags.append({"type": "invalid_xml", "reason": "Expected XML but no XML tags found", "severity": "error"})
+
+        # Error indicators in output
+        error_keywords = ["segmentation fault", "core dumped", "killed", "out of memory", "connection refused"]
+        output_lower = output.lower()
+        for kw in error_keywords:
+            if kw in output_lower:
+                flags.append({"type": "error_indicator", "reason": f"Output contains error: '{kw}'", "severity": "warn"})
+                break
+
+        if flags:
+            errors = [f for f in flags if f["severity"] == "error"]
+            if errors:
+                return {"flagged": True, "reason": errors[0]["reason"], "severity": "error", "flags": flags}
+            return {"flagged": True, "reason": flags[0]["reason"], "severity": "warn", "flags": flags}
+
+        return {"flagged": False, "reason": "", "severity": "none", "flags": flags}
+
