@@ -52,7 +52,15 @@ def framework_phase_timeline(
     marks completed phases as 'done' and the current phase as 'current'.
     """
     spec = get_framework(pentest_framework)
-    ordered_phases = sorted(spec.phases, key=lambda p: p.order)
+    # Exclude terminal phase (complete) from the operational timeline
+    terminal_ids = {"complete", "reporting"}
+    ordered_phases = [
+        p for p in sorted(spec.phases, key=lambda p: p.order)
+        if p.id not in terminal_ids or p.id == ordered_phases[0].id
+    ]
+    # Better approach: exclude only the last phase if it's a terminal one
+    ordered_all = sorted(spec.phases, key=lambda p: p.order)
+    ordered_phases = [p for p in ordered_all if p.id != "complete"]
 
     status = (mission_status or "").lower()
     terminal_ok = status in (
