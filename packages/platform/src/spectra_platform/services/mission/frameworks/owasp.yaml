@@ -1,0 +1,122 @@
+metadata:
+  name: "OWASP Testing Guide"
+  version: "1.0"
+  description: "OWASP Web Application Security Testing framework"
+  url: "https://owasp.org/www-project-web-security-testing-guide/"
+
+phases:
+  - id: recon
+    label: "Information Gathering"
+    order: 0
+  - id: config
+    label: "Configuration & Deployment Testing"
+    order: 1
+  - id: identity
+    label: "Identity Management Testing"
+    order: 2
+  - id: auth
+    label: "Authentication Testing"
+    order: 3
+  - id: authz
+    label: "Authorization Testing"
+    order: 4
+  - id: session
+    label: "Session Management Testing"
+    order: 5
+  - id: input
+    label: "Input Validation Testing"
+    order: 6
+  - id: error
+    label: "Error Handling Testing"
+    order: 7
+  - id: crypto
+    label: "Cryptography Testing"
+    order: 8
+  - id: business
+    label: "Business Logic Testing"
+    order: 9
+  - id: client
+    label: "Client-Side Testing"
+    order: 10
+  - id: reporting
+    label: "Reporting"
+    order: 11
+
+milestones:
+  - id: owasp_m1_recon
+    label: "Application Mapped"
+    phase: recon
+    description: "All application endpoints, technologies, and entry points identified"
+  - id: owasp_m2_vulns_found
+    label: "Vulnerabilities Identified"
+    phase: input
+    description: "Security vulnerabilities discovered and confirmed"
+  - id: owasp_m3_exploited
+    label: "Critical Findings Exploited"
+    phase: input
+    description: "High/critical findings verified through exploitation"
+  - id: owasp_m4_coverage
+    label: "Full Coverage"
+    phase: reporting
+    description: "All OWASP categories tested"
+
+technique_categories:
+  - id: web_scanning
+    label: "Web Application Scanning"
+    allowed_in_phases: ["recon", "config"]
+    tool_types: ["web", "scanner"]
+  - id: web_fuzzing
+    label: "Web Fuzzing"
+    allowed_in_phases: ["input", "config"]
+    tool_types: ["fuzzer", "web"]
+  - id: vulnerability_scanning
+    label: "Vulnerability Scanning"
+    allowed_in_phases: ["config", "input"]
+    tool_types: ["vulnerability", "scanner"]
+  - id: credential_testing
+    label: "Credential Testing"
+    allowed_in_phases: ["auth"]
+    tool_types: ["auth", "brute_force"]
+    constraints:
+      max_attempts_per_service: 25
+  - id: exploitation
+    label: "Exploitation"
+    allowed_in_phases: ["input", "auth", "authz"]
+    tool_types: ["exploit"]
+    requires_consensus: true
+    risk_level: "high"
+  - id: ssl_testing
+    label: "SSL/TLS Testing"
+    allowed_in_phases: ["crypto", "config"]
+    tool_types: ["ssl", "scanner"]
+
+forbidden_techniques:
+  - technique: "denial_of_service"
+    reason: "DoS attacks excluded from standard web app testing"
+    override: "explicit_authorization"
+  - technique: "data_destruction"
+    reason: "Never destroy or alter production data"
+    override: "none"
+
+report_sections:
+  - id: executive_summary
+    label: "Executive Summary"
+    order: 0
+  - id: methodology
+    label: "Testing Methodology"
+    order: 1
+  - id: scope
+    label: "Scope & Coverage"
+    order: 2
+  - id: findings
+    label: "Findings by OWASP Category"
+    order: 3
+  - id: risk_matrix
+    label: "Risk Assessment Matrix"
+    order: 4
+  - id: remediation
+    label: "Remediation Roadmap"
+    order: 5
+  - id: appendices
+    label: "Appendices"
+    order: 6
