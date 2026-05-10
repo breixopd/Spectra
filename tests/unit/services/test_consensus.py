@@ -29,9 +29,9 @@ class TestQualityGateEnum:
         assert QualityGate.EXECUTION.value == "execution"
 
     def test_quality_gates_count(self):
-        """Should have 5 quality gates."""
+        """Should have 8 quality gates (5 original + 3 MAKER subtask gates)."""
         gates = list(QualityGate)
-        assert len(gates) == 5
+        assert len(gates) == 8
 
 
 class TestVotingConfig:
