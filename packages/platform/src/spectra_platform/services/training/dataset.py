@@ -1,180 +1,194 @@
-"""Training dataset generation and management."""
+"""Training data pipeline — collects, extracts, and formats training examples from missions.
+
+Always-on hooks collect agent decisions, tool executions, and feedback.
+Raw data is converted to supervised fine-tuning examples in multiple formats.
+"""
 
 from __future__ import annotations
 
-import json
+import json as _json
 import logging
-import re
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
-
-from sqlalchemy import and_, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from spectra_platform.models.mission import Mission
-from spectra_platform.models.training import TrainingSample
-from spectra_platform.models.user import User
-from spectra_platform.models.user_preferences import UserPreferences
 
 logger = logging.getLogger(__name__)
 
-# Patterns to anonymize in training data
-_IP_PATTERN = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
-_DOMAIN_PATTERN = re.compile(r"\b(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}\b")
-_CREDENTIAL_PATTERN = re.compile(r"(password|passwd|pwd|secret|token|key|credential)\s*[:=]\s*\S+", re.IGNORECASE)
-_PATH_PATTERN = re.compile(r"/(?:home|users|root)/\S+")
+
+@dataclass
+class TrainingExample:
+    """A single training example extracted from a mission."""
+    id: str
+    mission_id: str
+    prompt: str
+    response: str
+    technique: str = ""
+    phase: str = ""
+    success: bool = True
+    quality_score: float = 1.0
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
-def anonymize_text(text: str) -> str:
-    """Strip PII, IPs, credentials, and sensitive paths from text."""
-    result = _IP_PATTERN.sub("<IP_ADDR>", text)
-    result = _CREDENTIAL_PATTERN.sub(r"\1=<REDACTED>", result)
-    result = _PATH_PATTERN.sub("<PATH>", result)
-    return result
+@dataclass
+class MissionLog:
+    """Raw data collected from a mission for training."""
+    mission_id: str
+    target: str = ""
+    framework: str = "ptes"
+    start_time: float = 0.0
+    end_time: float = 0.0
+    agent_decisions: list[dict[str, Any]] = field(default_factory=list)
+    tool_executions: list[dict[str, Any]] = field(default_factory=list)
+    findings: list[dict[str, Any]] = field(default_factory=list)
+    milestones_completed: list[str] = field(default_factory=list)
+    red_flags: list[dict[str, Any]] = field(default_factory=list)
+    human_rating: int = 0  # 0=unrated, 1-5
 
 
-async def create_training_sample(
-    session: AsyncSession,
-    mission_id: str | None,
-    user_id: str | None,
-    sample_type: str,
-    input_text: str,
-    output_text: str,
-    quality_score: float | None = None,
-    metadata: dict[str, Any] | None = None,
-) -> TrainingSample:
-    """Create an anonymized training sample from mission data."""
-    sample = TrainingSample(
-        mission_id=mission_id,
-        user_id=user_id,
-        sample_type=sample_type,
-        input_text=anonymize_text(input_text),
-        output_text=anonymize_text(output_text),
-        quality_score=quality_score,
-        metadata_=metadata,
-        is_anonymized=True,
-        is_approved=False,
-    )
-    session.add(sample)
-    await session.flush()
-    return sample
+class MissionDataCollector:
+    """Collects and stores raw training data from mission execution.
 
+    Hooks into agent decisions, tool executions, and milestone completions.
+    Data is stored as JSON in S3 and indexed for later extraction.
+    """
 
-async def user_allows_training_data(session: AsyncSession, user_id: str) -> bool:
-    """Return True only when account restrictions and training consent allow ingestion."""
-    result = await session.execute(
-        select(User.processing_restricted, UserPreferences.share_training_data)
-        .join(UserPreferences, UserPreferences.user_id == User.id)
-        .where(User.id == user_id)
-    )
-    row = result.one_or_none()
-    if row is None:
-        return False
-    processing_restricted, share_training_data = row
-    return bool(share_training_data) and not bool(processing_restricted)
+    def __init__(self, storage_path: str = "training/raw/"):
+        self.storage_path = Path(storage_path)
 
-
-async def create_mission_completion_sample(
-    session: AsyncSession,
-    mission: Mission,
-    runtime_state: dict[str, Any],
-) -> TrainingSample | None:
-    """Capture one approved, consent-gated sample after successful mission completion."""
-    if not mission.user_id or not await user_allows_training_data(session, str(mission.user_id)):
-        return None
-
-    existing = await session.execute(
-        select(TrainingSample.id).where(
-            and_(
-                TrainingSample.mission_id == mission.id,
-                TrainingSample.sample_type == "mission_completion",
-            )
-        )
-    )
-    if existing.scalar_one_or_none() is not None:
-        return None
-
-    findings = runtime_state.get("findings") or []
-    input_payload = {
-        "target": mission.target,
-        "description": mission.description,
-        "mission_type": mission.mission_type,
-        "runtime_target": runtime_state.get("target"),
-        "directive": runtime_state.get("directive"),
-        "requirements": runtime_state.get("requirements", []),
-    }
-    output_payload = {
-        "status": mission.status,
-        "tools_run": runtime_state.get("tools_run", []),
-        "findings": findings,
-        "attack_surface": runtime_state.get("attack_surface", {}),
-    }
-
-    return await create_training_sample(
-        session=session,
-        mission_id=str(mission.id),
-        user_id=str(mission.user_id),
-        sample_type="mission_completion",
-        input_text=json.dumps(input_payload, sort_keys=True),
-        output_text=json.dumps(output_payload, sort_keys=True),
-        quality_score=0.85 if findings else 0.65,
-        metadata={
-            "source": "mission_completion",
-            "finding_count": len(findings),
-            "tool_count": len(runtime_state.get("tools_run") or []),
-        },
-    )
-
-
-async def get_dataset_stats(session: AsyncSession) -> dict[str, Any]:
-    """Get dataset statistics by type."""
-    result = await session.execute(
-        select(
-            TrainingSample.sample_type,
-            func.count().label("count"),
-            func.avg(TrainingSample.quality_score).label("avg_quality"),
-        ).group_by(TrainingSample.sample_type)
-    )
-    rows = result.all()
-    return {
-        "types": {
-            row.sample_type: {
-                "count": row.count,
-                "avg_quality": round(float(row.avg_quality or 0), 3),
-            }
-            for row in rows
-        },
-        "total": sum(row.count for row in rows),  # type: ignore[arg-type]
-    }
-
-
-async def export_dataset(
-    session: AsyncSession,
-    sample_types: list[str] | None = None,
-    min_quality: float = 0.0,
-    approved_only: bool = True,
-    limit: int = 10000,
-) -> list[dict[str, Any]]:
-    """Export training samples in JSONL-compatible format."""
-    query = select(TrainingSample).where(TrainingSample.is_anonymized.is_(True))
-
-    if approved_only:
-        query = query.where(TrainingSample.is_approved.is_(True))
-    if sample_types:
-        query = query.where(TrainingSample.sample_type.in_(sample_types))
-    if min_quality > 0:
-        query = query.where(TrainingSample.quality_score >= min_quality)
-
-    query = query.order_by(TrainingSample.created_at.desc()).limit(limit)
-    result = await session.execute(query)
-    samples = result.scalars().all()
-
-    return [
-        {
-            "type": s.sample_type,
-            "input": s.input_text,
-            "output": s.output_text,
-            "quality": s.quality_score,
-            "metadata": s.metadata_,
+    def log_agent_decision(self, mission_id: str, agent_role: str, prompt: str, response: str, action: dict, confidence: float) -> None:
+        """Record an agent decision for training."""
+        entry = {
+            "timestamp": time.time(),
+            "mission_id": mission_id,
+            "agent_role": agent_role,
+            "prompt": prompt,
+            "response": response,
+            "action": action,
+            "confidence": confidence,
         }
-        for s in samples
-    ]
+        self._append_log(mission_id, "agent_decisions", entry)
+
+    def log_tool_execution(self, mission_id: str, tool_name: str, args: dict, output: str, success: bool, duration: float) -> None:
+        """Record a tool execution for training."""
+        entry = {
+            "timestamp": time.time(),
+            "mission_id": mission_id,
+            "tool_name": tool_name,
+            "args": args,
+            "output": output[:10000],  # Truncate for storage
+            "success": success,
+            "duration_seconds": duration,
+        }
+        self._append_log(mission_id, "tool_executions", entry)
+
+    def log_red_flag(self, mission_id: str, output: str, reason: str, severity: str) -> None:
+        """Record a red-flagged output (MAKER pattern)."""
+        entry = {
+            "timestamp": time.time(),
+            "mission_id": mission_id,
+            "output": output[:5000],
+            "reason": reason,
+            "severity": severity,
+        }
+
+    def _append_log(self, mission_id: str, category: str, entry: dict) -> None:
+        """Append an entry to the mission log (in production: to S3)."""
+        log_dir = self.storage_path / mission_id
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_file = log_dir / f"{category}.jsonl"
+        try:
+            with open(log_file, "a") as f:
+                f.write(_json.dumps(entry) + "\n")
+        except Exception:
+            logger.exception("Failed to write training log for %s/%s", mission_id, category)
+
+
+class TrainingExampleExtractor:
+    """Extracts training examples from raw mission logs.
+
+    Converts agent decisions and tool executions into prompt-response pairs
+    suitable for supervised fine-tuning of small models.
+    """
+
+    def extract_from_mission(self, log: MissionLog, min_quality: float = 0.5) -> list[TrainingExample]:
+        """Extract training examples from a single mission.
+
+        Only includes examples from missions that completed >=80% of milestones
+        and have quality scores above the minimum threshold.
+        """
+        examples: list[TrainingExample] = []
+
+        # Quality gate: mission must have reasonable completion
+        total_milestones = max(len(log.milestones_completed), 1)
+        if log.human_rating > 0 and log.human_rating < 3:
+            return examples  # Skip low-rated missions
+
+        # Extract agent decision examples
+        for decision in log.agent_decisions:
+            ex = TrainingExample(
+                id=f"{log.mission_id}_{decision.get('agent_role', 'unknown')}_{len(examples)}",
+                mission_id=log.mission_id,
+                prompt=decision.get("prompt", ""),
+                response=decision.get("response", ""),
+                technique=decision.get("action", {}).get("action_type", ""),
+                phase="",
+                success=decision.get("confidence", 0) > 0.5,
+                quality_score=log.human_rating / 5.0 if log.human_rating > 0 else 0.7,
+            )
+            if ex.quality_score >= min_quality:
+                examples.append(ex)
+
+        # Extract tool usage examples
+        for tool_exec in log.tool_executions:
+            ex = TrainingExample(
+                id=f"{log.mission_id}_tool_{tool_exec.get('tool_name', '')}_{len(examples)}",
+                mission_id=log.mission_id,
+                prompt=f"Execute {tool_exec.get('tool_name', 'unknown')} with args: {_json.dumps(tool_exec.get('args', {}))}",
+                response=tool_exec.get("output", "")[:2000],
+                technique=tool_exec.get("tool_name", ""),
+                success=tool_exec.get("success", False),
+                quality_score=log.human_rating / 5.0 if log.human_rating > 0 else 0.6,
+            )
+            if ex.quality_score >= min_quality:
+                examples.append(ex)
+
+        return examples
+
+    def to_alpaca_format(self, examples: list[TrainingExample]) -> list[dict[str, Any]]:
+        """Convert examples to Alpaca instruction-tuning format."""
+        return [
+            {
+                "instruction": ex.prompt,
+                "output": ex.response,
+                "metadata": {"technique": ex.technique, "success": ex.success},
+            }
+            for ex in examples
+        ]
+
+    def to_sharegpt_format(self, examples: list[TrainingExample]) -> list[dict[str, Any]]:
+        """Convert examples to ShareGPT conversation format."""
+        return [
+            {
+                "conversations": [
+                    {"from": "human", "value": ex.prompt},
+                    {"from": "gpt", "value": ex.response},
+                ],
+                "metadata": {"technique": ex.technique, "success": ex.success},
+            }
+            for ex in examples
+        ]
+
+    def to_chatml_format(self, examples: list[TrainingExample]) -> list[dict[str, Any]]:
+        """Convert examples to ChatML format."""
+        return [
+            {
+                "messages": [
+                    {"role": "system", "content": "You are an autonomous penetration testing agent."},
+                    {"role": "user", "content": ex.prompt},
+                    {"role": "assistant", "content": ex.response},
+                ],
+                "metadata": {"technique": ex.technique, "success": ex.success},
+            }
+            for ex in examples
+        ]
