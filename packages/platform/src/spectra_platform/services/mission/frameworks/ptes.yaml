@@ -1,0 +1,201 @@
+# PTES (Penetration Testing Execution Standard) framework definition
+# This is a dynamic framework spec - no hardcoded enums in code.
+# All phase labels, milestones, technique categories, and report sections are data-driven.
+
+metadata:
+  name: "PTES Standard"
+  version: "1.0"
+  description: "Penetration Testing Execution Standard phases with M1-M11 milestones"
+  url: "http://www.pentest-standard.org/"
+
+phases:
+  - id: scope
+    label: "Scope & Authorization"
+    description: "Define scope, rules of engagement, and verify authorization"
+    order: 0
+  - id: discovery
+    label: "Discovery / OSINT"
+    description: "Passive and active reconnaissance, intelligence gathering"
+    order: 1
+  - id: enumeration
+    label: "Enumeration"
+    description: "Service enumeration, version detection, banner grabbing"
+    order: 2
+  - id: vulnerability
+    label: "Vulnerability Analysis"
+    description: "Automated scanning, manual verification, false positive elimination"
+    order: 3
+  - id: exploitation
+    label: "Exploitation"
+    description: "Verified vulnerability exploitation, access establishment"
+    order: 4
+  - id: post_exploitation
+    label: "Post-Exploitation"
+    description: "Privilege escalation, lateral movement, data access, persistence"
+    order: 5
+  - id: reporting
+    label: "Reporting"
+    description: "Findings documentation, remediation recommendations, peer review"
+    order: 6
+  - id: complete
+    label: "Complete"
+    description: "Assessment finished"
+    order: 7
+
+milestones:
+  - id: m1_target_enumeration
+    label: "Target Enumeration"
+    description: "Successfully enumerated network hosts, open ports, and running services"
+    phase: enumeration
+  - id: m2_vector_identification
+    label: "Vector Confirmed"
+    description: "Discovered and confirmed multiple potential attack vectors"
+    phase: vulnerability
+  - id: m3_initial_access
+    label: "Initial Access (Shell)"
+    description: "Successfully executed exploit triggering vulnerability or verifying PoC"
+    phase: exploitation
+  - id: m4_credential_access
+    label: "Credential Access"
+    description: "Obtained authentication credentials or private data"
+    phase: exploitation
+  - id: m5_privilege_escalation
+    label: "Privilege Escalation"
+    description: "Established shell with elevated privileges"
+    phase: post_exploitation
+  - id: m6_local_recon
+    label: "Local Reconnaissance"
+    description: "Performed local system enumeration and information gathering"
+    phase: post_exploitation
+  - id: m7_lateral_movement
+    label: "Lateral Movement"
+    description: "Successfully moved laterally to other systems"
+    phase: post_exploitation
+  - id: m8_data_collection
+    label: "Data Collection"
+    description: "Collected target data and artifacts for evidence"
+    phase: post_exploitation
+  - id: m9_data_exfiltration
+    label: "Data Exfiltration"
+    description: "Demonstrated ability to exfiltrate data"
+    phase: post_exploitation
+  - id: m10_persistence
+    label: "Persistence"
+    description: "Established persistence mechanisms (documented, not left)"
+    phase: post_exploitation
+  - id: m11_coverage_complete
+    label: "Coverage Complete"
+    description: "All in-scope targets and techniques covered"
+    phase: complete
+
+technique_categories:
+  # Categories map to tool registry queries, not specific tools
+  - id: port_scanning
+    label: "Port Scanning"
+    allowed_in_phases: ["discovery", "enumeration"]
+    tool_types: ["scanner", "network"]
+
+  - id: service_enumeration
+    label: "Service Enumeration"
+    allowed_in_phases: ["enumeration"]
+    tool_types: ["scanner", "enumeration"]
+
+  - id: web_scanning
+    label: "Web Application Scanning"
+    allowed_in_phases: ["enumeration", "vulnerability"]
+    tool_types: ["web", "scanner"]
+
+  - id: vulnerability_scanning
+    label: "Vulnerability Scanning"
+    allowed_in_phases: ["vulnerability"]
+    tool_types: ["vulnerability", "scanner"]
+
+  - id: exploitation
+    label: "Exploitation"
+    allowed_in_phases: ["exploitation"]
+    tool_types: ["exploit", "framework"]
+    requires_consensus: true
+    risk_level: "high"
+
+  - id: credential_testing
+    label: "Credential Testing"
+    allowed_in_phases: ["enumeration", "exploitation"]
+    tool_types: ["auth", "brute_force"]
+    constraints:
+      max_attempts_per_service: 50
+      require_authorization: true
+
+  - id: post_exploit_recon
+    label: "Post-Exploit Reconnaissance"
+    allowed_in_phases: ["post_exploitation"]
+    tool_types: ["enumeration", "post_exploit"]
+
+  - id: privilege_escalation
+    label: "Privilege Escalation"
+    allowed_in_phases: ["post_exploitation"]
+    tool_types: ["privesc", "post_exploit"]
+
+  - id: lateral_movement
+    label: "Lateral Movement"
+    allowed_in_phases: ["post_exploitation"]
+    tool_types: ["lateral", "exploit"]
+
+  - id: dns_enumeration
+    label: "DNS Enumeration"
+    allowed_in_phases: ["discovery", "enumeration"]
+    tool_types: ["dns", "enumeration"]
+
+  - id: ssl_testing
+    label: "SSL/TLS Testing"
+    allowed_in_phases: ["enumeration", "vulnerability"]
+    tool_types: ["ssl", "scanner"]
+
+  - id: web_fuzzing
+    label: "Web Fuzzing"
+    allowed_in_phases: ["enumeration", "vulnerability"]
+    tool_types: ["fuzzer", "web"]
+
+  - id: osint
+    label: "OSINT Gathering"
+    allowed_in_phases: ["discovery"]
+    tool_types: ["osint", "enumeration"]
+
+forbidden_techniques:
+  - technique: "denial_of_service"
+    reason: "DoS attacks are outside standard pentest scope"
+    override: "explicit_authorization"
+  - technique: "social_engineering"
+    reason: "Social engineering requires separate engagement agreement"
+    override: "separate_engagement"
+  - technique: "physical_security"
+    reason: "Physical security testing requires separate engagement agreement"
+    override: "separate_engagement"
+  - technique: "data_destruction"
+    reason: "Never destroy or alter production data"
+    override: "none"
+
+report_sections:
+  - id: executive_summary
+    label: "Executive Summary"
+    order: 0
+  - id: methodology
+    label: "Methodology"
+    order: 1
+  - id: scope
+    label: "Scope"
+    order: 2
+  - id: findings_summary
+    label: "Findings Summary"
+    order: 3
+  - id: detailed_findings
+    label: "Detailed Findings"
+    order: 4
+  - id: exploit_chain
+    label: "Exploitation Chain"
+    order: 5
+  - id: remediation
+    label: "Remediation Recommendations"
+    order: 6
+  - id: appendices
+    label: "Appendices"
+    order: 7
