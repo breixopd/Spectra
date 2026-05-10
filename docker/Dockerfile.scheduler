@@ -9,7 +9,7 @@ FROM ${PYTHON_BASE_IMAGE} AS builder
 WORKDIR /build
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     pkg-config \
@@ -36,7 +36,7 @@ ENV SPECTRA_BUILD_VERSION="${BUILD_VERSION}"
 
 WORKDIR /app
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     gnupg \
@@ -54,7 +54,6 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 RUN useradd --create-home --shell /bin/bash spectra && \
-    groupadd -f docker && usermod -aG docker spectra && \
     mkdir -p /app/data /app/data/backups /app/logs && \
     chown -R spectra:spectra /app
 
@@ -74,6 +73,7 @@ COPY --chown=spectra:spectra packages/platform/src/spectra_platform/mission/ ./s
 COPY --chown=spectra:spectra packages/platform/src/spectra_platform/models/ ./spectra_platform/models/
 COPY --chown=spectra:spectra packages/platform/src/spectra_platform/telemetry/ ./spectra_platform/telemetry/
 COPY --chown=spectra:spectra packages/platform/src/spectra_platform/repositories/ ./spectra_platform/repositories/
+COPY --chown=spectra:spectra packages/platform/src/spectra_platform/runtime/ ./spectra_platform/runtime/
 COPY --chown=spectra:spectra packages/platform/src/spectra_platform/services/ ./spectra_platform/services/
 COPY --chown=spectra:spectra packages/platform/src/spectra_platform/utils/ ./spectra_platform/utils/
 COPY --chown=spectra:spectra alembic/ ./alembic/

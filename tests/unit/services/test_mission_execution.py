@@ -93,10 +93,14 @@ class TestMissionLoop:
                 mock_rec.start = MagicMock()
                 mock_rec.stop = MagicMock()
                 mock_rec.save = AsyncMock()
+                mock_rec.is_recording = True
+                mock_rec.event_count = 2
 
                 await execution_manager.run_mission_loop(mission)
 
                 mock_rec.start.assert_called_once()
+                mock_rec.stop.assert_called_once()
+                mock_rec.save.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_loop_success_path(self, execution_manager):

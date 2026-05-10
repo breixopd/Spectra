@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import and_, select, update
 
 from spectra_platform.core.database import async_session_maker
 from spectra_platform.models.infrastructure import JobQueue
@@ -109,19 +109,24 @@ class PostgresJobQueue:
             if job.retry_count >= job.max_retries:
                 job.status = "dead_letter"
                 job.completed_at = datetime.now(UTC)
-                logger.warning(
-                    "Job %s moved to dead letter after %d retries: %s",
+                logger.info(
+                    "Job %s (%s) promoted to dead letter after %d retries",
                     job_id,
+                    job.function,
                     job.retry_count,
-                    error,
                 )
             else:
+                # Exponential backoff: 2^retry_count seconds, capped at 300s
+                delay = min(2 ** job.retry_count, 300)
                 job.status = "pending"
+                job.next_retry_at = datetime.now(UTC) + timedelta(seconds=delay)
                 logger.info(
-                    "Job %s queued for retry %d/%d",
+                    "Job %s (%s) queued for retry %d/%d in %ds",
                     job_id,
+                    job.function,
                     job.retry_count,
                     job.max_retries,
+                    delay,
                 )
             job.error = error
             await session.commit()
@@ -249,7 +254,16 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
                 async with async_session_maker() as session:
                     query = (
                         select(JobQueue)
-                        .where(JobQueue.status.in_(["queued", "pending"]), JobQueue.queue_name == queue_name)
+                        .where(
+                            JobQueue.queue_name == queue_name,
+                            (
+                                JobQueue.status == "queued"
+                                | and_(
+                                    JobQueue.status == "pending",
+                                    JobQueue.next_retry_at <= datetime.now(UTC),
+                                )
+                            ),
+                        )
                         .order_by(JobQueue.priority.asc(), JobQueue.enqueued_at.asc())
                         .with_for_update(skip_locked=True)
                         .limit(1)

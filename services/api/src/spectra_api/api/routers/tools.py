@@ -726,9 +726,9 @@ async def test_tool(
             ),
         )
 
-    except (OSError, RuntimeError, TimeoutError, ValueError, Exception) as e:
+    except (OSError, RuntimeError, TimeoutError, ValueError) as e:
         logger.error("Tool test failed for %s: %s", tool_id, e)
-        raise HTTPException(status_code=500, detail=f"Test execution failed: {e}") from e
+        raise HTTPException(status_code=500, detail="Test execution failed") from e
 
 
 @router.get("/{tool_id}/stats")

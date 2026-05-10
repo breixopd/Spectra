@@ -22,6 +22,7 @@ The canonical operator workflow lives in [../../docs/wiki/operations.md](../../d
 | `worker_management.sh` | Inspect, retry, and purge queue work | `status`, `failed`, `dead-letter`, `retry-job <id>`, `purge-completed`, `purge-dead`, `worker-health` | Destructive | Active — Admin UI planned |
 | `host-maintenance.sh` | Journal vacuum, old `/var/log` `.gz`, Docker builder/image prune | `sudo ./scripts/ops/host-maintenance.sh` (`AGGRESSIVE=1` for stronger image prune) | Mutating | Active |
 | `suggest-compose-scale.sh` | Print suggested `AUTOSCALE_*` caps from CPU/RAM | `./scripts/ops/suggest-compose-scale.sh` | Read-only | Active |
+| **Python host ops (scheduler image)** | `python -m spectra_platform.runtime.host_ops_cli` | One-shot Docker prune; used by systemd on pool hosts after provision | Mutating | Active |
 
 ## Safety Notes
 

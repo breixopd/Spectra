@@ -52,6 +52,7 @@ class Finding(Base):
     __tablename__ = "findings"
     __table_args__ = (
         Index("ix_findings_user_id_severity", "user_id", "severity"),
+        Index("ix_findings_cve_id", "cve_id"),
         CheckConstraint(
             "cvss_score IS NULL OR (cvss_score >= 0 AND cvss_score <= 10)",
             name="ck_findings_cvss_range",
@@ -81,12 +82,12 @@ class Finding(Base):
         index=True,
     )
     cvss_score: Mapped[float | None] = mapped_column(nullable=True)
-    cve_id: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    cve_id: Mapped[str | None] = mapped_column(String(20), nullable=True)
     tool_source: Mapped[str] = mapped_column(String(100), nullable=False)
     evidence: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Relationship
-    target: Mapped[Target] = relationship("Target", back_populates="findings", lazy="select")
+    target: Mapped[Target] = relationship("Target", back_populates="findings", lazy="selectin")
 
     def __repr__(self) -> str:
         return f"<Finding id={self.id} title={self.title!r} severity={self.severity}>"

@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from spectra_platform.infrastructure.cache import CacheService, _json_dumps, get_cache, set_cache
-from spectra_platform.models.infrastructure import CacheEntry, InfrastructureBase
+from spectra_platform.models.infrastructure import CacheEntry
 
 
 @pytest_asyncio.fixture
@@ -20,7 +20,9 @@ async def db_session_maker():
     """Create an in-memory SQLite async engine and session maker for tests."""
     engine = create_async_engine("sqlite+aiosqlite://", echo=False)
     async with engine.begin() as conn:
-        await conn.run_sync(InfrastructureBase.metadata.create_all)
+        # Only create cache DDL — full Base.metadata hits duplicate explicit-vs-implicit
+        # indexes on several models when running create_all against SQLite.
+        await conn.run_sync(CacheEntry.__table__.create, checkfirst=True)
 
     maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     yield maker

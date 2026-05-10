@@ -73,8 +73,13 @@ async def sandbox_watchdog_loop() -> None:
                 continue
 
             async with async_session_maker() as session:
-                result = await session.execute(select(Sandbox).where(Sandbox.status == "running"))
+                result = await session.execute(select(Sandbox).where(Sandbox.status == "running").limit(500))
                 sandboxes = list(result.scalars().all())
+                if len(sandboxes) == 500:
+                    logger.warning(
+                        "Watchdog: processed batch of %d running sandboxes (limit reached, remaining will be reaped next cycle)",
+                        len(sandboxes),
+                    )
 
             now = datetime.now(UTC)
             for sb in sandboxes:

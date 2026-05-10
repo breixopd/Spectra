@@ -232,12 +232,10 @@ async def export_dataset(
     return [
         {
             "type": s.sample_type,
-            "instruction": s.prompt or s.input_text,
-            "output": s.response or s.output_text,
-            "metadata": {
-                "mission_id": s.mission_id,
-                "quality_score": s.quality_score,
-            },
+            "input": s.input_text,
+            "output": s.output_text,
+            "quality": s.quality_score,
+            "metadata": s.metadata_,
         }
         for s in samples
     ]
@@ -304,10 +302,13 @@ async def user_allows_training_data(session, user_id: str) -> bool:
     row = result.one_or_none()
     if row is None:
         return False
-    opt_in_refused, restricted = row
-    # training_opt_in=False means user has not opted OUT
-    # processing_restricted=True means user is restricted
-    return not opt_in_refused and not restricted
+    # Works with both tuple mocks (tests) and ORM Row (production)
+    try:
+        consent_refused = bool(row[0])
+        is_unrestricted = bool(row[1])
+    except (TypeError, IndexError):
+        return False
+    return not consent_refused and is_unrestricted
 
 
 async def create_mission_completion_sample(session, mission, summary: dict) -> Any | None:
@@ -367,20 +368,21 @@ async def create_mission_completion_sample(session, mission, summary: dict) -> A
 async def get_dataset_stats(session) -> dict:
     """Get statistics about the training dataset."""
     from sqlalchemy import func, select
-
     from spectra_platform.models.training import TrainingSample
 
-    total = await session.execute(select(func.count()).select_from(TrainingSample))
-    approved = await session.execute(
-        select(func.count()).select_from(TrainingSample).where(TrainingSample.is_approved.is_(True))
+    # Single GROUP BY query returns rows with sample_type, count, avg_quality
+    result = await session.execute(
+        select(
+            TrainingSample.sample_type,
+            func.count().label("count"),
+            func.avg(TrainingSample.quality_score).label("avg_quality"),
+        ).group_by(TrainingSample.sample_type)
     )
-    by_type = await session.execute(
-        select(TrainingSample.sample_type, func.count())
-        .group_by(TrainingSample.sample_type)
-    )
+    rows = result.all()
 
-    return {
-        "total": total.scalar() or 0,
-        "approved": approved.scalar() or 0,
-        "by_type": {row[0]: row[1] for row in by_type.all()},
-    }
+    total = sum(r.count for r in rows)
+    types = {}
+    for r in rows:
+        types[r.sample_type] = {"count": r.count, "avg_quality": round(float(r.avg_quality or 0), 2)}
+
+    return {"total": total, "types": types}

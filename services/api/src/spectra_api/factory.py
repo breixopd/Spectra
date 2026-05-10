@@ -8,10 +8,12 @@ import json
 import logging
 import time
 
+from typing import Callable
+
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -58,14 +60,22 @@ def _is_timeout_exempt_path(path: str) -> bool:
 
 
 def _safe_rate_limit_handler(request: Request, exc: Exception) -> StarletteResponse:
-    """Guard slowapi: only delegate real RateLimitExceeded; else 503."""
+    """Render nice HTML page for browsers, JSON for API clients."""
     if isinstance(exc, RateLimitExceeded):
+        if request.headers.get("accept", "").find("text/html") != -1 and not request.url.path.startswith("/api/"):
+            try:
+                templates = Jinja2Templates(directory="services/api/templates")
+                return HTMLResponse(
+                    templates.get_template("errors/429.html").render(
+                        detail="You have made too many requests. Please wait a moment and try again.",
+                        request=request,
+                    ),
+                    status_code=429,
+                )
+            except Exception:
+                pass
         return rate_limit_exceeded_handler_sync(request, exc)
-    logger.warning(
-        "slowapi handler received non-RateLimitExceeded exception: %s: %s",
-        type(exc).__name__,
-        exc,
-    )
+    logger.warning("slowapi handler received non-RateLimitExceeded: %s", type(exc).__name__)
     return JSONResponse({"error": "Service temporarily unavailable"}, status_code=503)
 
 
@@ -83,9 +93,12 @@ def create_app() -> FastAPI:
         openapi_url="/api/openapi.json" if settings.DEBUG else None,
     )
 
+    from slowapi import Limiter
+
     app.state.limiter = limiter
     app.state.limiter._rate_limit_exceeded_handler = _safe_rate_limit_handler  # type: ignore[attr-defined]
-    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler_sync)  # type: ignore[arg-type]
+    # type: ignore[arg-type] - FastAPI expects Exception handler, but rate_limit_exceeded_handler_sync takes RateLimitExceeded
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler_sync)
     app.add_middleware(SlowAPIMiddleware)
 
     register_exception_handlers(app, shared_templates)

@@ -38,7 +38,13 @@ async def require_manual_mode(
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> User:
-    await check_feature_allowed(current_user, session, "manual_mode")
+    try:
+        await check_feature_allowed(current_user, session, "manual_mode")
+    except HTTPException:
+        raise HTTPException(
+            status_code=403,
+            detail="Manual mode requires Pro plan or higher. Upgrade at /billing/plans",
+        )
     return current_user
 
 

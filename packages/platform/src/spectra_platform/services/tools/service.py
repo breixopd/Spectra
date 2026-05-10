@@ -258,6 +258,20 @@ class ToolExecutionService:
             )
 
             record_to_memory(mission, tool_name, target, args, result)
+
+            # Record to demo recorder if available
+            recorder = getattr(mission, "_demo_recorder", None)
+            if recorder:
+                try:
+                    recorder.record_tool_start(tool_name, target, args or {})
+                    if result.stdout:
+                        output_preview = result.stdout[:500]
+                        recorder.record_tool_output(output_preview)
+                    findings_count = len(result.parsed_findings) if result.parsed_findings else 0
+                    recorder.record_tool_result(tool_name, result.success, findings_count)
+                except (OSError, RuntimeError, AttributeError) as e:
+                    logger.debug("Demo recording failed: %s", e)
+
             return result
 
         except (OSError, TimeoutError, ValueError, KeyError, RuntimeError) as e:

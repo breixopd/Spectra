@@ -15,19 +15,23 @@
     <meta property="og:type" content="website">
 
     <!-- Tailwind CSS (compiled) -->
-    <link rel="stylesheet" href="/static/css/output.css?v={{ version }}">
+    <link rel="stylesheet" href="/static/css/output.css?v=20260503">
+
+    <!-- Design tokens (single source of truth) -->
+    <link rel="stylesheet" href="/static/css/tokens.css?v=20260503">
 
     <!-- Fonts (local) -->
-    <link rel="stylesheet" href="/static/vendor/css/fonts.css?v={{ version }}">
+    <link rel="stylesheet" href="/static/vendor/css/fonts.css?v=20260503">
     
-    <link rel="stylesheet" href="/static/css/base.css?v={{ version }}">
+    <link rel="stylesheet" href="/static/css/base.css?v=20260503">
     {% block extra_css %}{% endblock %}
     <!-- Centralized API client (must load before confirm bootstrap) -->
-    <script src="/static/js/api.js?v={{ version }}"></script>
-    <script src="/static/js/shared-utils.js?v={{ version }}"></script>
-    <script src="/static/js/confirm.js?v={{ version }}" nonce="{{ request.state.csp_nonce }}"></script>
+    <script src="/static/js/api.js?v=20260503"></script>
+    <script nonce="{{ request.state.csp_nonce }}">window.escapeHtml=function(s){var d=document.createElement('div');d.textContent=String(s);return d.innerHTML};</script>
+    <script src="/static/js/shared-utils.js?v=20260503"></script>
+    <script src="/static/js/confirm.js?v=20260503" nonce="{{ request.state.csp_nonce }}"></script>
 </head>
-<body class="bg-[#0a0e1a] text-slate-300 font-sans antialiased overflow-y-auto md:overflow-hidden h-screen selection:bg-violet-500/30 selection:text-violet-200">
+<body class="bg-[#0a0e1a] text-slate-300 font-sans antialiased min-h-screen md:overflow-hidden selection:bg-violet-500/30 selection:text-violet-200">
     <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-violet-600 focus:text-white">Skip to content</a>
     <!-- Global system status bar -->
     <div id="global-status-bar" class="hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-violet-900/90 via-indigo-900/90 to-violet-900/90 backdrop-blur-md border-b border-violet-500/20 px-4 py-2 text-center text-sm text-white shadow-lg">
@@ -44,12 +48,12 @@
         {% if not is_public_page %}
         <!-- Mobile header -->
         <div class="mobile-header">
-            <button class="hamburger-btn" data-action="toggleSidebar" aria-label="Toggle navigation">
+            <button class="hamburger-btn" data-action="toggleSidebar" aria-label="Toggle navigation" aria-expanded="false">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
             <span class="text-white font-semibold text-lg">Spectra</span>
         </div>
-        <aside id="sidebar" class="sidebar" data-testid="sidebar">
+        <aside id="sidebar" class="sidebar" data-testid="sidebar" aria-label="Main navigation">
             <div class="p-4 h-full flex flex-col">
                 <!-- Logo -->
                 <div class="flex items-center gap-3 px-3 mb-8">
@@ -60,56 +64,31 @@
                 </div>
 
                 <!-- Navigation -->
-                <nav class="flex flex-col gap-2">
-                    <a href="/dashboard" data-tooltip="Main dashboard overview" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/dashboard' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
-                        <span class="ml-3 text-sm font-medium">Dashboard</span>
-                    </a>
-                    <a href="/history" data-tooltip="Past assessments &amp; results" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/history' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="history" class="w-4 h-4"></i>
-                        <span class="ml-3 text-sm font-medium">History</span>
-                    </a>
-                    <a href="/targets" data-tooltip="Manage targets and scopes" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/targets' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="target" class="w-4 h-4"></i>
-                        <span class="ml-3 text-sm font-medium">Targets</span>
-                    </a>
-                    <a href="/reports" data-tooltip="Generated security reports" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/reports' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="file-text" class="w-4 h-4"></i>
-                        <span class="ml-3 text-sm font-medium">Reports</span>
-                    </a>
-                    <a href="/profile" data-tooltip="Account, security, and billing" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/profile' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="user-circle" class="w-4 h-4"></i>
-                        <span class="ml-3 text-sm font-medium">Account</span>
-                    </a>
-                    <a href="/toolbox" data-tooltip="Tool registry and custom plugins" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/toolbox' or request.url.path.startswith('/toolbox/') %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="package" class="w-4 h-4"></i>
-                        <span class="ml-3 text-sm font-medium">Toolbox</span>
-                    </a>
-                    <a href="/overseer" data-tooltip="Agent overseer and safety controls" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/overseer' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="bot" class="w-4 h-4"></i>
-                        <span class="ml-3 text-sm font-medium">Agents</span>
-                    </a>
-                    <a href="/docs/api" data-entitlement-gate="api_access" data-tooltip="API docs and integrations" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/docs/api' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="book-open" class="w-4 h-4"></i>
-                        <span class="ml-3 text-sm font-medium">Documentation</span>
-                    </a>
-                    <a href="/manual" data-entitlement-gate="manual_mode" data-tooltip="Manual tool execution workspace" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/manual' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="terminal-square" class="w-4 h-4"></i>
-                        <span class="ml-3 text-sm font-medium">Manual Tools</span>
-                    </a>
-                    <a href="/settings" data-tooltip="System and AI configuration" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/settings' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="settings-2" class="w-4 h-4"></i>
-                        <span class="ml-3 text-sm font-medium">Settings</span>
-                    </a>
-                    <a href="/help" data-tooltip="Help resources and support" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/help' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="help-circle" class="w-4 h-4"></i>
-                        <span class="ml-3 text-sm font-medium">Help Center</span>
-                    </a>
-                    <a id="observability-nav-link" href="/observability" data-testid="observability-nav-link" data-tooltip="Platform metrics and traces" data-tooltip-pos="right" class="hidden flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/observability' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                {% from "macros/navigation.html" import nav_item %}
+                <nav class="flex flex-col gap-1">
+                    <div class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Main</div>
+                    {{ nav_item("/dashboard", "layout-dashboard", "Dashboard", active=(request.url.path == '/dashboard')) }}
+                    {{ nav_item("/history", "history", "History", active=(request.url.path == '/history')) }}
+                    
+                    <div class="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Assessment</div>
+                    {{ nav_item("/targets", "target", "Targets", active=(request.url.path == '/targets')) }}
+                    {{ nav_item("/toolbox", "package", "Toolbox", active=(request.url.path == '/toolbox' or request.url.path.startswith('/toolbox/'))) }}
+                    {{ nav_item("/manual", "terminal-square", "Manual Tools", active=(request.url.path == '/manual')) }}
+                    {{ nav_item("/overseer", "bot", "Agents", active=(request.url.path == '/overseer')) }}
+                    {{ nav_item("/reports", "file-text", "Reports", active=(request.url.path == '/reports')) }}
+                    
+                    <div class="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Settings</div>
+                    {{ nav_item("/profile", "user-circle", "Account", active=(request.url.path == '/profile')) }}
+                    {{ nav_item("/settings", "settings-2", "Settings", active=(request.url.path == '/settings')) }}
+                    
+                    <div class="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Advanced</div>
+                    {{ nav_item("/docs/api", "book-open", "Documentation", active=(request.url.path == '/docs/api')) }}
+                    {{ nav_item("/help", "help-circle", "Help Center", active=(request.url.path == '/help')) }}
+                    <a id="observability-nav-link" href="/observability" data-testid="observability-nav-link" class="hidden {% if request.url.path == '/observability' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg transition-colors group">
                         <i data-lucide="line-chart" class="w-4 h-4"></i>
                         <span class="ml-3 text-sm font-medium">Observability</span>
                     </a>
-                    <a id="admin-nav-link" href="/admin" data-testid="admin-nav-link" data-tooltip="Admin controls and oversight" data-tooltip-pos="right" class="hidden flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/admin' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                    <a id="admin-nav-link" href="/admin" data-testid="admin-nav-link" class="hidden {% if request.url.path == '/admin' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg transition-colors group">
                         <i data-lucide="shield-check" class="w-4 h-4"></i>
                         <span class="ml-3 text-sm font-medium">Admin</span>
                     </a>
@@ -146,13 +125,15 @@
 
         <!-- Main Content -->
         <main id="main-content" tabindex="-1" class="{% if is_public_page %}w-full max-w-lg px-4{% else %}main-content flex-1 p-4 md:p-6 h-full overflow-y-auto overflow-x-hidden flex flex-col{% endif %}">
+            <!-- Live region for dynamic content announcements -->
+            <div id="live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
             {% block breadcrumbs %}{% endblock %}
             {% block content %}{% endblock %}
         </main>
     </div>
     <!-- Native WebSocket (for real-time updates) -->
     {% if not is_public_page %}
-    <script src="/static/js/reconnecting-ws.js?v={{ version }}"></script>
+    <script src="/static/js/reconnecting-ws.js?v=20260503"></script>
     <script nonce="{{ request.state.csp_nonce }}">
         function clearSpectraLocalStorage() {
             try {
@@ -381,53 +362,42 @@
             }
         });
     </script>
-    <!-- Sidebar Toggle -->
-    <script nonce="{{ request.state.csp_nonce }}">
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebar-overlay');
-            sidebar.classList.toggle('open');
-            overlay.classList.toggle('active');
-        }
-        // Close sidebar on nav click (mobile)
-        document.querySelectorAll('.sidebar nav a').forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth < 768) toggleSidebar();
-            });
-        });
-        // Close sidebar on resize to desktop
-        window.addEventListener('resize', () => {
-            if (window.innerWidth >= 768) {
-                document.getElementById('sidebar').classList.remove('open');
-                document.getElementById('sidebar-overlay').classList.remove('active');
-            }
-        });
-    </script>
+    <script src="/static/js/modules/sidebar.js"></script>
     <script src="/static/js/modules/accordion.js"></script>
     <script src="/static/js/modules/delegated-events.js"></script>
     <script src="/static/js/modules/modal.js" type="module"></script>
     <script src="/static/js/modules/tabs.js" type="module"></script>
     <script src="/static/js/modules/toast.js" type="module"></script>
     {% endif %}
-    <script nonce="{{ request.state.csp_nonce }}">
-    function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-    function escapeAttr(str) {
-        return String(str ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-    }
-    function togglePasswordVisibility(el) {
-        const input = el.previousElementSibling;
-        if (input) input.type = input.type === 'password' ? 'text' : 'password';
-    }
-    </script>
     <!-- Lucide Icons — locally hosted, same-origin (SRI would add no cross-origin benefit) -->
     <script src="/static/vendor/js/lucide.min.js"></script>
     <script nonce="{{ request.state.csp_nonce }}">
       document.addEventListener('DOMContentLoaded', () => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+    </script>
+    <script nonce="{{ request.state.csp_nonce }}">
+      document.addEventListener('submit', function(e) {
+        const form = e.target;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn && (submitBtn.classList.contains('loading') || submitBtn.dataset.loadingText)) {
+          const loadingText = submitBtn.dataset.loadingText || 'Loading...';
+          const originalHTML = submitBtn.innerHTML;
+          submitBtn.classList.add('loading');
+          submitBtn.disabled = true;
+          submitBtn.dataset.originalHTML = originalHTML;
+          submitBtn.innerHTML = '<span class="spinner"></span>' + loadingText;
+          form.dataset.restoreBtn = submitBtn;
+        }
+      });
+      document.addEventListener('click', function(e) {
+        const btn = e.target.closest('[data-action]');
+        if (btn && btn.dataset.loadingText && !btn.classList.contains('loading')) {
+          const originalHTML = btn.innerHTML;
+          btn.classList.add('loading');
+          btn.disabled = true;
+          btn.dataset.originalHTML = originalHTML;
+          btn.innerHTML = '<span class="spinner"></span>' + btn.dataset.loadingText;
+        }
+      });
     </script>
     {% block scripts %}{% endblock %}
     {% block extra_js %}{% endblock %}

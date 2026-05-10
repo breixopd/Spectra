@@ -1,0 +1,96 @@
+/* Consolidated design tokens - single source of truth for all CSS custom properties */
+
+:root {
+    color-scheme: dark;
+
+    /* Colors - Background */
+    --bg: #0a0e1a;
+    --bg-secondary: #020617;
+    --bg-elevated: #111827;
+    --bg-card: rgba(255,255,255,0.03);
+    --bg-card-hover: rgba(255,255,255,0.06);
+
+    /* Colors - Border */
+    --border: rgba(255,255,255,0.1);
+    --border-hover: rgba(255,255,255,0.2);
+
+    /* Colors - Primary (violet) */
+    --violet: #8b5cf6;
+    --violet-hover: #7c3aed;
+    --violet-glow: rgba(139, 92, 246, 0.3);
+    --violet-dim: rgba(139,92,246,0.15);
+
+    /* Colors - Accent (green) */
+    --accent: #00ff88;
+    --accent-dim: rgba(0,255,136,0.15);
+    --success: #10b981;
+
+    /* Colors - Semantic */
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --info: #3b82f6;
+
+    /* Colors - Text */
+    --text: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+
+    /* Border Radius */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
+    --shadow-glow: 0 0 20px var(--violet-glow);
+
+    /* Z-index scale */
+    --z-sidebar: 40;
+    --z-sidebar-overlay: 45;
+    --z-global-status: 50;
+    --z-modal-backdrop: 60;
+    --z-modal: 70;
+    --z-toast: 90;
+    --z-tooltip: 100;
+    --z-cookie-consent: 110;
+
+    /* Typography */
+    --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+}
+
+html {
+    color-scheme: dark;
+}
+
+/* Loading states for buttons */
+.btn.loading,
+button.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.btn .spinner,
+button .spinner {
+    display: none;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+.btn.loading .spinner,
+button.loading .spinner {
+    display: inline-block;
+    margin-right: 0.5rem;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

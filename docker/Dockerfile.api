@@ -9,7 +9,7 @@ FROM ${PYTHON_BASE_IMAGE} AS builder
 WORKDIR /build
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     libcairo2-dev \
@@ -23,12 +23,15 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements/app.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r app.txt
 
 # Build Tailwind CSS with PostCSS pipeline in builder stage
 COPY config/package.json config/package-lock.json config/postcss.config.js config/tailwind.config.js ./config/
 COPY services/api/static/css/input.css ./services/api/static/css/input.css
+COPY services/api/templates/ ./services/api/templates/
+COPY services/api/static/js/ ./services/api/static/js/
 RUN cp config/package.json config/package-lock.json . && npm install && \
     NODE_ENV=production npx postcss services/api/static/css/input.css -o services/api/static/css/output.css --config config/postcss.config.js
 
@@ -41,11 +44,11 @@ LABEL org.opencontainers.image.title="Spectra API" \
       org.opencontainers.image.source="https://github.com/breixopd14/spectra" \
       org.opencontainers.image.vendor="breixopd14" \
       org.opencontainers.image.version="${BUILD_VERSION}"
-ENV SPECTRA_BUILD_VERSION="${BUILD_VERSION}"
 
 WORKDIR /app
+RUN printf '%s' "${BUILD_VERSION}" > /app/.build-version
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     gnupg \
@@ -64,7 +67,6 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 RUN useradd --create-home --shell /bin/bash spectra && \
-    groupadd -f docker && usermod -aG docker spectra && \
     mkdir -p /app/data /app/data/backups /app/logs && \
     chown -R spectra:spectra /app
 
@@ -80,7 +82,6 @@ COPY --chown=spectra:spectra services/api/templates/ ./spectra_api/templates/
 COPY --chown=spectra:spectra alembic/ ./alembic/
 COPY --chown=spectra:spectra config/alembic.ini ./config/alembic.ini
 COPY --chown=spectra:spectra plugins/ ./plugins/
-COPY --chown=spectra:spectra plugins/ ./bundled-plugins/
 COPY --chown=spectra:spectra config/tailwind.config.js ./config/tailwind.config.js
 COPY --chown=spectra:spectra config/postcss.config.js ./config/postcss.config.js
 RUN chmod +x /app/scripts/start.sh

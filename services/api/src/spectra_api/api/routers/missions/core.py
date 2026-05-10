@@ -23,6 +23,7 @@ from spectra_common.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from spectra_common.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from spectra_platform.auth.rate_limit import RateLimits, limiter
 from spectra_platform.core.database import get_async_session
+from spectra_platform.mission.core.enums import MissionMilestone, MissionMilestoneStatus
 from spectra_platform.models.audit_log import AuditEventType
 from spectra_platform.models.user import User
 from spectra_platform.models.user_preferences import UserPreferences
@@ -154,6 +155,29 @@ async def start_mission(
 
     if not mission:
         raise HTTPException(status_code=500, detail="Failed to create mission")
+
+    if mission_request.roe:
+        try:
+            from spectra_platform.models.roe import RulesOfEngagement
+
+            roe = RulesOfEngagement(
+                mission_id=mission_id,
+                authorized_targets=mission_request.roe.get("authorized_targets"),
+                excluded_targets=mission_request.roe.get("excluded_targets"),
+                authorized_actions=mission_request.roe.get("authorized_actions"),
+                prohibited_actions=mission_request.roe.get("prohibited_actions"),
+                max_scan_intensity=mission_request.roe.get("max_scan_intensity", "normal"),
+                data_exfiltration_allowed=mission_request.roe.get("data_exfiltration_allowed", False),
+                max_exfiltration_bytes=mission_request.roe.get("max_exfiltration_bytes"),
+                allow_persistence=mission_request.roe.get("allow_persistence", False),
+                notification_email=mission_request.roe.get("notification_email"),
+                operator_signoff_required=mission_request.roe.get("operator_signoff_required", True),
+                additional_constraints=mission_request.roe.get("additional_constraints"),
+            )
+            db.add(roe)
+            await db.commit()
+        except Exception as e:
+            logger.warning("Failed to create RoE for mission %s: %s", mission_id, e)
 
     # Audit log
     await audit_log_event(
@@ -400,3 +424,48 @@ async def get_mission(
             pentest_framework=summary.get("pentest_framework"),
         ),
     )
+
+
+@router.get(
+    "/{mission_id}/milestones",
+    response_model=list[dict],
+    summary="Get mission milestones",
+    description="Return M1-M11 milestone progress for a mission.",
+)
+async def get_mission_milestones(
+    mission_id: str,
+    db: AsyncSession = Depends(get_async_session),
+    _current_user: User = Depends(get_current_active_user),
+) -> list[dict]:
+    """Return all 11 milestones with status and timestamps."""
+    validate_uuid_param(mission_id, "mission_id")
+
+    mission = await mission_manager.get_mission(mission_id)
+    if not mission:
+        repo = MissionRepository(db)
+        mission = await repo.get_by_id(mission_id)
+
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+
+    check_resource_owner(mission, _current_user, "mission")
+
+    stored = mission.milestones or []
+    stored_map = {m.get("milestone"): m for m in stored if m.get("milestone")}
+
+    result = []
+    for m in MissionMilestone:
+        if m.value in stored_map:
+            result.append(stored_map[m.value])
+        else:
+            result.append(
+                {
+                    "milestone": m.value,
+                    "label": m.label,
+                    "status": MissionMilestoneStatus.PENDING.value,
+                    "completed_at": None,
+                    "details": "",
+                }
+            )
+
+    return result

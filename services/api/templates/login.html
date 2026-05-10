@@ -40,14 +40,21 @@
                         <label for="password" class="block text-sm font-medium text-slate-400 mb-1">Password</label>
                         <div class="relative">
                             <input type="password" id="password" name="password" required autocomplete="current-password" minlength="8" aria-required="true" aria-describedby="error-msg" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 pr-10 text-white focus:border-violet-500 focus:outline-none transition-colors">
-                            <button type="button" id="password-toggle" aria-label="Toggle password visibility" data-action="toggleLoginPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors">
+                            <button type="button" id="password-toggle" aria-label="Toggle password visibility" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors">
                                 <i id="pw-toggle-icon" data-lucide="eye" class="w-4 h-4 inline-block"></i>
                             </button>
                         </div>
                     </div>
 
-                    <button type="submit" class="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 active:scale-[0.98] text-white font-bold transition-all mt-6 shadow-lg shadow-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none">
-                        Sign In
+                    <div class="flex items-center justify-between mt-2">
+                        <label class="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
+                            <input type="checkbox" name="remember" class="rounded bg-black/30 border-white/10 text-violet-600 focus:ring-violet-500">
+                            <span>Remember me</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 active:scale-[0.98] text-white font-bold transition-all mt-4 shadow-lg shadow-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none">
+                        <span class="spinner"></span>Sign In
                     </button>
                 </form>
 
@@ -87,156 +94,5 @@
     </div>
 </div>
 
-<script nonce="{{ request.state.csp_nonce }}">
-    function toggleLoginPassword() {
-        const p = document.getElementById('password');
-        const isHidden = p.type === 'password';
-        p.type = isHidden ? 'text' : 'password';
-        const icon = document.getElementById('pw-toggle-icon');
-        icon.setAttribute('data-lucide', isHidden ? 'eye-off' : 'eye');
-        if (typeof lucide !== 'undefined') lucide.createIcons({nodes:[icon]});
-    }
-
-    // Check for setup success message
-    if (new URLSearchParams(window.location.search).get('setup') === 'complete') {
-        const successMsg = document.getElementById('success-msg');
-        successMsg.textContent = 'Setup complete! Please log in with your admin credentials.';
-        successMsg.classList.remove('hidden');
-    }
-
-    let mfaTempToken = null;
-
-    const loginForm = document.getElementById('login-form');
-    const mfaStep = document.getElementById('mfa-step');
-    const loginFooter = document.getElementById('login-footer');
-    const totpInput = document.getElementById('totp-code');
-    const mfaSubmitBtn = document.getElementById('mfa-submit');
-    const mfaCancelBtn = document.getElementById('mfa-cancel');
-    const mfaErrorMsg = document.getElementById('mfa-error-msg');
-
-    // Only allow digits in the TOTP input
-    totpInput.addEventListener('input', (e) => {
-        e.target.value = e.target.value.replace(/\D/g, '');
-        if (e.target.value.length === 6) {
-            submitMfaCode();
-        }
-    });
-
-    function showMfaStep() {
-        loginForm.classList.add('hidden');
-        loginFooter.classList.add('hidden');
-        document.getElementById('error-msg').classList.add('hidden');
-        document.getElementById('success-msg').classList.add('hidden');
-        mfaStep.classList.remove('hidden');
-        mfaErrorMsg.classList.add('hidden');
-        totpInput.value = '';
-        totpInput.focus();
-    }
-
-    function showLoginForm() {
-        if (mfaTempToken) {
-            fetch('/api/v1/auth/mfa/cancel', {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + mfaTempToken }
-            }).catch(() => {});
-        }
-        mfaTempToken = null;
-        mfaStep.classList.add('hidden');
-        mfaErrorMsg.classList.add('hidden');
-        totpInput.value = '';
-        loginForm.classList.remove('hidden');
-        loginFooter.classList.remove('hidden');
-    }
-
-    async function submitMfaCode() {
-        const code = totpInput.value.trim();
-        if (code.length !== 6 || !/^[0-9]{6}$/.test(code)) return;
-
-        mfaSubmitBtn.disabled = true;
-        mfaSubmitBtn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin mr-2"></i>Verifying…';
-        mfaErrorMsg.classList.add('hidden');
-
-        try {
-            const res = await fetch('/api/v1/auth/mfa/verify', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + mfaTempToken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                credentials: 'same-origin',
-                body: JSON.stringify({ code: code })
-            });
-
-            if (!res.ok) {
-                const errData = await res.json().catch(() => null);
-                throw new Error(errData?.detail || 'Invalid authentication code');
-            }
-
-            mfaTempToken = null;
-            window.location.href = '/dashboard';
-
-        } catch (err) {
-            mfaSubmitBtn.disabled = false;
-            mfaSubmitBtn.innerHTML = 'Verify';
-            totpInput.value = '';
-            totpInput.focus();
-            mfaErrorMsg.textContent = err.message;
-            mfaErrorMsg.classList.remove('hidden');
-        }
-    }
-
-    mfaSubmitBtn.addEventListener('click', submitMfaCode);
-    mfaCancelBtn.addEventListener('click', showLoginForm);
-
-    totpInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            submitMfaCode();
-        }
-    });
-
-    loginForm.onsubmit = async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const btn = e.target.querySelector('button[type="submit"]');
-        const origText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin mr-2"></i>Signing in…';
-        
-        try {
-            const res = await fetch('/api/v1/auth/token', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                credentials: 'same-origin',
-                body: new URLSearchParams(formData)
-            });
-            
-            if (!res.ok) throw new Error('Invalid credentials');
-            
-            const data = await res.json();
-
-            if (data.mfa_required) {
-                btn.disabled = false;
-                btn.innerHTML = origText;
-                mfaTempToken = data.access_token;
-                showMfaStep();
-                return;
-            }
-
-            window.location.href = '/dashboard';
-            
-        } catch (err) {
-            btn.disabled = false;
-            btn.innerHTML = origText;
-            const msg = document.getElementById('error-msg');
-            msg.textContent = err.message;
-            msg.classList.remove('hidden');
-            msg.classList.add('text-red-400');
-        }
-    };
-</script>
+<script nonce="{{ request.state.csp_nonce }}" src="/static/js/pages/auth/login.js"></script>
 {% endblock %}

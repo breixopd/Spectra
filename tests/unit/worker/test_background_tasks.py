@@ -149,6 +149,9 @@ async def test_sandbox_watchdog_reaps_stale_sandbox():
         def where(self, *args, **kwargs):
             return self
 
+        def limit(self, *args, **kwargs):
+            return self
+
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
@@ -202,6 +205,9 @@ async def test_sandbox_watchdog_uses_age_when_heartbeat_missing():
         def where(self, *args, **kwargs):
             return self
 
+        def limit(self, *args, **kwargs):
+            return self
+
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
@@ -244,6 +250,9 @@ async def test_sandbox_watchdog_handles_database_errors():
 
     class _FakeSelect:
         def where(self, *args, **kwargs):
+            return self
+
+        def limit(self, *args, **kwargs):
             return self
 
     with pytest.MonkeyPatch.context() as mp:

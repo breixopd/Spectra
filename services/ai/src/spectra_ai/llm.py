@@ -248,7 +248,7 @@ Respond ONLY with the JSON object. No markdown, no explanation, just the JSON.""
     @abstractmethod
     async def health_check(self) -> bool:
         """Check if the LLM service is available."""
-        ...
+        raise NotImplementedError("Subclass must implement health_check")
 
     async def close(self) -> None:
         """Close any open resources (e.g., HTTP clients)."""

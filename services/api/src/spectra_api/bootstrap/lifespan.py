@@ -10,7 +10,7 @@ import logging
 import shutil
 import socket
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from typing import Any
 from urllib.parse import urlparse
 
@@ -41,6 +41,8 @@ from spectra_platform.services.system.runtime_settings import hydrate_runtime_se
 from spectra_platform.telemetry.telemetry import telemetry
 
 logger = logging.getLogger(__name__)
+
+_embedded_ops_task: asyncio.Task | None = None
 
 
 async def run_startup_checks() -> None:
@@ -391,9 +393,10 @@ async def _initialize_services() -> None:
     # Trigger background setup tasks (including tool installation)
     create_safe_task(run_startup_tasks(), name="startup_tasks")
 
-    # Maintenance loops handled by scheduler service in multi-service mode
+    # Scheduler owns DB/docker/heal loops; API also runs a lightweight embedded_ops loop
+    # (disk metrics + optional Docker prune when the socket is mounted).
     if settings.SERVICE_MODE == "api":
-        logger.info("[SKIP] Maintenance loops deferred to scheduler service")
+        logger.info("[INFO] Full maintenance loops run in scheduler service; API runs embedded_ops")
 
     # Start metrics snapshot store
     from spectra_platform.infrastructure.metrics_store import get_metrics_store
@@ -634,6 +637,7 @@ async def _shutdown_services() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager — delegates to focused sub-functions."""
+    global _embedded_ops_task
     logger.info("[STARTUP] Starting Spectra...")
 
     if not settings.DATABASE_URL.get_secret_value():
@@ -657,11 +661,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         _blacklist_listener_task = create_safe_task(
             _blacklist_change_listener(), name="blacklist_listener"
         )
+        if settings.SERVICE_MODE in ("api", "all", ""):
+            from spectra_platform.runtime.embedded_daemon import spawn_embedded_ops_task
+
+            _embedded_ops_task = spawn_embedded_ops_task("api")
+            logger.info("[OK] Embedded ops daemon started (disk/metrics; light Docker prune if socket mounted)")
     except (OSError, RuntimeError, ImportError) as e:
         logger.error("[ERROR] Startup failed: %s", e)
         raise
 
     yield
+
+    if _embedded_ops_task:
+        _embedded_ops_task.cancel()
+        with suppress(asyncio.CancelledError, TimeoutError):
+            await asyncio.wait_for(_embedded_ops_task, timeout=3.0)
+        _embedded_ops_task = None
 
     # Cancel PG LISTEN tasks
     for _task in (_config_listener_task, _blacklist_listener_task):

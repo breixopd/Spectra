@@ -67,7 +67,7 @@ _GENERAL_DB_FIELD_SPECS: tuple[GeneralDbFieldSpec, ...] = (
     ("tensorzero_gateway_url", "TENSORZERO_GATEWAY_URL", "str", False),
     ("tensorzero_api_key", "TENSORZERO_API_KEY", "str", True),
     # Auto-scaling
-    ("autoscale_enabled", "AUTOSCALE_ENABLED", "bool", False),
+    ("autoscale_enabled", "AUTOSCALE_ENABLED", "bool", True),
     ("autoscale_worker_min", "AUTOSCALE_WORKER_MIN", "int", False),
     ("autoscale_worker_max", "AUTOSCALE_WORKER_MAX", "int", False),
     ("autoscale_api_min", "AUTOSCALE_API_MIN", "int", False),

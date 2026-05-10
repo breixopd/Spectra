@@ -52,3 +52,14 @@ window.escapeAttr = function(s) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 };
+
+window.escapeHtml = function(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+};
+
+window.togglePasswordVisibility = function(el) {
+    var input = el.previousElementSibling;
+    if (input) input.type = input.type === 'password' ? 'text' : 'password';
+};

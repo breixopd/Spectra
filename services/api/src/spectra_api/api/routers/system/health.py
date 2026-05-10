@@ -53,7 +53,7 @@ async def get_system_status_quick(
     cache = _cache_entry
     if cache:
         return cache[0]
-    return {"status": "initializing"}
+    return {"status": "ready", "message": "System starting up — performing initial checks..."}
 
 
 @router.get("/safety-stats")

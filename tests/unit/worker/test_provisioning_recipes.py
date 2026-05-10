@@ -35,7 +35,9 @@ def test_docker_install_recipe_uses_official_apt_repository():
 
 def test_sandbox_worker_recipe_uses_versioned_tools_image_with_local_tag_fallback():
     recipes = _load_recipes_module()
-    command = recipes.PROVISIONING_RECIPES["sandbox_worker"][len(recipes._DOCKER_INSTALL_STEPS)].command
+    steps = recipes.PROVISIONING_RECIPES["sandbox_worker"]
+    pull_step = next(s for s in steps if s.name == "Pull Spectra tools image")
+    command = pull_step.command
 
     assert "docker pull {registry}/spectra-tools:{version}" in command
     assert "docker tag {registry}/spectra-tools:{version} spectra-tools:latest" in command
