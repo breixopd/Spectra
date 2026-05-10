@@ -242,3 +242,146 @@ async def export_dataset(
         }
         for s in samples
     ]
+
+
+# ── Text anonymization ──────────────────────────────────────────────
+
+import re as _re
+
+_IP_PATTERN = _re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
+_CRED_PATTERN = _re.compile(r'(?:password|passwd|pwd|secret|token|key|api_key)\s*[=:]\s*\S+', _re.IGNORECASE)
+_PATH_PATTERN = _re.compile(r'(?:/home/|/root/|/var/|/etc/|/tmp/)\S+')
+
+
+def anonymize_text(text: str) -> str:
+    """Remove sensitive data (IPs, credentials, paths) from training text."""
+    text = _IP_PATTERN.sub("<IP_ADDR>", text)
+    text = _CRED_PATTERN.sub("<REDACTED>", text)
+    text = _PATH_PATTERN.sub("<PATH>", text)
+    return text
+
+
+# ── DB-backed functions ─────────────────────────────────────────────
+
+async def create_training_sample(
+    session,
+    mission_id: str,
+    user_id: str,
+    sample_type: str,
+    input_text: str,
+    output_text: str,
+    quality_score: float = 0.0,
+    metadata: dict | None = None,
+):
+    """Create an anonymized TrainingSample DB record."""
+    from spectra_platform.models.training import TrainingSample
+
+    sample = TrainingSample(
+        mission_id=mission_id,
+        user_id=user_id,
+        sample_type=sample_type,
+        prompt=anonymize_text(input_text),
+        response=anonymize_text(output_text),
+        quality_score=quality_score,
+        input_text=anonymize_text(input_text),
+        output_text=anonymize_text(output_text),
+        technique=(metadata or {}).get("tool", "unknown"),
+        success=True,
+        approved=False,
+        metadata=metadata or {},
+    )
+    session.add(sample)
+    await session.flush()
+    return sample
+
+
+async def user_allows_training_data(session, user_id: str) -> bool:
+    """Check if user has opted in and is not restricted."""
+    from sqlalchemy import select
+
+    from spectra_platform.models.user import User
+
+    result = await session.execute(
+        select(User.training_opt_in, User.is_restricted).where(User.id == user_id)
+    )
+    row = result.one_or_none()
+    if row is None:
+        return False
+    opt_in, restricted = row
+    return bool(opt_in) and not restricted
+
+
+async def create_mission_completion_sample(session, mission, summary: dict) -> Any | None:
+    """Create a training sample from a completed mission if user opted in."""
+    # Check consent
+    user_id = getattr(mission, "user_id", None)
+    if not user_id or not await user_allows_training_data(session, user_id):
+        return None
+
+    # Check for existing sample (deduplication)
+    from sqlalchemy import select
+
+    from spectra_platform.models.training import TrainingSample
+
+    existing = await session.execute(
+        select(TrainingSample).where(
+            TrainingSample.mission_id == mission.id,
+            TrainingSample.sample_type == "mission_completion",
+        )
+    )
+    if existing.scalar_one_or_none() is not None:
+        return None
+
+    # Build anonymized input/output
+    input_text = _json.dumps({
+        "target": anonymize_text(summary.get("target", "")),
+        "directive": summary.get("directive", ""),
+        "findings_count": len(summary.get("findings", [])),
+    })
+    output_text = _json.dumps({
+        "tools_run": summary.get("tools_run", []),
+        "high_severity_count": sum(
+            1 for f in (summary.get("findings") or []) if f.get("severity") == "high"
+        ),
+        "status": getattr(mission, "status", "completed"),
+    })
+
+    # Calculate quality score based on findings
+    quality = 0.7
+    findings = summary.get("findings") or []
+    if findings:
+        high = sum(1 for f in findings if f.get("severity") == "high")
+        quality = min(1.0, 0.7 + high * 0.05)
+
+    return await create_training_sample(
+        session,
+        mission.id,
+        user_id,
+        "mission_completion",
+        input_text,
+        output_text,
+        quality_score=quality,
+        metadata={"mission_type": getattr(mission, "mission_type", "assessment")},
+    )
+
+
+async def get_dataset_stats(session) -> dict:
+    """Get statistics about the training dataset."""
+    from sqlalchemy import func, select
+
+    from spectra_platform.models.training import TrainingSample
+
+    total = await session.execute(select(func.count()).select_from(TrainingSample))
+    approved = await session.execute(
+        select(func.count()).select_from(TrainingSample).where(TrainingSample.approved.is_(True))
+    )
+    by_type = await session.execute(
+        select(TrainingSample.sample_type, func.count())
+        .group_by(TrainingSample.sample_type)
+    )
+
+    return {
+        "total_samples": total.scalar() or 0,
+        "approved_samples": approved.scalar() or 0,
+        "by_type": {row[0]: row[1] for row in by_type.all()},
+    }
