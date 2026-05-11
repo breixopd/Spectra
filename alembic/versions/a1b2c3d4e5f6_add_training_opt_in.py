@@ -1,15 +1,17 @@
-"""Add training_opt_in and training_opt_in_locked_until to users
+"""Add training_opt_in and training_opt_in_locked_until to users.
 
 Revision ID: a1b2c3d4e5f6
+Merges both migration chains (d3m0urlv001 and z0a1b2c3d4e5).
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
+from typing import Union
 
 from alembic import op
 import sqlalchemy as sa
 
 
 revision: str = 'a1b2c3d4e5f6'
-down_revision: Union[str, None] = 'ebc1a3f4382e'
+down_revision: Union[str, Sequence[str], None] = ('d3m0urlv001', 'z0a1b2c3d4e5')
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
