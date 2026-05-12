@@ -50,6 +50,11 @@ document.addEventListener('spectra:ws-message', (event) => {
 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
+    // Dismiss welcome card if previously dismissed
+    if (localStorage.getItem('spectra_welcome_dismissed') === '1') {
+        const welcome = document.getElementById('getting-started');
+        if (welcome) welcome.remove();
+    }
     initMap();
     updateShellList(); // Initial fetch
     addTerminalLine('Dashboard ready.', 'success');
