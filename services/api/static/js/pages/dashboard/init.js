@@ -55,6 +55,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const welcome = document.getElementById('getting-started');
         if (welcome) welcome.remove();
     }
+    // Dismiss button handler (delegated - no inline onclick needed)
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('[data-action="dismiss-welcome"]');
+        if (!btn) return;
+        const card = document.getElementById('getting-started');
+        if (card) { card.remove(); localStorage.setItem('spectra_welcome_dismissed', '1'); }
+    });
     initMap();
     updateShellList(); // Initial fetch
     addTerminalLine('Dashboard ready.', 'success');

@@ -176,8 +176,8 @@
 
 <!-- Getting Started Card - dismissable, stored in localStorage -->
 <div id="getting-started" data-testid="getting-started" class="glass-panel rounded-xl p-5 mb-6 border border-violet-500/20 animate-fade-in-up relative">
-    <button onclick="document.getElementById('getting-started').remove(); localStorage.setItem('spectra_welcome_dismissed','1')" class="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-lg bg-slate-800/50 hover:bg-slate-700/60 text-slate-500 hover:text-slate-300 transition-colors" aria-label="Dismiss welcome" title="Dismiss">
-        <i data-lucide="x" class="w-4 h-4 inline-block"></i>
+    <button data-action="dismiss-welcome" class="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-lg bg-slate-800/50 hover:bg-slate-700/60 text-slate-500 hover:text-slate-300 transition-colors" aria-label="Dismiss welcome" title="Dismiss">
+        <i data-lucide="x" class="w-4 h-4"></i>
     </button>
     <div class="flex items-start gap-4">
         <div class="w-12 h-12 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0">
