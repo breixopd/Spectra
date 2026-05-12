@@ -83,7 +83,7 @@ class MissionExecutor:
         try:
             await self.dispatcher.dispatch(mission, task, context)
             logger.info("Task %s completed for mission %s", task.task_id, mission.id)
-        except (OSError, RuntimeError, ValueError) as e:
+        except Exception as e:
             mission.log(f"Task execution failed: {e}")
             logger.error("Error executing task %s: %s", task.task_id, e, exc_info=True)
             raise
