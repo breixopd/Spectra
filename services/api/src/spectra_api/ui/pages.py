@@ -185,10 +185,17 @@ async def dashboard(request: Request):
         return RedirectResponse(url="/login")
 
     user_features = await _get_user_features_dict(user_payload.get("sub"))
+    from spectra_platform.services.mission.framework_loader import list_frameworks
+    available_frameworks = list_frameworks()
     return templates.TemplateResponse(
         request,
         "dashboard.html",
-        {"request": request, "title": f"{settings.APP_NAME} | Dashboard", "user_features": user_features},
+        {
+            "request": request,
+            "title": f"{settings.APP_NAME} | Dashboard",
+            "user_features": user_features,
+            "available_frameworks": available_frameworks,
+        },
     )
 
 

@@ -85,11 +85,14 @@
                 <select id="mission-pentest-framework"
                     class="flex-1 min-w-[8rem] px-2 py-1 bg-slate-900/50 border border-white/10 rounded-lg text-xs text-slate-300 focus:outline-none focus:border-violet-500/50"
                     aria-label="Pentest methodology checklist">
+                    {% for fw in available_frameworks | default([]) %}
+                    <option value="{{ fw.id }}" {% if fw.id == 'ptes' %}selected{% endif %}>{{ fw.name }} v{{ fw.version }}</option>
+                    {% endfor %}
+                    {% if not available_frameworks %}
                     <option value="ptes">PTES Standard</option>
-                    <option value="owasp_top10_2021">OWASP Top 10 (2021)</option>
-                    <option value="network_pentest">Network pentest</option>
-                    <option value="api_security">API security</option>
-                    <option value="ad_pentest">Active Directory</option>
+                    <option value="owasp">OWASP Testing Guide</option>
+                    <option value="nist">NIST SP 800-115</option>
+                    {% endif %}
                 </select>
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
