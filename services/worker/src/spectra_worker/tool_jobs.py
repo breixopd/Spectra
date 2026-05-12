@@ -21,6 +21,7 @@ from spectra_tools_core.models import (
 
 from .helpers import (
     _error_result,
+    _find_alternative_tools,
     _get_executable,
     _is_tool_installed,
     _run_command,
@@ -33,6 +34,13 @@ logger = logging.getLogger(__name__)
 
 
 async def _ensure_available_tool(registry: Any, tool_id: str, target: str) -> tuple[Any | None, dict[str, Any] | None]:
+    """Ensure a tool is available, auto-installing if necessary.
+
+    Verifies the tool binary exists locally. If not found, attempts to
+    install the tool via the registry's PluginInstaller.  On success the
+    tool is returned with status synced to READY; on failure an error
+    result is returned so the caller can fall back to alternative tools.
+    """
     tool = registry.get_tool(tool_id)
     if not tool:
         return None, _error_result(tool_id, target, f"Tool not found: {tool_id}")
@@ -42,13 +50,37 @@ async def _ensure_available_tool(registry: Any, tool_id: str, target: str) -> tu
             await _sync_tool_status(tool_id, {"status": ToolStatus.READY.value, "phase": "verified_worker_binary"})
         return tool, None
 
-    status = tool.status.value if hasattr(tool.status, "value") else str(tool.status)
-    logger.warning("Tool %s unavailable in verified worker image (registry_status=%s)", tool_id, status)
-    return None, _error_result(
+    # Tool not installed locally — attempt auto-install
+    logger.info("Tool %s not found locally; attempting auto-install ...", tool_id)
+    await _sync_tool_status(
         tool_id,
-        target,
-        "Tool unavailable in verified worker image; rebuild/promote the golden image before mission execution",
+        {"status": ToolStatus.INSTALLING.value, "phase": "auto_install", "message": f"Auto-installing {tool_id}"},
     )
+
+    try:
+        success = await registry.install_tool(tool_id)
+        # Re-fetch tool to get updated status after installation
+        tool = registry.get_tool(tool_id)
+        if success and tool and _is_tool_installed(tool):
+            logger.info("Tool %s auto-installed successfully", tool_id)
+            await _sync_tool_status(
+                tool_id,
+                {"status": ToolStatus.READY.value, "phase": "verified_worker_binary", "message": f"Auto-installed {tool_id}"},
+            )
+            return tool, None
+        else:
+            msg = f"Auto-install of {tool_id} completed but binary still not found in PATH"
+            logger.error(msg)
+            await _sync_tool_status(tool_id, {"status": ToolStatus.FAILED.value, "phase": "auto_install_failed", "message": msg})
+            return None, _error_result(tool_id, target, msg)
+    except Exception as e:
+        msg = f"Auto-install of {tool_id} failed: {e}"
+        logger.error(msg, exc_info=True)
+        await _sync_tool_status(
+            tool_id,
+            {"status": ToolStatus.FAILED.value, "phase": "auto_install_failed", "message": msg},
+        )
+        return None, _error_result(tool_id, target, msg)
 
 
 def _resolve_output_dir(tool_id: str, output_dir: str | None) -> str:
