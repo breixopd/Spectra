@@ -74,7 +74,7 @@ jobs:
           fi
       - name: Upload coverage artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage.xml
@@ -324,7 +324,7 @@ jobs:
           done
       - name: Upload container logs as artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: compose-smoke-logs
           path: compose-logs/
