@@ -123,7 +123,7 @@ jobs:
       - name: Free hosted runner tool cache before image builds
         run: df -h
       - name: Build Caddy image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.caddy
@@ -142,7 +142,7 @@ jobs:
       - name: Free Docker cache after Caddy scan
         run: docker rmi spectra-caddy:ci || true; df -h
       - name: Build API image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.api
@@ -161,7 +161,7 @@ jobs:
       - name: Free Docker cache after API scan
         run: docker rmi spectra-api:ci || true; df -h
       - name: Build AI image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.ai
@@ -180,7 +180,7 @@ jobs:
       - name: Free Docker cache after AI scan
         run: docker rmi spectra-ai:ci || true; docker builder prune -af || true; docker system prune -f || true; df -h
       - name: Build scheduler image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.scheduler
@@ -199,7 +199,7 @@ jobs:
       - name: Free Docker cache after scheduler scan
         run: docker rmi spectra-scheduler:ci || true; df -h
       - name: Build worker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.worker
