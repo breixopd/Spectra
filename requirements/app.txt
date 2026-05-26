@@ -5,19 +5,19 @@
 # For lighter per-service deps, see: ai.txt, scheduler.txt, worker.txt.
 
 # Core Framework (all services)
-fastapi==0.136.1
-uvicorn[standard]==0.47.0
+fastapi==0.136.3
+uvicorn[standard]==0.48.0
 pydantic[email]==2.13.4
 pydantic-settings==2.14.1
 
 # Database (all services)
-sqlalchemy[asyncio]==2.0.49
+sqlalchemy[asyncio]==2.0.50
 asyncpg==0.31.0
 alembic==1.18.4
 
 # AI / LLM (API + AI service)
-openai==2.37.0
-tensorzero==2026.5.1
+openai==2.38.0
+tensorzero==2026.5.2
 httpx==0.28.1
 fastembed==0.8.0
 
@@ -35,7 +35,7 @@ redis[hiredis]==7.4.0
 
 # Security (all services)
 bcrypt==5.0.0
-PyJWT[crypto]==2.12.1
+PyJWT[crypto]==2.13.0
 cryptography==48.0.0
 
 # TOTP / MFA (API only)
