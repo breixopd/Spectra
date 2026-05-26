@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Ensure .env.test for Compose
         run: test -f .env.test || cp .env.test.example .env.test
       - name: Run scripts/runbooks/ci-parity.sh all
