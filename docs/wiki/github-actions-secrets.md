@@ -53,7 +53,18 @@ Login uses the job’s built-in **`GITHUB_TOKEN`** (`packages: write`). That is 
 **When billing is enabled:**
 
 - **Release** must be started manually: Actions → **Release** → Run workflow → enter a CalVer version (e.g. `2026.05.29`).
+- Leave **Deploy to production** unchecked when you do not have a server; images and package assets still publish.
 - Pushing to `main` alone does **not** publish container images; it runs **CI** (tests, static analysis, etc.).
+
+---
+
+## Python package artifacts
+
+GitHub does **not** offer a PyPI-compatible package registry for Python wheels. The repo therefore publishes Python packages as **GitHub Release assets**:
+
+- The **Release** workflow builds wheels/sdists for `packages/common`, `packages/domain`, `packages/platform`, `packages/tools-core`, and `packages/storage-policy`.
+- Those files are attached to the GitHub Release alongside the changelog.
+- CI on `main` also builds the same package files and uploads them as workflow artifacts for verification, but CI does not publish them as a public package registry.
 
 ---
 
@@ -73,6 +84,8 @@ Store in **repository Actions secrets** (same place as `SPECTRA_WIKI_TOKEN`):
 The deploy job SSHs to your server and runs `docker login ghcr.io` there using these values. You do **not** put this token in the server `.env` for that path.
 
 Also required for automated deploy: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_SSH_HOST_FINGERPRINT`. Optional: `DEPLOY_WEBHOOK_URL`.
+
+The Release workflow has a **Deploy to production** checkbox. Keep it unchecked until these secrets exist.
 
 ### B. Manual deploy on the VPS (you run compose/swarm yourself)
 
@@ -98,9 +111,9 @@ VERSION=2026.05.29   # tag from the Release you pulled
 
 ---
 
-## Python packages on push to `main`
+## CI package verification on push to `main`
 
-CI includes a **Publish packages** job on pushes to `main` (wheels). It uses **`GITHUB_TOKEN`**, not a stored PAT. It only runs when Actions billing allows jobs to start.
+CI includes a **Build package artifacts** job on pushes to `main`. It builds wheels/sdists and uploads them as CI artifacts. It does **not** publish to PyPI or a GitHub package registry.
 
 ---
 

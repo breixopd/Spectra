@@ -333,22 +333,22 @@ jobs:
         run: |
           docker compose -f docker/compose.yaml --profile app --profile targets --profile test down -v --remove-orphans
 
-  # ── Package Publishing ──────────────────────────────────────────
-  # Builds and publishes Python packages to GitHub Packages registry.
-  # Only runs on push to main (not PRs) to avoid publishing from feature branches.
-  publish-packages:
-    name: Publish packages
+  # ── Package Build Verification ─────────────────────────────────
+  # GitHub Packages does not expose a PyPI-compatible registry. CI verifies
+  # wheel/sdist builds and uploads them as run artifacts; release assets are
+  # attached by .github/workflows/release.yml.
+  build-packages:
+    name: Build package artifacts
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [static-analysis, test]
     permissions:
       contents: read
-      packages: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: "3.11"
       - name: Install uv
         run: pip install uv
       - name: Build packages
@@ -358,13 +358,16 @@ jobs:
           uv build packages/platform
           uv build packages/tools-core
           uv build packages/storage-policy
-      - name: Publish to GitHub Packages
-        run: |
-          uv publish --publish-url https://pypi.org/legacy/ \
-            --username __token__ \
-            --password "${{ secrets.GITHUB_TOKEN }}" \
-            packages/common/dist/*.whl \
-            packages/domain/dist/*.whl \
-            packages/platform/dist/*.whl \
-            packages/tools-core/dist/*.whl \
-            packages/storage-policy/dist/*.whl
+          mkdir -p package-artifacts
+          cp packages/common/dist/* package-artifacts/
+          cp packages/domain/dist/* package-artifacts/
+          cp packages/platform/dist/* package-artifacts/
+          cp packages/tools-core/dist/* package-artifacts/
+          cp packages/storage-policy/dist/* package-artifacts/
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-packages
+          path: package-artifacts/*
+          if-no-files-found: error
+          retention-days: 14
