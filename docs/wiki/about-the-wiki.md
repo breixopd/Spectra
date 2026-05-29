@@ -11,7 +11,7 @@ The repository also has the **GitHub Wiki** feature enabled. A workflow (`.githu
 ### One-time setup (repo admin)
 
 1. Open **https://github.com/breixopd/Spectra/wiki** and create any first page once (enables `.wiki.git`). You can delete that placeholder after the first successful sync.
-2. Add repository secret **`SPECTRA_ACTIONS_TOKEN`** — see [GitHub Actions secrets](github-actions-secrets.md).
+2. Add fine-grained secrets **`SPECTRA_WIKI_TOKEN`** and **`SPECTRA_RELEASE_TOKEN`** — see [GitHub secrets](github-actions-secrets.md).
 3. Push to `main` (or run **Actions → Sync wiki → Run workflow**).
 4. Confirm wiki pages match `docs/wiki/` and that `_Sidebar.md` renders as the left nav.
 
@@ -43,4 +43,4 @@ git clone https://github.com/breixopd/Spectra.wiki.git
 
 ## Container images (GHCR)
 
-Release images are published to **`ghcr.io/breixopd/`** (account matches the repository owner). Swarm defaults use `REGISTRY=ghcr.io/breixopd/`. CI uses `SPECTRA_ACTIONS_TOKEN`; deploy pulls use `DEPLOY_GHCR_USERNAME` / `DEPLOY_GHCR_TOKEN` — see [GitHub Actions secrets](github-actions-secrets.md).
+Release images are published to **`ghcr.io/breixopd/`**. CI pushes use **`GITHUB_TOKEN`**; wiki/releases use fine-grained PATs — see [GitHub secrets](github-actions-secrets.md).

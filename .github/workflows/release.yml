@@ -29,8 +29,9 @@ jobs:
     env:
       ENCRYPTION_KEY: test-encryption-key
       ENV_FILE: ../.env.test
-      SPECTRA_GH_TOKEN: ${{ secrets.SPECTRA_ACTIONS_TOKEN || secrets.GITHUB_TOKEN }}
-      GHCR_USERNAME: breixopd
+      # Fine-grained PAT: Contents read/write on Spectra only (releases API, not GHCR).
+      SPECTRA_RELEASE_TOKEN: ${{ secrets.SPECTRA_RELEASE_TOKEN || secrets.SPECTRA_ACTIONS_TOKEN }}
+      GHCR_USERNAME: ${{ github.repository_owner }}
     concurrency:
       group: release
       cancel-in-progress: false
@@ -132,7 +133,8 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ env.GHCR_USERNAME }}
-          password: ${{ env.SPECTRA_GH_TOKEN }}
+          # Fine-grained PATs cannot access Packages (GitHub limitation). Use workflow GITHUB_TOKEN.
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & push API image
         uses: docker/build-push-action@v7
@@ -721,4 +723,4 @@ jobs:
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.SPECTRA_ACTIONS_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ env.SPECTRA_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
