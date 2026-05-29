@@ -1,186 +1,152 @@
-# Secrets & tokens — full setup
+# Secrets & tokens
 
 [← Wiki Home](Home.md)
 
-**I cannot generate or send you tokens.** GitHub shows each value **once** when you click **Generate**. You paste them into [repository secrets](https://github.com/breixopd/Spectra/settings/secrets/actions) yourself.
+Tokens are created in your GitHub account settings and stored as **repository secrets** (Settings → Secrets and variables → Actions). Never commit token values to git.
 
 ---
 
-## Is fine-grained worth it if we still need classic?
+## Fine-grained vs classic
 
-**Yes**, for what fine-grained can do today:
+| Task | Credential |
+|------|------------|
+| Wiki sync | Fine-grained PAT — **Contents** read/write on this repo only |
+| GitHub Releases | Fine-grained PAT — same |
+| Push container images (CI) | **`GITHUB_TOKEN`** in the workflow — no stored PAT |
+| Pull private images on a server | Classic PAT with **`read:packages`**, *or* public packages, *or* build images locally |
 
-| Credential | Scope | Why fine-grained wins |
-|------------|--------|------------------------|
-| Wiki + releases | **Only** repo `breixopd/Spectra`, **only** Contents | Classic `repo` would access **all** your repos |
-| GHCR push in Actions | **`GITHUB_TOKEN`** per run | No stored PAT at all — expires with the job |
-| VPS private image pull | Classic **`read:packages`** only | GitHub has **no** fine-grained Packages permission yet |
-
-So you are not duplicating “full access” twice. You get **narrow** fine-grained tokens + **one minimal classic** (or **zero** classic if GHCR images are **public**).
-
-**Most secure minimal set:**
-
-1. One fine-grained token (wiki + releases) → `SPECTRA_ACTIONS_TOKEN`
-2. No secret for GHCR push (Actions uses `GITHUB_TOKEN`)
-3. **Either** public GHCR packages **or** one classic `read:packages` → `DEPLOY_GHCR_TOKEN`
+Fine-grained tokens are still worth using: they limit access to **one repository** and **Contents** only. Classic `repo` would expose every repository you can access. The optional classic token is **only** for registry pull on a host GitHub Actions does not control.
 
 ---
 
-## Step 1 — Fine-grained token(s)
+## Fine-grained tokens (Option B)
 
-Pick **one** approach.
+Create two tokens (or one combined `SPECTRA_ACTIONS_TOKEN` if you prefer).
 
-### Option A — single token (recommended)
+**For each token:**
 
-| After generate, paste into repo secret | |
-|--------------------------------------|--|
-| **`SPECTRA_ACTIONS_TOKEN`** | One fine-grained PAT |
+- Resource owner: your account (or org that owns the repo)
+- Repository access: **only this repository**
+- Permission: **Contents → Read and write**
 
-**Prefilled link** (open while logged in as `breixopd`):
+| Repository secret | Purpose |
+|-------------------|---------|
+| **`SPECTRA_WIKI_TOKEN`** | Wiki sync workflow, manual push to `<repo>.wiki.git` |
+| **`SPECTRA_RELEASE_TOKEN`** | Creating GitHub Releases |
 
-**[Create Spectra Actions token (fine-grained)](https://github.com/settings/personal-access-tokens/new?name=Spectra+Actions&description=Wiki+%2B+GitHub+releases+for+breixopd%2FSpectra&target_name=breixopd&contents=write&expires_in=90)**
+Optional combined secret:
 
-On the page, confirm:
-
-- Repository access: **Only select repositories** → **Spectra**
-- Permissions: **Contents → Read and write**
-
-Then **Generate token** → copy → [New repository secret](https://github.com/breixopd/Spectra/settings/secrets/actions/new) → name `SPECTRA_ACTIONS_TOKEN`.
-
-### Option B — two tokens (smallest blast radius)
-
-| Secret | Prefilled link |
-|--------|----------------|
-| **`SPECTRA_WIKI_TOKEN`** | [Create wiki token](https://github.com/settings/personal-access-tokens/new?name=Spectra+wiki+sync&description=Wiki+only+breixopd%2FSpectra&target_name=breixopd&contents=write&expires_in=90) |
-| **`SPECTRA_RELEASE_TOKEN`** | [Create release token](https://github.com/settings/personal-access-tokens/new?name=Spectra+release&description=GitHub+releases+only+breixopd%2FSpectra&target_name=breixopd&contents=write&expires_in=90) |
-
-Same permissions on both; separate tokens so you can revoke/rotate wiki without touching releases.
+| **`SPECTRA_ACTIONS_TOKEN`** | Wiki + releases if you use one token for both |
 
 ---
 
-## Step 2 — GHCR push (CI) — **no PAT secret**
+## Container images (GHCR) — push
 
-Release workflow logs into `ghcr.io` with the ephemeral **`GITHUB_TOKEN`** (`packages: write` on the job). **Do not create a secret for this.**
+**No PAT secret is required to upload images from Actions.**
 
-Images: `ghcr.io/breixopd/spectra-app`, `spectra-ai-svc`, `spectra-scheduler`, `spectra-worker`, `spectra-caddy`.
+The **Release** workflow (`workflow_dispatch` on `main`) builds service images and pushes them to:
+
+`ghcr.io/<repository-owner>/spectra-app` (and `spectra-ai-svc`, `spectra-scheduler`, `spectra-worker`, `spectra-caddy`)
+
+Login uses the job’s built-in **`GITHUB_TOKEN`** (`packages: write`). That is not a fine-grained or classic PAT you store in secrets.
+
+**When billing is enabled:**
+
+- **Release** must be started manually: Actions → **Release** → Run workflow → enter a CalVer version (e.g. `2026.05.29`).
+- Pushing to `main` alone does **not** publish container images; it runs **CI** (tests, static analysis, etc.).
 
 ---
 
-## Step 3 — VPS image pull (only if needed)
+## GHCR pull token — where to save it
 
-Skip entirely if you **build on the VPS** from git (`REGISTRY=` empty) or set packages **public**.
+Depends how you deploy.
 
-If the server must **`docker pull`** private images:
+### A. Automated deploy (Release workflow → SSH to VPS)
+
+Store in **repository Actions secrets** (same place as `SPECTRA_WIKI_TOKEN`):
 
 | Secret | Value |
 |--------|--------|
-| **`DEPLOY_GHCR_USERNAME`** | `breixopd` |
-| **`DEPLOY_GHCR_TOKEN`** | Classic PAT, **`read:packages` only** |
+| **`DEPLOY_GHCR_USERNAME`** | GitHub username that owns the packages |
+| **`DEPLOY_GHCR_TOKEN`** | Classic PAT with **`read:packages`** only |
 
-**Prefilled classic link:**
+The deploy job SSHs to your server and runs `docker login ghcr.io` there using these values. You do **not** put this token in the server `.env` for that path.
 
-**[Create VPS GHCR pull token (classic)](https://github.com/settings/tokens/new?description=Spectra+VPS+GHCR+pull+read-only&scopes=read:packages)**
+Also required for automated deploy: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_SSH_HOST_FINGERPRINT`. Optional: `DEPLOY_WEBHOOK_URL`.
 
-- Do **not** enable `write:packages` unless you also push from the VPS manually.
-- Expiration: 90 days (or your policy).
+### B. Manual deploy on the VPS (you run compose/swarm yourself)
 
-**Avoid public packages?** Alternative with **no classic token**: in GitHub → each package → **Package settings** → change visibility to **Public** (anonymous `docker pull` for GHCR public images).
+**Not** in repository secrets unless you later use automated deploy.
 
----
-
-## Step 4 — SSH deploy (optional)
-
-Only if you use the **automated SSH deploy** job in `release.yml`. These are **not** GitHub PATs.
-
-| Secret | How to get it |
-|--------|----------------|
-| **`DEPLOY_HOST`** | Your server IP or hostname |
-| **`DEPLOY_USER`** | SSH user (`root`, `deploy`, …) |
-| **`DEPLOY_SSH_KEY`** | Private key: `cat ~/.ssh/id_ed25519` (full PEM) |
-| **`DEPLOY_SSH_HOST_FINGERPRINT`** | `ssh-keyscan -t ed25519 YOUR_HOST` → one line |
-| **`DEPLOY_WEBHOOK_URL`** | Optional Discord/Slack webhook URL |
-
-No prefilled link (these are your infrastructure values).
-
----
-
-## Step 5 — VPS `.env` (not GitHub)
-
-Set on the server, not in Actions secrets:
-
-| Variable | Command / notes |
-|----------|-----------------|
-| `JWT_SECRET_KEY` | `openssl rand -hex 32` |
-| `SERVICE_AUTH_SECRET` | `openssl rand -hex 32` |
-| `POSTGRES_PASSWORD` | Strong random |
-| `REDIS_PASSWORD` | Strong random |
-| `GARAGE_*` / `S3_*` | See [Configuration](configuration.md) |
-| `TENSORZERO_GATEWAY_URL` | Your gateway URL |
-
----
-
-## Master checklist
-
-Copy this and tick off:
-
-```
-GitHub Actions secrets (https://github.com/breixopd/Spectra/settings/secrets/actions)
-
-Fine-grained (pick one approach):
-[ ] SPECTRA_ACTIONS_TOKEN          ← Option A (one link above)
-    OR
-[ ] SPECTRA_WIKI_TOKEN             ← Option B wiki link
-[ ] SPECTRA_RELEASE_TOKEN          ← Option B release link
-
-GHCR push in CI:
-[ ] (nothing — uses GITHUB_TOKEN automatically)
-
-VPS pull (pick one):
-[ ] Public GHCR packages — no DEPLOY_GHCR_TOKEN
-    OR
-[ ] DEPLOY_GHCR_USERNAME = breixopd
-[ ] DEPLOY_GHCR_TOKEN    = classic read:packages (link above)
-
-SSH deploy (optional):
-[ ] DEPLOY_HOST
-[ ] DEPLOY_USER
-[ ] DEPLOY_SSH_KEY
-[ ] DEPLOY_SSH_HOST_FINGERPRINT
-[ ] DEPLOY_WEBHOOK_URL (optional)
-
-VPS .env:
-[ ] JWT_SECRET_KEY, SERVICE_AUTH_SECRET, DB passwords, Garage, LLM URL
-```
-
----
-
-## What each workflow reads
-
-| Workflow | Secrets used |
-|----------|----------------|
-| **Sync wiki** | `SPECTRA_WIKI_TOKEN` → else `SPECTRA_ACTIONS_TOKEN` |
-| **Release** (GHCR push) | `GITHUB_TOKEN` (built-in) |
-| **Release** (GitHub Release) | `SPECTRA_RELEASE_TOKEN` → else `SPECTRA_ACTIONS_TOKEN` |
-| **Release** (SSH deploy) | `DEPLOY_*` |
-| **CI** | Mostly `GITHUB_TOKEN`; billing must be enabled |
-
----
-
-## Security practices
-
-- **Never** commit tokens to git or paste them in chat.
-- Prefer **90-day expiry** on PATs; calendar a rotation reminder.
-- Revoke old tokens when rotating.
-- Use **Option B** (two fine-grained tokens) if you want wiki compromised without affecting release token.
-- Prefer **public GHCR** or **local build on VPS** to avoid storing **any** classic PAT.
-
----
-
-## Manual wiki push (uses fine-grained token)
+On the server, once per machine (or when the token rotates):
 
 ```bash
-git clone https://github.com/breixopd/Spectra.wiki.git
-# When prompted for password, paste SPECTRA_WIKI_TOKEN or SPECTRA_ACTIONS_TOKEN
-rsync -av --exclude='.git' /path/to/spectra/docs/wiki/ Spectra.wiki/
-cd Spectra.wiki && git add -A && git commit -m "Sync docs/wiki" && git push
+docker login ghcr.io -u YOUR_GITHUB_USERNAME -p YOUR_CLASSIC_READ_PACKAGES_TOKEN
 ```
+
+Credentials are stored in `~/.docker/config.json`. Then set in `.env`:
+
+```bash
+REGISTRY=ghcr.io/YOUR_GITHUB_USERNAME/
+VERSION=2026.05.29   # tag from the Release you pulled
+```
+
+### C. No classic token
+
+- Set GHCR package visibility to **public**, or  
+- Leave `REGISTRY=` empty and **build images locally** on the VPS from the git checkout (`docker compose build`).
+
+---
+
+## Python packages on push to `main`
+
+CI includes a **Publish packages** job on pushes to `main` (wheels). It uses **`GITHUB_TOKEN`**, not a stored PAT. It only runs when Actions billing allows jobs to start.
+
+---
+
+## VPS `.env` (application secrets)
+
+These are **not** GitHub PATs — generate on the server:
+
+| Variable | Notes |
+|----------|--------|
+| `JWT_SECRET_KEY` | `openssl rand -hex 32` |
+| `SERVICE_AUTH_SECRET` | `openssl rand -hex 32` |
+| `POSTGRES_PASSWORD`, `REDIS_PASSWORD` | Strong random |
+| `GARAGE_*` / `S3_*` | See [Configuration](configuration.md) |
+| `TENSORZERO_GATEWAY_URL` | LLM gateway |
+
+---
+
+## Checklist (Option B + private GHCR pull)
+
+```
+Repository Actions secrets:
+[ ] SPECTRA_WIKI_TOKEN
+[ ] SPECTRA_RELEASE_TOKEN
+[ ] (none for GHCR push — automatic in Release job)
+
+If automated SSH deploy:
+[ ] DEPLOY_GHCR_USERNAME
+[ ] DEPLOY_GHCR_TOKEN
+[ ] DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_SSH_HOST_FINGERPRINT
+
+If manual VPS deploy with private images:
+[ ] docker login on the VPS (not in .env)
+[ ] REGISTRY + VERSION in .env
+
+VPS application .env:
+[ ] JWT, SERVICE_AUTH_SECRET, DB, storage, LLM URL
+```
+
+---
+
+## Manual wiki sync
+
+```bash
+git clone https://github.com/<owner>/<repo>.wiki.git
+rsync -av --exclude='.git' /path/to/<repo>/docs/wiki/ <repo>.wiki/
+cd <repo>.wiki && git add -A && git commit -m "Sync docs/wiki" && git push
+```
+
+Use `SPECTRA_WIKI_TOKEN` as the password when Git prompts.

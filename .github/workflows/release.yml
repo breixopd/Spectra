@@ -13,11 +13,11 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  APP_IMAGE: ghcr.io/breixopd/spectra-app
-  AI_IMAGE: ghcr.io/breixopd/spectra-ai-svc
-  SCHEDULER_IMAGE: ghcr.io/breixopd/spectra-scheduler
-  WORKER_IMAGE: ghcr.io/breixopd/spectra-worker
-  CADDY_IMAGE: ghcr.io/breixopd/spectra-caddy
+  APP_IMAGE: ghcr.io/${{ github.repository_owner }}/spectra-app
+  AI_IMAGE: ghcr.io/${{ github.repository_owner }}/spectra-ai-svc
+  SCHEDULER_IMAGE: ghcr.io/${{ github.repository_owner }}/spectra-scheduler
+  WORKER_IMAGE: ghcr.io/${{ github.repository_owner }}/spectra-worker
+  CADDY_IMAGE: ghcr.io/${{ github.repository_owner }}/spectra-caddy
 
 jobs:
   release:
@@ -282,7 +282,7 @@ jobs:
       DEPLOY_GHCR_TOKEN_SECRET_NAME: DEPLOY_GHCR_TOKEN
       DEPLOY_WEBHOOK_SECRET_NAME: DEPLOY_WEBHOOK_URL
       DEPLOY_REGISTRY: ghcr.io
-      DEPLOY_IMAGE_PREFIX: ghcr.io/breixopd/
+      DEPLOY_IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/
     steps:
       - name: Validate deploy secrets
         env:
