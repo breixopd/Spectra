@@ -2,16 +2,16 @@
 
 # Spectra
 
-**AI-Driven Security Assessment Platform**
+**Autonomous Security Assessment Platform**
 
-[![CI](https://github.com/breixopd14/spectra/actions/workflows/ci.yml/badge.svg)](https://github.com/breixopd14/spectra/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)](https://github.com/breixopd/Spectra/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.136+-green.svg)](https://fastapi.tiangolo.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue.svg)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://docs.docker.com/compose/)
 [![License: Private](https://img.shields.io/badge/License-Private-red.svg)]()
 
-[📖 Wiki](docs/wiki/home.md) · [🚀 Quick Start](#quick-start) · [📡 API Reference](docs/wiki/api-reference.md) · [🤝 Contributing](CONTRIBUTING.md)
+[Wiki](docs/wiki/home.md) · [Quick Start](#quick-start) · [API Reference](docs/wiki/api-reference.md) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -19,84 +19,34 @@
 
 ## Overview
 
-Spectra is a Multi-Agent System (MAS) for automated security assessments. It coordinates 12 specialized AI agents to perform end-to-end penetration testing — from reconnaissance to reporting — with human oversight at every step.
-
-Built on the PTES (Penetration Testing Execution Standard) methodology, Spectra automates the tedious and repetitive aspects of security assessments while keeping humans in control of critical decisions through a multi-agent consensus system.
+Spectra automates end-to-end penetration testing—from scoping through post-exploitation and reporting—using coordinated specialist agents, consensus voting on critical decisions, and human oversight where it matters. Methodology progress in the UI is driven by **YAML framework specs** (PTES, OWASP, NIST), not hardcoded phase lists.
 
 ## Key Features
 
-### Multi-Agent AI System
+### Mission execution
 
-- **12 specialized agents** — scope analysis, tool selection, exploitation, reporting, and more
-- **K-threshold consensus voting** — critical decisions require agreement from multiple agents
-- **5 quality gates** ensure decisions are validated before execution
-- **Adaptive replanning** — agents autonomously adjust strategy based on findings
+- **Dynamic pentest frameworks** — `ptes`, `owasp`, and `nist` loaded from YAML; phase timelines and milestones follow the active framework
+- **Multi-agent planning and execution** — scope, tooling, exploitation, reporting, and post-exploitation specialists
+- **Eight quality gates** — plan, tool selection, payload, replan, execution, plus output parsing, tool pick, and red-flag checks
+- **Adaptive replanning** — strategy adjusts from findings without aborting the whole mission on a single tool failure
 
-### Plugin-Based Tool System
+### Plugin-based tool system
 
-- **26 security tools** out of the box (Nmap, Nuclei, SQLMap, Metasploit, etc.)
-- JSON-defined plugin configurations — add new tools without code changes
+- **32+ security tool plugins** (Nmap, Nuclei, SQLMap, Metasploit, and more) defined in JSON
+- **Golden image pipeline** — tools baked into `spectra-tools:latest` for workers/sandboxes; on-demand install is fallback only
 - Cryptographic signature verification for plugin integrity
-- Auto-installation and status tracking in isolated containers
 
-### RAG Knowledge Base
+### Knowledge and context
 
-- Contextual retrieval from CVE databases and tool documentation
-- Past assessment knowledge reuse via pgvector embeddings
-- **Free local embeddings** by default — fastembed with BAAI/bge-small-en-v1.5, no API key needed
-- Lazy model download: embedding model is only fetched on first use, zero disk overhead when using an API provider
-- Exploit database integration with searchable indices
+- RAG over CVE data and tool documentation (pgvector)
+- **Local embeddings by default** — fastembed / BAAI/bge-small-en-v1.5 with lazy download when no API key is set
+- Per-mission credential store and context budgeting to limit prompt growth
 
-### Per-Mission Sandboxes
+### Sandboxes and scale
 
-- Isolated Docker containers with resource limits and network isolation
-- Tiered resource allocation (basic, standard, enhanced, maximum)
-- OOM-triggered automatic tier escalation
-- Heartbeat monitoring with automatic cleanup
-
-### Real-Time Dashboard
-
-- Live mission monitoring with WebSocket updates
-- Tool management, installation, and status tracking
-- Admin panel with user/plan/server management
-- Audit logging for compliance
-
-### Multi-Server Scaling
-
-- Server pool management with health monitoring
-- Remote server provisioning via SSH
-- Load balancing with weighted node selection
-- S3-compatible storage with bundled Garage by default, plus AWS S3 and other compatible endpoints
-
-### Security and Access Control
-
-- JWT authentication with role-based access control (RBAC)
-- Three roles: admin, staff, user
-- Password reset flow (forgot-password → token → reset) with anti-enumeration
-- Per-plan resource limits and rate limiting
-- Audit trail for all administrative actions
-
-### Reliability & Infrastructure
-
-- **Dead-letter queue** — failed jobs retry 3x with backoff, then move to dead letter for admin review
-- **Cleanup workers** — hourly automated cleanup of expired cache, orphaned sandboxes, and old jobs
-- **WebSocket reconnection** — client-side exponential backoff (1s → 30s max, 10 retries)
-- **DI container** — lightweight service container (`spectra_platform/di/container.py`) for testable dependency injection
-- **Notification jobs** — webhook delivery for mission completion, critical findings, and exploit success
-
-## Documentation
-
-The repo documentation is organized as a wiki under [docs/wiki/home.md](docs/wiki/home.md).
-
-Start here:
-
-- [Wiki Home](docs/wiki/home.md)
-- [Deployment Guide](docs/wiki/deployment-guide.md)
-- [Operations](docs/wiki/operations.md)
-- [Configuration](docs/wiki/configuration.md)
-- [Development](docs/wiki/development.md)
-- [Ops Script Index](scripts/ops/README.md)
-- [Microservices Split Notes](docs/wiki/microservices-split.md)
+- Per-mission Docker sandboxes with tiered resources and OOM escalation
+- Multi-server pools, S3-compatible storage (Garage by default), dead-letter queue and cleanup workers
+- Real-time dashboard (SSR + WebSocket), RBAC, audit logging
 
 ## Quick Start
 
@@ -104,13 +54,13 @@ Start here:
 
 - Docker and Docker Compose
 - 4 GB+ RAM (8 GB+ recommended)
-- For local AI: NVIDIA GPU + CUDA drivers (optional — can use API providers)
+- Optional: NVIDIA GPU for local embeddings (API providers work without it)
 
 ### 1. Clone and configure
 
 ```bash
-git clone https://github.com/breixopd14/spectra.git
-cd spectra
+git clone https://github.com/breixopd/Spectra.git
+cd Spectra
 cp .env.example .env  # Edit with your settings
 ```
 
@@ -122,137 +72,85 @@ docker compose -f docker/compose.yaml up -d
 
 ### 3. Access the dashboard
 
-Open <http://localhost:5000> — on first run you'll be redirected to `/setup` to create your admin account.
+Open <http://localhost:5000> — on first run you are redirected to `/setup` to create an admin account.
 
-### 4. Configure AI provider
+### 4. Configure the LLM gateway
 
-In the setup wizard or admin panel, configure your LLM provider:
-
-- **TensorZero Gateway**: Routes requests to any supported LLM provider (OpenAI, Anthropic, OpenRouter, etc.)
-- **Configuration**: Set `TENSORZERO_GATEWAY_URL` to point to your TensorZero gateway instance
-
-See [Getting Started](docs/wiki/development.md#getting-started) for detailed setup instructions.
+In setup or the admin panel, set **`TENSORZERO_GATEWAY_URL`** to your TensorZero gateway (OpenAI, Anthropic, OpenRouter, etc.). See [Development](docs/wiki/development.md#getting-started).
 
 ## Configuration
 
-Spectra is configured via environment variables in `.env`. Key settings:
+Key environment variables (full list: [Configuration](docs/wiki/configuration.md)):
 
-| Variable                 | Description                         | Default                                                    |
-| ------------------------ | ----------------------------------- | ---------------------------------------------------------- |
-| `DATABASE_URL`           | PostgreSQL connection string        | `postgresql+asyncpg://spectra:spectra_dev@db:5432/spectra` |
-| `TENSORZERO_GATEWAY_URL` | TensorZero gateway URL              | `""`                                                       |
-| `LLM_TIMEOUT`            | LLM request timeout (seconds)       | `600`                                                      |
-| `REQUIRE_APPROVAL`       | Operator emergency: force approval for high-risk actions (env only, not Admin UI) | `false`                                |
-| `JWT_SECRET_KEY`         | Secret key for JWT tokens           | (auto-generated)                                           |
-| `EMBEDDING_MODEL`        | Embedding model for RAG             | `local/BAAI/bge-small-en-v1.5`                             |
-
-See [Configuration Guide](docs/wiki/configuration.md) for the full reference.
+| Variable | Description | Default |
+| -------- | ----------- | ------- |
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql+asyncpg://spectra:spectra_dev@db:5432/spectra` |
+| `TENSORZERO_GATEWAY_URL` | TensorZero gateway URL | `""` |
+| `LLM_TIMEOUT` | LLM request timeout (seconds) | `600` |
+| `REQUIRE_APPROVAL` | Force approval for high-risk actions (env only) | `false` |
+| `JWT_SECRET_KEY` | JWT signing secret | (auto-generated on first boot) |
+| `EMBEDDING_MODEL` | Embedding model for RAG | `local/BAAI/bge-small-en-v1.5` |
+| `SESSION_IDLE_TIMEOUT_MINUTES` | Session idle timeout | `1440` |
 
 ## API Overview
 
-Versioned REST endpoints are under `/api/v1/`. `/api/` is reserved for non-versioned routes (for example `/api/health` for probes), not a mirror of `/api/v1/`.
+Versioned REST API under `/api/v1/`. Health probe: `/api/health`.
 
-| Endpoint Group | Path                | Description                       |
-| -------------- | ------------------- | --------------------------------- |
-| **Auth**       | `/api/v1/auth/`     | Login, token management, setup    |
-| **Missions**   | `/api/v1/missions/` | Create, monitor, steer missions   |
-| **Tools**      | `/api/v1/tools/`    | Tool registry, execution, plugins |
-| **Findings**   | `/api/v1/findings/` | Security findings CRUD            |
-| **Exploits**   | `/api/v1/exploits/` | Exploit attempt history           |
-| **System**     | `/api/v1/system/`   | Health, status, operations        |
-| **Admin**      | `/api/admin/`       | User/plan management, audit logs  |
+| Group | Path | Description |
+| ----- | ---- | ----------- |
+| Auth | `/api/v1/auth/` | Login, tokens, setup |
+| Missions | `/api/v1/missions/` | Create, monitor, steer missions |
+| Tools | `/api/v1/tools/` | Registry, execution, plugins |
+| Findings | `/api/v1/findings/` | Findings CRUD |
+| Admin | `/api/admin/` | Users, plans, audit logs |
 
-Interactive API docs are available at `/docs` (Swagger UI) and `/redoc`.
+Interactive docs: `/docs` (Swagger), `/redoc`.
 
 ## Development
 
-### Local setup
-
 ```bash
-# Install dependencies
 pip install -r requirements/app.txt
-
-# Set up environment
 cp .env.example .env
-# Edit .env with local database URL and TensorZero gateway settings
-
-# Run database migrations
 alembic upgrade head
-
-# Start the development server
 uvicorn spectra_api.main:app --reload --port 5000
 ```
 
-### Running tests
-
-Create a local test env file once (not committed; contains optional API keys for live LLM tests):
+### Tests
 
 ```bash
-cp .env.test.example .env.test
-# Edit .env.test: set OPENAI_API_KEY (e.g. OpenRouter) for live model tests; leave empty for non-LLM runs.
-# Embeddings default to local fastembed when EMBEDDING_API_KEY is empty.
-```
-
-```bash
-# General unit tests
+cp .env.test.example .env.test   # optional API keys for live LLM tests
 ./scripts/test.sh unit
-
-# Targeted settings/router/setup validation
-docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner
-
-# Integration tests in Docker (may require live services)
-./scripts/test.sh integration
-
-# Live integration tests (requires live services)
-./tests/run_live_tests.sh
-
-# Burst/load and performance smoke harnesses
-./tests/run_load_tests.sh load
-./tests/run_load_tests.sh performance
-
-# Mixed-traffic soak/stability harness
-./tests/run_load_tests.sh soak
+./scripts/test.sh integration    # Docker
 ```
 
-For the full test matrix and release-gate guidance, see [Testing Strategy](docs/wiki/testing-strategy.md). The committed live harness now covers direct app login and password-reset bursts, real Caddy edge throttling with opt-in recovery checks, WebSocket churn and message bursts, Redis-backed multi-replica limit sharing, concurrent worker-backed tool execution, moderate-concurrency route latency, PostgreSQL-backed queue drain throughput, and a first-pass mixed-traffic soak runner. Query benchmarks, queue retry and dead-letter profiling, and resource-ceiling automation still remain separate work.
-
-### Linting
+See [Testing strategy](docs/wiki/testing-strategy.md) and [CI parity](docs/runbooks/ci-parity-local.md). Pull request CI runs **static-analysis** in Docker (Ruff, import boundaries, Pyright, Bandit).
 
 ```bash
 ruff check packages/platform/src/spectra_platform
 ```
 
-Pull request CI runs the full **`static-analysis`** job in Docker (Ruff, import boundaries, Pyright, Bandit). See [Development](docs/wiki/development.md) and [CI parity](docs/runbooks/ci-parity-local.md).
-
 ## Documentation
 
-Full documentation is in the [Wiki](docs/wiki/home.md):
-
-| Topic            | Link                                                           |
-| ---------------- | -------------------------------------------------------------- |
-| Architecture     | [docs/wiki/architecture.md](docs/wiki/architecture.md)         |
-| Configuration    | [docs/wiki/configuration.md](docs/wiki/configuration.md)       |
-| Operations       | [docs/wiki/operations.md](docs/wiki/operations.md)             |
-| Deployment       | [docs/wiki/deployment.md](docs/wiki/deployment.md)             |
-| Scaling          | [docs/wiki/scaling.md](docs/wiki/scaling.md)                   |
-| API Reference    | [docs/wiki/api-reference.md](docs/wiki/api-reference.md)       |
-| Plugins          | [docs/wiki/plugins.md](docs/wiki/plugins.md)                   |
-| Pentest Workflow | [docs/wiki/pentest-workflow.md](docs/wiki/pentest-workflow.md) |
-| Sandboxes        | [docs/wiki/sandboxes.md](docs/wiki/sandboxes.md)               |
-| Security         | [docs/wiki/security.md](docs/wiki/security.md)                 |
-| Authentication   | [docs/wiki/security.md#authentication](docs/wiki/security.md#authentication) |
-| Worker System    | [docs/wiki/worker-system.md](docs/wiki/worker-system.md)       |
-| Deployment Guide | [docs/wiki/deployment-guide.md](docs/wiki/deployment-guide.md) |
-| Development      | [docs/wiki/development.md](docs/wiki/development.md)           |
-| Testing Strategy | [docs/wiki/testing-strategy.md](docs/wiki/testing-strategy.md) |
-| Frontend Patterns | [docs/wiki/frontend-patterns.md](docs/wiki/frontend-patterns.md) |
-| Design Tokens    | [docs/wiki/design-tokens.md](docs/wiki/design-tokens.md)       |
-| Ops Script Index | [scripts/ops/README.md](scripts/ops/README.md)                 |
-| Roadmap          | [docs/wiki/roadmap.md](docs/wiki/roadmap.md)                   |
+| Topic | Link |
+| ----- | ---- |
+| Wiki home | [docs/wiki/home.md](docs/wiki/home.md) · [GitHub Wiki](https://github.com/breixopd/Spectra/wiki) |
+| Deployment (start here) | [docs/wiki/deployment-guide.md](docs/wiki/deployment-guide.md) |
+| CI/CD and images | [docs/wiki/deployment.md](docs/wiki/deployment.md) |
+| Operations | [docs/wiki/operations.md](docs/wiki/operations.md) |
+| Architecture | [docs/wiki/architecture.md](docs/wiki/architecture.md) |
+| Pentest workflow | [docs/wiki/pentest-workflow.md](docs/wiki/pentest-workflow.md) |
+| Configuration | [docs/wiki/configuration.md](docs/wiki/configuration.md) |
+| API reference | [docs/wiki/api-reference.md](docs/wiki/api-reference.md) |
+| Plugins & golden image | [docs/wiki/plugins.md](docs/wiki/plugins.md) |
+| Sandboxes | [docs/wiki/sandboxes.md](docs/wiki/sandboxes.md) |
+| Worker system | [docs/wiki/worker-system.md](docs/wiki/worker-system.md) |
+| Testing | [docs/wiki/testing-strategy.md](docs/wiki/testing-strategy.md) |
+| Ops scripts | [scripts/ops/README.md](scripts/ops/README.md) |
+| Runbooks | [docs/runbooks/README.md](docs/runbooks/README.md) |
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, testing requirements, and the pull request process.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

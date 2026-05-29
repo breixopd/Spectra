@@ -94,7 +94,7 @@ Rate-limited with IP-based lockout after repeated failures.
 }
 ```
 
-Optional **`pentest_framework`** selects the built-in methodology checklist (`ptes`, `owasp_top10_2021`, `network_pentest`, `api_security`, `ad_pentest`). Mission GET/list responses include **`framework_label`** and **`framework_phase_timeline`** (PTES-aligned execution phases for UI progress).
+Optional **`pentest_framework`** selects a YAML-defined methodology (`ptes`, `owasp`, `nist`). Mission GET/list responses include **`framework_label`** and **`framework_phase_timeline`** (phases for the active framework). Separate checklist helpers under `/api/v1/helpers/checklists/` remain for compliance checklists (e.g. OWASP Top 10 2021).
 
 ### POST `/api/v1/missions/{id}/steer`
 

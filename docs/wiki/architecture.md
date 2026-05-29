@@ -70,6 +70,13 @@ Critical decisions pass through quality gates where multiple LLM instances vote:
 | PAYLOAD | Exploit crafting | 3 | 2/3 | 70% |
 | REPLAN | Plan changes | 3 | 2/3 | 60% |
 | EXECUTION | High-risk actions | 3 | 3/3 | 80% |
+| OUTPUT_PARSING | Parsed facts from tool output | Micro-agent voting | Majority | — |
+| TOOL_PICK | Next tool in decomposed tasks | Micro-agent voting | Majority | — |
+| RED_FLAG | Corrupt or malformed output | Discard output | — | — |
+
+### Pentest frameworks (YAML)
+
+Framework specs live under `spectra_platform/services/mission/frameworks/*.yaml` (`ptes`, `owasp`, `nist`). Phase order, milestones, technique categories, and UI timelines are loaded at runtime—no hardcoded `AssessmentPhase` lists in application code.
 
 ---
 

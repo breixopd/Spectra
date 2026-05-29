@@ -23,5 +23,5 @@ git log --pretty=format:"- %s (%h)" "$RANGE" --no-merges 2>/dev/null | \
 echo ""
 echo ""
 echo "### Docker Images"
-echo "- \`ghcr.io/breixopd14/spectra-app:${VERSION}\`"
-echo "- \`ghcr.io/breixopd14/spectra-tools:${VERSION}\`"
+echo "- \`ghcr.io/breixopd/spectra-app:${VERSION}\`"
+echo "- \`ghcr.io/breixopd/spectra-tools:${VERSION}\`"

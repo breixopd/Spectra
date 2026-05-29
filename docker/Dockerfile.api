@@ -41,8 +41,8 @@ FROM ${PYTHON_BASE_IMAGE}
 ARG BUILD_VERSION=dev
 LABEL org.opencontainers.image.title="Spectra API" \
       org.opencontainers.image.description="AI-Driven Security Assessment Platform — API" \
-      org.opencontainers.image.source="https://github.com/breixopd14/spectra" \
-      org.opencontainers.image.vendor="breixopd14" \
+      org.opencontainers.image.source="https://github.com/breixopd/Spectra" \
+      org.opencontainers.image.vendor="breixopd" \
       org.opencontainers.image.version="${BUILD_VERSION}"
 
 WORKDIR /app

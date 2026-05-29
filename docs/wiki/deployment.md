@@ -137,11 +137,11 @@ The AI service can also be scaled for high LLM throughput. The scheduler should 
 |---------|-------|---------|
 | **db** | `pgvector/pgvector:pg16` | PostgreSQL + pgvector (persistent state, PostgreSQL-backed app cache, job queue, LISTEN/NOTIFY backbone, RAG) |
 | **redis** | `redis:7-alpine` | Shared distributed rate-limiting backend |
-| **caddy** | `ghcr.io/breixopd14/spectra-caddy` | Custom Caddy image from `docker/Dockerfile.caddy` (TLS, security headers, WebSocket, bundled rate-limit module) |
-| **app** | `ghcr.io/breixopd14/spectra-app` | FastAPI backend (internal port 5000) |
-| **ai-svc** | `ghcr.io/breixopd14/spectra-ai-svc` | AI/LLM service (internal port 5010) |
-| **scheduler** | `ghcr.io/breixopd14/spectra-scheduler` | Background tasks (internal port 5011) |
-| **worker** | `ghcr.io/breixopd14/spectra-worker` | Tool execution (internal port 5012) |
+| **caddy** | `ghcr.io/breixopd/spectra-caddy` | Custom Caddy image from `docker/Dockerfile.caddy` (TLS, security headers, WebSocket, bundled rate-limit module) |
+| **app** | `ghcr.io/breixopd/spectra-app` | FastAPI backend (internal port 5000) |
+| **ai-svc** | `ghcr.io/breixopd/spectra-ai-svc` | AI/LLM service (internal port 5010) |
+| **scheduler** | `ghcr.io/breixopd/spectra-scheduler` | Background tasks (internal port 5011) |
+| **worker** | `ghcr.io/breixopd/spectra-worker` | Tool execution (internal port 5012) |
 | **garage** | `dxflrs/garage:v2.2.0` | Self-hosted S3-compatible object storage (required unless external S3 is configured) |
 
 All inter-service communication uses PostgreSQL as the persistent state store, PostgreSQL-backed app cache, job queue, and `NOTIFY`/`LISTEN` backbone, plus HTTP with `SERVICE_AUTH_SECRET`. Redis is the shared distributed rate-limiting backend.
@@ -152,7 +152,7 @@ Swarm supports `_FILE` secret environment variables such as `POSTGRES_PASSWORD_F
 
 > **Tip:** Set `REGISTRY` and `VERSION` environment variables to control image sources.
 > Local dev uses `spectra-app:latest` by default; production can set
-> `REGISTRY=ghcr.io/breixopd14/` and `VERSION=2026.03.13` to pull release images.
+> `REGISTRY=ghcr.io/breixopd/` and `VERSION=2026.03.13` to pull release images. Images must live under the **same GitHub account/org as the repository** (`breixopd/Spectra` → `ghcr.io/breixopd/…`). Older `ghcr.io/breixopd14/…` tags were a separate account namespace and are not used by current releases.
 
 ## Versioning
 

@@ -11,8 +11,8 @@ ARG KALI_BASE_IMAGE
 
 LABEL org.opencontainers.image.title="Spectra Worker" \
       org.opencontainers.image.description="Security tools worker (Kali Linux)" \
-      org.opencontainers.image.source="https://github.com/breixopd14/spectra" \
-      org.opencontainers.image.vendor="breixopd14/spectra" \
+      org.opencontainers.image.source="https://github.com/breixopd/Spectra" \
+      org.opencontainers.image.vendor="breixopd/Spectra" \
       org.opencontainers.image.version="${BUILD_VERSION}"
 
 WORKDIR /app
@@ -69,8 +69,8 @@ ARG BUILD_VERSION=dev
 
 LABEL org.opencontainers.image.title="Spectra Worker" \
       org.opencontainers.image.description="Security tools worker (Kali Linux)" \
-      org.opencontainers.image.source="https://github.com/breixopd14/spectra" \
-      org.opencontainers.image.vendor="breixopd14/spectra" \
+      org.opencontainers.image.source="https://github.com/breixopd/Spectra" \
+      org.opencontainers.image.vendor="breixopd/Spectra" \
       org.opencontainers.image.version="${BUILD_VERSION}"
 
 ENV SPECTRA_BUILD_VERSION="${BUILD_VERSION}" \

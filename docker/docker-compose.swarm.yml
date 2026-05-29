@@ -117,7 +117,7 @@ services:
     <<: *security-stateful
 
   app:
-    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-app:${VERSION:?set VERSION for swarm deploys}
+    image: ${REGISTRY:-ghcr.io/breixopd/}spectra-app:${VERSION:?set VERSION for swarm deploys}
     deploy:
       replicas: ${APP_REPLICAS:-2}
       placement:
@@ -201,7 +201,7 @@ services:
     <<: *security-stateful
 
   ai-svc:
-    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-ai-svc:${VERSION:?set VERSION for swarm deploys}
+    image: ${REGISTRY:-ghcr.io/breixopd/}spectra-ai-svc:${VERSION:?set VERSION for swarm deploys}
     deploy:
       replicas: 1
       placement:
@@ -272,7 +272,7 @@ services:
     <<: *security-stateful
 
   scheduler:
-    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-scheduler:${VERSION:?set VERSION for swarm deploys}
+    image: ${REGISTRY:-ghcr.io/breixopd/}spectra-scheduler:${VERSION:?set VERSION for swarm deploys}
     deploy:
       replicas: 1
       placement:
@@ -348,7 +348,7 @@ services:
     <<: *security-stateful
 
   worker:
-    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-worker:${VERSION:?set VERSION for swarm deploys}
+    image: ${REGISTRY:-ghcr.io/breixopd/}spectra-worker:${VERSION:?set VERSION for swarm deploys}
     deploy:
       replicas: 2
       placement:
@@ -401,7 +401,7 @@ services:
     logging: *default-logging
 
   caddy:
-    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-caddy:${VERSION:?set VERSION for swarm deploys}
+    image: ${REGISTRY:-ghcr.io/breixopd/}spectra-caddy:${VERSION:?set VERSION for swarm deploys}
     deploy:
       replicas: 1
       placement:

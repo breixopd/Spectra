@@ -119,7 +119,7 @@ class StartMissionRequest(BaseModel):
     pentest_framework: str = Field(
         default="ptes",
         max_length=64,
-        description="Built-in methodology checklist (ptes, owasp_top10_2021, network_pentest, api_security, ad_pentest)",
+        description="YAML pentest framework id (ptes, owasp, nist)",
     )
     roe: dict[str, Any] | None = Field(
         default=None,

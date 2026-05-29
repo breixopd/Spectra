@@ -22,7 +22,7 @@ def _run_extract_version(image_ref: str) -> subprocess.CompletedProcess[str]:
 
 
 def test_extract_version_from_digest_qualified_image_ref() -> None:
-    result = _run_extract_version("ghcr.io/breixopd14/spectra-app:2026.04.13@sha256:deadbeef")
+    result = _run_extract_version("ghcr.io/breixopd/spectra-app:2026.04.13@sha256:deadbeef")
 
     assert result.returncode == 0
     assert result.stdout.strip() == "2026.04.13"
