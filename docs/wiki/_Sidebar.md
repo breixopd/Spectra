@@ -1,6 +1,6 @@
 # Spectra Wiki
 
-- [Home](home.md)
+- [Home](Home.md)
 - [Deployment Guide](deployment-guide.md)
 - [Operations](operations.md)
 - [Configuration](configuration.md)

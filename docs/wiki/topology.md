@@ -1,6 +1,6 @@
 # System Topology
 
-[← Wiki Home](home.md) | [Architecture](architecture.md) | [Microservices](microservices-split.md) | [Scaling](scaling.md)
+[← Wiki Home](Home.md) | [Architecture](architecture.md) | [Microservices](microservices-split.md) | [Scaling](scaling.md)
 
 ---
 

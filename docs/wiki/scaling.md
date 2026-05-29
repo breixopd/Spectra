@@ -1,6 +1,6 @@
 # Scaling
 
-[← Wiki Home](home.md) | [Operations](operations.md) | [Architecture](architecture.md) | [Configuration](configuration.md) | [API Reference](api-reference.md)
+[← Wiki Home](Home.md) | [Operations](operations.md) | [Architecture](architecture.md) | [Configuration](configuration.md) | [API Reference](api-reference.md)
 
 ---
 

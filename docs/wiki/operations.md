@@ -1,6 +1,6 @@
 # Operations
 
-[← Wiki Home](home.md) | [Deployment Guide](deployment-guide.md) | [Scaling](scaling.md) | [Worker System](worker-system.md) | [Testing Strategy](testing-strategy.md)
+[← Wiki Home](Home.md) | [Deployment Guide](deployment-guide.md) | [Scaling](scaling.md) | [Worker System](worker-system.md) | [Testing Strategy](testing-strategy.md)
 
 ---
 

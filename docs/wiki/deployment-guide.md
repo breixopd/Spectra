@@ -1,6 +1,6 @@
 # Deployment Guide
 
-[← Wiki Home](home.md) | [Operations](operations.md) | [Configuration](configuration.md) | [Scaling](scaling.md) | [Security](security.md)
+[← Wiki Home](Home.md) | [Operations](operations.md) | [Configuration](configuration.md) | [Scaling](scaling.md) | [Security](security.md)
 
 ---
 

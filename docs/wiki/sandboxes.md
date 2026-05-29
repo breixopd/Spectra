@@ -1,6 +1,6 @@
 # Sandboxes
 
-[← Wiki Home](home.md) | [Scaling](scaling.md) | [Configuration](configuration.md)
+[← Wiki Home](Home.md) | [Scaling](scaling.md) | [Configuration](configuration.md)
 
 ---
 

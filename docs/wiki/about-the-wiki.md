@@ -1,6 +1,6 @@
 # About this documentation
 
-[← Wiki Home](home.md)
+[← Wiki Home](Home.md)
 
 Spectra keeps **operator and developer docs in the repository** under `docs/wiki/`. That folder is the source of truth: it is reviewed in pull requests, versioned with releases, and linked from the root [README](https://github.com/breixopd/Spectra/blob/main/README.md).
 

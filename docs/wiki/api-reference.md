@@ -1,6 +1,6 @@
 # API Reference
 
-[← Wiki Home](home.md) | [Configuration](configuration.md) | [Scaling](scaling.md) | [Architecture](architecture.md)
+[← Wiki Home](Home.md) | [Configuration](configuration.md) | [Scaling](scaling.md) | [Architecture](architecture.md)
 
 ---
 
