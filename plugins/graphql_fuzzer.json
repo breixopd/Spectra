@@ -1,0 +1,122 @@
+{
+  "id": "graphql_fuzzer",
+  "name": "graphql-fuzzer",
+  "version": "1.0.0",
+  "category": "exploitation",
+  "description": "GraphQL introspection and query fuzzing tool for security testing. Enumerates GraphQL schemas, detects authorization flaws, and fuzzes queries for injection vulnerabilities.",
+  "metadata": {
+    "ai_description": "graphql-fuzzer is a specialized security testing tool for GraphQL APIs. Use it when you encounter GraphQL endpoints during web application assessments. It performs schema introspection (querying __schema), tests for authorization bypass in queries and mutations, fuzzes query parameters for injection vulnerabilities, and detects batching/DoS attack surfaces. Supports custom query templates and wordlist-based field fuzzing.",
+    "capabilities": [
+      "api_enumeration",
+      "auth_testing",
+      "fuzzing"
+    ],
+    "supported_targets": [
+      "url"
+    ],
+    "risk_level": "medium",
+    "tags": [
+      "graphql",
+      "api",
+      "web",
+      "introspection",
+      "fuzzing",
+      "authorization"
+    ],
+    "use_cases": [
+      "Introspecting GraphQL schemas to discover all queries and mutations",
+      "Detecting authorization bypass in GraphQL resolvers",
+      "Fuzzing query parameters for SQLi, NoSQLi, and command injection",
+      "Testing for excessive data exposure (over-fetching)",
+      "Identifying batching attacks and DoS vectors in GraphQL"
+    ],
+    "limitations": [
+      "Requires introspection to be enabled for schema enumeration",
+      "Custom authorization logic may not be detected",
+      "Fuzzing effectiveness depends on wordlist quality",
+      "May hit rate limits on production APIs"
+    ],
+    "complements": [
+      "nuclei",
+      "feroxbuster",
+      "burp"
+    ],
+    "prerequisites": []
+  },
+  "installation": {
+    "method": "pip",
+    "commands": [
+      "pip install graphql-core aiodns"
+    ],
+    "verification_command": "python3 -c 'import graphql; print(graphql.__version__)'",
+    "verification_regex": "\\d+\\.\\d+",
+    "uninstall_commands": [
+      "pip uninstall -y graphql-core aiodns"
+    ]
+  },
+  "execution": {
+    "command": "graphql-fuzzer",
+    "args_template": "{target} {flags}",
+    "timeout": 600,
+    "min_timeout": 30,
+    "max_timeout": 1200
+  },
+  "parsing": {
+    "format": "text",
+    "regex_patterns": [
+      {
+        "pattern": "\\[\\+\\]\\s+Found\\s+(?P<field_count>\\d+)\\s+fields",
+        "type": "info"
+      },
+      {
+        "pattern": "\\[!\\]\\s+Unauthorized\\s+access\\s+to\\s+(?P<field>.+)",
+        "type": "vuln"
+      },
+      {
+        "pattern": "\\[!\\]\\s+Possible\\s+(?P<vuln_type>.+)\\s+vulnerability",
+        "type": "vuln"
+      },
+      {
+        "pattern": "mutation\\s+\\{\\s*(?P<mutation_name>\\w+)",
+        "type": "info"
+      }
+    ],
+    "llm_extraction": true,
+    "extraction_hint": "Extract discovered GraphQL schema fields, mutations, authorization bypass findings, injection vulnerabilities, and exposed sensitive data"
+  },
+  "stealth": {
+    "rate_limit": 20,
+    "delay_ms": 200,
+    "extra_args": {}
+  },
+  "ui": {
+    "icon": "graph",
+    "color": "pink"
+  },
+  "examples": [
+    {
+      "description": "Introspect GraphQL endpoint",
+      "args": {
+        "target": "https://api.example.com/graphql",
+        "flags": "--introspect"
+      }
+    },
+    {
+      "description": "Fuzz all queries for authorization bypass",
+      "args": {
+        "target": "https://api.example.com/graphql",
+        "flags": "--authz --all"
+      }
+    },
+    {
+      "description": "Fuzz with custom wordlist for field discovery",
+      "args": {
+        "target": "https://api.example.com/graphql",
+        "flags": "--field-wordlist /usr/share/wordlists/graphql-fields.txt"
+      }
+    }
+  ],
+  "resources": {
+    "tier": "light"
+  }
+}

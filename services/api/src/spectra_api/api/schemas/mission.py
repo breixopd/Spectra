@@ -125,6 +125,10 @@ class StartMissionRequest(BaseModel):
         default=None,
         description="Optional Rules of Engagement constraints",
     )
+    training_opt_in: bool = Field(
+        default=False,
+        description="Opt in to share anonymized training data to improve the platform. May qualify for discount.",
+    )
 
     @field_validator("pentest_framework")
     @classmethod

@@ -47,6 +47,8 @@ node_modules/
 package-lock.json
 package.json
 *.log
+packages/storage-policy/dist/
+docker/images/
 
 # =============================================================================
 # Runtime Data (Docker volumes, local data)
@@ -83,6 +85,10 @@ memories/
 .github/prompts/
 
 # =============================================================================
-# Docs (local-only plans)
+# Docs (local-only plans, research, audits)
 # =============================================================================
+.subagents/
 docs/plan/
+docs/research/
+docs/audits/
+.cursor/

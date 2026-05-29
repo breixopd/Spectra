@@ -130,7 +130,7 @@ class TaskDispatcher:
                 try:
                     await handler(mission, task, context)
                     mission.task_tree.update_status(task_tree_id, TaskStatus.COMPLETED)
-                except (OSError, RuntimeError, ValueError):
+                except Exception:
                     mission.task_tree.update_status(task_tree_id, TaskStatus.FAILED)
                     raise
             else:
@@ -308,26 +308,63 @@ class TaskDispatcher:
         action: ToolAction,
         context: AgentContext,
     ) -> None:
-        """Execute a single tool selection result."""
+        """Execute a single tool selection result, with fallback to alternatives on failure."""
         if not action.tool_name:
             reason = getattr(action, "skip_reason", "No reason provided")
             mission.log(f"No more tools for phase: {reason}")
             return
 
+        # --- Primary tool execution ---
         success = await self.tool_service.execute_tool_action(mission, action, context)
 
-        if success and mission.findings:
-            mission.blackboard.write(
-                task.agent_type,
-                f"tools_run_{action.tool_name}",
-                {"tool": action.tool_name, "findings_count": len(mission.findings)},
-            )
-
-        if not success:
-            mission.log(f"Tool {action.tool_name} execution failed or was blocked.")
-
         if success:
+            if mission.findings:
+                mission.blackboard.write(
+                    task.agent_type,
+                    f"tools_run_{action.tool_name}",
+                    {"tool": action.tool_name, "findings_count": len(mission.findings)},
+                )
             await self._process_tool_chain(mission, action.tool_name, context)
+            return
+
+        # --- Primary tool failed — try alternatives ---
+        mission.log(f"Tool {action.tool_name} execution failed or was blocked. Looking for alternatives ...")
+
+        alternatives = await self._find_alternative_tools(action.tool_name)
+        if not alternatives:
+            mission.log(f"No alternative tools found for {action.tool_name}. Moving to next task.")
+            return
+
+        for alt_tool_info in alternatives:
+            alt_name = alt_tool_info.get("id", "")
+            if alt_name in mission.tools_run:
+                mission.log(f"  Skipping {alt_name} (already ran in this mission)")
+                continue
+
+            mission.log(f"  Attempting alternative: {alt_name} ({alt_tool_info.get('name', '')}) ...")
+            alt_action = ToolAction(
+                tool_name=alt_name,
+                target=action.target,
+                tool_args=action.tool_args,
+                risk_level=action.risk_level,
+                estimated_duration=action.estimated_duration,
+            )
+            alt_success = await self.tool_service.execute_tool_action(mission, alt_action, context)
+
+            if alt_success:
+                mission.log(f"  Alternative tool {alt_name} succeeded.")
+                if mission.findings:
+                    mission.blackboard.write(
+                        task.agent_type,
+                        f"tools_run_{alt_name}",
+                        {"tool": alt_name, "findings_count": len(mission.findings)},
+                    )
+                await self._process_tool_chain(mission, alt_name, context)
+                return
+            else:
+                mission.log(f"  Alternative tool {alt_name} also failed. Trying next alternative ...")
+
+        mission.log(f"All alternative tools for {action.tool_name} failed. Moving to next task.")
 
     async def _handle_exploit_crafter(
         self,
@@ -656,6 +693,16 @@ class TaskDispatcher:
             else:
                 completed.append(r)
         return completed
+
+    @staticmethod
+    async def _find_alternative_tools(tool_name: str) -> list[dict[str, str]]:
+        """Find alternative tools in the same category with overlapping capabilities.
+
+        Returns a list of dicts with 'id', 'name', 'category', and 'capabilities'.
+        """
+        from spectra_platform.services.tools.execution import find_alternative_tools
+
+        return await find_alternative_tools(tool_name)
 
     async def _process_tool_chain(
         self,

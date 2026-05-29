@@ -79,9 +79,16 @@ async def test_execute_tool_job_returns_not_found_error():
 async def test_execute_tool_job_fails_fast_when_tool_missing_from_image():
     from spectra_worker import tool_jobs
 
-    registry = SimpleNamespace(get_tool=MagicMock(return_value=_tool("nmap", available=False)))
+    tool = _tool("nmap", available=False)
+    registry = SimpleNamespace(
+        get_tool=MagicMock(return_value=tool),
+        install_tool=AsyncMock(return_value=False),
+    )
 
-    with pytest.MonkeyPatch.context() as mp:
+    with (
+        pytest.MonkeyPatch.context() as mp,
+        patch.object(tool_jobs, "_is_tool_installed", return_value=False),
+    ):
         mp.setitem(
             sys.modules,
             "spectra_platform.services.tools.registry",
@@ -90,7 +97,83 @@ async def test_execute_tool_job_fails_fast_when_tool_missing_from_image():
         result = await tool_jobs.execute_tool_job("nmap", "example.com")
 
     assert result["success"] is False
-    assert "verified worker image" in result["stderr"]
+    # New behaviour: auto-install is attempted, and the error reflects that
+    assert "auto-install" in result["stderr"].lower() or "not found" in result["stderr"].lower()
+    registry.install_tool.assert_awaited_once_with("nmap")
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_job_auto_installs_and_succeeds(tmp_path):
+    """When a tool is not installed, _ensure_available_tool auto-installs it."""
+    from spectra_worker import tool_jobs
+
+    # We need a properly structured tool mock so that after install
+    # _is_tool_installed returns True and CommandBuilder can run.
+    execution = SimpleNamespace(
+        command="echo",
+        args_template="-o {output_file}",
+        timeout=5,
+        timeout_per_host=3,
+        min_timeout=1,
+        max_timeout=20,
+        success_exit_codes=[0],
+    )
+    tool = SimpleNamespace(
+        config=SimpleNamespace(id="nmap", execution=execution),
+        is_available=False,
+        status=ToolStatus.PENDING,
+    )
+    # install_tool returns True and sets status to READY
+    async def _do_install(tool_id):
+        tool.is_available = True
+        tool.status = ToolStatus.READY
+        return True
+
+    registry = SimpleNamespace(
+        get_tool=MagicMock(return_value=tool),
+        install_tool=AsyncMock(side_effect=_do_install),
+    )
+    run_command = AsyncMock(return_value=(0, "scan output", ""))
+
+    class _Builder:
+        def __init__(self, config):
+            self.config = config
+
+        def build_command(self, request, output_dir):
+            return "echo scan"
+
+    class _Parser:
+        def __init__(self, config):
+            self.config = config
+
+        async def parse_output(self, stdout, stderr, output_file):
+            return []
+
+    with (
+        pytest.MonkeyPatch.context() as mp,
+        patch.object(tool_jobs, "_run_command", run_command),
+        patch.object(tool_jobs, "_track_tool_stats", AsyncMock()),
+        patch.object(tool_jobs, "_is_tool_installed", side_effect=[False, True]),  # first False, then True after install
+    ):
+        mp.setitem(
+            sys.modules,
+            "spectra_platform.services.tools.registry",
+            make_module("spectra_platform.services.tools.registry", get_registry=lambda: registry),
+        )
+        mp.setitem(
+            sys.modules,
+            "spectra_tools_core.adapter.builder",
+            make_module("spectra_tools_core.adapter.builder", CommandBuilder=_Builder),
+        )
+        mp.setitem(
+            sys.modules,
+            "spectra_tools_core.adapter.parser",
+            make_module("spectra_tools_core.adapter.parser", UniversalParser=_Parser),
+        )
+        result = await tool_jobs.execute_tool_job("nmap", "example.com", output_dir=str(tmp_path))
+
+    assert result["success"] is True
+    registry.install_tool.assert_awaited_once_with("nmap")
 
 
 @pytest.mark.asyncio

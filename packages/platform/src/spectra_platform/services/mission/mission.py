@@ -76,6 +76,8 @@ class Mission:
         playbook_id: str | None = None,
         scan_mode: str = "autonomous",
         pentest_framework: str = "ptes",
+        training_opt_in: bool = False,
+        training_discount_pct: float = 0.0,
     ):
         self.id = str(uuid.uuid4())
         self.target = target
@@ -88,6 +90,8 @@ class Mission:
         self.playbook_id = playbook_id
         self.pentest_framework = pentest_framework
         self.scan_mode = scan_mode if scan_mode in {"autonomous", "guided", "manual"} else "autonomous"
+        self.training_opt_in = training_opt_in
+        self.training_discount_pct = training_discount_pct
         self.automation_level = _SCAN_MODE_AUTOMATION.get(self.scan_mode, "full_auto")
         self.status = "created"
         self.start_time = datetime.now(UTC)
@@ -494,6 +498,8 @@ class Mission:
                 "report_path": self.report_path,
                 "task_tree": self.task_tree.to_dict(),
                 "blackboard": self.blackboard.read_all(),
+                "training_opt_in": self.training_opt_in,
+                "training_discount_pct": self.training_discount_pct,
             }
 
     def save_checkpoint(self) -> dict[str, Any]:

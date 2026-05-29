@@ -42,6 +42,7 @@ dependencies = [
     "fastembed>=0.3.0",
     "pyotp>=2.9.0",
     "xhtml2pdf>=0.2.0",
+    "pyyaml>=6.0",
 ]
 
 [build-system]

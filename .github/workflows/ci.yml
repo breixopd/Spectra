@@ -332,3 +332,39 @@ jobs:
         if: always()
         run: |
           docker compose -f docker/compose.yaml --profile app --profile targets --profile test down -v --remove-orphans
+
+  # ── Package Publishing ──────────────────────────────────────────
+  # Builds and publishes Python packages to GitHub Packages registry.
+  # Only runs on push to main (not PRs) to avoid publishing from feature branches.
+  publish-packages:
+    name: Publish packages
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [static-analysis, test]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install uv
+        run: pip install uv
+      - name: Build packages
+        run: |
+          uv build packages/common
+          uv build packages/domain
+          uv build packages/platform
+          uv build packages/tools-core
+          uv build packages/storage-policy
+      - name: Publish to GitHub Packages
+        run: |
+          uv publish --publish-url https://pypi.org/legacy/ \
+            --username __token__ \
+            --password "${{ secrets.GITHUB_TOKEN }}" \
+            packages/common/dist/*.whl \
+            packages/domain/dist/*.whl \
+            packages/platform/dist/*.whl \
+            packages/tools-core/dist/*.whl \
+            packages/storage-policy/dist/*.whl

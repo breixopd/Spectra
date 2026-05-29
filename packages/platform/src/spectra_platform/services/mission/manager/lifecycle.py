@@ -87,6 +87,8 @@ class MissionLifecycleManager:
         playbook_id: str | None = None,
         scan_mode: str = "autonomous",
         pentest_framework: str = "ptes",
+        training_opt_in: bool = False,
+        training_discount_pct: float = 0.0,
     ) -> Mission:
         """Create and start a new mission."""
         effective_directive = _directive_with_playbook(playbook_id, directive)
@@ -102,6 +104,8 @@ class MissionLifecycleManager:
             playbook_id=playbook_id,
             scan_mode=scan_mode,
             pentest_framework=fw,
+            training_opt_in=training_opt_in,
+            training_discount_pct=training_discount_pct,
         )
 
         # Persist to DB — quota check + row creation run inside one

@@ -1,0 +1,15 @@
+[project]
+name = "storage-policy"
+version = "0.1.0"
+description = "Standalone hot/cold tiered storage module for S3-compatible storage with auto-promotion based on access frequency"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = [
+    "aioboto3",
+    "redis",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

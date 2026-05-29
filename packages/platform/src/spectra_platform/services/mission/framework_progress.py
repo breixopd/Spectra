@@ -1,50 +1,43 @@
-"""Pentest framework metadata and PTES-aligned phase timeline for API / UI."""
+"""Dynamic pentest framework progress — phase timeline and milestone advancement.
+
+All phase labels, milestone definitions, and ordering come from YAML framework specs.
+No hardcoded AssessmentPhase enum references. Framework-driven and tool-agnostic.
+"""
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from spectra_platform.mission.core.enums import AssessmentPhase, MissionMilestone, MissionMilestoneStatus
-from spectra_platform.services.system.checklists import BUILTIN_CHECKLISTS
-
-ALLOWED_PENTEST_FRAMEWORKS: frozenset[str] = frozenset(BUILTIN_CHECKLISTS.keys())
-
-# Operational phases shown in mission details (before terminal COMPLETE).
-_PHASE_FLOW: tuple[AssessmentPhase, ...] = (
-    AssessmentPhase.SCOPE,
-    AssessmentPhase.DISCOVERY,
-    AssessmentPhase.ENUMERATION,
-    AssessmentPhase.VULNERABILITY,
-    AssessmentPhase.EXPLOITATION,
-    AssessmentPhase.POST_EXPLOITATION,
-    AssessmentPhase.REPORTING,
+from spectra_platform.mission.core.enums import AssessmentPhase
+from spectra_platform.services.mission.framework_loader import (
+    FrameworkSpec,
+    get_default_framework_id,
+    get_framework,
+    is_valid_framework,
+    list_frameworks,
 )
 
-_PHASE_LABELS: dict[str, str] = {
-    AssessmentPhase.SCOPE.value: "Scope & authorization",
-    AssessmentPhase.DISCOVERY.value: "Discovery / OSINT",
-    AssessmentPhase.ENUMERATION.value: "Enumeration",
-    AssessmentPhase.VULNERABILITY.value: "Vulnerability analysis",
-    AssessmentPhase.EXPLOITATION.value: "Exploitation",
-    AssessmentPhase.POST_EXPLOITATION.value: "Post-exploitation",
-    AssessmentPhase.REPORTING.value: "Reporting",
-    AssessmentPhase.COMPLETE.value: "Complete",
-}
+logger = logging.getLogger(__name__)
 
 
 def normalize_pentest_framework(framework_id: str | None) -> str:
-    """Return a supported checklist id, defaulting to PTES."""
-    if framework_id and framework_id in ALLOWED_PENTEST_FRAMEWORKS:
-        return framework_id
-    return "ptes"
+    """Return a supported framework id, defaulting to PTES."""
+    if is_valid_framework(framework_id):
+        return framework_id or get_default_framework_id()
+    return get_default_framework_id()
 
 
 def framework_display_name(framework_id: str | None) -> str:
-    """Human label for the methodology checklist bound to the mission."""
-    fid = normalize_pentest_framework(framework_id)
-    meta = BUILTIN_CHECKLISTS.get(fid) or {}
-    return str(meta.get("name") or fid.replace("_", " ").title())
+    """Human-readable label for the framework bound to the mission."""
+    spec = get_framework(framework_id)
+    return spec.metadata.name
+
+
+def list_available_frameworks() -> list[dict[str, Any]]:
+    """List all available frameworks with metadata for UI / API."""
+    return list_frameworks()
 
 
 def framework_phase_timeline(
@@ -53,13 +46,17 @@ def framework_phase_timeline(
     mission_status: str,
     pentest_framework: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Build a fixed-order phase strip for UI (PTES-aligned assessment phases).
+    """Build a phase timeline strip for UI, driven by the active framework spec.
 
-    ``pentest_framework`` selects the checklist name elsewhere; the phase strip
-    stays on ``AssessmentPhase`` so it matches the live planner regardless of
-    checklist (OWASP / network / PTES all map to the same execution phases).
+    Each framework defines its own phases, labels, and ordering. The timeline
+    marks completed phases as 'done' and the current phase as 'current'.
     """
-    _ = normalize_pentest_framework(pentest_framework)  # validate id; strip uses phases below
+    spec = get_framework(pentest_framework)
+    # Exclude terminal "complete" phase from operational timeline display
+    ordered_phases = [
+        p for p in sorted(spec.phases, key=lambda p: p.order)
+        if p.id != "complete"
+    ]
 
     status = (mission_status or "").lower()
     terminal_ok = status in (
@@ -71,19 +68,20 @@ def framework_phase_timeline(
     )
 
     phase_raw = (current_phase or "").strip().lower()
-    try:
-        cur = AssessmentPhase(phase_raw) if phase_raw else AssessmentPhase.SCOPE
-    except ValueError:
-        cur = AssessmentPhase.SCOPE
+    cur_id = phase_raw if phase_raw else ordered_phases[0].id
 
-    if cur == AssessmentPhase.COMPLETE or terminal_ok:
-        cur_idx = len(_PHASE_FLOW)
-    else:
-        cur_idx = next((i for i, p in enumerate(_PHASE_FLOW) if p == cur), 0)
+    # Find current phase index
+    try:
+        cur_idx = next(i for i, p in enumerate(ordered_phases) if p.id == cur_id)
+    except StopIteration:
+        cur_idx = 0
+
+    if terminal_ok:
+        cur_idx = len(ordered_phases)
 
     out: list[dict[str, Any]] = []
-    for i, p in enumerate(_PHASE_FLOW):
-        if terminal_ok or cur == AssessmentPhase.COMPLETE:
+    for i, phase in enumerate(ordered_phases):
+        if terminal_ok:
             done, current = True, False
         elif status == "failed":
             done = i < cur_idx
@@ -93,8 +91,9 @@ def framework_phase_timeline(
             current = i == cur_idx
         out.append(
             {
-                "id": p.value,
-                "label": _PHASE_LABELS.get(p.value, p.value),
+                "id": phase.id,
+                "label": phase.label,
+                "description": phase.description,
                 "done": done,
                 "current": current,
             }
@@ -102,40 +101,65 @@ def framework_phase_timeline(
     return out
 
 
+def framework_milestone_list(pentest_framework: str | None = None) -> list[dict[str, Any]]:
+    """List all milestones defined by the framework with their phases."""
+    spec = get_framework(pentest_framework)
+    return [
+        {
+            "id": m.id,
+            "label": m.label,
+            "description": m.description,
+            "phase": m.phase,
+        }
+        for m in spec.milestones
+    ]
+
+
 def advance_milestone(
-    mission,
-    milestone: MissionMilestone,
-    status: MissionMilestoneStatus = MissionMilestoneStatus.COMPLETED,
+    mission: Any,
+    milestone_id: str,
+    status: str = "completed",
     details: str = "",
+    pentest_framework: str | None = None,
 ) -> None:
     """Advance a mission milestone and persist to DB.
 
     Args:
-        mission: Mission object with milestones attribute
-        milestone: The milestone to advance (M1-M11)
-        status: Status to set (default: COMPLETED)
+        mission: Mission object with milestones attribute and pentest_framework
+        milestone_id: The milestone ID from the framework spec (e.g., "m1_target_enumeration")
+        status: Status to set (default: "completed")
         details: Optional details about the milestone completion
+        pentest_framework: Framework ID, defaults to mission's framework
     """
     from sqlalchemy import select
 
     from spectra_platform.core.database import get_sync_session
     from spectra_platform.models.mission import Mission
 
-    stored = mission.milestones or []
+    fid = pentest_framework or getattr(mission, "pentest_framework", None)
+    spec = get_framework(fid)
+
+    # Look up milestone label from framework spec
+    milestone_label = milestone_id
+    for m in spec.milestones:
+        if m.id == milestone_id:
+            milestone_label = m.label
+            break
+
+    stored = getattr(mission, "milestones", None) or []
     stored_map = {m.get("milestone"): m for m in stored if m.get("milestone")}
 
     now = datetime.now(UTC).isoformat()
 
     entry = {
-        "milestone": milestone.value,
-        "label": milestone.label,
-        "status": status.value,
-        "completed_at": now if status == MissionMilestoneStatus.COMPLETED else None,
+        "milestone": milestone_id,
+        "label": milestone_label,
+        "status": status,
+        "completed_at": now if status == "completed" else None,
         "details": details,
     }
 
-    stored_map[milestone.value] = entry
-
+    stored_map[milestone_id] = entry
     mission.milestones = list(stored_map.values())
 
     if hasattr(mission, "id") and mission.id:
@@ -148,3 +172,11 @@ def advance_milestone(
                 session.commit()
         finally:
             session.close()
+
+
+# ── Backward compatibility wrappers ────────────────────────────────────
+
+def _phase_flow_for_fallback() -> list[str]:
+    """Return PTES phase IDs as fallback for code still using AssessmentPhase."""
+    spec = get_framework(None)
+    return [p.id for p in sorted(spec.phases, key=lambda p: p.order)]
