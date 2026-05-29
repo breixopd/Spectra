@@ -1,6 +1,6 @@
 # Roadmap
 
-[← Wiki Home](home.md) | [Architecture](architecture.md)
+[← Wiki Home](Home.md) | [Architecture](architecture.md)
 
 ---
 

@@ -1,6 +1,6 @@
 # Plugins
 
-[← Wiki Home](home.md) | [Architecture](architecture.md) | [API Reference](api-reference.md)
+[← Wiki Home](Home.md) | [Architecture](architecture.md) | [API Reference](api-reference.md)
 
 ---
 

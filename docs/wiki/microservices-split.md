@@ -1,6 +1,6 @@
 # Microservices Architecture
 
-[← Wiki Home](home.md) | [Deployment Guide](deployment-guide.md) | [Sandboxes](sandboxes.md) | [Scaling](scaling.md)
+[← Wiki Home](Home.md) | [Deployment Guide](deployment-guide.md) | [Sandboxes](sandboxes.md) | [Scaling](scaling.md)
 
 ---
 

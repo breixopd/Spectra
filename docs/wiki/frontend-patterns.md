@@ -1,6 +1,6 @@
 # Frontend Patterns
 
-[← Wiki Home](home.md) | [Architecture](architecture.md) | [Design Tokens](design-tokens.md) | [Development](development.md)
+[← Wiki Home](Home.md) | [Architecture](architecture.md) | [Design Tokens](design-tokens.md) | [Development](development.md)
 
 ---
 

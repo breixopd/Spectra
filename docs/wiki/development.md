@@ -1,6 +1,6 @@
 # Development
 
-[← Wiki Home](home.md) | [Architecture](architecture.md) | [Frontend Patterns](frontend-patterns.md) | [Design Tokens](design-tokens.md) | [Operations](operations.md) | [Plugins](plugins.md)
+[← Wiki Home](Home.md) | [Architecture](architecture.md) | [Frontend Patterns](frontend-patterns.md) | [Design Tokens](design-tokens.md) | [Operations](operations.md) | [Plugins](plugins.md)
 
 ---
 

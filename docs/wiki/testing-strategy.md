@@ -1,6 +1,6 @@
 # Testing Strategy
 
-[<- Wiki Home](home.md) | [Development](development.md) | [Deployment Guide](deployment-guide.md)
+[<- Wiki Home](Home.md) | [Development](development.md) | [Deployment Guide](deployment-guide.md)
 
 ---
 

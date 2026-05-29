@@ -1,6 +1,6 @@
 # Architecture
 
-[← Wiki Home](home.md) | [Configuration](configuration.md) | [Deployment Guide](deployment-guide.md) | [Plugins](plugins.md)
+[← Wiki Home](Home.md) | [Configuration](configuration.md) | [Deployment Guide](deployment-guide.md) | [Plugins](plugins.md)
 
 ---
 

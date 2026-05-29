@@ -1,6 +1,6 @@
 # Runbooks (repository)
 
-[← Wiki Home](home.md)
+[← Wiki Home](Home.md)
 
 Executable procedures live in the **main repository** (not duplicated on the GitHub Wiki mirror). Use these links:
 

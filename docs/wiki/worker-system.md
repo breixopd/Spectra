@@ -1,6 +1,6 @@
 # Worker & Background Task System
 
-[← Wiki Home](home.md) | [Operations](operations.md) | [Architecture](architecture.md) | [Configuration](configuration.md)
+[← Wiki Home](Home.md) | [Operations](operations.md) | [Architecture](architecture.md) | [Configuration](configuration.md)
 
 ---
 
