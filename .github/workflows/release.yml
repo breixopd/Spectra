@@ -44,7 +44,7 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: refs/heads/main
           fetch-depth: 0
@@ -685,7 +685,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.release.outputs.release_sha }}
           fetch-depth: 0
