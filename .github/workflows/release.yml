@@ -223,7 +223,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Scan API image for critical CVEs
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           image-ref: ${{ env.APP_IMAGE }}:${{ steps.version.outputs.version }}
           severity: CRITICAL
@@ -231,7 +231,7 @@ jobs:
           exit-code: "1"
 
       - name: Scan AI image for critical CVEs
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           image-ref: ${{ env.AI_IMAGE }}:${{ steps.version.outputs.version }}
           severity: CRITICAL
@@ -239,7 +239,7 @@ jobs:
           exit-code: "1"
 
       - name: Scan scheduler image for critical CVEs
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           image-ref: ${{ env.SCHEDULER_IMAGE }}:${{ steps.version.outputs.version }}
           severity: CRITICAL
@@ -247,7 +247,7 @@ jobs:
           exit-code: "1"
 
       - name: Scan worker image for critical CVEs
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           image-ref: ${{ env.WORKER_IMAGE }}:${{ steps.version.outputs.version }}
           severity: CRITICAL
@@ -255,7 +255,7 @@ jobs:
           exit-code: "1"
 
       - name: Scan Caddy image for critical CVEs
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           image-ref: ${{ env.CADDY_IMAGE }}:${{ steps.version.outputs.version }}
           severity: CRITICAL
