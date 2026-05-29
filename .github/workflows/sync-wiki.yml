@@ -23,7 +23,8 @@ jobs:
     name: Publish docs/wiki to GitHub Wiki
     runs-on: ubuntu-latest
     env:
-      SPECTRA_GH_TOKEN: ${{ secrets.SPECTRA_ACTIONS_TOKEN || secrets.GITHUB_TOKEN }}
+      # Fine-grained PAT: Repository → Spectra → Contents read/write (see github-actions-secrets.md).
+      SPECTRA_WIKI_TOKEN: ${{ secrets.SPECTRA_WIKI_TOKEN || secrets.SPECTRA_ACTIONS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -31,4 +32,4 @@ jobs:
         uses: Andrew-Chen-Wang/github-wiki-action@v5
         with:
           path: docs/wiki
-          token: ${{ env.SPECTRA_GH_TOKEN }}
+          token: ${{ env.SPECTRA_WIKI_TOKEN }}
