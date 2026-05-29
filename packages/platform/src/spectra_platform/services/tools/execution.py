@@ -3,13 +3,74 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from spectra_domain.jobs import WorkerJobName
 from spectra_platform.services.tools.output import create_error_result
 from spectra_tools_core.models import ToolExecutionResult
 
+if TYPE_CHECKING:
+    from spectra_platform.services.tools.registry import ToolRegistry
+
 logger = logging.getLogger(__name__)
+
+
+def _is_tool_not_found_error(result_data: dict[str, Any]) -> bool:
+    """Check if the worker result indicates the tool binary was missing."""
+    stderr = (result_data.get("stderr") or "").lower()
+    return any(
+        keyword in stderr
+        for keyword in [
+            "not found",
+            "tool unavailable",
+            "unavailable in verified worker",
+            "binary not found",
+            "auto-install of",
+        ]
+    )
+
+
+async def find_alternative_tools(tool_id: str, max_results: int = 3) -> list[dict[str, str]]:
+    """Find alternative tools in the same category with overlapping capabilities.
+
+    Args:
+        tool_id: The ID of the tool that is unavailable.
+        max_results: Maximum number of alternatives to return.
+
+    Returns:
+        List of dicts with 'id', 'name', 'category', and 'capabilities'.
+    """
+    from spectra_platform.services.tools.registry import get_registry
+
+    registry = get_registry()
+    tool = registry.get_tool(tool_id)
+    if not tool:
+        return []
+
+    category = tool.config.category
+    capabilities = set(tool.config.metadata.capabilities)
+
+    alternatives: list[dict[str, str]] = []
+    for t in registry.list_tools():
+        if t.config.id == tool_id:
+            continue
+        if t.config.category != category:
+            continue
+        t_caps = set(t.config.metadata.capabilities)
+        if capabilities & t_caps:  # Share at least one capability
+            alternatives.append(
+                {
+                    "id": t.config.id,
+                    "name": t.config.name,
+                    "category": t.config.category,
+                    "capabilities": ", ".join(t.config.metadata.capabilities),
+                }
+            )
+            if len(alternatives) >= max_results:
+                break
+
+    logger.info("Found %d alternative tools for %s (category=%s)", len(alternatives), tool_id, category)
+    return alternatives
 
 
 async def execute_via_worker(
@@ -59,6 +120,19 @@ async def execute_via_worker(
         if result_data is None:
             return create_error_result(tool_id, target, "Job returned no result")
 
+        # If the worker reported a missing-tool error, include alternative
+        # tool suggestions in the error message for the caller.
+        if not result_data.get("success") and _is_tool_not_found_error(result_data):
+            stderr_hint = (result_data.get("stderr") or "")[:200]
+            alternatives = await find_alternative_tools(tool_id)
+            alt_hint = ""
+            if alternatives:
+                alt_names = [a["name"] for a in alternatives]
+                alt_hint = f". Consider alternatives: {', '.join(alt_names)}"
+            enhanced_error = f"{stderr_hint}{alt_hint}"
+            logger.warning("Tool %s unavailable%s", tool_id, alt_hint)
+            result_data["stderr"] = enhanced_error
+
         # OOM escalation: recreate sandbox at next tier and retry
         if isinstance(result_data, dict) and result_data.get("oom") and mission_id:
             from spectra_platform.services.tools.sandbox.escalation import attempt_oom_escalation
@@ -103,8 +177,20 @@ async def execute_via_worker(
         return create_error_result(tool_id, target, f"Worker error: {e}")
 
 
-async def ensure_tool_installed(tool_id: str, install_timeout: int) -> bool:
-    """Compatibility helper: queue golden image rebuild for a tool/plugin."""
+async def ensure_tool_installed(tool_id: str, install_timeout: int = 600) -> bool:
+    """Queue and wait for a tool to be installed via the worker.
+
+    Triggers the worker's auto-install flow by enqueuing an INSTALL_TOOL
+    job, then waits for completion.  This is used pre-emptively by the
+    validation layer before execution.
+
+    Args:
+        tool_id: The tool/plugin ID to install.
+        install_timeout: Maximum seconds to wait for installation.
+
+    Returns:
+        True if the tool was installed successfully.
+    """
     from spectra_platform.core.config import settings
     from spectra_platform.infrastructure.queue import Job, PostgresJobQueue
 
@@ -125,8 +211,19 @@ async def ensure_tool_installed(tool_id: str, install_timeout: int) -> bool:
             if tool:
                 tool.status = ToolStatus.PENDING
             return True
+
+        # Check if worker side did an auto-install (golden image rebuild)
+        from spectra_platform.services.tools.registry import get_registry
+        from spectra_worker.helpers import _is_tool_installed
+
+        registry = get_registry()
+        tool = registry.get_tool(tool_id)
+        if tool and _is_tool_installed(tool):
+            logger.info("Tool %s was auto-installed by worker", tool_id)
+            return True
+
         return False
 
     except (OSError, RuntimeError, ValueError) as e:
-        logger.error("Tool installation failed: %s", e)
+        logger.error("Tool installation failed for %s: %s", tool_id, e)
         return False

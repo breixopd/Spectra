@@ -1,0 +1,126 @@
+{
+  "id": "cdk",
+  "name": "cdk",
+  "version": "1.0.0",
+  "category": "post_exploitation",
+  "description": "Container Discovery Kit (Peass-ng's CDK). Automated container escape and cloud environment enumeration tool for compromised containers.",
+  "metadata": {
+    "ai_description": "CDK (Container Discovery Kit) is an automated container post-exploitation tool from the Peass-ng family. Upload and run it on a compromised container to assess the environment for escape vectors. It evaluates capabilities (CAP_SYS_ADMIN, CAP_DAC_READ_SEARCH, etc.), mounted Docker socket, cgroup escape, kernel exploits, cloud metadata service access, and more. The auto-evaluate mode checks all escape paths and reports exploitable vectors.",
+    "capabilities": [
+      "container_escape",
+      "privilege_escalation",
+      "cloud_enumeration"
+    ],
+    "supported_targets": [
+      "host"
+    ],
+    "risk_level": "critical",
+    "tags": [
+      "container",
+      "docker",
+      "kubernetes",
+      "escape",
+      "post-exploitation",
+      "cloud",
+      "privilege-escalation"
+    ],
+    "use_cases": [
+      "Auto-assessing container environment for escape vectors",
+      "Checking privileged capabilities on a container",
+      "Detecting mounted Docker socket for escape",
+      "Enumerating cloud metadata services (AWS/GCP/Azure)",
+      "Testing for kernel exploits applicable to the container"
+    ],
+    "limitations": [
+      "Requires shell access inside a compromised container",
+      "Some escape techniques require specific capabilities",
+      "May trigger container security monitoring",
+      "Output depends on the container's available binaries"
+    ],
+    "complements": [
+      "linpeas",
+      "metasploit",
+      "nmap"
+    ],
+    "prerequisites": []
+  },
+  "installation": {
+    "method": "binary",
+    "commands": [
+      "mkdir -p /opt/spectra_tools/container",
+      "curl -sL -o /opt/spectra_tools/container/cdk https://github.com/cdk-team/CDK/releases/latest/download/cdk_linux_amd64",
+      "chmod +x /opt/spectra_tools/container/cdk"
+    ],
+    "verification_command": "test -f /opt/spectra_tools/container/cdk && echo 'cdk ready'",
+    "verification_regex": "cdk ready",
+    "uninstall_commands": [
+      "rm -f /opt/spectra_tools/container/cdk"
+    ]
+  },
+  "execution": {
+    "command": "/opt/spectra_tools/container/cdk",
+    "args_template": "{flags} evaluate",
+    "timeout": 300,
+    "min_timeout": 60,
+    "max_timeout": 600
+  },
+  "parsing": {
+    "format": "text",
+    "regex_patterns": [
+      {
+        "pattern": "\\[\\+\\]\\s+(?P<escape_vector>.+)\\s+-\\s+(?P<exploitable>exploitable)",
+        "type": "vuln"
+      },
+      {
+        "pattern": "(?:CAP_SYS_ADMIN|CAP_DAC_READ_SEARCH|CAP_SYS_PTRACE)\\s+is\\s+enabled",
+        "type": "vuln"
+      },
+      {
+        "pattern": "Docker\\s+socket\\s+mounted",
+        "type": "vuln"
+      },
+      {
+        "pattern": "metadata\\s+service\\s+(?P<provider>\\w+)\\s+accessible",
+        "type": "vuln"
+      },
+      {
+        "pattern": "\\[\\*\\]\\s+(?P<info>.+)",
+        "type": "info"
+      }
+    ],
+    "llm_extraction": true,
+    "extraction_hint": "Extract exploitable container escape vectors, enabled dangerous capabilities, mounted Docker socket, accessible cloud metadata services, kernel exploit opportunities, and any privilege escalation paths"
+  },
+  "stealth": {
+    "rate_limit": null,
+    "delay_ms": 0,
+    "extra_args": {}
+  },
+  "ui": {
+    "icon": "container",
+    "color": "blue"
+  },
+  "examples": [
+    {
+      "description": "Auto-evaluate container for all escape vectors",
+      "args": {
+        "flags": ""
+      }
+    },
+    {
+      "description": "Evaluate with specific namespace",
+      "args": {
+        "flags": "--namespace default evaluate"
+      }
+    },
+    {
+      "description": "Run specific capability check",
+      "args": {
+        "flags": "run cap-dac-read-search"
+      }
+    }
+  ],
+  "resources": {
+    "tier": "light"
+  }
+}

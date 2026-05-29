@@ -40,4 +40,5 @@ scripts/ops/
 .chunkhound/
 .chunkhound.db
 .sisyphus/
+packages/storage-policy/
 uv.lock

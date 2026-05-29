@@ -85,11 +85,14 @@
                 <select id="mission-pentest-framework"
                     class="flex-1 min-w-[8rem] px-2 py-1 bg-slate-900/50 border border-white/10 rounded-lg text-xs text-slate-300 focus:outline-none focus:border-violet-500/50"
                     aria-label="Pentest methodology checklist">
+                    {% for fw in available_frameworks | default([]) %}
+                    <option value="{{ fw.id }}" {% if fw.id == 'ptes' %}selected{% endif %}>{{ fw.name }} v{{ fw.version }}</option>
+                    {% endfor %}
+                    {% if not available_frameworks %}
                     <option value="ptes">PTES Standard</option>
-                    <option value="owasp_top10_2021">OWASP Top 10 (2021)</option>
-                    <option value="network_pentest">Network pentest</option>
-                    <option value="api_security">API security</option>
-                    <option value="ad_pentest">Active Directory</option>
+                    <option value="owasp">OWASP Testing Guide</option>
+                    <option value="nist">NIST SP 800-115</option>
+                    {% endif %}
                 </select>
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
@@ -171,8 +174,11 @@
     <div id="phase-timeline" class="flex flex-wrap gap-1.5"></div>
 </div>
 
-<!-- Getting Started Card - shown when no missions exist -->
-<div id="getting-started" data-testid="getting-started" class="glass-panel rounded-xl p-6 mb-6 border border-violet-500/20 animate-fade-in-up">
+<!-- Getting Started Card - dismissable, stored in localStorage -->
+<div id="getting-started" data-testid="getting-started" class="glass-panel rounded-xl p-5 mb-6 border border-violet-500/20 animate-fade-in-up relative">
+    <button data-action="dismiss-welcome" class="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-lg bg-slate-800/50 hover:bg-slate-700/60 text-slate-500 hover:text-slate-300 transition-colors" aria-label="Dismiss welcome" title="Dismiss">
+        <i data-lucide="x" class="w-4 h-4"></i>
+    </button>
     <div class="flex items-start gap-4">
         <div class="w-12 h-12 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0">
             <i data-lucide="rocket" class="w-5 h-5 inline-block text-violet-400"></i>
@@ -206,11 +212,11 @@
     <!-- Left Column: Map + Findings -->
     <div class="lg:col-span-1 flex flex-col gap-4">
         <!-- Map -->
-        <div class="glass-panel rounded-xl overflow-hidden relative" style="min-height: 220px; max-width: 100%;">
+        <div class="glass-panel rounded-xl overflow-hidden relative dash-map" style="max-width: 100%;">
             <div class="absolute top-3 left-3 z-[400] pointer-events-none">
                 <span class="text-xs font-mono tracking-widest text-slate-400 uppercase bg-slate-900/80 px-2 py-0.5 rounded">Location</span>
             </div>
-            <div id="threat-map" class="w-full h-full bg-[#0f172a]" style="min-height: 220px;">
+            <div id="threat-map" class="w-full h-full bg-[#0f172a] dash-map">
                 <div id="map-placeholder" class="flex items-center justify-center h-full text-slate-700">
                     <div class="text-center">
                         <i data-lucide="map-pin" class="w-5 h-5 inline-block mb-2"></i>
@@ -276,7 +282,7 @@
     <!-- Center + Right: Network Graph + Activity Log -->
     <div class="lg:col-span-2 flex flex-col gap-4 min-h-0">
         <!-- Network Topology -->
-        <div class="glass-panel rounded-xl relative overflow-hidden flex-1 min-h-[280px]">
+        <div class="glass-panel rounded-xl relative overflow-hidden flex-1 dash-graph">
             <div class="absolute top-3 left-3 z-10 flex items-center gap-2">
                 <i data-lucide="git-branch" class="w-3.5 h-3.5 inline-block text-violet-400"></i>
                 <span class="text-xs font-mono tracking-widest text-slate-500 uppercase">Network Topology</span>
@@ -301,8 +307,8 @@
             </div>
         </div>
 
-        <!-- Activity Log (replaces old "Console Output" tile) -->
-        <div class="bg-slate-900/80 rounded-xl border border-white/5 flex flex-col overflow-hidden" style="min-height: 200px; max-height: 320px;">
+        <!-- Activity Log -->
+        <div class="dash-log rounded-xl flex flex-col overflow-hidden">
             <div class="flex items-center justify-between px-4 py-2 border-b border-white/5 shrink-0">
                 <div class="flex items-center gap-2 text-xs text-slate-400">
                     <i data-lucide="terminal" class="w-3.5 h-3.5 inline-block text-violet-400/60"></i>
@@ -347,7 +353,7 @@
             <span class="text-sm font-medium text-white">Attack Paths</span>
         </div>
     </div>
-    <div id="attack-paths-graph" class="bg-slate-950" style="min-height: 250px;">
+    <div id="attack-paths-graph" class="bg-slate-950 dash-paths">
         <div class="flex items-center justify-center h-full text-slate-700 py-8">
             <div class="text-center"><i data-lucide="route" class="w-5 h-5 inline-block mb-2"></i><p class="text-xs">Attack paths appear after exploitation</p></div>
         </div>

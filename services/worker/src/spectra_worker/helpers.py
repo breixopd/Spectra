@@ -168,6 +168,49 @@ async def _run_command(
         return (-1, "", f"Command timed out after {timeout}s")
 
 
+async def _find_alternative_tools(tool_id: str, max_results: int = 3) -> list[Any]:
+    """Find alternative tools in the same category with overlapping capabilities.
+
+    Used by the worker's auto-install fallback: when a tool cannot be
+    installed or fails during execution, alternatives from the same
+    technique category that share at least one capability are returned.
+
+    Args:
+        tool_id: The ID of the tool that failed.
+        max_results: Maximum number of alternatives to return.
+
+    Returns:
+        List of RegisteredTool objects that can serve as alternatives.
+    """
+    from spectra_platform.services.tools.registry import get_registry
+
+    registry = get_registry()
+    tool = registry.get_tool(tool_id)
+    if not tool:
+        return []
+
+    category = tool.config.category
+    capabilities = set(tool.config.metadata.capabilities)
+
+    alternatives: list[Any] = []
+    for t in registry.list_tools():
+        if t.config.id == tool_id:
+            continue
+        if t.config.category != category:
+            continue
+        # Only consider tools that are either installed or can be installed
+        if not _is_tool_installed(t) and getattr(t.status, 'value', str(t.status)) not in ("ready", "installing"):
+            continue
+        t_caps = set(t.config.metadata.capabilities)
+        if capabilities & t_caps:  # Share at least one capability
+            alternatives.append(t)
+            if len(alternatives) >= max_results:
+                break
+
+    logger.info("Found %d alternative tools for %s (category=%s)", len(alternatives), tool_id, category)
+    return alternatives
+
+
 async def _track_tool_stats(
     tool_id: str,
     success: bool,

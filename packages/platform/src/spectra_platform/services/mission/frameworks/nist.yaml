@@ -1,0 +1,77 @@
+metadata:
+  name: "NIST SP 800-115"
+  version: "1.0"
+  description: "NIST Technical Guide to Information Security Testing and Assessment"
+  url: "https://csrc.nist.gov/publications/detail/sp/800-115/final"
+
+phases:
+  - id: planning
+    label: "Planning"
+    order: 0
+  - id: discovery
+    label: "Discovery"
+    order: 1
+  - id: attack
+    label: "Attack"
+    order: 2
+  - id: reporting
+    label: "Reporting"
+    order: 3
+
+milestones:
+  - id: nist_m1_rules_defined
+    label: "Rules of Engagement Defined"
+    phase: planning
+  - id: nist_m2_vulns_identified
+    label: "Vulnerabilities Identified"
+    phase: discovery
+  - id: nist_m3_exploited
+    label: "Vulnerabilities Exploited"
+    phase: attack
+  - id: nist_m4_reported
+    label: "Findings Reported"
+    phase: reporting
+
+technique_categories:
+  - id: port_scanning
+    label: "Port Scanning"
+    allowed_in_phases: ["discovery"]
+    tool_types: ["scanner", "network"]
+  - id: vulnerability_scanning
+    label: "Vulnerability Scanning"
+    allowed_in_phases: ["discovery"]
+    tool_types: ["vulnerability", "scanner"]
+  - id: exploitation
+    label: "Exploitation"
+    allowed_in_phases: ["attack"]
+    tool_types: ["exploit", "framework"]
+    requires_consensus: true
+    risk_level: "high"
+  - id: credential_testing
+    label: "Credential Testing"
+    allowed_in_phases: ["attack"]
+    tool_types: ["auth", "brute_force"]
+    constraints:
+      max_attempts_per_service: 50
+
+forbidden_techniques:
+  - technique: "denial_of_service"
+    reason: "DoS attacks excluded"
+    override: "explicit_authorization"
+  - technique: "data_destruction"
+    reason: "Never destroy data"
+    override: "none"
+
+report_sections:
+  - id: executive_summary
+    label: "Executive Summary"
+    order: 0
+  - id: methodology
+    label: "Testing Methodology (NIST SP 800-115)"
+    order: 1
+  - id: findings
+    label: "Findings"
+    order: 2
+  - id: remediation
+    label: "Remediation"
+    order: 3

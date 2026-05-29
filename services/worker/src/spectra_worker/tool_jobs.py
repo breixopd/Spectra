@@ -1,4 +1,19 @@
-"""Tool execution, installation, uninstallation, and status sync jobs."""
+"""Tool execution, installation, uninstallation, and status sync jobs.
+
+Architecture
+------------
+Tools are **baked into the golden image** at build time via
+``golden_image_refresh.sh`` (or ``GoldenImageBuilder.build()``).  The
+worker container starts with all 30+ security tools pre-installed.
+
+On-demand installation in ``_ensure_available_tool()`` is a **fallback**
+for edge cases:
+  - The golden image is stale (ops needs to rebuild).
+  - A user uploaded a new plugin after the last golden image build.
+
+If the fallback triggers, a ``WARNING`` is logged and the tool ID is
+tracked in ``_missing_from_golden_image`` so operators can detect drift.
+"""
 
 from __future__ import annotations
 
@@ -21,6 +36,7 @@ from spectra_tools_core.models import (
 
 from .helpers import (
     _error_result,
+    _find_alternative_tools,
     _get_executable,
     _is_tool_installed,
     _run_command,
@@ -32,7 +48,30 @@ from .helpers import (
 logger = logging.getLogger(__name__)
 
 
+# Track tools that hit the on-demand fallback path so ops knows a
+# golden-image rebuild is needed.  Reset on worker restart.
+_missing_from_golden_image: set[str] = set()
+
+
 async def _ensure_available_tool(registry: Any, tool_id: str, target: str) -> tuple[Any | None, dict[str, Any] | None]:
+    """Ensure a tool is available, auto-installing only as last resort.
+
+    **Primary path** — tools SHOULD be pre-installed in the golden image
+    that this worker container was launched from.  ``golden_image_refresh.sh``
+    (or ``GoldenImageBuilder.build()``) reads every ``plugins/*.json``,
+    generates a Dockerfile that installs all tools, and bakes them into
+    ``spectra-tools:<tag>``.
+
+    **Fallback** — if the binary is not found locally (e.g. the golden image
+    is stale, or a user uploaded a new plugin after the last build), the
+    ``PluginInstaller`` runs the tool's install commands on-demand.  This
+    path logs a **warning** so operators know a golden-image rebuild and
+    worker rollout is warranted.
+
+    Returns ``(tool, None)`` on success or ``(None, error_result)`` on
+    failure so callers can fall back to alternative tools.
+    """
+    global _missing_from_golden_image
     tool = registry.get_tool(tool_id)
     if not tool:
         return None, _error_result(tool_id, target, f"Tool not found: {tool_id}")
@@ -42,13 +81,49 @@ async def _ensure_available_tool(registry: Any, tool_id: str, target: str) -> tu
             await _sync_tool_status(tool_id, {"status": ToolStatus.READY.value, "phase": "verified_worker_binary"})
         return tool, None
 
-    status = tool.status.value if hasattr(tool.status, "value") else str(tool.status)
-    logger.warning("Tool %s unavailable in verified worker image (registry_status=%s)", tool_id, status)
-    return None, _error_result(
+    # ── Fallback path: tool should have been in golden image ──────────
+    _missing_from_golden_image.add(tool_id)
+    logger.warning(
+        "Tool %s not found in golden image — triggering on-demand install. "
+        "Run golden_image_refresh.sh to bake this tool into the next image.",
         tool_id,
-        target,
-        "Tool unavailable in verified worker image; rebuild/promote the golden image before mission execution",
     )
+    await _sync_tool_status(
+        tool_id,
+        {
+            "status": ToolStatus.INSTALLING.value,
+            "phase": "auto_install",
+            "message": f"On-demand install (not in golden image): {tool_id}",
+        },
+    )
+
+    try:
+        success = await registry.install_tool(tool_id)
+        tool = registry.get_tool(tool_id)
+        if success and tool and _is_tool_installed(tool):
+            logger.info("Tool %s auto-installed successfully (on-demand fallback)", tool_id)
+            await _sync_tool_status(
+                tool_id,
+                {
+                    "status": ToolStatus.READY.value,
+                    "phase": "verified_worker_binary",
+                    "message": f"On-demand installed {tool_id} (not in golden image)",
+                },
+            )
+            return tool, None
+        else:
+            msg = f"On-demand install of {tool_id} completed but binary still not found in PATH"
+            logger.error(msg)
+            await _sync_tool_status(tool_id, {"status": ToolStatus.FAILED.value, "phase": "auto_install_failed", "message": msg})
+            return None, _error_result(tool_id, target, msg)
+    except Exception as e:
+        msg = f"On-demand install of {tool_id} failed: {e}"
+        logger.error(msg, exc_info=True)
+        await _sync_tool_status(
+            tool_id,
+            {"status": ToolStatus.FAILED.value, "phase": "auto_install_failed", "message": msg},
+        )
+        return None, _error_result(tool_id, target, msg)
 
 
 def _resolve_output_dir(tool_id: str, output_dir: str | None) -> str:
@@ -414,3 +489,54 @@ async def sync_all_status_job() -> dict[str, Any]:
         synced += 1
 
     return {"synced": synced, "total": len(tools)}
+
+
+async def verify_golden_image_on_startup() -> dict[str, Any]:
+    """Audit which tools are pre-installed in the golden image vs. missing.
+
+    Called during worker startup.  Logs a summary that operators can use
+    to decide whether the current golden image is complete.  Tools that
+    are missing from the image will trigger the on-demand fallback when
+    first used.
+
+    Returns ``{"embedded": [...], "missing": [...], "total": N}``.
+    """
+    from spectra_platform.services.tools.registry import get_registry
+
+    registry = get_registry()
+    tools = registry.list_tools()
+
+    embedded: list[str] = []
+    missing: list[str] = []
+
+    for tool in tools:
+        if _is_tool_installed(tool):
+            embedded.append(tool.config.id)
+        else:
+            missing.append(tool.config.id)
+            # Mark as PENDING so the UI reflects reality
+            tool.status = ToolStatus.PENDING
+            await _sync_tool_status(
+                tool.config.id,
+                {"status": ToolStatus.PENDING.value, "phase": "golden_image_missing"},
+            )
+
+    if missing:
+        logger.warning(
+            "GOLDEN IMAGE INCOMPLETE: %d / %d tools missing — %s. "
+            "Run golden_image_refresh.sh to rebuild with all plugins.",
+            len(missing),
+            len(tools),
+            ", ".join(sorted(missing)),
+        )
+    else:
+        logger.info(
+            "Golden image complete: all %d tools pre-installed.",
+            len(tools),
+        )
+
+    return {
+        "embedded": sorted(embedded),
+        "missing": sorted(missing),
+        "total": len(tools),
+    }

@@ -122,8 +122,15 @@ async def _batch_sync_tool_statuses(tools: list[object]) -> list[str]:
 
 
 async def _auto_install_pending() -> None:
-    """Sync tool availability on startup without mutating the container image."""
+    """Audit golden image completeness at startup.
+
+    Checks every registered tool against the local filesystem.  Tools
+    missing from the image are reported (they will trigger on-demand
+    install when first used), but the worker does NOT attempt to install
+    them — golden image is the delivery mechanism.
+    """
     from spectra_platform.services.tools.registry import get_registry
+    from spectra_worker.tool_jobs import verify_golden_image_on_startup
 
     registry = get_registry()
     tools = list(registry.list_tools())
@@ -131,10 +138,20 @@ async def _auto_install_pending() -> None:
 
     if pending:
         logger.warning(
-            "Golden worker image is missing %d registered tools: %s. Rebuild/promote image before missions.",
+            "GOLDEN IMAGE INCOMPLETE: %d / %d tools missing (%s). "
+            "Run golden_image_refresh.sh then rollout new workers. "
+            "On-demand install will be used as fallback until then.",
             len(pending),
+            len(tools),
             pending,
         )
+
+    # Run the detailed audit for structured reporting
+    audit = await verify_golden_image_on_startup()
+    if audit["missing"]:
+        logger.warning("Golden image audit: %d embedded, %d missing — rebuild needed.", len(audit["embedded"]), len(audit["missing"]))
+    else:
+        logger.info("Golden image audit: all %d tools pre-installed. Good.", audit["total"])
 
 
 async def shutdown() -> None:
