@@ -2,18 +2,18 @@
 
 [← Wiki Home](Home.md)
 
-Spectra keeps **operator and developer docs in the repository** under `docs/wiki/`. That folder is the source of truth: it is reviewed in pull requests, versioned with releases, and linked from the root [README](https://github.com/breixopd/Spectra/blob/main/README.md).
+Spectra keeps **operator and developer docs in the repository** under `docs/wiki/`. That folder is the source of truth: it is reviewed in pull requests, versioned with releases, and linked from the root README.
 
 ## GitHub Wiki tab (optional reader UI)
 
-The repository also has the **GitHub Wiki** feature enabled. A workflow (`.github/workflows/sync-wiki.yml`) mirrors `docs/wiki/` into the wiki Git repo (`breixopd/Spectra.wiki.git`) whenever `main` changes, so the Wiki tab stays aligned with the tree without maintaining two copies by hand.
+The repository can mirror `docs/wiki/` into the GitHub Wiki git repo (`<repo>.wiki.git`) via `.github/workflows/sync-wiki.yml` when Actions runs.
 
 ### One-time setup (repo admin)
 
-1. Open **https://github.com/breixopd/Spectra/wiki** and create any first page once (enables `.wiki.git`). You can delete that placeholder after the first successful sync.
+1. Enable the Wiki tab and create any first page once (provisions `.wiki.git`). Delete the placeholder after the first real sync.
 2. Add fine-grained secrets **`SPECTRA_WIKI_TOKEN`** and **`SPECTRA_RELEASE_TOKEN`** — see [GitHub secrets](github-actions-secrets.md).
-3. Push to `main` (or run **Actions → Sync wiki → Run workflow**).
-4. Confirm wiki pages match `docs/wiki/` and that `_Sidebar.md` renders as the left nav.
+3. Push to `main` or run **Actions → Sync wiki** when billing allows.
+4. Confirm pages match `docs/wiki/` and `_Sidebar.md` renders as the nav.
 
 ### What syncs and what does not
 
@@ -22,9 +22,9 @@ The repository also has the **GitHub Wiki** feature enabled. A workflow (`.githu
 | All `docs/wiki/*.md` | Yes |
 | `docs/wiki/_Sidebar.md` | Yes (wiki sidebar) |
 | `docs/runbooks/` | **No** — see [Runbooks](runbooks.md) for links into the main repo |
-| `docs/contributing/` | **No** — use [CONTRIBUTING](https://github.com/breixopd/Spectra/blob/main/CONTRIBUTING.md) |
+| `docs/contributing/` | **No** — link to `CONTRIBUTING.md` in the main repo |
 
-Wiki pages must not use `../runbooks/` links (those paths do not exist in the wiki repo). Use [Runbooks](runbooks.md) or full `github.com/breixopd/Spectra/blob/main/…` URLs instead.
+Wiki pages must not use `../runbooks/` links (those paths do not exist in the wiki repo). Use [Runbooks](runbooks.md) or absolute links to files on the default branch.
 
 ### Editing workflow
 
@@ -35,7 +35,7 @@ Wiki pages must not use `../runbooks/` links (those paths do not exist in the wi
 To edit only via the GitHub Wiki UI, clone the wiki repo locally:
 
 ```bash
-git clone https://github.com/breixopd/Spectra.wiki.git
+git clone https://github.com/<owner>/<repo>.wiki.git
 # edit, commit, push — then backport changes into docs/wiki/ or they will be overwritten on the next sync
 ```
 
@@ -43,4 +43,4 @@ git clone https://github.com/breixopd/Spectra.wiki.git
 
 ## Container images (GHCR)
 
-Release images are published to **`ghcr.io/breixopd/`**. CI pushes use **`GITHUB_TOKEN`**; wiki/releases use fine-grained PATs — see [GitHub secrets](github-actions-secrets.md).
+Release images are published to **`ghcr.io/<repository-owner>/`**. Image push in CI uses **`GITHUB_TOKEN`**; wiki/releases use fine-grained PATs — see [GitHub secrets](github-actions-secrets.md).
