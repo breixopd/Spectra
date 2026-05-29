@@ -25,8 +25,8 @@ Thank you for your interest in contributing to Spectra! This guide covers everyt
 
 ```bash
 # Clone the repository
-git clone https://github.com/breixopd14/spectra.git
-cd spectra
+git clone https://github.com/breixopd/Spectra.git
+cd Spectra
 
 # Copy environment file
 cp .env.example .env

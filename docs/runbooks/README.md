@@ -7,9 +7,8 @@ Operator and developer **executable** procedures for Spectra. Prefer these paths
 | [CI parity (local / VPS)](ci-parity-local.md) | Mirrors CI: one **static-analysis** Docker build (Ruff, boundaries, Pyright, Bandit), unit coverage ≥70%, settings runner, optional integration. |
 | [Pre-release gate](pre-release-gate.md) | Checklist before production: CI parity, compose config, smoke paths, rollback awareness. |
 | [Compose smoke (CI mirror)](compose-smoke-ci.md) | Full stack + live API / health / latency tests (matches `compose-smoke` job when you need it). |
-| [Legacy cleanup backlog](legacy-cleanup-backlog.md) | Tracked removals: deprecated env vars, global toast API — not a substitute for CI. |
+| [Legacy cleanup backlog](legacy-cleanup-backlog.md) | Tracked removals: deprecated env vars and compat surface — not a substitute for CI. |
 | [Readability & structure](../contributing/readability-and-structure.md) | Spectra-specific modularity, async, split thresholds — complements CONTRIBUTING. |
-| [Iteration log (audit cycles)](iteration-log.md) | Short rolling log: recently closed quality items + pointer to P1/P2 backlog. |
 
 Canonical wiki context: [Testing strategy](../wiki/testing-strategy.md), [Operations](../wiki/operations.md), [Development](../wiki/development.md).
 

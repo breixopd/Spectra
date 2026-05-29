@@ -163,7 +163,7 @@ packages/platform/src/spectra_platform/
 ├── repositories/       # Data access layer (Repository pattern)
 ├── services/
 │   ├── ai/             # Agents, memory, knowledge facade, LLM glue (RAG engine is spectra_ai)
-│   │   ├── agents/     # 12 specialized agents (scope → reporting)
+│   │   ├── agents/     # Specialist agents (scope → reporting)
 │   │   ├── context.py  # Context window management (token budgeting)
 │   │   ├── knowledge.py # RAG + methodology helpers (calls spectra_ai.rag)
 │   │   ├── router.py   # TensorZero smart routing

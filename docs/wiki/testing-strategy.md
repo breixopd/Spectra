@@ -100,7 +100,7 @@ Use the real commands already present in this repo.
 
 | Purpose | Command |
 | --- | --- |
-| **CI parity gate (static analysis + unit coverage + settings; optional integration)** | `./scripts/runbooks/ci-parity.sh ci` — see [Runbooks: CI parity](../runbooks/ci-parity-local.md) |
+| **CI parity gate (static analysis + unit coverage + settings; optional integration)** | `./scripts/runbooks/ci-parity.sh ci` — see [Runbooks](runbooks.md) |
 | **Extended matrix (parity + load/perf/soak + Playwright + live target scans; optional LLM live + optional live_smoke)** | `./scripts/runbooks/full-test-matrix.sh` — `SKIP_*` and `RUN_LIVE_SMOKE` documented in script header |
 | Unit tests in Docker | `./scripts/test.sh unit` |
 | Integration tests in Docker (may require live services) | `./scripts/test.sh integration` |
@@ -190,7 +190,7 @@ The current repo already has strong unit, integration, live, UI, config, and rel
 - A first-pass mixed-traffic soak runner now exists for configurable stability checks against the same Docker test stack.
 - No standalone API contract or OpenAPI breaking-change gate is committed today.
 - Backup creation and backup verification are scriptable, but scheduled automated restore drills are not part of CI.
-- A dedicated **long-lived staging environment** is not in-repo; teams should still run release validation on staging for high-risk changes. **Local/VPS gates** that mirror CI live under [Runbooks](../runbooks/README.md) (`./scripts/runbooks/ci-parity.sh ci` and [pre-release gate](../runbooks/pre-release-gate.md)).
+- A dedicated **long-lived staging environment** is not in-repo; teams should still run release validation on staging for high-risk changes. **Local/VPS gates** that mirror CI are listed under [Runbooks](runbooks.md).
 - `worker` and `scheduler` need explicitly codified resource ceilings before memory/CPU testing can become a hard release gate.
 
 Recommended next additions:

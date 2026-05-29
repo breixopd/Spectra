@@ -13,11 +13,11 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  APP_IMAGE: ghcr.io/breixopd14/spectra-app
-  AI_IMAGE: ghcr.io/breixopd14/spectra-ai-svc
-  SCHEDULER_IMAGE: ghcr.io/breixopd14/spectra-scheduler
-  WORKER_IMAGE: ghcr.io/breixopd14/spectra-worker
-  CADDY_IMAGE: ghcr.io/breixopd14/spectra-caddy
+  APP_IMAGE: ghcr.io/breixopd/spectra-app
+  AI_IMAGE: ghcr.io/breixopd/spectra-ai-svc
+  SCHEDULER_IMAGE: ghcr.io/breixopd/spectra-scheduler
+  WORKER_IMAGE: ghcr.io/breixopd/spectra-worker
+  CADDY_IMAGE: ghcr.io/breixopd/spectra-caddy
 
 jobs:
   release:
@@ -29,6 +29,8 @@ jobs:
     env:
       ENCRYPTION_KEY: test-encryption-key
       ENV_FILE: ../.env.test
+      SPECTRA_GH_TOKEN: ${{ secrets.SPECTRA_ACTIONS_TOKEN || secrets.GITHUB_TOKEN }}
+      GHCR_USERNAME: breixopd
     concurrency:
       group: release
       cancel-in-progress: false
@@ -129,8 +131,8 @@ jobs:
         uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ env.GHCR_USERNAME }}
+          password: ${{ env.SPECTRA_GH_TOKEN }}
 
       - name: Build & push API image
         uses: docker/build-push-action@v7
@@ -278,7 +280,7 @@ jobs:
       DEPLOY_GHCR_TOKEN_SECRET_NAME: DEPLOY_GHCR_TOKEN
       DEPLOY_WEBHOOK_SECRET_NAME: DEPLOY_WEBHOOK_URL
       DEPLOY_REGISTRY: ghcr.io
-      DEPLOY_IMAGE_PREFIX: ghcr.io/breixopd14/
+      DEPLOY_IMAGE_PREFIX: ghcr.io/breixopd/
     steps:
       - name: Validate deploy secrets
         env:
@@ -497,7 +499,7 @@ jobs:
               exit 1
             }
 
-            export REGISTRY=ghcr.io/breixopd14/
+            export REGISTRY=ghcr.io/breixopd/
             export VERSION="${VERSION}"
 
             trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
@@ -610,7 +612,7 @@ jobs:
               exit 1
             }
 
-            export REGISTRY=ghcr.io/breixopd14/
+            export REGISTRY=ghcr.io/breixopd/
             export VERSION="$PREVIOUS_VERSION"
 
             trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
@@ -719,4 +721,4 @@ jobs:
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.SPECTRA_ACTIONS_TOKEN || secrets.GITHUB_TOKEN }}

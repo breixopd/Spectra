@@ -4,13 +4,13 @@
 
 ---
 
-Welcome to the Spectra documentation wiki. Spectra is a Multi-Agent System (MAS) for automated security assessments built with FastAPI, PostgreSQL, and Docker.
+Welcome to the Spectra documentation wiki. Spectra is an automated penetration testing platform built with FastAPI, PostgreSQL, and Docker—coordinated agents, consensus gates, and YAML-defined methodologies (PTES, OWASP, NIST).
 
 ## Contents
 
 | Page | Description |
 |------|-------------|
-| [Architecture](architecture.md) | System design — 12 AI agents, MAKER framework, execution pipeline, learning system, microservices, caching |
+| [Architecture](architecture.md) | Agents, eight quality gates, YAML frameworks, execution pipeline, microservices, caching |
 | [Configuration](configuration.md) | All environment variables and settings organized by section |
 | [Deployment Guide](deployment-guide.md) | **Start here** — Docker Compose, Cloudflare, Docker Swarm, CI/CD, rollback, private registry |
 | [Operations](operations.md) | Canonical day-2 runbook index — health triage, backups, queue repair, incidents, logging |
@@ -23,7 +23,7 @@ Welcome to the Spectra documentation wiki. Spectra is a Multi-Agent System (MAS)
 | [Worker System](worker-system.md) | Background jobs, dead-letter queue, cleanup, notifications, reports |
 | [Development](development.md) | Local setup, testing, code structure, contributing |
 | [Testing Strategy](testing-strategy.md) | Platform-wide verification layers, change matrix, release gate, and known testing gaps |
-| [Runbooks](../runbooks/README.md) | **CI parity script**, pre-release checklist, compose-smoke mirror — commands aligned with documented merge gates (see runbooks; full `ci.yml` also includes `deps`, `version-check`, `docker-build`, push-only `compose-smoke`, optional `ui-e2e`) |
+| [Runbooks](runbooks.md) | CI parity, pre-release checklist, compose-smoke — executable files live in the repo; see also [About the wiki](about-the-wiki.md) |
 | [Frontend Patterns](frontend-patterns.md) | CSP-safe event delegation, modal macro, feature gates, test attributes |
 | [Design Tokens](design-tokens.md) | CSS custom properties, color palette, typography, spacing, animations |
 | [Roadmap](roadmap.md) | Future improvements and completed milestones |
@@ -31,7 +31,7 @@ Welcome to the Spectra documentation wiki. Spectra is a Multi-Agent System (MAS)
 ## Quick Links
 
 - **First time?** Start with [Development](development.md) for local setup, or [Deployment Guide](deployment-guide.md) for production.
-- **Planning verification?** See [Testing Strategy](testing-strategy.md) for the platform-wide test matrix and release gate, and [Runbooks](../runbooks/README.md) for `./scripts/runbooks/ci-parity.sh` (Docker — matches CI **`static-analysis`** + **`test`** gates; see [CI parity](../runbooks/ci-parity-local.md) for scope).
+- **Planning verification?** See [Testing Strategy](testing-strategy.md) and [Runbooks](runbooks.md) for `./scripts/runbooks/ci-parity.sh` (Docker — matches CI **`static-analysis`** + **`test`** gates).
 - **Operating Spectra?** See [Operations](operations.md) for the canonical runbook index and [scripts/ops/README.md](../../scripts/ops/README.md) for the local script catalog.
 - **Configuring settings?** See [Configuration](configuration.md) for all environment variables.
 - **Adding a tool?** See [Plugins](plugins.md) for the JSON plugin schema.

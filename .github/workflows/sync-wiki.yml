@@ -1,0 +1,34 @@
+# Mirror docs/wiki/ to the GitHub Wiki (breixopd/Spectra.wiki.git).
+# Requires a one-time manual "Create first page" on the repo Wiki tab — see docs/wiki/about-the-wiki.md.
+
+name: Sync wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/wiki/**"
+      - ".github/workflows/sync-wiki.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-wiki
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    name: Publish docs/wiki to GitHub Wiki
+    runs-on: ubuntu-latest
+    env:
+      SPECTRA_GH_TOKEN: ${{ secrets.SPECTRA_ACTIONS_TOKEN || secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Push to GitHub Wiki
+        uses: Andrew-Chen-Wang/github-wiki-action@v5
+        with:
+          path: docs/wiki
+          token: ${{ env.SPECTRA_GH_TOKEN }}
