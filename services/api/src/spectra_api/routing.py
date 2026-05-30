@@ -29,6 +29,7 @@ from spectra_api.api.routers import (
     missions,
     observability,
     pentest_sessions,
+    settings_runtime,
     shell,
     system,
     targets,
@@ -89,6 +90,7 @@ def include_routers(app: FastAPI, mode: str | None = None) -> None:
         app.include_router(health.router, prefix="/api", tags=["Health"], include_in_schema=False)
 
         app.include_router(public.router, tags=["Public"])
+        app.include_router(settings_runtime.router, tags=["Settings"])
         app.include_router(admin.router, tags=["Admin"], include_in_schema=False)
 
     else:
