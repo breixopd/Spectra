@@ -30,9 +30,10 @@ def get_ai_settings():
     """Return AI settings object. Uses registered factory or falls back to env vars."""
     if _settings_factory is not None:
         return _settings_factory()
+    emb_key = os.environ.get("EMBEDDING_API_KEY") or os.environ.get("OPENAI_API_KEY") or None
     return SimpleNamespace(
         EMBEDDING_MODEL=os.environ.get("EMBEDDING_MODEL", _default_embedding_model),
-        EMBEDDING_API_KEY=None,
+        EMBEDDING_API_KEY=emb_key,
         EMBEDDING_API_BASE_URL=os.environ.get("EMBEDDING_API_BASE_URL", ""),
     )
 
@@ -118,7 +119,9 @@ class EmbeddingService:
     def _configured_api_key() -> str | None:
         """Return the configured embedding API key, if any."""
         settings = get_ai_settings()
-        raw = getattr(settings, "EMBEDDING_API_KEY", None)
+        if hasattr(settings, "embedding_api_key"):
+            return settings.embedding_api_key()
+        raw = getattr(settings, "EMBEDDING_API_KEY", None) or getattr(settings, "OPENAI_API_KEY", None)
         if not raw:
             return None
         try:
@@ -142,13 +145,14 @@ class EmbeddingService:
             base_url = getattr(settings, "EMBEDDING_API_BASE_URL", "") or None
             model = getattr(settings, "EMBEDDING_MODEL", "") or self.model_name or "text-embedding-3-small"
 
-            kwargs: dict = {}
-            if api_key:
-                kwargs["api_key"] = api_key
+            api_key = api_key or self._configured_api_key()
+            if not api_key:
+                logger.warning("No EMBEDDING_API_KEY or OPENAI_API_KEY — API embeddings disabled")
+                return
+
+            kwargs: dict = {"api_key": api_key}
             if base_url:
                 kwargs["base_url"] = base_url
-            else:
-                kwargs["base_url"] = None
 
             self._openai_client = AsyncOpenAI(**kwargs)
             self._openai_model = model

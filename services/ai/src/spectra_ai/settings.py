@@ -25,9 +25,11 @@ class AISettings(BaseSettings):
     TENSORZERO_GATEWAY_URL: str = "http://tensorzero:3000"
     LLM_TIMEOUT: float = 120.0
 
-    EMBEDDING_MODEL: str = "local/BAAI/bge-small-en-v1.5"
+    # API embeddings by default on the AI image — local fastembed needs AVX2+ (X86_V2).
+    EMBEDDING_MODEL: str = "text-embedding-3-small"
     EMBEDDING_API_KEY: SecretStr = Field(default=SecretStr(""))
-    EMBEDDING_API_BASE_URL: str = ""
+    EMBEDDING_API_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENAI_API_KEY: SecretStr = Field(default=SecretStr(""))
 
     @field_validator("LLM_TIMEOUT")
     @classmethod
@@ -35,6 +37,13 @@ class AISettings(BaseSettings):
         if not 5 <= v <= 1200:
             raise ValueError("LLM_TIMEOUT must be 5-1200 seconds")
         return v
+
+    def embedding_api_key(self) -> str | None:
+        """Resolved key for hosted embeddings (EMBEDDING_API_KEY, else OPENAI_API_KEY)."""
+        for field in (self.EMBEDDING_API_KEY, self.OPENAI_API_KEY):
+            if field and field.get_secret_value():
+                return field.get_secret_value()
+        return None
 
 
 @lru_cache

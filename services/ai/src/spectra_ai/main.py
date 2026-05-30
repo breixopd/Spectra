@@ -34,13 +34,17 @@ async def lifespan(app: FastAPI):
 
     _ai_embedded_task = spawn_embedded_ops_task("ai-svc")
 
-    from spectra_ai_core.embeddings import EmbeddingService
+    from spectra_ai_core.embeddings import EmbeddingService, register_settings_factory
+
+    from spectra_ai.settings import get_ai_settings
+
+    register_settings_factory(get_ai_settings)
 
     try:
         svc = EmbeddingService()
         await svc._load_model()
         logger.info("Embedding service initialized")
-    except (OSError, RuntimeError, ImportError) as e:
+    except Exception as e:  # noqa: BLE001 — startup must not crash the AI service
         logger.warning("Embedding init failed (will retry on first use): %s", e)
 
     yield
