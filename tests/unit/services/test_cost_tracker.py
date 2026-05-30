@@ -16,7 +16,7 @@ def _usage(prompt: int = 100, completion: int = 50, total: int | None = None) ->
 def test_record_basic_usage():
     """Record a call, check fields."""
     ct = CostTracker("m1")
-    ct.record("ScopeAgent", "scope", "gpt-4o-mini", _usage())
+    ct.record("ScopeAgent", "scope", "deepseek-v4-flash", _usage())
 
     entry = ct.get_agent_usage("ScopeAgent")
     assert entry is not None
@@ -30,8 +30,8 @@ def test_record_basic_usage():
 def test_record_multiple_calls():
     """Aggregate calls for the same agent."""
     ct = CostTracker("m2")
-    ct.record("ScopeAgent", "scope", "gpt-4o-mini", _usage(100, 50))
-    ct.record("ScopeAgent", "scope", "gpt-4o-mini", _usage(200, 100))
+    ct.record("ScopeAgent", "scope", "deepseek-v4-flash", _usage(100, 50))
+    ct.record("ScopeAgent", "scope", "deepseek-v4-flash", _usage(200, 100))
 
     entry = ct.get_agent_usage("ScopeAgent")
     assert entry is not None
@@ -44,8 +44,8 @@ def test_record_multiple_calls():
 def test_record_multiple_agents():
     """Separate tracking per agent."""
     ct = CostTracker("m3")
-    ct.record("Agent-A", "scope", "gpt-4o-mini", _usage(10, 5))
-    ct.record("Agent-B", "parser", "gpt-4o-mini", _usage(20, 10))
+    ct.record("Agent-A", "scope", "deepseek-v4-flash", _usage(10, 5))
+    ct.record("Agent-B", "parser", "deepseek-v4-flash", _usage(20, 10))
 
     usage_a = ct.get_agent_usage("Agent-A")
     usage_b = ct.get_agent_usage("Agent-B")
@@ -55,15 +55,27 @@ def test_record_multiple_agents():
     assert usage_b.calls == 1
 
 
-def test_cost_estimation_known_model():
-    """Verify cost calculation for gpt-4o-mini."""
+def test_cost_estimation_flash_model():
+    """Verify cost calculation for deepseek-v4-flash."""
     ct = CostTracker("m4")
-    # gpt-4o-mini: input $0.15/1M, output $0.60/1M
-    ct.record("A", "scope", "gpt-4o-mini", _usage(1_000_000, 1_000_000))
+    # deepseek-v4-flash: input $0.14/1M, output $0.28/1M
+    ct.record("A", "scope", "deepseek-v4-flash", _usage(1_000_000, 1_000_000))
 
     entry = ct.get_agent_usage("A")
     assert entry is not None
-    expected = 0.15 + 0.60  # $0.75
+    expected = 0.14 + 0.28  # $0.42
+    assert abs(entry.estimated_cost_usd - expected) < 1e-6
+
+
+def test_cost_estimation_pro_model():
+    """Verify cost calculation for deepseek-v4-pro (the capable tier)."""
+    ct = CostTracker("m4b")
+    # deepseek-v4-pro: input $1.74/1M, output $3.48/1M
+    ct.record("A", "exploit_crafter", "deepseek-v4-pro", _usage(1_000_000, 1_000_000))
+
+    entry = ct.get_agent_usage("A")
+    assert entry is not None
+    expected = 1.74 + 3.48  # $5.22
     assert abs(entry.estimated_cost_usd - expected) < 1e-6
 
 
@@ -77,21 +89,11 @@ def test_cost_estimation_unknown_model():
     assert entry.estimated_cost_usd == 0.0
 
 
-def test_cost_estimation_ollama_free():
-    """Local Ollama models have 0 cost."""
-    ct = CostTracker("m6")
-    ct.record("A", "scope", "ollama/llama3", _usage(500_000, 500_000))
-
-    entry = ct.get_agent_usage("A")
-    assert entry is not None
-    assert entry.estimated_cost_usd == 0.0
-
-
 def test_get_summary():
     """Verify summary structure and totals."""
     ct = CostTracker("m7")
-    ct.record("A", "scope", "gpt-4o-mini", _usage(100, 50))
-    ct.record("B", "parser", "gpt-4o-mini", _usage(200, 100))
+    ct.record("A", "scope", "deepseek-v4-flash", _usage(100, 50))
+    ct.record("B", "parser", "deepseek-v4-flash", _usage(200, 100))
 
     summary = ct.get_summary()
     assert summary["mission_id"] == "m7"
@@ -109,7 +111,7 @@ def test_get_agent_usage():
     ct = CostTracker("m8")
     assert ct.get_agent_usage("missing") is None
 
-    ct.record("X", "scope", "gpt-4o-mini", _usage())
+    ct.record("X", "scope", "deepseek-v4-flash", _usage())
     result = ct.get_agent_usage("X")
     assert isinstance(result, AgentUsage)
     assert result.agent_name == "X"
@@ -118,9 +120,9 @@ def test_get_agent_usage():
 def test_latency_tracking():
     """avg_latency_ms calculated correctly."""
     ct = CostTracker("m9")
-    ct.record("A", "scope", "gpt-4o-mini", _usage(), latency_ms=100.0)
-    ct.record("A", "scope", "gpt-4o-mini", _usage(), latency_ms=200.0)
-    ct.record("A", "scope", "gpt-4o-mini", _usage(), latency_ms=300.0)
+    ct.record("A", "scope", "deepseek-v4-flash", _usage(), latency_ms=100.0)
+    ct.record("A", "scope", "deepseek-v4-flash", _usage(), latency_ms=200.0)
+    ct.record("A", "scope", "deepseek-v4-flash", _usage(), latency_ms=300.0)
 
     entry = ct.get_agent_usage("A")
     assert entry is not None
@@ -130,9 +132,9 @@ def test_latency_tracking():
 def test_error_counting():
     """Error flag increments errors."""
     ct = CostTracker("m10")
-    ct.record("A", "scope", "gpt-4o-mini", _usage(), error=True)
-    ct.record("A", "scope", "gpt-4o-mini", _usage(), error=False)
-    ct.record("A", "scope", "gpt-4o-mini", _usage(), error=True)
+    ct.record("A", "scope", "deepseek-v4-flash", _usage(), error=True)
+    ct.record("A", "scope", "deepseek-v4-flash", _usage(), error=False)
+    ct.record("A", "scope", "deepseek-v4-flash", _usage(), error=True)
 
     entry = ct.get_agent_usage("A")
     assert entry is not None

@@ -5,10 +5,12 @@
 # All AI inference routes through TensorZero using the native DeepSeek provider.
 # Set DEEPSEEK_API_KEY in secrets/.env (Compose) or Swarm secret.
 #
-# Tiers:
-#   fast     — deepseek-v4-flash (deepseek-chat), thinking disabled
-#   balanced — deepseek-v4-flash (deepseek-chat), thinking enabled
-#   capable  — deepseek-v4-pro (deepseek-reasoner), thinking enabled
+# Tiers (explicit V4 model IDs — the legacy `deepseek-chat`/`deepseek-reasoner`
+# aliases are deprecated by DeepSeek on 2026-07-24 and BOTH alias to v4-flash,
+# so `deepseek-reasoner` would NOT give you the Pro model):
+#   fast     — deepseek-v4-flash, thinking disabled  (scope, tool select, parse, safety)
+#   balanced — deepseek-v4-flash, thinking enabled   (planning, steering, consensus, reporting)
+#   capable  — deepseek-v4-pro,   thinking enabled   (exploit crafting, PoC, post-exploitation)
 #
 # DEEPSEEK_API_KEY is required at gateway boot — the gateway validates provider
 # credentials on startup, so it must be set in .env / Swarm secret before launch.
@@ -26,7 +28,7 @@ routing = ["primary"]
 
 [models.fast.providers.primary]
 type = "deepseek"
-model_name = "deepseek-chat"
+model_name = "deepseek-v4-flash"
 api_key_location = "env::DEEPSEEK_API_KEY"
 extra_body = [{ "pointer" = "/thinking/type", "value" = "disabled" }]
 
@@ -35,7 +37,7 @@ routing = ["primary"]
 
 [models.balanced.providers.primary]
 type = "deepseek"
-model_name = "deepseek-chat"
+model_name = "deepseek-v4-flash"
 api_key_location = "env::DEEPSEEK_API_KEY"
 extra_body = [{ "pointer" = "/thinking/type", "value" = "enabled" }]
 
@@ -44,10 +46,10 @@ routing = ["primary"]
 
 [models.capable.providers.primary]
 type = "deepseek"
-model_name = "deepseek-reasoner"
+model_name = "deepseek-v4-pro"
 api_key_location = "env::DEEPSEEK_API_KEY"
 # DeepSeek thinking.type accepts only adaptive | enabled | disabled. "enabled" gives
-# the reasoner full chain-of-thought (the highest-reasoning tier).
+# Pro full chain-of-thought (the highest-reasoning tier).
 extra_body = [{ "pointer" = "/thinking/type", "value" = "enabled" }]
 
 # =============================================================================

@@ -29,24 +29,46 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 
-# Task complexity tiers — determines which TensorZero function to use
-TASK_TIERS = {
-    # Tier 1: Simple, deterministic tasks → cheapest/fastest model
-    "scope": 1,
-    "tool_selection": 1,
-    "safety_check": 1,
-    "parsing": 1,
-    # Tier 2: Moderate reasoning → mid-tier model
-    "planning": 2,
-    "steering": 2,
-    "consensus": 2,
-    "vector_generation": 2,
-    "reporting": 2,
-    # Tier 3: Complex creative tasks → most capable model
-    "exploit_crafting": 3,
-    "poc_generation": 3,
-    "post_exploitation": 3,
+# Task → model tier. Each task is also a TensorZero function name (config/tensorzero.toml),
+# whose `default` variant points at one of these tiers. This map is the in-code mirror of
+# that function→tier assignment and is the single source of truth for cost/observability
+# attribution; `tests/unit/services/test_tensorzero_config.py` asserts it stays in sync with
+# the gateway TOML so the two can never drift.
+TASK_TIERS: dict[str, str] = {
+    # fast — deepseek-v4-flash, thinking off: cheap, deterministic tasks
+    "scope": "fast",
+    "tool_selection": "fast",
+    "safety_check": "fast",
+    "parsing": "fast",
+    # balanced — deepseek-v4-flash, thinking on: moderate reasoning
+    "planning": "balanced",
+    "steering": "balanced",
+    "consensus": "balanced",
+    "vector_generation": "balanced",
+    "reporting": "balanced",
+    # capable — deepseek-v4-pro, thinking on: hardest creative/offensive tasks
+    "exploit_crafting": "capable",
+    "poc_generation": "capable",
+    "post_exploitation": "capable",
 }
+
+# Tier → concrete DeepSeek model. Mirrors `[models.<tier>]` in config/tensorzero.toml.
+# Used to attribute real model names (and therefore cost) to each inference; the drift
+# test keeps it aligned with the gateway config.
+TIER_MODELS: dict[str, str] = {
+    "fast": "deepseek-v4-flash",
+    "balanced": "deepseek-v4-flash",
+    "capable": "deepseek-v4-pro",
+}
+
+# Tier used when a task has no explicit mapping (matches `[functions.default]`).
+DEFAULT_TIER = "balanced"
+
+
+def resolve_model_for_function(function_name: str) -> str:
+    """Resolve the concrete DeepSeek model a TensorZero function routes to."""
+    tier = TASK_TIERS.get(function_name, DEFAULT_TIER)
+    return TIER_MODELS.get(tier, TIER_MODELS[DEFAULT_TIER])
 
 
 class TensorZeroRouter(LLMClient):
@@ -131,16 +153,20 @@ class TensorZeroRouter(LLMClient):
                         content += block.get("text", "")
 
             usage = data.get("usage", {})
-            model = data.get("variant_name", function_name)
+            variant = data.get("variant_name", "default")
+            # Record the concrete DeepSeek model (not the function/variant) so cost and
+            # token attribution resolve against real per-model pricing.
+            model = resolve_model_for_function(function_name)
             inference_id = data.get("inference_id", "")
 
             duration_ms = (time.time() - start_time) * 1000
             total_tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
 
             logger.debug(
-                "TensorZero [%s/%s] %.0fms tokens=%d id=%s",
+                "TensorZero [%s -> %s/%s] %.0fms tokens=%d id=%s",
                 function_name,
                 model,
+                variant,
                 duration_ms,
                 total_tokens,
                 inference_id,
@@ -148,7 +174,7 @@ class TensorZeroRouter(LLMClient):
 
             await record_llm_call(
                 provider=self.provider,
-                model=f"{function_name}/{model}",
+                model=model,
                 duration_ms=duration_ms,
                 tokens=total_tokens,
                 success=True,
@@ -156,7 +182,7 @@ class TensorZeroRouter(LLMClient):
 
             return LLMResponse(
                 content=content,
-                model=f"{function_name}/{model}",
+                model=model,
                 provider=self.provider,
                 usage={
                     "prompt_tokens": usage.get("input_tokens", 0),
@@ -166,6 +192,8 @@ class TensorZeroRouter(LLMClient):
                 raw={
                     "inference_id": inference_id,
                     "episode_id": data.get("episode_id", ""),
+                    "function_name": function_name,
+                    "variant_name": variant,
                 },
             )
 
@@ -173,7 +201,7 @@ class TensorZeroRouter(LLMClient):
             duration_ms = (time.time() - start_time) * 1000
             await record_llm_call(
                 provider=self.provider,
-                model=function_name,
+                model=resolve_model_for_function(function_name),
                 duration_ms=duration_ms,
                 tokens=0,
                 success=False,
@@ -186,7 +214,7 @@ class TensorZeroRouter(LLMClient):
             duration_ms = (time.time() - start_time) * 1000
             await record_llm_call(
                 provider=self.provider,
-                model=function_name,
+                model=resolve_model_for_function(function_name),
                 duration_ms=duration_ms,
                 tokens=0,
                 success=False,

@@ -18,25 +18,18 @@ def get_cost_trackers() -> dict[str, CostTracker]:
     return _cost_trackers
 
 
-# Approximate pricing per 1M tokens (input/output) by model prefix
+# List pricing per 1M tokens (cache-miss input, output) for the only models the platform
+# uses — DeepSeek V4 via TensorZero. Permanent list rates (the v4-pro launch promo expires
+# 2026-05-31); cache-hit input is far cheaper but is not separately metered here, so these
+# rates are a conservative upper bound. Source: api-docs.deepseek.com/quick_start/pricing.
 MODEL_PRICING: dict[str, tuple[float, float]] = {
     # (input_per_1M, output_per_1M)
-    "gpt-4o": (2.50, 10.00),
-    "gpt-4o-mini": (0.15, 0.60),
-    "gpt-4-turbo": (10.00, 30.00),
-    "claude-3-5-sonnet": (3.00, 15.00),
-    "claude-3-haiku": (0.25, 1.25),
-    "claude-sonnet-4": (3.00, 15.00),
-    "claude-opus-4": (15.00, 75.00),
-    "deepseek-chat": (0.14, 0.28),
-    "deepseek-reasoner": (0.55, 2.19),
-    "glm-4": (0.10, 0.10),
-    "qwen": (0.10, 0.10),
-    # Local/Ollama models are free
-    "ollama": (0.0, 0.0),
+    "deepseek-v4-flash": (0.14, 0.28),
+    "deepseek-v4-pro": (1.74, 3.48),
 }
 
-# Pre-sorted by prefix length descending so "gpt-4o-mini" matches before "gpt-4o"
+# Pre-sorted by prefix length descending so "deepseek-v4-flash" matches before any
+# shorter alias.
 _SORTED_MODEL_PRICING: list[tuple[str, tuple[float, float]]] = sorted(
     MODEL_PRICING.items(), key=lambda kv: len(kv[0]), reverse=True
 )

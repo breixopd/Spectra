@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -32,6 +33,10 @@ router = APIRouter()
 
 _TOML_SAFE_VALUE_RE = re.compile(r"^[a-zA-Z0-9._/:+-]+$")
 
+# DeepSeek-only platform: the legacy deepseek-chat/deepseek-reasoner aliases are deprecated
+# (2026-07-24) and both alias to v4-flash, so only the explicit V4 IDs are accepted.
+_ALLOWED_MODELS = {"deepseek-v4-flash", "deepseek-v4-pro"}
+
 
 def _validate_toml_value(value: str, field_name: str) -> str:
     if not value:
@@ -41,6 +46,26 @@ def _validate_toml_value(value: str, field_name: str) -> str:
             f"Invalid {field_name}: model names may only contain letters, digits, dot, underscore, slash, and hyphen"
         )
     return value
+
+
+def _toml_inline(value: object) -> str:
+    """Render a parsed TOML value (str / list / dict of scalars) back to inline TOML.
+
+    Only used to round-trip provider ``extra_body`` (a list of {pointer, value} tables),
+    so it covers strings, numbers, bools, lists, and string-keyed tables — enough to
+    preserve thinking config without a full TOML serializer dependency.
+    """
+    if isinstance(value, str):
+        return json.dumps(value)
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return repr(value)
+    if isinstance(value, list):
+        return "[" + ", ".join(_toml_inline(v) for v in value) + "]"
+    if isinstance(value, dict):
+        return "{ " + ", ".join(f"{k} = {_toml_inline(v)}" for k, v in value.items()) + " }"
+    return json.dumps(str(value))
 
 
 def _tz_url() -> str:
@@ -139,32 +164,39 @@ async def tz_functions(
     return {"functions": []}
 
 
+def _thinking_mode(primary: dict) -> str:
+    """Extract the DeepSeek thinking mode from a provider's extra_body, if any."""
+    for entry in primary.get("extra_body", []) or []:
+        if isinstance(entry, dict) and entry.get("pointer") == "/thinking/type":
+            return str(entry.get("value", ""))
+    return ""
+
+
 @router.get("/api/v1/admin/tensorzero/config")
 async def tz_config(
     _user: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
-    """Read current TensorZero model configuration from tensorzero.toml."""
+    """Read the current per-tier DeepSeek model + thinking mode from tensorzero.toml."""
+    allowed = sorted(_ALLOWED_MODELS)
     if not _CONFIG_PATH.exists():
-        return {"models": {}, "provider_type": "openai"}
+        return {"models": {}, "provider_type": "deepseek", "allowed_models": allowed}
     if tomllib is None:
         return JSONResponse({"detail": "TOML parsing support is unavailable"}, status_code=503)
     async with aiofiles.open(_CONFIG_PATH, "rb") as f:
         raw = await f.read()
     config = tomllib.loads(raw.decode())
     models = {}
-    provider_type = "openai"
+    provider_type = "deepseek"
     for tier in ("fast", "balanced", "capable"):
         tier_conf = config.get("models", {}).get(tier, {})
-        providers = tier_conf.get("providers", {})
-        primary = providers.get("primary", {})
-        fallback = providers.get("fallback", {})
+        primary = tier_conf.get("providers", {}).get("primary", {})
         models[tier] = {
-            "primary": primary.get("model_name", ""),
-            "fallback": fallback.get("model_name", ""),
+            "model": primary.get("model_name", ""),
+            "thinking": _thinking_mode(primary),
         }
         if primary.get("type"):
             provider_type = primary["type"]
-    return {"models": models, "provider_type": provider_type}
+    return {"models": models, "provider_type": provider_type, "allowed_models": allowed}
 
 
 @router.put("/api/v1/admin/tensorzero/config")
@@ -172,41 +204,45 @@ async def tz_update_config(
     request: Request,
     _user: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
-    """Update TensorZero model config by rewriting tensorzero.toml."""
+    """Update the DeepSeek model behind each tier by rewriting tensorzero.toml.
+
+    Only the per-tier ``model_name`` is editable; every other provider field (the
+    DeepSeek ``type``, ``api_key_location``, and the thinking ``extra_body``) is preserved
+    verbatim, so an admin model swap can never strip a tier's thinking configuration.
+    """
+    if tomllib is None:
+        raise HTTPException(status_code=503, detail="TOML parsing support is unavailable")
     body = await request.json()
     models = body.get("models", {})
-    try:
-        provider_type = _validate_toml_value(str(body.get("provider_type", "openai")), "provider_type")
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=f"Validation error: {str(exc)[:200]}") from exc
 
-    # Read current to preserve functions/metrics
+    # Read current config to preserve provider details, functions, and metrics.
     current: dict = {}
     if _CONFIG_PATH.exists():
-        if tomllib is None:
-            raise HTTPException(status_code=503, detail="TOML parsing support is unavailable")
         async with aiofiles.open(_CONFIG_PATH, "rb") as f:
             raw = await f.read()
         current = tomllib.loads(raw.decode())
 
-    # Normalize model values: accept either string or {primary, fallback} dict
-    tiers: dict[str, dict[str, str]] = {}
+    # Each tier maps to exactly one DeepSeek model. Accept a bare string or {"primary": ...}.
+    requested: dict[str, str] = {}
     try:
         for tier in ("fast", "balanced", "capable"):
             raw = models.get(tier, "")
-            if isinstance(raw, dict):
-                tiers[tier] = {
-                    "primary": _validate_toml_value(str(raw.get("primary", "")), f"{tier}.primary"),
-                    "fallback": _validate_toml_value(str(raw.get("fallback", "")), f"{tier}.fallback"),
-                }
-            else:
-                tiers[tier] = {"primary": _validate_toml_value(str(raw), f"{tier}.primary"), "fallback": ""}
+            value = raw.get("primary", "") if isinstance(raw, dict) else raw
+            requested[tier] = _validate_toml_value(str(value), f"{tier}.model_name")
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=f"Validation error: {str(exc)[:200]}") from exc
 
+    # DeepSeek-only platform: reject anything but the two non-deprecated V4 model IDs.
+    for tier, model_name in requested.items():
+        if model_name and model_name not in _ALLOWED_MODELS:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid model for tier '{tier}': {model_name!r}. Allowed: {sorted(_ALLOWED_MODELS)}",
+            )
+
     toml_lines = [
         "# TensorZero Gateway Configuration for Spectra",
-        "# Auto-generated by admin UI. Manual edits will be preserved on next save.",
+        "# Models edited via the admin panel; functions/metrics preserved from the prior config.",
         "",
         "[gateway]",
         'bind_address = "0.0.0.0:3000"',
@@ -214,50 +250,27 @@ async def tz_update_config(
         "# --- Models ---",
     ]
 
-    for tier_name, tier_models in tiers.items():
-        primary = tier_models["primary"]
-        fallback = tier_models["fallback"]
-        # Preserve provider-specific fields (api_base, api_key_location) from current config
-        current_models = current.get("models", {})
+    current_models = current.get("models", {})
+    for tier_name in ("fast", "balanced", "capable"):
         current_tier = current_models.get(tier_name, {})
-        current_providers = current_tier.get("providers", {})
-        primary_extra = {
-            k: v for k, v in current_providers.get("primary", {}).items()
-            if k in ("api_base", "api_key_location")
-        }
-        fallback_extra = {}
-        if fallback:
-            fallback_extra = {
-                k: v for k, v in current_providers.get("fallback", {}).items()
-                if k in ("api_base", "api_key_location")
-            }
-        if fallback:
-            toml_lines += [
-                f"[models.{tier_name}]",
-                'routing = ["primary", "fallback"]',
-                "",
-                f"[models.{tier_name}.providers.primary]",
-                f'type = "{provider_type}"',
-                f'model_name = "{primary}"',
-                *[f'{k} = "{v}"' for k, v in primary_extra.items()],
-                "",
-                f"[models.{tier_name}.providers.fallback]",
-                f'type = "{provider_type}"',
-                f'model_name = "{fallback}"',
-                *[f'{k} = "{v}"' for k, v in fallback_extra.items()],
-                "",
-            ]
-        else:
-            toml_lines += [
-                f"[models.{tier_name}]",
-                'routing = ["primary"]',
-                "",
-                f"[models.{tier_name}.providers.primary]",
-                f'type = "{provider_type}"',
-                f'model_name = "{primary}"',
-                *[f'{k} = "{v}"' for k, v in primary_extra.items()],
-                "",
-            ]
+        current_primary = current_tier.get("providers", {}).get("primary", {})
+        model_name = requested.get(tier_name) or current_primary.get("model_name", "")
+        # Preserve every provider field except model_name (type, api_key_location, extra_body).
+        preserved = {k: v for k, v in current_primary.items() if k != "model_name"}
+        provider_type = preserved.pop("type", "deepseek")
+        extra_body = preserved.pop("extra_body", None)
+        toml_lines += [
+            f"[models.{tier_name}]",
+            'routing = ["primary"]',
+            "",
+            f"[models.{tier_name}.providers.primary]",
+            f'type = "{provider_type}"',
+            f'model_name = "{model_name}"',
+            *[f'{k} = "{v}"' for k, v in preserved.items()],
+        ]
+        if extra_body is not None:
+            toml_lines.append(f"extra_body = {_toml_inline(extra_body)}")
+        toml_lines.append("")
 
     toml_lines.append("# --- Functions ---")
     for fname, fconf in current.get("functions", {}).items():
@@ -293,9 +306,26 @@ async def tz_update_config(
         temp_path = tmp_file.name
     os.replace(temp_path, _CONFIG_PATH)
 
+    # Apply by rolling the gateway so it reloads the rewritten config. In Swarm the config
+    # is delivered to the gateway via the shared deploy mechanism; restart_service performs a
+    # rolling, zero-state-loss force update. No-ops cleanly when not a Swarm manager.
+    applied = False
+    try:
+        from spectra_scaling import docker_client
+
+        applied = await docker_client.restart_service("spectra_tensorzero")
+    except Exception:
+        # Apply is best-effort; the config write already succeeded.
+        logger.warning("Could not auto-restart TensorZero after config update", exc_info=True)
+
     return {
         "status": "ok",
-        "message": "Config updated. Restart TensorZero container to apply changes.",
+        "applied": applied,
+        "message": (
+            "Models updated and gateway restarted."
+            if applied
+            else "Models updated. Restart the TensorZero gateway to apply."
+        ),
     }
 
 
