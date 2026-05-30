@@ -70,6 +70,7 @@ async def _consume_totp_code_async(user_id: str, code: str) -> bool:
             with contextlib.suppress(Exception):
                 await r.aclose()
 
+    # FIXME(security): [Medium] In-memory TOTP replay fallback is per-replica, not cluster-wide
     # In-memory fallback
     return _consume_totp_code(user_id, code)
 

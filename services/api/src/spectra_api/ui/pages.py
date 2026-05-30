@@ -444,6 +444,7 @@ async def observability_page(request: Request):
 @router.get("/shell/{session_id}", response_class=HTMLResponse)
 async def shell_page(request: Request, session_id: str):
     """Serve the interactive shell page."""
+    # FIXME(security): [Medium] HTML route lacks mission ownership check (WebSocket path enforces it)
     if not await get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     session = await shell_manager.get_session(session_id)
@@ -529,6 +530,7 @@ async def test_tz_gateway(
 
     body = await request.json()
     gw_url = body.get("gateway_url") or settings.TENSORZERO_GATEWAY_URL or "http://tensorzero:3000"
+    # FIXME(security): [Medium] Pre-bootstrap SSRF — gateway_url is not validated with is_safe_url()
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(f"{gw_url}/health")

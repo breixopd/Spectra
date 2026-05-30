@@ -62,6 +62,23 @@ class TestWithRetry:
         assert call_count == 1
 
     @pytest.mark.asyncio
+    async def test_default_retries_once_on_transient_error(self):
+        call_count = 0
+
+        @with_retry()
+        async def job():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 2:
+                raise ConnectionError("transient")
+            return "ok"
+
+        with patch("spectra_worker.helpers.asyncio.sleep", new_callable=AsyncMock):
+            result = await job()
+        assert result == "ok"
+        assert call_count == 2
+
+    @pytest.mark.asyncio
     async def test_exponential_backoff(self):
         @with_retry(max_retries=4, backoff_base=2.0, max_backoff=10.0)
         async def job():

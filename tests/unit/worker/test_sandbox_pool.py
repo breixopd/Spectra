@@ -184,32 +184,50 @@ class TestSandboxPool:
 class TestGetQueueName:
     """Tests for ToolExecutionService._get_queue_name routing."""
 
-    def test_get_queue_name_with_sandbox_pool(self):
-        """Returns mission-specific queue when sandbox pool is available."""
+    @pytest.mark.asyncio
+    async def test_get_queue_name_with_running_sandbox(self):
+        """Returns mission-specific queue when a running sandbox exists."""
         from spectra_platform.services.tools.service import ToolExecutionService
 
         mock_pool = MagicMock()
         mock_pool.available = True
+        mock_pool.get = AsyncMock(
+            return_value=MagicMock(status="running", queue_name="mission_a1b2c3d4"),
+        )
         with patch("spectra_platform.services.tools.sandbox.get_sandbox_pool", return_value=mock_pool):
-            result = ToolExecutionService._get_queue_name("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+            result = await ToolExecutionService._get_queue_name("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
             assert result == "mission_a1b2c3d4"
 
-    def test_get_queue_name_without_sandbox_pool(self):
+    @pytest.mark.asyncio
+    async def test_get_queue_name_without_sandbox_pool(self):
         """Returns default queue when sandbox pool is unavailable."""
         from spectra_platform.services.tools.service import ToolExecutionService
 
         with patch("spectra_platform.services.tools.sandbox.get_sandbox_pool", return_value=None):
-            result = ToolExecutionService._get_queue_name("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+            result = await ToolExecutionService._get_queue_name("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
             assert result == "default"
 
-    def test_get_queue_name_pool_not_available(self):
+    @pytest.mark.asyncio
+    async def test_get_queue_name_pool_available_but_no_sandbox(self):
+        """Returns default queue when pool is available but mission has no running sandbox."""
+        from spectra_platform.services.tools.service import ToolExecutionService
+
+        mock_pool = MagicMock()
+        mock_pool.available = True
+        mock_pool.get = AsyncMock(return_value=None)
+        with patch("spectra_platform.services.tools.sandbox.get_sandbox_pool", return_value=mock_pool):
+            result = await ToolExecutionService._get_queue_name("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+            assert result == "default"
+
+    @pytest.mark.asyncio
+    async def test_get_queue_name_pool_not_available(self):
         """Returns default queue when pool exists but is not available."""
         from spectra_platform.services.tools.service import ToolExecutionService
 
         mock_pool = MagicMock()
         mock_pool.available = False
         with patch("spectra_platform.services.tools.sandbox.get_sandbox_pool", return_value=mock_pool):
-            result = ToolExecutionService._get_queue_name("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+            result = await ToolExecutionService._get_queue_name("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
             assert result == "default"
 
 
