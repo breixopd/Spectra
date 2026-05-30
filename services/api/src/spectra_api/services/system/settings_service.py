@@ -220,15 +220,21 @@ def get_current_settings() -> dict[str, Any]:
 
 
 async def get_ai_status_snapshot() -> dict[str, Any]:
-    """Build the AI status response payload."""
-    from spectra_ai_core.llm import get_global_llm_client
+    """Build the AI status response payload (gateway health; LLM runs in ai-svc)."""
+    import httpx
 
-    client = await get_global_llm_client()
-    is_healthy = await client.health_check()
+    gw_url = (settings.TENSORZERO_GATEWAY_URL or "http://tensorzero:3000").rstrip("/")
+    is_healthy = False
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(f"{gw_url}/health")
+            is_healthy = resp.status_code == 200
+    except (httpx.HTTPError, OSError):
+        is_healthy = False
 
     return {
         "provider": "tensorzero",
-        "gateway_url": settings.TENSORZERO_GATEWAY_URL,
+        "gateway_url": gw_url,
         "healthy": is_healthy,
         "embedding_model": settings.EMBEDDING_MODEL,
         "timeout": settings.LLM_TIMEOUT,
@@ -239,17 +245,16 @@ async def test_llm_connection(
     model: str | None = None,
 ) -> dict[str, Any]:
     """Test connectivity to TensorZero gateway. Returns {success, error?}."""
-    from spectra_ai_core.llm import get_global_llm_client
+    import httpx
 
+    gw_url = (settings.TENSORZERO_GATEWAY_URL or "http://tensorzero:3000").rstrip("/")
     try:
-        client = await get_global_llm_client()
-        response = await client.generate("Hello, are you there?", max_tokens=10)
-        await client.close()
-
-        if response:
-            return {"success": True}
-        return {"success": False, "error": "No response from LLM"}
-    except (ConnectionError, TimeoutError, ValueError, RuntimeError, OSError) as e:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(f"{gw_url}/health")
+            if resp.status_code == 200:
+                return {"success": True}
+            return {"success": False, "error": f"Gateway returned status {resp.status_code}"}
+    except (httpx.HTTPError, OSError) as e:
         return {"success": False, "error": f"Failed to communicate with TensorZero gateway: {e}"}
 
 

@@ -8,7 +8,7 @@ from httpx import ASGITransport, AsyncClient
 
 from spectra_api.api.dependencies import get_current_active_user
 from spectra_api.services.system import settings_service as _svc
-from spectra_api.ui import pages as ui
+from spectra_api.api.routers import settings_runtime
 from spectra_persistence.database import get_async_session
 
 
@@ -50,7 +50,7 @@ def _make_settings_stub() -> SimpleNamespace:
 @pytest.fixture
 def test_app():
     app = FastAPI()
-    app.include_router(ui.router)
+    app.include_router(settings_runtime.router)
 
     async def override_user():
         return SimpleNamespace(username="admin", is_active=True, is_superuser=True, role="admin")
@@ -86,7 +86,7 @@ async def test_get_settings_returns_current_settings_snapshot(test_app):
 async def test_update_settings_saves_sandbox_fields(test_app):
     mock_apply = AsyncMock(return_value={"status": "updated", "message": "Settings updated and saved"})
 
-    with patch("spectra_api.ui.pages.apply_settings_update", mock_apply):
+    with patch("spectra_api.api.routers.settings_runtime.apply_settings_update", mock_apply):
         transport = ASGITransport(app=test_app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             response = await client.post(
@@ -151,12 +151,17 @@ async def test_get_settings_returns_new_sandbox_fields(test_app):
 @pytest.mark.asyncio
 async def test_ai_status_exposes_current_gateway_snapshot(test_app):
     settings_stub = _make_settings_stub()
-    mock_client = SimpleNamespace(health_check=AsyncMock(return_value=True))
+    mock_health = AsyncMock(return_value=SimpleNamespace(status_code=200))
 
     with (
         patch.object(_svc, "settings", settings_stub),
-        patch("spectra_ai_core.llm.get_global_llm_client", AsyncMock(return_value=mock_client)),
+        patch("httpx.AsyncClient") as mock_client_cls,
     ):
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_client.get = mock_health
+        mock_client_cls.return_value = mock_client
         transport = ASGITransport(app=test_app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             response = await client.get("/api/ai/status")

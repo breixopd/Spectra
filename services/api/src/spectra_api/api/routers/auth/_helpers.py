@@ -115,11 +115,14 @@ async def _record_failure(user: User, session: AsyncSession) -> None:
 
 
 async def _record_success(user: User, session: AsyncSession) -> None:
-    """Clear lockout state on successful login."""
+    """Clear lockout state and refresh session activity on successful login."""
+    from datetime import UTC, datetime
+
+    user.last_activity = datetime.now(UTC)
     if user.login_fail_count or user.locked_until:
         user.login_fail_count = 0
         user.locked_until = None
-        await session.commit()
+    await session.commit()
 
 
 def _create_auth_token_pair(user: User) -> tuple[str, str]:
