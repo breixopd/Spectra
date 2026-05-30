@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 
 from spectra_tools_core.models import ToolStatus
 
-from .helpers import _is_tool_installed, _sync_tool_status
+from .helpers import _build_tool_status_payload, _is_tool_installed, _sync_tool_status
 
 logger = logging.getLogger(__name__)
 
@@ -103,10 +103,7 @@ async def _batch_sync_tool_statuses(tools: list[object]) -> list[str]:
         existing = await cache.get(key)
         if not isinstance(existing, dict):
             existing = {}
-        payload = {
-            "status": result["status"],
-            "last_updated": datetime.now(UTC).isoformat(),
-        }
+        payload = _build_tool_status_payload(existing, result)
         tool_statuses[key] = payload
 
     # Batch set all (CacheService.set doesn't support batch, but we reduce get calls)

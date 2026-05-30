@@ -20,10 +20,10 @@ logger = logging.getLogger(__name__)
 TOOLS_PATH_PREFIX = "/opt/spectra_tools"
 
 
-def with_retry(max_retries: int = 1, backoff_base: float = 2.0, max_backoff: float = 60.0):
+def with_retry(max_retries: int = 2, backoff_base: float = 2.0, max_backoff: float = 60.0):
     """Decorator adding exponential backoff retry to async worker jobs.
 
-    Default *max_retries* is 1 (single immediate retry for transient errors)
+    Default *max_retries* is 2 (initial attempt plus one retry for transient errors)
     because the queue layer already provides its own broader retry policy.
     """
 

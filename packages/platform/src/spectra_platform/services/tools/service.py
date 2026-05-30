@@ -95,21 +95,20 @@ class ToolExecutionService:
     MAX_RETRIES = TOOL_MAX_RETRIES
 
     @staticmethod
-    def _get_queue_name(mission_id: str) -> str:
+    async def _get_queue_name(mission_id: str) -> str:
         """Get the queue name for tool execution.
 
-        Uses mission-specific queue if sandbox container exists,
-        otherwise routes to shared tools worker queue.
+        Uses mission-specific queue only when a running sandbox exists for the
+        mission; otherwise routes to the shared tools worker queue.
         """
+        from spectra_platform.core.config import settings
         from spectra_platform.services.tools.sandbox import get_sandbox_pool
-        from spectra_platform.services.tools.sandbox.models import SandboxInfo
 
         pool = get_sandbox_pool()
         if pool and pool.available:
-            return SandboxInfo.make_queue_name(mission_id)
-
-        # Shared tools worker in containerized deployment
-        from spectra_platform.core.config import settings
+            sandbox = await pool.get(mission_id)
+            if sandbox and sandbox.status == "running":
+                return sandbox.queue_name
 
         return settings.TOOL_QUEUE_NAME
 
@@ -162,7 +161,9 @@ class ToolExecutionService:
         from spectra_platform.infrastructure.queue import Job, PostgresJobQueue
 
         try:
-            queue_name = self._get_queue_name(mission.id) if hasattr(mission, "id") and mission.id else "default"
+            queue_name = (
+                await self._get_queue_name(mission.id) if hasattr(mission, "id") and mission.id else "default"
+            )
             queue = PostgresJobQueue(queue_name)
             job_id = await queue.enqueue_job(
                 WorkerJobName.EXECUTE_SCRIPT,
@@ -340,7 +341,7 @@ class ToolExecutionService:
         full_command,
         output_dir,
     ) -> ToolExecutionResult:
-        queue_name = self._get_queue_name(mission.id) if mission.id else "default"
+        queue_name = await self._get_queue_name(mission.id) if mission.id else "default"
         return await dispatch_and_process_result(
             mission,
             tool,
