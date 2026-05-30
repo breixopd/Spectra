@@ -20,6 +20,8 @@ x-security: &security-defaults
   security_opt: ["no-new-privileges:true"]
   dns:
     - 127.0.0.11
+    - 8.8.8.8
+    - 1.1.1.1
   dns_search: []
   dns_opt:
     - ndots:1
@@ -30,6 +32,8 @@ x-security-stateful: &security-stateful
   security_opt: ["no-new-privileges:true"]
   dns:
     - 127.0.0.11
+    - 8.8.8.8
+    - 1.1.1.1
   dns_search: []
   dns_opt:
     - ndots:1
