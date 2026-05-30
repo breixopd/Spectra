@@ -116,6 +116,7 @@ class TestModelLoading:
         """_load_model falls back to local model when no API key is available."""
         mock_settings = MagicMock()
         mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
+        mock_settings.OPENAI_API_KEY = None
         mock_settings.EMBEDDING_MODEL = "test-model"
         with patch("spectra_ai_core.embeddings.get_ai_settings", return_value=mock_settings):
             await service._load_model()
@@ -127,6 +128,7 @@ class TestModelLoading:
         """_load_model configures local fastembed when no API key is available."""
         mock_settings = MagicMock()
         mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
+        mock_settings.OPENAI_API_KEY = None
         mock_settings.EMBEDDING_MODEL = "test-model"
         with patch("spectra_ai_core.embeddings.get_ai_settings", return_value=mock_settings):
             await service._load_model()
@@ -174,6 +176,7 @@ class TestModelLoading:
         """embed() falls back to local embeddings when no API key configured."""
         mock_settings = MagicMock()
         mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
+        mock_settings.OPENAI_API_KEY = None
         mock_settings.EMBEDDING_MODEL = "test-model"
         with patch("spectra_ai_core.embeddings.get_ai_settings", return_value=mock_settings):
             await service._load_model()
@@ -185,6 +188,7 @@ class TestModelLoading:
         """embed_batch() falls back to local embeddings when no API key configured."""
         mock_settings = MagicMock()
         mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
+        mock_settings.OPENAI_API_KEY = None
         mock_settings.EMBEDDING_MODEL = "test-model"
         with patch("spectra_ai_core.embeddings.get_ai_settings", return_value=mock_settings):
             await service._load_model()
@@ -224,7 +228,4 @@ class TestModelLoading:
             await service._load_model()
         assert service._api_ready is True
         assert service._openai_model == "test-model"
-        mock_openai_cls.assert_called_once_with(
-            api_key="sk-test",
-            base_url=None,
-        )
+        mock_openai_cls.assert_called_once_with(api_key="sk-test")

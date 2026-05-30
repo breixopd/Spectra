@@ -181,7 +181,7 @@ class TestSettingsRBAC:
     def test_settings_endpoint_has_superuser_dependency(self):
         import inspect
 
-        from spectra_api.ui.pages import update_settings
+        from spectra_api.api.routers.settings_runtime import update_settings
 
         sig = inspect.signature(update_settings)
         param_names = list(sig.parameters.keys())
@@ -189,11 +189,10 @@ class TestSettingsRBAC:
 
 
 class TestRAGFunctionalGuard:
-    def test_embedding_service_is_functional_false_on_fallback(self):
+    def test_embedding_service_is_functional_false_before_init(self):
         from spectra_ai_core.embeddings import EmbeddingService
 
         svc = EmbeddingService()
-        svc._use_fallback = True
         assert svc.is_functional is False
 
     def test_embedding_service_is_functional_false_no_model(self):

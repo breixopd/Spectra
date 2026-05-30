@@ -1,4 +1,4 @@
-"""Tests for settings API endpoints (GET/POST /api/settings in ui.py)."""
+"""Tests for settings API endpoints (GET/POST /api/settings)."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from spectra_api.api.dependencies import get_current_active_user
-from spectra_api.ui.pages import router
+from spectra_api.api.routers import settings_runtime
 from spectra_persistence.database import get_async_session
 from spectra_persistence.models.user import User
 
@@ -23,7 +23,7 @@ def _make_user(is_superuser: bool = False, username: str = "testuser") -> User:
 
 def _build_app(current_user: User | None = None, db=None):
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(settings_runtime.router)
 
     if current_user is not None:
         app.dependency_overrides[get_current_active_user] = lambda: current_user
@@ -33,7 +33,7 @@ def _build_app(current_user: User | None = None, db=None):
 
 
 class TestGetSettings:
-    @patch("spectra_api.ui.pages.get_current_settings")
+    @patch("spectra_api.services.system.settings_service.get_current_settings")
     def test_get_settings_authenticated(self, mock_get):
         mock_get.return_value = {"tensorzero_gateway_url": "http://tensorzero:3000", "log_level": "DEBUG"}
         app = _build_app(_make_user(is_superuser=True))
@@ -46,7 +46,7 @@ class TestGetSettings:
 
     def test_get_settings_unauthenticated(self):
         app = FastAPI()
-        app.include_router(router)
+        app.include_router(settings_runtime.router)
         client = TestClient(app)
 
         resp = client.get("/api/settings")
@@ -55,7 +55,7 @@ class TestGetSettings:
 
 
 class TestUpdateSettings:
-    @patch("spectra_api.ui.pages.apply_settings_update", new_callable=AsyncMock)
+    @patch("spectra_api.api.routers.settings_runtime.apply_settings_update", new_callable=AsyncMock)
     def test_superuser_can_update(self, mock_apply):
         mock_apply.return_value = {"status": "updated", "message": "Settings updated and saved"}
         app = _build_app(_make_user(is_superuser=True), AsyncMock())
@@ -76,7 +76,7 @@ class TestUpdateSettings:
 
 
 class TestSettingsValidation:
-    @patch("spectra_api.ui.pages.apply_settings_update", new_callable=AsyncMock)
+    @patch("spectra_api.api.routers.settings_runtime.apply_settings_update", new_callable=AsyncMock)
     def test_invalid_shell_routing_mode_rejected(self, mock_apply):
         app = _build_app(_make_user(is_superuser=True), AsyncMock())
         client = TestClient(app)
@@ -85,7 +85,7 @@ class TestSettingsValidation:
 
         assert resp.status_code == 422
 
-    @patch("spectra_api.ui.pages.apply_settings_update", new_callable=AsyncMock)
+    @patch("spectra_api.api.routers.settings_runtime.apply_settings_update", new_callable=AsyncMock)
     def test_invalid_log_level_rejected(self, mock_apply):
         app = _build_app(_make_user(is_superuser=True), AsyncMock())
         client = TestClient(app)

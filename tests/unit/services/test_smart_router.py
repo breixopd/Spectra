@@ -17,19 +17,19 @@ from spectra_ai_core.agents.base import ROLE_TASK_MAP, AgentRole
 
 class TestTaskTiers:
     def test_simple_tasks_are_tier1(self):
-        assert TASK_TIERS["scope"] == 1
-        assert TASK_TIERS["tool_selection"] == 1
-        assert TASK_TIERS["safety_check"] == 1
+        assert TASK_TIERS["scope"] == "fast"
+        assert TASK_TIERS["tool_selection"] == "fast"
+        assert TASK_TIERS["safety_check"] == "fast"
 
     def test_moderate_tasks_are_tier2(self):
-        assert TASK_TIERS["planning"] == 2
-        assert TASK_TIERS["consensus"] == 2
-        assert TASK_TIERS["reporting"] == 2
+        assert TASK_TIERS["planning"] == "balanced"
+        assert TASK_TIERS["consensus"] == "balanced"
+        assert TASK_TIERS["reporting"] == "balanced"
 
     def test_complex_tasks_are_tier3(self):
-        assert TASK_TIERS["exploit_crafting"] == 3
-        assert TASK_TIERS["poc_generation"] == 3
-        assert TASK_TIERS["post_exploitation"] == 3
+        assert TASK_TIERS["exploit_crafting"] == "capable"
+        assert TASK_TIERS["poc_generation"] == "capable"
+        assert TASK_TIERS["post_exploitation"] == "capable"
 
 
 class TestTensorZeroRouter:
@@ -74,7 +74,7 @@ class TestTensorZeroRouter:
         assert result.content == "test response"
         assert result.provider == "tensorzero"
         assert result.usage["total_tokens"] == 30
-        assert result.model == "tool_selection/fast-primary"
+        assert result.model == "deepseek-v4-flash"
         assert result.raw["inference_id"] == "inf-123"
         call = mock_client.post.call_args
         assert call.args[0] == "/inference"
@@ -164,12 +164,12 @@ class TestRoleTaskMap:
 
     def test_exploit_crafter_is_tier3(self):
         task = ROLE_TASK_MAP[AgentRole.EXPLOIT_CRAFTER]
-        assert TASK_TIERS[task] == 3
+        assert TASK_TIERS[task] == "capable"
 
     def test_scope_is_tier1(self):
         task = ROLE_TASK_MAP[AgentRole.SCOPE]
-        assert TASK_TIERS[task] == 1
+        assert TASK_TIERS[task] == "fast"
 
     def test_reporter_is_tier2(self):
         task = ROLE_TASK_MAP[AgentRole.REPORTER]
-        assert TASK_TIERS[task] == 2
+        assert TASK_TIERS[task] == "balanced"
