@@ -69,17 +69,25 @@ class BaseRepository(Generic[ModelType]):
         await self.session.refresh(instance)
         return instance
 
-    async def get_by_id(self, entity_id: str | UUID) -> ModelType | None:
+    async def get_by_id(
+        self,
+        entity_id: str | UUID,
+        *,
+        options: Sequence[Any] | None = None,
+    ) -> ModelType | None:
         """
         Get entity by ID.
 
         Args:
             entity_id: UUID of the entity.
+            options: Optional SQLAlchemy loader options (e.g. selectinload).
 
         Returns:
             The entity or None if not found.
         """
         stmt = select(self.model).where(self.model.id == str(entity_id))
+        if options:
+            stmt = stmt.options(*options)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 

@@ -95,6 +95,29 @@ class VoteResponse(BaseModel):
     concerns: list[str] = []
 
 
+class ToolSuggestionResponse(BaseModel):
+    """Schema for a single voter's next-tool suggestion (MAKER TOOL_PICK gate)."""
+
+    tool: str = Field(..., description="The single best tool to run next, chosen ONLY from the provided list")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence that this is the right next tool")
+    reasoning: str = Field("", description="Brief justification for the choice")
+
+
+class ExtractedFact(BaseModel):
+    """A single structured fact extracted from raw tool output (MAKER OUTPUT_PARSING gate)."""
+
+    type: str = Field(..., description="Fact category: service, port, vuln, host, credential, info, etc.")
+    name: str = Field(..., description="Short identifier (e.g. '443/tcp', 'CVE-2021-1234', 'admin')")
+    value: str = Field("", description="The observed value/version/detail for this fact")
+    detail: str = Field("", description="Optional extra context")
+
+
+class ParsedFactsResponse(BaseModel):
+    """A single voter's extraction of structured facts from tool output."""
+
+    facts: list[ExtractedFact] = Field(default_factory=list, description="Facts grounded ONLY in the given output")
+
+
 class ConsensusResult(BaseModel):
     """Result of a consensus vote."""
 
@@ -600,33 +623,186 @@ Vote REJECT only if it is clearly dangerous (e.g. destructive, out of scope) or 
     ) -> dict[str, Any]:
         """Multiple micro-agents independently suggest the next tool (MAKER TOOL_PICK gate).
 
-        Returns the tool with majority vote, or falls back to highest-confidence suggestion.
+        Each voter is an independent LLM call (parallel, temperature-varied) that picks
+        the next tool from ``available_tools``. Returns the majority pick, or the
+        highest-confidence suggestion when there is no majority. Falls back to the
+        first available tool only if every voter fails.
         """
-        if num_voters < 2:
-            return {"tool": available_tools[0] if available_tools else "", "confidence": 0.5}
+        from collections import Counter
+
+        if not available_tools:
+            return {"tool": "", "confidence": 0.0, "votes": 0, "total_voters": 0}
+        if num_voters < 2 or len(available_tools) == 1:
+            return {"tool": available_tools[0], "confidence": 0.6, "votes": 1, "total_voters": 1}
+
+        temp_min, temp_max = self.config.temperature_range
+        temp_step = (temp_max - temp_min) / max(num_voters - 1, 1)
+        prompt = self._build_tool_pick_prompt(available_tools, phase, target_info)
+        tasks = [self._suggest_tool(prompt, available_tools, temp_min + i * temp_step) for i in range(num_voters)]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
         suggestions: list[dict[str, Any]] = []
-        for i in range(num_voters):
-            # In production, each voter is an independent LLM call
-            # For now, simulate with varied tool suggestions
-            import random
-            random.seed(hash(f"{phase}_{target_info}_{i}") % 10000)
-            if available_tools:
-                pick = random.choice(available_tools)
-                suggestions.append({"tool": pick, "confidence": random.uniform(0.5, 0.9)})
+        for i, result in enumerate(results):
+            if isinstance(result, dict) and result.get("tool"):
+                suggestions.append(result)
+            elif isinstance(result, Exception):
+                logger.warning("Tool-pick voter %d failed: %s", i, result)
 
-        # Count votes per tool
-        from collections import Counter
+        if not suggestions:
+            # Every voter failed — degrade gracefully rather than randomly guessing.
+            return {"tool": available_tools[0], "confidence": 0.5, "votes": 0, "total_voters": num_voters, "note": "voter_failure"}
+
         tool_votes = Counter(s["tool"] for s in suggestions)
         winner, count = tool_votes.most_common(1)[0]
 
-        if count >= num_voters // 2 + 1:  # Majority
+        if count >= len(suggestions) // 2 + 1:  # Majority of successful voters
             avg_conf = sum(s["confidence"] for s in suggestions if s["tool"] == winner) / count
-            return {"tool": winner, "confidence": round(avg_conf, 2), "votes": count, "total_voters": num_voters}
+            return {"tool": winner, "confidence": round(avg_conf, 2), "votes": count, "total_voters": len(suggestions)}
 
         # No majority — pick highest confidence
         best = max(suggestions, key=lambda s: s["confidence"])
-        return {"tool": best["tool"], "confidence": best["confidence"], "votes": 1, "total_voters": num_voters, "note": "no_majority"}
+        return {
+            "tool": best["tool"],
+            "confidence": round(best["confidence"], 2),
+            "votes": 1,
+            "total_voters": len(suggestions),
+            "note": "no_majority",
+        }
+
+    def _build_tool_pick_prompt(
+        self,
+        available_tools: list[str],
+        phase: str,
+        target_info: dict[str, Any],
+    ) -> str:
+        """Build the prompt asking a voter to pick the next tool."""
+        tools_str = "\n".join(f"- {t}" for t in available_tools)
+        target_str = "\n".join(f"- {k}: {v}" for k, v in (target_info or {}).items())
+        return f"""You are selecting the single most useful tool to run NEXT in an authorized
+penetration test, given the current phase and what is known about the target.
+
+Current phase: {phase}
+
+Target information:
+{target_str or "- (none yet)"}
+
+Available tools (choose EXACTLY ONE, by its exact name from this list):
+{tools_str}
+
+Pick the tool that best advances the mission in this phase. Return the exact tool
+name, a confidence between 0 and 1, and a one-sentence justification.
+"""
+
+    async def _suggest_tool(
+        self,
+        prompt: str,
+        available_tools: list[str],
+        temperature: float,
+    ) -> dict[str, Any] | None:
+        """Get a single voter's tool suggestion via an independent LLM call."""
+        response = await self.llm.generate_structured(
+            prompt=prompt,
+            response_model=ToolSuggestionResponse,
+            system_prompt="You are an expert offensive-security operator choosing the next tool.",
+            temperature=temperature,
+        )
+        tool = response.tool.strip()
+        if tool not in available_tools:
+            # Tolerate minor formatting drift (case / surrounding text) before discarding.
+            match = next((t for t in available_tools if t.lower() == tool.lower()), None)
+            if match is None:
+                match = next((t for t in available_tools if t.lower() in tool.lower()), None)
+            if match is None:
+                logger.debug("Tool-pick voter returned out-of-list tool %r; discarding", tool)
+                return None
+            tool = match
+        return {"tool": tool, "confidence": float(response.confidence)}
+
+    async def vote_on_output_parsing(
+        self,
+        output: str,
+        extraction_hint: str = "",
+        num_voters: int = 2,
+        max_chars: int = 16000,
+    ) -> dict[str, Any]:
+        """Extract structured facts from raw tool output via consensus (MAKER OUTPUT_PARSING gate).
+
+        Multiple voters independently extract facts; only facts agreed on by at least a
+        majority of successful voters are kept, which suppresses single-model
+        hallucinations on free-form output. Returns ``{facts, voters, agreed}`` where
+        each fact carries an ``agreement`` count and a ``source`` marker.
+        """
+        text = (output or "").strip()
+        if not text:
+            return {"facts": [], "voters": 0, "agreed": 0}
+        if len(text) > max_chars:
+            text = text[:max_chars] + "\n...[truncated for parsing]"
+
+        num_voters = max(num_voters, 1)
+        temp_min, temp_max = self.config.temperature_range
+        temp_step = (temp_max - temp_min) / max(num_voters - 1, 1)
+        prompt = self._build_output_parsing_prompt(text, extraction_hint)
+        tasks = [self._extract_facts(prompt, temp_min + i * temp_step) for i in range(num_voters)]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        ballots: list[list[dict[str, str]]] = []
+        for i, result in enumerate(results):
+            if isinstance(result, list):
+                ballots.append(result)
+            elif isinstance(result, Exception):
+                logger.warning("Output-parsing voter %d failed: %s", i, result)
+
+        if not ballots:
+            return {"facts": [], "voters": num_voters, "agreed": 0, "note": "voter_failure"}
+
+        # Reconcile: a fact is kept when a majority of successful voters report it.
+        from collections import Counter
+
+        def _key(fact: dict[str, str]) -> str:
+            return f"{fact.get('type', '').strip().lower()}|{fact.get('name', '').strip().lower()}"
+
+        counts: Counter[str] = Counter()
+        representative: dict[str, dict[str, str]] = {}
+        for ballot in ballots:
+            for fact in {_key(f): f for f in ballot}.values():  # dedupe within a single voter
+                counts[_key(fact)] += 1
+                representative.setdefault(_key(fact), fact)
+
+        threshold = len(ballots) // 2 + 1 if len(ballots) > 1 else 1
+        agreed_facts: list[dict[str, Any]] = []
+        for key, count in counts.items():
+            if count >= threshold:
+                fact = dict(representative[key])
+                fact["agreement"] = count
+                fact["source"] = "consensus_parsing"
+                agreed_facts.append(fact)
+
+        return {"facts": agreed_facts, "voters": len(ballots), "agreed": len(agreed_facts)}
+
+    def _build_output_parsing_prompt(self, output: str, extraction_hint: str) -> str:
+        """Build the prompt asking a voter to extract structured facts from tool output."""
+        hint = f"\nFocus on extracting: {extraction_hint}\n" if extraction_hint else ""
+        return f"""Extract structured, factual observations from the following security-tool output.
+Report ONLY facts that are explicitly present in the output. Do NOT infer, guess, or
+add anything not directly supported by the text. If nothing concrete is present, return
+an empty list.{hint}
+For each fact provide: type (service|port|vuln|host|credential|info), a short name, the
+observed value, and optional detail.
+
+--- TOOL OUTPUT START ---
+{output}
+--- TOOL OUTPUT END ---
+"""
+
+    async def _extract_facts(self, prompt: str, temperature: float) -> list[dict[str, str]]:
+        """Get a single voter's fact extraction via an independent LLM call."""
+        response = await self.llm.generate_structured(
+            prompt=prompt,
+            response_model=ParsedFactsResponse,
+            system_prompt="You are a precise security-output parser. Extract only grounded facts.",
+            temperature=temperature,
+        )
+        return [f.model_dump() for f in response.facts]
 
     def red_flag_check(self, output: str, expected_format: str = "structured") -> dict[str, Any]:
         """Check tool output for red flags (MAKER RED_FLAG gate).

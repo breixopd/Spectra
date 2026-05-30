@@ -24,15 +24,9 @@ logger = logging.getLogger(__name__)
 
 def _decode_token_sync_no_blacklist(token: str) -> dict:
     """Sync JWT decode for rate-limiter key function (no blacklist check)."""
-    import jwt as _jwt
+    from spectra_auth.security import _jwt_decode
 
-    from spectra_common.config import settings
-
-    return _jwt.decode(
-        token,
-        settings.JWT_SECRET_KEY.get_secret_value(),
-        algorithms=[settings.JWT_ALGORITHM],
-    )
+    return _jwt_decode(token)
 
 
 def get_client_identifier(request: Request) -> str:
@@ -104,6 +98,14 @@ limiter = Limiter(
     default_limits=[API_RATE_LIMIT],
     headers_enabled=True,  # Add rate limit headers to responses
     storage_uri=_rl_settings.RATE_LIMIT_STORAGE,
+    # Fault tolerance for the rate-limit storage backend (Redis). If Redis becomes
+    # unreachable or errors (outage, restart, credential drift), slowapi transparently
+    # falls back to per-process in-memory limiting and keeps serving — rate limiting stays
+    # active rather than the whole API turning into a 500 wall. It periodically rechecks the
+    # primary backend and switches back automatically. `swallow_errors` is the final
+    # belt-and-suspenders: if even the fallback path fails, skip limiting rather than 500.
+    in_memory_fallback_enabled=True,
+    swallow_errors=True,
 )
 
 # Patch slowapi's _inject_headers to skip non-Response objects (WebSocket

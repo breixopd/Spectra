@@ -42,10 +42,10 @@ reports/
 # =============================================================================
 # Build Artifacts & Dependencies
 # =============================================================================
-config/node_modules/
 node_modules/
-package-lock.json
-package.json
+# Vite SPA build output (rebuilt by the API image); package.json + package-lock.json
+# ARE tracked for reproducible `npm ci` builds.
+apps/web/dist/
 *.log
 packages/storage-policy/dist/
 docker/images/

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.requests import Request
@@ -12,14 +14,20 @@ from sqlalchemy.orm import selectinload
 
 from spectra_api.api.dependencies import check_resource_owner, get_current_active_user, validate_uuid_param
 from spectra_api.api.schemas.common import PaginatedResponse
-from spectra_api.api.schemas.finding import FindingResponse
+from spectra_api.api.schemas.finding import FindingDetailResponse, finding_to_response
 from spectra_api.authz import Permission, require_permission
 from spectra_auth.rate_limit import RateLimits, limiter
 from spectra_common.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from spectra_common.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from spectra_persistence.database import get_async_session
+from spectra_persistence.finding_evidence import (
+    has_reproducible_evidence,
+    initial_proof_status,
+    prepare_evidence_storage,
+    proof_status_for_status_change,
+)
 from spectra_persistence.models.audit_log import AuditEventType
-from spectra_persistence.models.finding import FindingStatus, Severity
+from spectra_persistence.models.finding import Finding, FindingStatus, ProofStatus, Severity
 from spectra_persistence.models.user import User
 from spectra_persistence.repositories.finding import FindingRepository
 from spectra_persistence.repositories.target import TargetRepository
@@ -41,14 +49,15 @@ class FindingCreate(BaseModel):
     description: str | None = Field(None, max_length=50000)
     severity: Severity = Severity.INFO
     status: FindingStatus = FindingStatus.POTENTIAL
+    proof_status: ProofStatus | None = Field(None, description="Optional explicit proof status override")
     cvss_score: float | None = Field(None, ge=0.0, le=10.0)
     cve_id: str | None = Field(None, max_length=20)
     tool_source: str = Field(..., max_length=100)
-    evidence: dict[str, str] | None = None
+    evidence: dict[str, Any] | None = None
 
     @field_validator("evidence")
     @classmethod
-    def validate_evidence(cls, value: dict[str, str] | None) -> dict[str, str] | None:
+    def validate_evidence(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
         if value is None:
             return None
         if len(value) > 25:
@@ -56,13 +65,13 @@ class FindingCreate(BaseModel):
         for key, item in value.items():
             if len(key) > 100:
                 raise ValueError("Evidence keys must be 100 characters or fewer")
-            if len(item) > 5000:
+            if isinstance(item, str) and len(item) > 5000:
                 raise ValueError("Evidence values must be 5000 characters or fewer")
         return value
 
     @model_validator(mode="after")
     def require_artifact_for_high_severity(self) -> FindingCreate:
-        if self.severity in {Severity.HIGH, Severity.CRITICAL} and not _has_reproducible_evidence(self.evidence):
+        if self.severity in {Severity.HIGH, Severity.CRITICAL} and not has_reproducible_evidence(self.evidence):
             raise ValueError("High and critical findings require artifact_id, tool_execution_id, s3_key, or sha256 evidence")
         return self
 
@@ -74,43 +83,9 @@ class FindingUpdate(BaseModel):
     description: str | None = Field(None, max_length=50000)
     severity: Severity | None = None
     status: FindingStatus | None = None
+    proof_status: ProofStatus | None = None
     cvss_score: float | None = Field(None, ge=0.0, le=10.0)
     cve_id: str | None = Field(None, max_length=20)
-
-
-class FindingDetailResponse(FindingResponse):
-    """Detailed finding response with all fields."""
-
-    target_id: str
-    cvss_score: float | None = None
-    cve_id: str | None = None
-    evidence: dict[str, str] | None = None
-
-
-_FINDING_RESPONSE = FindingDetailResponse
-
-
-def _finding_to_response(finding) -> FindingDetailResponse:
-    return _FINDING_RESPONSE(
-        id=finding.id,
-        target_id=finding.target_id,
-        title=finding.title,
-        description=finding.description,
-        severity=finding.severity.value,
-        status=finding.status.value,
-        cvss_score=finding.cvss_score,
-        cve_id=finding.cve_id,
-        tool_source=finding.tool_source,
-        evidence=finding.evidence,
-        created_at=finding.created_at.isoformat(),
-    )
-
-
-def _has_reproducible_evidence(evidence: dict[str, str] | None) -> bool:
-    if not evidence:
-        return False
-    required = {"artifact_id", "tool_execution_id", "s3_key", "sha256"}
-    return any(bool(evidence.get(key)) for key in required)
 
 
 def _finding_filters(
@@ -118,6 +93,7 @@ def _finding_filters(
     *,
     severity: Severity | None = None,
     status_filter: FindingStatus | None = None,
+    proof_status_filter: ProofStatus | None = None,
 ) -> dict[str, object]:
     filters: dict[str, object] = {}
     if not current_user.is_superuser:
@@ -126,6 +102,8 @@ def _finding_filters(
         filters["severity"] = severity
     if status_filter is not None:
         filters["status"] = status_filter
+    if proof_status_filter is not None:
+        filters["proof_status"] = proof_status_filter
     return filters
 
 
@@ -142,13 +120,34 @@ def _finding_status_audit_details(finding, action: str) -> dict[str, str]:
         "finding_id": finding.id,
         "target_id": finding.target_id,
         "status": finding.status.value,
+        "proof_status": finding.proof_status.value,
         "action": action,
     }
 
 
+def _proof_fields_for_create(
+    status: FindingStatus,
+    evidence: dict[str, Any] | None,
+    explicit_proof_status: ProofStatus | None,
+) -> tuple[ProofStatus, datetime | None]:
+    proof_status = explicit_proof_status or initial_proof_status(status, evidence)
+    verified_at = datetime.now(UTC) if proof_status == ProofStatus.VERIFIED else None
+    return proof_status, verified_at
+
+
+def _proof_fields_for_status_change(
+    new_status: FindingStatus,
+    *,
+    current_proof_status: ProofStatus,
+) -> tuple[ProofStatus, datetime | None]:
+    proof_status = proof_status_for_status_change(new_status, current=current_proof_status)
+    verified_at = datetime.now(UTC) if proof_status == ProofStatus.VERIFIED else None
+    return proof_status, verified_at
+
+
 async def _get_finding_or_404(repo: FindingRepository, finding_id: str):
     validate_uuid_param(finding_id, "finding_id")
-    finding = await repo.get_by_id(finding_id)
+    finding = await repo.get_by_id(finding_id, options=[selectinload(Finding.target)])
     if not finding:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -169,8 +168,17 @@ async def _update_owned_finding_status(
     current_user: User,
     new_status: FindingStatus,
 ):
-    await _get_owned_finding_or_404(repo, finding_id, current_user)
-    return await repo.update(finding_id, status=new_status)
+    existing = await _get_owned_finding_or_404(repo, finding_id, current_user)
+    proof_status, verified_at = _proof_fields_for_status_change(
+        new_status,
+        current_proof_status=existing.proof_status,
+    )
+    return await repo.update(
+        finding_id,
+        status=new_status,
+        proof_status=proof_status,
+        verified_at=verified_at,
+    )
 
 
 async def _update_finding_status_response(
@@ -203,7 +211,8 @@ async def _update_finding_status_response(
         details=_finding_status_audit_details(updated, action),
         request=request,
     )
-    return _finding_to_response(updated)
+    reloaded = await repo.get_by_id(finding_id, options=[selectinload(Finding.target)])
+    return finding_to_response(reloaded or updated)
 
 
 # --- Endpoints ---
@@ -234,6 +243,12 @@ async def create_finding(
     check_resource_owner(target, _current_user, "target")
 
     repo = FindingRepository(db)
+    stored_evidence = prepare_evidence_storage(finding_in.evidence)
+    proof_status, verified_at = _proof_fields_for_create(
+        finding_in.status,
+        stored_evidence,
+        finding_in.proof_status,
+    )
 
     finding = await repo.create(
         target_id=finding_in.target_id,
@@ -241,12 +256,15 @@ async def create_finding(
         description=finding_in.description,
         severity=finding_in.severity,
         status=finding_in.status,
+        proof_status=proof_status,
+        verified_at=verified_at,
         cvss_score=finding_in.cvss_score,
         cve_id=finding_in.cve_id,
         tool_source=finding_in.tool_source,
-        evidence=finding_in.evidence,
+        evidence=stored_evidence,
         user_id=str(_current_user.id),
     )
+    finding.target = target
     await db.commit()
     await audit_log_event(
         db,
@@ -256,12 +274,13 @@ async def create_finding(
             "finding_id": finding.id,
             "target_id": finding.target_id,
             "severity": finding.severity.value,
+            "proof_status": finding.proof_status.value,
             "title": finding.title,
         },
         request=request,
     )
 
-    return _finding_to_response(finding)
+    return finding_to_response(finding)
 
 
 @router.get(
@@ -282,6 +301,7 @@ async def list_findings(
     ),
     severity: Severity | None = None,
     status_filter: FindingStatus | None = Query(None, alias="status"),
+    proof_status_filter: ProofStatus | None = Query(None, alias="proof_status"),
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ) -> PaginatedResponse:
@@ -289,10 +309,13 @@ async def list_findings(
 
     Pagination: max 100 items per page.
     """
-    from spectra_persistence.models.finding import Finding
-
     repo = FindingRepository(db)
-    filters = _finding_filters(_current_user, severity=severity, status_filter=status_filter)
+    filters = _finding_filters(
+        _current_user,
+        severity=severity,
+        status_filter=status_filter,
+        proof_status_filter=proof_status_filter,
+    )
 
     total = await repo.count(**filters)
     skip = (page - 1) * per_page
@@ -303,7 +326,7 @@ async def list_findings(
     else:
         findings = await repo.get_all(skip=skip, limit=per_page, options=options)
 
-    items = [_finding_to_response(finding) for finding in findings]
+    items = [finding_to_response(finding) for finding in findings]
     return PaginatedResponse(items=items, total=total, page=page, per_page=per_page)
 
 
@@ -321,7 +344,7 @@ async def get_finding(
     """Get a finding by ID."""
     repo = FindingRepository(db)
     finding = await _get_owned_finding_or_404(repo, finding_id, _current_user)
-    return _finding_to_response(finding)
+    return finding_to_response(finding)
 
 
 @router.patch(
@@ -341,14 +364,24 @@ async def update_finding(
     repo = FindingRepository(db)
     existing = await _get_owned_finding_or_404(repo, finding_id, _current_user)
 
-    # Filter out None values
     update_data = finding_in.model_dump(exclude_unset=True)
     requested_severity = update_data.get("severity")
-    if requested_severity in {Severity.HIGH, Severity.CRITICAL} and not _has_reproducible_evidence(existing.evidence):
+    if requested_severity in {Severity.HIGH, Severity.CRITICAL} and not has_reproducible_evidence(existing.evidence):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="High and critical findings require artifact_id, tool_execution_id, s3_key, or sha256 evidence",
         )
+
+    new_status = update_data.get("status")
+    if new_status is not None and "proof_status" not in update_data:
+        proof_status, verified_at = _proof_fields_for_status_change(
+            new_status,
+            current_proof_status=existing.proof_status,
+        )
+        update_data["proof_status"] = proof_status
+        update_data["verified_at"] = verified_at
+    elif update_data.get("proof_status") == ProofStatus.VERIFIED and "verified_at" not in update_data:
+        update_data["verified_at"] = datetime.now(UTC)
 
     updated = await repo.update(finding_id, **update_data)
 
@@ -367,7 +400,8 @@ async def update_finding(
         request=request,
     )
 
-    return _finding_to_response(updated)
+    updated = await _get_owned_finding_or_404(repo, finding_id, _current_user)
+    return finding_to_response(updated)
 
 
 @router.delete(

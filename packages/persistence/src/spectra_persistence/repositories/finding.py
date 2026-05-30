@@ -3,6 +3,7 @@ Finding Repository for managing vulnerability findings.
 """
 
 from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,12 +24,14 @@ class FindingRepository(BaseRepository[Finding]):
         skip: int = 0,
         limit: int = 100,
         user_id: str | None = None,
+        *,
+        options: Sequence[Any] | None = None,
     ) -> Sequence[Finding]:
         """Get all findings for a specific target."""
         kwargs: dict = {"target_id": target_id}
         if user_id:
             kwargs["user_id"] = user_id
-        return await self.find_many_by(skip=skip, limit=limit, **kwargs)
+        return await self.find_many_by(skip=skip, limit=limit, options=options, **kwargs)
 
     async def find_by_severity(
         self,

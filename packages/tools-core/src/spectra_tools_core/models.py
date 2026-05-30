@@ -381,3 +381,6 @@ class ToolExecutionResult(BaseModel):
     duration_seconds: float
     output_file: str | None = None
     parsed_findings: list[dict[str, Any]] = Field(default_factory=list)
+    #: Set when the MAKER RED_FLAG gate detects corrupted/incomplete output, so downstream
+    #: parsing and the agent loop can treat the output as low-trust instead of patching it.
+    integrity_warning: str | None = None

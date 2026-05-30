@@ -13,6 +13,7 @@ _MODEL_EXPORTS = {
     "Exploit": ("spectra_persistence.models.exploit", "Exploit"),
     "Finding": ("spectra_persistence.models.finding", "Finding"),
     "FindingStatus": ("spectra_persistence.models.finding", "FindingStatus"),
+    "ProofStatus": ("spectra_persistence.models.finding", "ProofStatus"),
     "Severity": ("spectra_persistence.models.finding", "Severity"),
     "Mission": ("spectra_persistence.models.mission", "Mission"),
     "MissionStatus": ("spectra_persistence.models.mission", "MissionStatus"),

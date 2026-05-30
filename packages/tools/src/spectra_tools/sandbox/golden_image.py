@@ -465,6 +465,11 @@ class GoldenImageBuilder:
                     except OSError as untag_exc:
                         logger.error("Failed to untag blocked image: %s", untag_exc)
 
+            # Roll out: push the validated, non-blocked image to the platform registry
+            # so every node/sandbox pulls the same artifact.
+            if result["status"] == "success":
+                await self._push_to_platform_registry(target_tag, manifest_sha, result)
+
             await self._store_build_status(result)
             return result
 
@@ -484,6 +489,44 @@ class GoldenImageBuilder:
             return result
         finally:
             self._building = False
+
+    async def _push_to_platform_registry(self, image_tag: str, manifest_sha: str, result: dict[str, Any]) -> None:
+        """Push a validated golden image to the platform registry for fleet rollout.
+
+        No-op when ``PLATFORM_REGISTRY`` is unset (single-node local use). The image is
+        pushed under ``<registry>/<repo>`` with both ``:latest`` and a content-addressed
+        ``:<manifest_sha[:16]>`` tag so rollouts are immutable and reproducible.
+        """
+        from spectra_common.config import get_settings as _get_settings
+
+        registry = _get_settings().PLATFORM_REGISTRY.strip()
+        if not registry:
+            result["push"] = {"status": "skipped", "reason": "PLATFORM_REGISTRY not configured"}
+            return
+        if not self.available:
+            result["push"] = {"status": "skipped", "reason": "Docker not available"}
+            return
+
+        repo = _get_settings().GOLDEN_IMAGE_REPO.strip("/")
+        base = f"{registry}/{repo}"
+        version_tag = f"golden-{manifest_sha[:16]}"
+        refs = [f"{base}:latest", f"{base}:{version_tag}"]
+
+        try:
+            image = await asyncio.to_thread(self._client.images.get, image_tag)
+            pushed: list[str] = []
+            for ref in refs:
+                repo_part, _, tag_part = ref.rpartition(":")
+                await asyncio.to_thread(image.tag, repo_part, tag_part)
+                push_log = await asyncio.to_thread(self._client.images.push, repo_part, tag=tag_part)
+                if "errorDetail" in str(push_log):
+                    raise RuntimeError(f"registry rejected push of {ref}: {str(push_log)[:200]}")
+                pushed.append(ref)
+            result["push"] = {"status": "success", "registry": registry, "refs": pushed, "version_tag": version_tag}
+            logger.info("Golden image pushed to platform registry: %s", ", ".join(pushed))
+        except (OSError, RuntimeError) as exc:
+            result["push"] = {"status": "error", "registry": registry, "error": str(exc)[:300]}
+            logger.error("Golden image push to %s failed: %s", registry, exc)
 
     async def get_build_status(self) -> dict[str, Any] | None:
         """Get the last build status from SystemStatus."""

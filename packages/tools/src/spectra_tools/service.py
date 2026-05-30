@@ -258,6 +258,9 @@ class ToolExecutionService:
                 output_dir,
             )
 
+            self._apply_red_flag_gate(mission, tool, result)
+            await self._apply_output_parsing_gate(mission, tool, result)
+
             record_to_memory(mission, tool_name, target, args, result)
 
             # Record to demo recorder if available
@@ -283,6 +286,126 @@ class ToolExecutionService:
 
     # --- Delegated helpers ----------------------------------------------------
 
+    def _apply_red_flag_gate(self, mission: Mission, tool, result: ToolExecutionResult) -> None:
+        """MAKER RED_FLAG gate: mark structurally corrupt/incomplete tool output.
+
+        Only successful runs are checked (failures already carry an error). Flagged
+        output is annotated (not discarded) so the parser/agent loop can treat it as
+        low-trust rather than silently patching it.
+        """
+        if not result.success or not result.stdout:
+            return
+        try:
+            expected_format = "structured"
+            parsing = getattr(tool, "parsing", None)
+            fmt = getattr(getattr(parsing, "format", None), "value", None)
+            if fmt in ("json", "xml"):
+                expected_format = fmt
+            verdict = self.consensus.red_flag_check(result.stdout, expected_format)
+            if verdict.get("flagged") and verdict.get("severity") == "error":
+                result.integrity_warning = verdict.get("reason") or "Output flagged by integrity gate"
+                mission.log(f"[RED-FLAG] {result.tool_id} output flagged: {result.integrity_warning}")
+        except (AttributeError, ValueError, RuntimeError) as e:
+            logger.debug("Red-flag gate skipped for %s: %s", result.tool_id, e)
+
+    async def _apply_output_parsing_gate(self, mission: Mission, tool, result: ToolExecutionResult) -> None:
+        """MAKER OUTPUT_PARSING gate: recover structured facts via consensus extraction.
+
+        Only fires when the tool opted into LLM extraction, the deterministic parser
+        recovered nothing, the run succeeded, and the output was not red-flagged. This
+        bounds LLM cost to the cases where structured facts would otherwise be lost.
+        """
+        if not result.success or result.integrity_warning or result.parsed_findings:
+            return
+        parsing = getattr(tool, "parsing", None)
+        if not getattr(parsing, "llm_extraction", False):
+            return
+        if not result.stdout or len(result.stdout.strip()) < 40:
+            return
+        try:
+            from spectra_common.config import settings
+
+            voters = max(getattr(settings, "CONSENSUS_OUTPUT_PARSING_VOTERS", 2), 1)
+            verdict = await self.consensus.vote_on_output_parsing(
+                result.stdout,
+                extraction_hint=getattr(parsing, "extraction_hint", "") or "",
+                num_voters=voters,
+            )
+            facts = verdict.get("facts") or []
+            if facts:
+                result.parsed_findings = facts
+                mission.log(
+                    f"[OUTPUT-PARSING] recovered {len(facts)} fact(s) for {result.tool_id} "
+                    f"via {verdict.get('voters', 0)}-voter consensus"
+                )
+        except (AttributeError, ValueError, RuntimeError) as e:
+            logger.debug("Output-parsing gate skipped for %s: %s", result.tool_id, e)
+
+    def _apply_framework_enforcement(
+        self, mission: Mission, adapter, tool_name: str, target: str, full_command: str
+    ) -> ToolExecutionResult | None:
+        """Validate a tool run against the active framework before execution.
+
+        Forbidden techniques and unconfirmed authorization are always blocked. Out-of-phase
+        techniques are blocked only in ``strict`` mode; otherwise they are logged as advisory.
+        Unmappable tools (no matching technique category) are allowed. Returns an error
+        result when blocked, else ``None``. Never raises — enforcement failures fail open.
+        """
+        try:
+            from spectra_common.config import settings
+            from spectra_mission.coordination.scope_enforcer import ScopeEnforcer
+            from spectra_mission.framework_loader import get_framework
+
+            framework_id = getattr(mission, "pentest_framework", None)
+            phase = getattr(mission, "current_phase", "") or ""
+            config = getattr(adapter, "config", None)
+            if config is None or not phase:
+                return None
+
+            # Build the tool's signal set from category, capabilities and tags.
+            signals: set[str] = set()
+            category = getattr(config, "category", None)
+            if category:
+                signals.add(str(category).lower())
+            metadata = getattr(config, "metadata", None)
+            for cap in getattr(metadata, "capabilities", []) or []:
+                signals.add(str(cap).lower())
+            for tag in getattr(metadata, "tags", []) or []:
+                signals.add(str(tag).lower())
+
+            spec = get_framework(framework_id)
+            matches = [
+                tc for tc in spec.technique_categories
+                if signals & {t.lower() for t in tc.tool_types}
+            ]
+            if not matches:
+                return None  # Tool not mapped to any technique — nothing to enforce.
+
+            # Prefer a technique allowed in the current phase; fall back to the first match.
+            technique = next((tc for tc in matches if phase in tc.allowed_in_phases), matches[0])
+
+            verdict = ScopeEnforcer(mission, framework_id).validate(full_command, technique.id, phase)
+            if verdict.allowed:
+                return None
+
+            hard = [c for c in verdict.blocked_checks if c.check_type in ("forbidden_technique", "authorization")]
+            if hard:
+                reason = hard[0].reason
+                mission.log(f"[FRAMEWORK-BLOCK] {tool_name}: {reason}")
+                return create_error_result(tool_name, target, f"Blocked by framework policy: {reason}")
+
+            phase_violation = next((c for c in verdict.blocked_checks if c.check_type == "framework_phase"), None)
+            if phase_violation:
+                mode = getattr(settings, "FRAMEWORK_ENFORCEMENT_MODE", "advisory")
+                if mode == "strict":
+                    mission.log(f"[FRAMEWORK-BLOCK] {tool_name}: {phase_violation.reason}")
+                    return create_error_result(tool_name, target, f"Blocked by framework phase gating: {phase_violation.reason}")
+                mission.log(f"[FRAMEWORK-ADVISORY] {tool_name} ({technique.id}) out of phase '{phase}': {phase_violation.reason}")
+            return None
+        except (AttributeError, ValueError, RuntimeError, KeyError) as e:
+            logger.debug("Framework enforcement skipped for %s: %s", tool_name, e)
+            return None
+
     async def _validate_and_resolve_tool(self, mission, tool_name, target, args):
         return await validate_and_resolve_tool(
             mission,
@@ -303,7 +426,11 @@ class ToolExecutionService:
         request,
         full_command,
     ) -> tuple[str, ToolExecutionResult | None]:
-        """Run safety check with retry and consensus check."""
+        """Run framework enforcement, safety check with retry, and consensus check."""
+        blocked = self._apply_framework_enforcement(mission, adapter, tool_name, target, full_command)
+        if blocked is not None:
+            return full_command, blocked
+
         is_safe, reason, fixed_args = await self._perform_safety_check_with_retry(
             mission, full_command, tool_name, target, args, adapter, output_dir
         )

@@ -19,7 +19,7 @@ from spectra_api.api.dependencies import (
     validate_uuid_param,
 )
 from spectra_api.api.schemas.common import PaginatedResponse
-from spectra_api.api.schemas.finding import FindingResponse
+from spectra_api.api.schemas.finding import FindingResponse, finding_to_response
 from spectra_api.api.schemas.mission import TargetCreate, TargetResponse, TargetUpdate
 from spectra_api.authz import Permission, require_permission
 from spectra_auth.rate_limit import RateLimits, limiter
@@ -27,6 +27,7 @@ from spectra_common.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from spectra_common.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from spectra_persistence.database import get_async_session
 from spectra_persistence.models.audit_log import AuditEventType
+from spectra_persistence.models.finding import Finding
 from spectra_persistence.models.user import User
 from spectra_persistence.repositories.finding import FindingRepository
 from spectra_persistence.repositories.target import TargetRepository
@@ -285,20 +286,13 @@ async def get_target_findings(
 
     finding_repo = FindingRepository(db)
     scope_user_id = None if _current_user.is_superuser else str(_current_user.id)
-    findings = await finding_repo.find_by_target(target_id=target_id, user_id=scope_user_id)
+    findings = await finding_repo.find_by_target(
+        target_id=target_id,
+        user_id=scope_user_id,
+        options=[selectinload(Finding.target)],
+    )
 
-    return [
-        FindingResponse(
-            id=f.id,
-            title=f.title,
-            description=f.description,
-            severity=f.severity,
-            status=f.status,
-            tool_source=f.tool_source,
-            created_at=f.created_at.isoformat(),
-        )
-        for f in findings
-    ]
+    return [finding_to_response(finding) for finding in findings]
 
 
 class BulkTargetItem(BaseModel):

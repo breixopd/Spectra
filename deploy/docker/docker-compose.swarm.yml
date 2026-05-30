@@ -492,6 +492,62 @@ services:
     logging: *default-logging
     <<: *security-stateful
 
+  # Platform-owned OCI registry — distributes worker/golden images across the swarm.
+  # registry:2 only reads REGISTRY_* env (no _FILE support), so the entrypoint loads
+  # the S3 credentials and HTTP secret from Docker secrets before exec'ing the server.
+  registry:
+    image: registry:2.8.3
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        export REGISTRY_STORAGE_S3_ACCESSKEY="$$(cat /run/secrets/garage_access_key)"
+        export REGISTRY_STORAGE_S3_SECRETKEY="$$(cat /run/secrets/garage_secret_key)"
+        export REGISTRY_HTTP_SECRET="$$(cat /run/secrets/registry_http_secret)"
+        exec registry serve /etc/docker/registry/config.yml
+    environment:
+      REGISTRY_STORAGE: s3
+      REGISTRY_STORAGE_S3_REGION: ${S3_REGION:-us-east-1}
+      REGISTRY_STORAGE_S3_REGIONENDPOINT: http://garage:3900
+      REGISTRY_STORAGE_S3_BUCKET: spectra-registry
+      REGISTRY_STORAGE_S3_FORCEPATHSTYLE: "true"
+      REGISTRY_STORAGE_S3_SECURE: "false"
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+      REGISTRY_STORAGE_REDIRECT_DISABLE: "true"
+      REGISTRY_HTTP_ADDR: 0.0.0.0:5000
+    ports:
+      - "127.0.0.1:5050:5000"
+    networks:
+      - frontend
+      - backend
+    secrets:
+      - garage_access_key
+      - garage_secret_key
+      - registry_http_secret
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/v2/ >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.spectra.db == true
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 15s
+        order: stop-first
+        failure_action: rollback
+      resources:
+        limits:
+          memory: 256M
+    logging: *default-logging
+    <<: *security-defaults
+
   # ClickHouse
   clickhouse:
     image: clickhouse/clickhouse-server:24.11-alpine
@@ -646,6 +702,8 @@ secrets:
   garage_rpc_secret:
     external: true
   garage_admin_token:
+    external: true
+  registry_http_secret:
     external: true
   clickhouse_password:
     external: true

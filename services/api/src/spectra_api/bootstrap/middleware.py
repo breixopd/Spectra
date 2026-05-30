@@ -146,8 +146,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "form-action 'self';"
             )
 
-        # Set CSRF cookie for browser clients (non-API requests)
-        if not request.url.path.startswith("/api/") and "csrf_token" not in request.cookies:
+        # Set the double-submit CSRF cookie for browser clients on any safe request that
+        # lacks it. Covering API GETs (e.g. the SPA's /auth/me session probe) means the SPA
+        # self-bootstraps CSRF regardless of whether the shell is served by FastAPI (prod) or
+        # the Vite dev server (dev) — no dependency on a server-rendered page being hit first.
+        if request.method in ("GET", "HEAD") and "csrf_token" not in request.cookies:
             csrf_tok = secrets.token_urlsafe(32)
             response.set_cookie(
                 "csrf_token",

@@ -6,10 +6,11 @@ Represents security findings discovered during assessments.
 
 from __future__ import annotations
 
+from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import JSON, CheckConstraint, ForeignKey, Index, String, Text
+from sqlalchemy import JSON, CheckConstraint, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 
 
 class FindingStatus(StrEnum):
-    """Verification status of a finding."""
+    """Workflow status of a finding."""
 
     POTENTIAL = "potential"  # AI detected, not verified
     VERIFIED = "verified"  # Consensus reached (K-threshold)
@@ -30,6 +31,15 @@ class FindingStatus(StrEnum):
     FALSE_POSITIVE = "false_positive"
     DISMISSED = "dismissed"
     RETEST_PENDING = "retest_pending"
+
+
+class ProofStatus(StrEnum):
+    """Evidence/trust axis for a finding."""
+
+    CANDIDATE = "candidate"
+    NEEDS_VERIFICATION = "needs_verification"
+    VERIFIED = "verified"
+    NOT_REPRODUCIBLE = "not_reproducible"
 
 
 class Finding(Base):
@@ -41,11 +51,13 @@ class Finding(Base):
         title: Short description of the finding.
         description: Detailed explanation.
         severity: CVSS-based severity level.
-        status: Verification status.
+        status: Workflow status.
+        proof_status: Evidence/trust status.
+        verified_at: Timestamp when proof was confirmed.
         cvss_score: Optional CVSS v3.1 score.
         cve_id: Optional CVE identifier.
         tool_source: The tool that discovered this finding.
-        evidence: JSON blob with raw evidence data.
+        evidence: JSON blob with raw evidence data and optional _bundle section.
         target: Reference to the parent Target.
     """
 
@@ -81,10 +93,17 @@ class Finding(Base):
         nullable=False,
         index=True,
     )
+    proof_status: Mapped[ProofStatus] = mapped_column(
+        SQLEnum(ProofStatus),
+        default=ProofStatus.CANDIDATE,
+        nullable=False,
+        index=True,
+    )
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cvss_score: Mapped[float | None] = mapped_column(nullable=True)
     cve_id: Mapped[str | None] = mapped_column(String(20), nullable=True)
     tool_source: Mapped[str] = mapped_column(String(100), nullable=False)
-    evidence: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    evidence: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     # Relationship
     target: Mapped[Target] = relationship("Target", back_populates="findings", lazy="selectin")

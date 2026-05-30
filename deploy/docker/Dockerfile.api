@@ -20,12 +20,16 @@ COPY pyproject.toml uv.lock ./
 COPY packages/ ./packages/
 COPY services/ ./services/
 COPY config/ ./config/
+COPY apps/web/ ./apps/web/
 
 # Build the Tailwind stylesheet BEFORE the wheel so it ships inside spectra-api.
 RUN cd config && npm ci \
     && NODE_ENV=production ./node_modules/.bin/postcss ../services/api/static/css/input.css \
        -o ../services/api/static/css/output.css --config postcss.config.js \
     && rm -rf node_modules
+
+# Build the React SPA (output: apps/web/dist).
+RUN cd apps/web && npm ci && npm run build
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable --package spectra-api
@@ -52,6 +56,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /src/apps/web/dist /app/spa
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

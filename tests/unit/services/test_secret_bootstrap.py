@@ -43,18 +43,34 @@ class TestEnsurePersistentSecrets:
         mock_settings.JWT_SECRET_KEY = SecretStr("auto-generated-jwt")
         mock_settings.SECRET_KEY = SecretStr("auto-generated-secret")
         mock_settings.SERVICE_AUTH_SECRET = SecretStr("auto-generated-service")
+        mock_settings.JWT_PRIVATE_KEY = SecretStr("")
+        mock_settings.JWT_PUBLIC_KEY = ""
 
         with patch("spectra_system.secret_bootstrap.settings", mock_settings), \
              patch.dict(os.environ, {}, clear=False):
             # Remove any existing env vars for managed secrets
             for key in ["JWT_SECRET_KEY", "SECRET_KEY", "SERVICE_AUTH_SECRET",
-                        "JWT_SECRET_KEY_FILE", "SECRET_KEY_FILE", "SERVICE_AUTH_SECRET_FILE"]:
+                        "JWT_PRIVATE_KEY", "JWT_PUBLIC_KEY",
+                        "JWT_SECRET_KEY_FILE", "SECRET_KEY_FILE", "SERVICE_AUTH_SECRET_FILE",
+                        "JWT_PRIVATE_KEY_FILE", "JWT_PUBLIC_KEY_FILE"]:
                 os.environ.pop(key, None)
             await ensure_persistent_secrets(mock_session)
 
-        # Should have called session.add for each secret + advisory lock + 3 selects
-        assert mock_session.add.call_count == 3
+        # 3 symmetric secrets + 2 keypair rows (private/public) persisted on first boot
+        assert mock_session.add.call_count == 5
         assert mock_session.commit.called
+
+    @pytest.mark.asyncio
+    async def test_jwt_keypair_generated_is_valid_eddsa(self):
+        """The generated keypair must sign+verify under EdDSA."""
+        import jwt as _jwt
+
+        from spectra_common.encryption import generate_jwt_keypair
+
+        private_pem, public_pem = generate_jwt_keypair()
+        token = _jwt.encode({"sub": "u1"}, private_pem, algorithm="EdDSA")
+        decoded = _jwt.decode(token, public_pem, algorithms=["EdDSA"])
+        assert decoded["sub"] == "u1"
 
     @pytest.mark.asyncio
     async def test_existing_db_values_loaded(self):

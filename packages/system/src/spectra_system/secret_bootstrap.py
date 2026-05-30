@@ -109,11 +109,89 @@ async def ensure_persistent_secrets(session: AsyncSession) -> None:
             changes += 1
             logger.info("Secret '%s' persisted to DB (first boot or new secret)", db_key)
 
+    changes += await _ensure_jwt_keypair(session)
+
     await session.commit()
     if changes:
         logger.info("Secret bootstrap complete: %d secrets persisted/updated", changes)
     else:
         logger.info("Secret bootstrap complete: all secrets loaded from DB")
+
+
+async def _ensure_jwt_keypair(session: AsyncSession) -> int:
+    """Ensure an Ed25519 JWT signing keypair exists, generating one on first boot.
+
+    The private/public keys are treated as a unit: if either is missing from both
+    env and DB, a fresh keypair is generated and persisted. An explicit env pair
+    (JWT_PRIVATE_KEY + JWT_PUBLIC_KEY) always overrides the DB. Returns the number
+    of rows written.
+    """
+    from pathlib import Path
+
+    def _env(key: str) -> str:
+        value = os.environ.get(key, "").strip()
+        if not value:
+            file_path = os.environ.get(f"{key}_FILE", "")
+            if file_path:
+                try:
+                    value = Path(file_path).read_text().strip()
+                except OSError:
+                    value = ""
+        return value
+
+    async def _db_row(key: str) -> SystemConfig | None:
+        result = await session.execute(select(SystemConfig).where(SystemConfig.key == key))
+        return result.scalar_one_or_none()
+
+    async def _store(key: str, value: str, row: SystemConfig | None) -> None:
+        if row is not None:
+            row.is_secret = True
+            row.value = value
+        else:
+            add_result = session.add(
+                SystemConfig(
+                    key=key,
+                    _value=value,
+                    is_secret=True,
+                    description=f"Auto-managed secret: {key}",
+                )
+            )
+            if isawaitable(add_result):
+                await add_result
+
+    env_priv, env_pub = _env("JWT_PRIVATE_KEY"), _env("JWT_PUBLIC_KEY")
+    priv_row, pub_row = await _db_row("JWT_PRIVATE_KEY"), await _db_row("JWT_PUBLIC_KEY")
+
+    # Explicit env pair overrides DB.
+    if env_priv and env_pub:
+        changed = (not priv_row or priv_row.value != env_priv) or (not pub_row or pub_row.value != env_pub)
+        if changed:
+            await _store("JWT_PRIVATE_KEY", env_priv, priv_row)
+            await _store("JWT_PUBLIC_KEY", env_pub, pub_row)
+        _apply_secret("JWT_PRIVATE_KEY", env_priv)
+        _apply_secret("JWT_PUBLIC_KEY", env_pub)
+        if changed:
+            logger.info("JWT signing keypair updated from env override")
+            return 2
+        return 0
+
+    # Both present in DB — load them.
+    if priv_row and priv_row.value and pub_row and pub_row.value:
+        _apply_secret("JWT_PRIVATE_KEY", priv_row.value)
+        _apply_secret("JWT_PUBLIC_KEY", pub_row.value)
+        logger.debug("JWT signing keypair loaded from DB")
+        return 0
+
+    # First boot (or partial state) — generate a fresh keypair.
+    from spectra_common.encryption import generate_jwt_keypair
+
+    private_pem, public_pem = generate_jwt_keypair()
+    await _store("JWT_PRIVATE_KEY", private_pem, priv_row)
+    await _store("JWT_PUBLIC_KEY", public_pem, pub_row)
+    _apply_secret("JWT_PRIVATE_KEY", private_pem)
+    _apply_secret("JWT_PUBLIC_KEY", public_pem)
+    logger.info("Generated and persisted new Ed25519 JWT signing keypair (EdDSA)")
+    return 2
 
 
 def _apply_secret(attr_name: str, value: str) -> None:

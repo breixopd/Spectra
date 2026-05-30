@@ -2,84 +2,58 @@
 # TensorZero Gateway Configuration for Spectra
 # =============================================================================
 #
-# All AI inference routes through TensorZero. Configure models, providers,
-# and API keys here. The Spectra app only needs the gateway URL.
+# All AI inference routes through TensorZero using the native DeepSeek provider.
+# Set DEEPSEEK_API_KEY in secrets/.env (Compose) or Swarm secret.
 #
-# Default: OpenRouter free model router (no API cost).
-# Set OPENAI_API_KEY to your OpenRouter key.
-# Set OPENAI_BASE_URL to https://openrouter.ai/api/v1 (done in docker-compose).
+# Tiers:
+#   fast     — deepseek-v4-flash (deepseek-chat), thinking disabled
+#   balanced — deepseek-v4-flash (deepseek-chat), thinking enabled
+#   capable  — deepseek-v4-pro (deepseek-reasoner), thinking enabled
 #
-# Fast tier:      openrouter/free
-# Balanced tier:  openrouter/free
-# Capable tier:   openrouter/free
-#
-# Free OpenRouter endpoints are useful for development and smoke tests, but
-# providers may log prompts. Use paid/private routes for customer production data.
-#
-# To use paid models: change model_name values to e.g. "openai/gpt-4.1",
-# "anthropic/claude-sonnet-4", etc. Models are hot-swappable.
+# DEEPSEEK_API_KEY is required at gateway boot — the gateway validates provider
+# credentials on startup, so it must be set in .env / Swarm secret before launch.
 #
 
 [gateway]
 bind_address = "0.0.0.0:3000"
 
 # =============================================================================
-# Models — Three tiers with automatic fallbacks
+# Models — Three tiers (native DeepSeek)
 # =============================================================================
 
-# Tier 1: Fast — cheap structured tasks (scope, parsing, tool selection)
 [models.fast]
-routing = ["primary", "fallback"]
+routing = ["primary"]
 
 [models.fast.providers.primary]
-type = "openai"
-model_name = "openrouter/free"
-api_base = "https://openrouter.ai/api/v1"
-api_key_location = "env::OPENAI_API_KEY"
+type = "deepseek"
+model_name = "deepseek-chat"
+api_key_location = "env::DEEPSEEK_API_KEY"
+extra_body = [{ "pointer" = "/thinking/type", "value" = "disabled" }]
 
-[models.fast.providers.fallback]
-type = "openai"
-model_name = "openai/gpt-oss-120b:free"
-api_base = "https://openrouter.ai/api/v1"
-api_key_location = "env::OPENAI_API_KEY"
-
-# Tier 2: Balanced — reasoning tasks (planning, steering, reporting)
 [models.balanced]
-routing = ["primary", "fallback"]
+routing = ["primary"]
 
 [models.balanced.providers.primary]
-type = "openai"
-model_name = "openrouter/free"
-api_base = "https://openrouter.ai/api/v1"
-api_key_location = "env::OPENAI_API_KEY"
+type = "deepseek"
+model_name = "deepseek-chat"
+api_key_location = "env::DEEPSEEK_API_KEY"
+extra_body = [{ "pointer" = "/thinking/type", "value" = "enabled" }]
 
-[models.balanced.providers.fallback]
-type = "openai"
-model_name = "openai/gpt-oss-120b:free"
-api_base = "https://openrouter.ai/api/v1"
-api_key_location = "env::OPENAI_API_KEY"
-
-# Tier 3: Capable — complex creative tasks (exploit crafting, PoC)
 [models.capable]
-routing = ["primary", "fallback"]
+routing = ["primary"]
 
 [models.capable.providers.primary]
-type = "openai"
-model_name = "openrouter/free"
-api_base = "https://openrouter.ai/api/v1"
-api_key_location = "env::OPENAI_API_KEY"
-
-[models.capable.providers.fallback]
-type = "openai"
-model_name = "openai/gpt-oss-120b:free"
-api_base = "https://openrouter.ai/api/v1"
-api_key_location = "env::OPENAI_API_KEY"
+type = "deepseek"
+model_name = "deepseek-reasoner"
+api_key_location = "env::DEEPSEEK_API_KEY"
+# DeepSeek thinking.type accepts only adaptive | enabled | disabled. "enabled" gives
+# the reasoner full chain-of-thought (the highest-reasoning tier).
+extra_body = [{ "pointer" = "/thinking/type", "value" = "enabled" }]
 
 # =============================================================================
 # Functions — Map Spectra tasks to model tiers
 # =============================================================================
 
-# Tier 1: Simple, deterministic tasks
 [functions.scope]
 type = "chat"
 
@@ -108,7 +82,6 @@ type = "chat"
 type = "chat_completion"
 model = "fast"
 
-# Tier 2: Moderate reasoning
 [functions.planning]
 type = "chat"
 
@@ -144,7 +117,6 @@ type = "chat"
 type = "chat_completion"
 model = "balanced"
 
-# Tier 3: Complex creative tasks
 [functions.exploit_crafting]
 type = "chat"
 
@@ -166,7 +138,6 @@ type = "chat"
 type = "chat_completion"
 model = "capable"
 
-# Default function for unclassified tasks
 [functions.default]
 type = "chat"
 
@@ -175,7 +146,7 @@ type = "chat_completion"
 model = "balanced"
 
 # =============================================================================
-# Metrics — Feedback for continuous optimization
+# Metrics
 # =============================================================================
 
 [metrics.task_success]

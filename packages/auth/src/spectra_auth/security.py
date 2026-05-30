@@ -49,6 +49,39 @@ __all__ = [
 
 _logger = logging.getLogger(__name__)
 
+
+# --- JWT signing primitives (asymmetric EdDSA preferred, HS256 fallback) ---
+
+
+def _has_asymmetric_keys() -> bool:
+    """True when an Ed25519 signing keypair is configured."""
+    return bool(settings.JWT_PRIVATE_KEY.get_secret_value() and settings.JWT_PUBLIC_KEY)
+
+
+def jwt_algorithm() -> str:
+    """Effective JWT algorithm: ``EdDSA`` when a keypair is present, else the configured one."""
+    return "EdDSA" if _has_asymmetric_keys() else settings.JWT_ALGORITHM
+
+
+def _jwt_encode(payload: dict[str, Any]) -> str:
+    """Encode a JWT, signing with the Ed25519 private key when available."""
+    if _has_asymmetric_keys():
+        return jwt.encode(payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="EdDSA")
+    return jwt.encode(payload, settings.JWT_SECRET_KEY.get_secret_value(), algorithm=settings.JWT_ALGORITHM)
+
+
+def _jwt_decode(token: str, **options: Any) -> dict[str, Any]:
+    """Decode/verify a JWT, using the Ed25519 public key when available."""
+    if _has_asymmetric_keys():
+        return jwt.decode(token, settings.JWT_PUBLIC_KEY, algorithms=["EdDSA"], **options)
+    return jwt.decode(
+        token,
+        settings.JWT_SECRET_KEY.get_secret_value(),
+        algorithms=[settings.JWT_ALGORITHM],
+        **options,
+    )
+
+
 # --- Persistent Token Blacklist ---
 
 # In-memory caches loaded from DB on startup
@@ -180,12 +213,7 @@ def _token_hash(token: str) -> str:
 def _get_token_expiry(token: str) -> float:
     """Extract expiry timestamp from a JWT token, default to 1h from now."""
     try:
-        payload = jwt.decode(
-            token,
-            settings.JWT_SECRET_KEY.get_secret_value(),
-            algorithms=[settings.JWT_ALGORITHM],
-            options={"verify_exp": False},
-        )
+        payload = _jwt_decode(token, options={"verify_exp": False})
         return float(payload.get("exp", _time.time() + 3600))
     except (ValueError, TypeError, KeyError):
         return _time.time() + 3600
@@ -236,11 +264,7 @@ async def is_token_blacklisted(token: str) -> bool:
             return True
     # Check user-level invalidation
     try:
-        payload = jwt.decode(
-            token,
-            settings.JWT_SECRET_KEY.get_secret_value(),
-            algorithms=[settings.JWT_ALGORITHM],
-        )
+        payload = _jwt_decode(token)
         username = payload.get("sub")
         iat = payload.get("iat")
         if username and iat:
@@ -299,11 +323,7 @@ def create_access_token(
         }
     )
 
-    return jwt.encode(
-        to_encode,
-        settings.JWT_SECRET_KEY.get_secret_value(),
-        algorithm=settings.JWT_ALGORITHM,
-    )
+    return _jwt_encode(to_encode)
 
 
 def create_refresh_token(
@@ -336,32 +356,20 @@ def create_refresh_token(
         }
     )
 
-    return jwt.encode(
-        to_encode,
-        settings.JWT_SECRET_KEY.get_secret_value(),
-        algorithm=settings.JWT_ALGORITHM,
-    )
+    return _jwt_encode(to_encode)
 
 
 def create_password_reset_token(user_id: str, expires_minutes: int = 30) -> str:
     """Create a time-limited password reset JWT."""
     now = datetime.now(UTC)
     expire = now + timedelta(minutes=expires_minutes)
-    return jwt.encode(
-        {"sub": user_id, "type": "password_reset", "exp": expire, "iat": now},
-        settings.JWT_SECRET_KEY.get_secret_value(),
-        algorithm=settings.JWT_ALGORITHM,
-    )
+    return _jwt_encode({"sub": user_id, "type": "password_reset", "exp": expire, "iat": now})
 
 
 def verify_password_reset_token(token: str) -> str | None:
     """Verify a password reset token, return user_id or None."""
     try:
-        payload = jwt.decode(
-            token,
-            settings.JWT_SECRET_KEY.get_secret_value(),
-            algorithms=[settings.JWT_ALGORITHM],
-        )
+        payload = _jwt_decode(token)
         if payload.get("type") != "password_reset":
             return None
         return payload.get("sub")
@@ -373,21 +381,13 @@ def create_email_verification_token(user_id: str) -> str:
     """Create a short-lived email verification token (24h expiry)."""
     now = datetime.now(UTC)
     expire = now + timedelta(hours=24)
-    return jwt.encode(
-        {"sub": user_id, "type": "email_verify", "exp": expire, "iat": now},
-        settings.JWT_SECRET_KEY.get_secret_value(),
-        algorithm=settings.JWT_ALGORITHM,
-    )
+    return _jwt_encode({"sub": user_id, "type": "email_verify", "exp": expire, "iat": now})
 
 
 def verify_email_verification_token(token: str) -> str | None:
     """Verify an email verification token. Returns user_id or None."""
     try:
-        payload = jwt.decode(
-            token,
-            settings.JWT_SECRET_KEY.get_secret_value(),
-            algorithms=[settings.JWT_ALGORITHM],
-        )
+        payload = _jwt_decode(token)
         if payload.get("type") != "email_verify":
             return None
         return payload.get("sub")
@@ -399,21 +399,13 @@ def create_unsubscribe_token(user_id: str) -> str:
     """Create a long-lived unsubscribe token (90-day expiry)."""
     now = datetime.now(UTC)
     expire = now + timedelta(days=90)
-    return jwt.encode(
-        {"sub": user_id, "type": "unsubscribe", "exp": expire, "iat": now},
-        settings.JWT_SECRET_KEY.get_secret_value(),
-        algorithm=settings.JWT_ALGORITHM,
-    )
+    return _jwt_encode({"sub": user_id, "type": "unsubscribe", "exp": expire, "iat": now})
 
 
 def verify_unsubscribe_token(token: str) -> str | None:
     """Verify an unsubscribe token. Returns user_id or None."""
     try:
-        payload = jwt.decode(
-            token,
-            settings.JWT_SECRET_KEY.get_secret_value(),
-            algorithms=[settings.JWT_ALGORITHM],
-        )
+        payload = _jwt_decode(token)
         if payload.get("type") != "unsubscribe":
             return None
         return payload.get("sub")
@@ -437,11 +429,7 @@ async def decode_token(token: str) -> dict[str, Any]:
     if await is_token_blacklisted(token):
         raise JWTError("Token has been revoked")
 
-    return jwt.decode(
-        token,
-        settings.JWT_SECRET_KEY.get_secret_value(),
-        algorithms=[settings.JWT_ALGORITHM],
-    )
+    return _jwt_decode(token)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

@@ -395,6 +395,7 @@ cmd_secrets() {
   create_secret "garage_secret_key"   "${GARAGE_SECRET_KEY:?GARAGE_SECRET_KEY not set}"
   create_secret "garage_rpc_secret"   "${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET not set}"
   create_secret "garage_admin_token"  "${GARAGE_ADMIN_TOKEN:?GARAGE_ADMIN_TOKEN not set}"
+  create_secret "registry_http_secret" "${REGISTRY_HTTP_SECRET:-$(openssl rand -base64 32)}"
   create_secret "clickhouse_password" "${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD not set}"
   create_secret "openai_api_key"      "${OPENAI_API_KEY:-}"
   create_secret "anthropic_api_key"   "${ANTHROPIC_API_KEY:-}"
@@ -419,6 +420,7 @@ cmd_preflight() {
     garage_secret_key
     garage_rpc_secret
     garage_admin_token
+    registry_http_secret
     clickhouse_password
     openai_api_key
     anthropic_api_key

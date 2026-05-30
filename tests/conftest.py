@@ -9,10 +9,19 @@ The mocking fixtures here only apply to unit tests.
 
 import asyncio
 import os
+import tempfile
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
+
+# Pin runtime-writable paths to an ephemeral temp dir BEFORE any app module (and its
+# settings singleton) is imported, so a bind-mounted source tree never accumulates
+# test/dev artifacts like data/.encryption_key. setdefault respects explicit overrides
+# from CI or .env.test.
+_TEST_DATA_DIR = os.path.join(tempfile.gettempdir(), "spectra-test-data")
+os.makedirs(_TEST_DATA_DIR, exist_ok=True)
+os.environ.setdefault("DATA_DIR", _TEST_DATA_DIR)
 
 
 @pytest.fixture(autouse=True, scope="session")

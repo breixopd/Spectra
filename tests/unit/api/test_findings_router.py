@@ -12,7 +12,7 @@ from httpx import ASGITransport, AsyncClient
 
 from spectra_api.api.routers.findings import router
 from spectra_domain.enums import Severity
-from spectra_persistence.models.finding import FindingStatus
+from spectra_persistence.models.finding import FindingStatus, ProofStatus
 
 
 def _fake_user(is_superuser: bool = False, user_id: str = "00000000-0000-4000-a000-000000000001", role: str = "user"):
@@ -27,6 +27,8 @@ def _fake_target_owned(**overrides):
     defaults = {
         "id": "00000000-0000-4000-a000-100000000001",
         "user_id": "00000000-0000-4000-a000-000000000001",
+        "address": "10.0.0.1",
+        "description": "Primary web server",
     }
     defaults.update(overrides)
     obj = MagicMock()
@@ -36,6 +38,10 @@ def _fake_target_owned(**overrides):
 
 
 def _fake_finding(**overrides):
+    target = MagicMock()
+    target.address = "10.0.0.1"
+    target.description = "Primary web server"
+
     defaults = {
         "id": "00000000-0000-4000-a000-f00000000001",
         "target_id": "00000000-0000-4000-a000-100000000001",
@@ -43,12 +49,15 @@ def _fake_finding(**overrides):
         "description": "Parameterised query missing",
         "severity": Severity.HIGH,
         "status": FindingStatus.POTENTIAL,
+        "proof_status": ProofStatus.CANDIDATE,
+        "verified_at": None,
         "cvss_score": 8.5,
         "cve_id": "CVE-2026-0001",
         "tool_source": "sqlmap",
         "evidence": {"payload": "' OR 1=1--"},
         "user_id": "00000000-0000-4000-a000-000000000001",
         "created_at": datetime(2026, 1, 1, 12, 0),
+        "target": target,
     }
     defaults.update(overrides)
     obj = MagicMock()
@@ -324,7 +333,11 @@ class TestUpdateFinding:
         existing = _fake_finding()
         updated = _fake_finding(title="Updated Title")
         with pytest.MonkeyPatch.context() as mp:
-            mp.setattr(FindingRepository, "get_by_id", AsyncMock(return_value=existing))
+            mp.setattr(
+                FindingRepository,
+                "get_by_id",
+                AsyncMock(side_effect=[existing, updated]),
+            )
             mp.setattr(FindingRepository, "update", AsyncMock(return_value=updated))
             resp = await ac.patch(
                 "/api/v1/findings/00000000-0000-4000-a000-f00000000001",

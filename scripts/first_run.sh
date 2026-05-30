@@ -21,6 +21,29 @@ err() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 generate_password() { openssl rand -base64 18 | tr -d '/+=' | head -c 24; }
 generate_secret()   { openssl rand -base64 32; }
 generate_hex()      { openssl rand -hex 32; }
+# Garage requires access keys matching ^GK[0-9a-f]{24}$ and secrets ^[0-9a-f]{64}$.
+generate_garage_access_key() { echo "GK$(openssl rand -hex 12)"; }
+generate_garage_secret()     { openssl rand -hex 32; }
+
+# Replace a .env var unconditionally (used to repair malformed/invalid values).
+env_force_set() {
+    local var="$1" value="$2"
+    if grep -q "^${var}=" "${ENV_FILE}" 2>/dev/null; then
+        sed -i "s|^${var}=.*|${var}=${value}|" "${ENV_FILE}"
+    else
+        echo "${var}=${value}" >> "${ENV_FILE}"
+    fi
+}
+
+# Ensure a var holds a valid 64-char lowercase hex string; regenerate if not.
+ensure_hex64() {
+    local var="$1" current
+    current="$(grep "^${var}=" "${ENV_FILE}" 2>/dev/null | head -1 | cut -d= -f2-)"
+    if [[ ! "${current}" =~ ^[0-9a-f]{64}$ ]]; then
+        warn "${var} missing or malformed — regenerating"
+        env_force_set "${var}" "$(generate_hex)"
+    fi
+}
 
 # Write a var to .env only if it is missing or empty.
 env_set() {
@@ -74,12 +97,26 @@ generate_secrets() {
     env_set POSTGRES_PASSWORD "${pg_pass}"
     env_set REDIS_PASSWORD "${redis_pass}"
     env_set CLICKHOUSE_PASSWORD "${ch_pass}"
-    env_set GARAGE_RPC_SECRET "$(generate_hex)"
 
+    # App crypto secrets. The Ed25519 JWT signing keypair is generated and
+    # persisted to the DB by the app on first boot (spectra_system.secret_bootstrap);
+    # JWT_SECRET_KEY remains as a boot-time guard / HS256 fallback.
     env_set JWT_SECRET_KEY "$(generate_secret)"
     env_set SECRET_KEY "$(generate_secret)"
     env_set SERVICE_AUTH_SECRET "$(generate_secret)"
     env_set ENCRYPTION_KEY "$(generate_secret)"
+
+    # S3 / Garage credentials — pre-generated so the running stack imports a known,
+    # deterministic key (no two-phase parse-back dance) and the app + registry agree.
+    env_set GARAGE_ACCESS_KEY "$(generate_garage_access_key)"
+    env_set GARAGE_SECRET_KEY "$(generate_garage_secret)"
+    env_set GARAGE_ADMIN_TOKEN "$(generate_hex)"
+    env_set REGISTRY_HTTP_SECRET "$(generate_secret)"
+
+    # GARAGE_RPC_SECRET MUST be exactly 64 hex chars or Garage refuses to start.
+    # Repair any missing/malformed value (this was a real first-boot failure mode).
+    env_set GARAGE_RPC_SECRET "$(generate_hex)"
+    ensure_hex64 GARAGE_RPC_SECRET
 
     # Re-read passwords (may have been pre-configured by user)
     set -a; source "${ENV_FILE}"; set +a
@@ -87,6 +124,8 @@ generate_secrets() {
     env_set DATABASE_URL "postgresql+asyncpg://spectra:${POSTGRES_PASSWORD}@db:5432/spectra"
     env_set RATE_LIMIT_STORAGE "redis://:${REDIS_PASSWORD}@redis:6379/0"
     env_set S3_ENDPOINT_URL "http://garage:3900"
+    env_set S3_ACCESS_KEY "${GARAGE_ACCESS_KEY}"
+    env_set S3_SECRET_KEY "${GARAGE_SECRET_KEY}"
 
     log "  ✓ Secrets ready"
 }
@@ -145,38 +184,17 @@ bootstrap_garage() {
         exit 1
     fi
 
+    # The credentials are already pre-generated in .env (GARAGE_ACCESS_KEY/SECRET_KEY);
+    # garage-init imports those exact keys, so there is no parse-back step.
+    set -a; source "${ENV_FILE}"; set +a
     local init_output
-    init_output="$(bash "${PROJECT_ROOT}/deploy/docker/garage-init.sh" 2>&1)" || {
+    init_output="$(GARAGE_PRINT_CREDENTIALS=0 bash "${PROJECT_ROOT}/deploy/docker/garage-init.sh" 2>&1)" || {
         err "Garage bootstrap failed:"
         echo "$init_output" >&2
         exit 1
     }
 
-    # Parse garage keys from init output
-    local access_key secret_key
-    access_key="$(echo "$init_output" | sed -n 's/.*GARAGE_ACCESS_KEY=//p' | tail -1 | tr -d '[:space:]')"
-    secret_key="$(echo "$init_output" | sed -n 's/.*GARAGE_SECRET_KEY=//p' | tail -1 | tr -d '[:space:]')"
-
-    if [[ -n "$access_key" && -n "$secret_key" ]]; then
-        # Force-overwrite garage keys since they come from the running instance
-        sed -i "s|^GARAGE_ACCESS_KEY=.*|GARAGE_ACCESS_KEY=${access_key}|" "${ENV_FILE}"
-        if grep -q "^GARAGE_SECRET_KEY=" "${ENV_FILE}"; then
-            sed -i "s|^GARAGE_SECRET_KEY=.*|GARAGE_SECRET_KEY=${secret_key}|" "${ENV_FILE}"
-        else
-            echo "GARAGE_SECRET_KEY=${secret_key}" >> "${ENV_FILE}"
-        fi
-        if grep -q "^GARAGE_ACCESS_KEY=" "${ENV_FILE}"; then
-            true  # already handled by sed above
-        else
-            echo "GARAGE_ACCESS_KEY=${access_key}" >> "${ENV_FILE}"
-        fi
-        log "  ✓ S3 credentials written to .env"
-    else
-        warn "Could not parse Garage credentials — check garage-init output"
-        echo "$init_output"
-    fi
-
-    log "S3 storage bootstrapped"
+    log "S3 storage bootstrapped (key ${GARAGE_ACCESS_KEY})"
 }
 
 # ── Phase 5: Start everything ──

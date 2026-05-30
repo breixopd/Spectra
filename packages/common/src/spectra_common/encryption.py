@@ -232,3 +232,35 @@ def decrypt_byok_key(encrypted: str) -> str:
         return _get_fernet().decrypt(encrypted.encode("utf-8")).decode("utf-8")
     except InvalidToken:
         raise ValueError("Failed to decrypt BYOK key")
+
+
+# ---------------------------------------------------------------------------
+# Asymmetric JWT signing keypair (EdDSA / Ed25519)
+# ---------------------------------------------------------------------------
+
+
+def generate_jwt_keypair() -> tuple[str, str]:
+    """Generate a fresh Ed25519 keypair for EdDSA JWT signing.
+
+    Returns ``(private_pem, public_pem)`` as PEM strings: the private key in
+    unencrypted PKCS#8 and the public key in SubjectPublicKeyInfo. PyJWT signs
+    with the private key (``EdDSA``) and verifies with the public key.
+    """
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    private_key = Ed25519PrivateKey.generate()
+    private_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("utf-8")
+    public_pem = (
+        private_key.public_key()
+        .public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+        .decode("utf-8")
+    )
+    return private_pem, public_pem

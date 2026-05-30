@@ -31,6 +31,8 @@ class Settings(BaseSettings):
         """Support Docker Swarm _FILE env vars that point to secret files."""
         file_mappings = {
             "JWT_SECRET_KEY_FILE": "JWT_SECRET_KEY",
+            "JWT_PRIVATE_KEY_FILE": "JWT_PRIVATE_KEY",
+            "JWT_PUBLIC_KEY_FILE": "JWT_PUBLIC_KEY",
             "SECRET_KEY_FILE": "SECRET_KEY",
             "DATABASE_URL_FILE": "DATABASE_URL",
             "SERVICE_AUTH_SECRET_FILE": "SERVICE_AUTH_SECRET",
@@ -57,6 +59,10 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     DEBUG: bool = False
     PLATFORM_EXPOSED: bool = False
+    # Writable runtime data directory (encryption-key fallback, local caches). In containers
+    # this is a dedicated volume mount (`/app/data`); override via DATA_DIR so dev/test runs
+    # never write into a bind-mounted source tree.
+    DATA_DIR: str = "/app/data"
 
     @model_validator(mode="after")
     def _force_debug_false_in_production(self):
@@ -191,8 +197,14 @@ class Settings(BaseSettings):
         return v
 
     # --- JWT Authentication ---
-    JWT_SECRET_KEY: SecretStr = SecretStr("")  # Must be set via env var or generated
-    JWT_ALGORITHM: str = "HS256"
+    # Asymmetric signing (EdDSA / Ed25519) is preferred and used automatically when a
+    # keypair is present. The platform generates and persists one on first boot
+    # (see spectra_system.secret_bootstrap). JWT_SECRET_KEY (HS256) is only a fallback
+    # for setups that explicitly pin a symmetric secret and have no keypair.
+    JWT_SECRET_KEY: SecretStr = SecretStr("")  # HS256 fallback secret (legacy/symmetric)
+    JWT_PRIVATE_KEY: SecretStr = SecretStr("")  # PEM PKCS#8 Ed25519 private key (token signer)
+    JWT_PUBLIC_KEY: str = ""  # PEM SubjectPublicKeyInfo Ed25519 public key (token verifier)
+    JWT_ALGORITHM: str = "HS256"  # Effective algorithm is EdDSA whenever a keypair is configured
     # Security
     SECRET_KEY: SecretStr = SecretStr("")  # Must be set via env var; get_settings() validates
     ENCRYPTION_KEY: str = (
@@ -221,6 +233,24 @@ class Settings(BaseSettings):
     CONNECT_BACK_HOST: str = "spectra-app"
 
     DOCKER_REGISTRY: str = "ghcr.io/spectra"
+
+    # Platform-owned OCI registry for golden/worker image distribution. When set, the
+    # golden-image builder pushes successful builds here so all nodes/sandboxes pull the
+    # same validated image. Compose: "127.0.0.1:5050" (host daemon → published registry);
+    # empty disables push (local single-node only). The repo path is appended automatically.
+    PLATFORM_REGISTRY: str = ""
+    GOLDEN_IMAGE_REPO: str = "spectra/tools"  # repository path within the platform registry
+
+    # MAKER OUTPUT_PARSING gate: number of independent voters used to recover structured
+    # facts from free-form tool output when deterministic parsing finds nothing. Only fires
+    # for tools that opt into llm_extraction, so cost is bounded to the recovery path.
+    CONSENSUS_OUTPUT_PARSING_VOTERS: int = 2
+
+    # Framework enforcement: every tool execution is validated against the active framework's
+    # phase gating + forbidden techniques. "advisory" logs phase violations but lets the tool
+    # run (forbidden techniques and unconfirmed authorization are always blocked); "strict"
+    # additionally blocks out-of-phase techniques. This is a genuine per-engagement ops choice.
+    FRAMEWORK_ENFORCEMENT_MODE: str = "advisory"
 
     # --- Sandbox Pool ---
     SANDBOX_IMAGE: str = "spectra-tools"
@@ -468,11 +498,18 @@ def get_settings() -> Settings:
     settings_instance = Settings()
     production_like = settings_instance.APP_ENV.lower() in {"production", "prod"} and not settings_instance.DEBUG
 
-    # Auto-generate JWT secret if empty or using placeholder
+    # JWT signing: an Ed25519 keypair (EdDSA) is preferred and satisfies the
+    # production requirement on its own. The HS256 secret is only needed when no
+    # keypair is configured. The keypair is normally provided via env/.env (first
+    # run) or generated+persisted to the DB on first boot (secret_bootstrap).
+    has_keypair = bool(settings_instance.JWT_PRIVATE_KEY.get_secret_value() and settings_instance.JWT_PUBLIC_KEY)
     jwt_val = settings_instance.JWT_SECRET_KEY.get_secret_value()
-    if not jwt_val or jwt_val.startswith("change-me"):
+    if not has_keypair and (not jwt_val or jwt_val.startswith("change-me")):
         if production_like:
-            raise ValueError("JWT_SECRET_KEY must be explicitly set in production")
+            raise ValueError(
+                "Configure a JWT signing keypair (JWT_PRIVATE_KEY/JWT_PUBLIC_KEY) "
+                "or JWT_SECRET_KEY in production"
+            )
         settings_instance.JWT_SECRET_KEY = SecretStr(_secrets.token_urlsafe(32))
 
     # Auto-generate SECRET_KEY if empty or default
@@ -503,7 +540,7 @@ def get_settings() -> Settings:
         if not env_explicit:
             if production_like:
                 raise ValueError("ENCRYPTION_KEY must be explicitly set in production")
-            key_path = Path("/app/data") / ".encryption_key"
+            key_path = Path(settings_instance.DATA_DIR) / ".encryption_key"
             try:
                 if key_path.is_file():
                     settings_instance.ENCRYPTION_KEY = key_path.read_text().strip()

@@ -599,3 +599,46 @@ class TestConsensusEdgeCases:
         cfg = VotingConfig()
         n, _k, _c = cfg.consensus_threshold[ActionRisk.LOW.value]
         assert n == 0  # Skip consensus for LOW risk
+
+
+class TestOutputParsingGate:
+    """Tests for the MAKER OUTPUT_PARSING consensus gate."""
+
+    @pytest.mark.asyncio
+    async def test_empty_output_returns_no_facts(self):
+        vs = VotingSystem(MockLLMClient())
+        result = await vs.vote_on_output_parsing("   ", num_voters=2)
+        assert result["facts"] == []
+        assert result["voters"] == 0
+
+    @pytest.mark.asyncio
+    async def test_agreed_facts_are_kept_and_marked(self):
+        """Facts every voter reports clear the majority threshold and get annotated."""
+        facts = {
+            "facts": [
+                {"type": "port", "name": "443/tcp", "value": "https", "detail": ""},
+                {"type": "service", "name": "nginx", "value": "1.25.3", "detail": ""},
+            ]
+        }
+        llm = MockLLMClient(structured_responses={"ParsedFactsResponse": facts})
+        vs = VotingSystem(llm)
+        result = await vs.vote_on_output_parsing(
+            "PORT 443/tcp open https\nServer: nginx/1.25.3", num_voters=3
+        )
+        assert result["voters"] == 3
+        assert result["agreed"] == 2
+        names = {f["name"] for f in result["facts"]}
+        assert names == {"443/tcp", "nginx"}
+        assert all(f["source"] == "consensus_parsing" for f in result["facts"])
+        assert all(f["agreement"] == 3 for f in result["facts"])
+
+    @pytest.mark.asyncio
+    async def test_voter_failure_degrades_gracefully(self):
+        from unittest.mock import AsyncMock
+
+        llm = AsyncMock()
+        llm.generate_structured.side_effect = RuntimeError("llm down")
+        vs = VotingSystem(llm=llm)
+        result = await vs.vote_on_output_parsing("some real output text here", num_voters=2)
+        assert result["facts"] == []
+        assert result.get("note") == "voter_failure"

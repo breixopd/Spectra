@@ -37,7 +37,6 @@ from spectra_api.api.routers import (
     vpn,
     wordlists,
 )
-from spectra_api.ui import pages as ui
 from spectra_api.ui import public
 from spectra_common.config import settings
 
@@ -90,7 +89,6 @@ def include_routers(app: FastAPI, mode: str | None = None) -> None:
         app.include_router(health.router, prefix="/api", tags=["Health"], include_in_schema=False)
 
         app.include_router(public.router, tags=["Public"])
-        app.include_router(ui.router, tags=["UI"])
         app.include_router(admin.router, tags=["Admin"], include_in_schema=False)
 
     else:

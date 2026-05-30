@@ -90,7 +90,6 @@ def _extract_legal_html(raw: object) -> object:
 # ---------------------------------------------------------------------------
 
 
-@router.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def landing_page(request: Request):
     """Landing page — redirects authenticated users to /dashboard."""
     if await _get_user_from_cookie(request):
@@ -152,6 +151,15 @@ async def landing_page(request: Request):
             "reviews": reviews,
         },
     )
+
+
+router.add_api_route(
+    "/",
+    landing_page,
+    methods=["GET"],
+    response_class=HTMLResponse,
+    include_in_schema=False,
+)
 
 
 @router.get("/sitemap.xml", response_class=Response, include_in_schema=False)

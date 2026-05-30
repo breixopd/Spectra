@@ -184,8 +184,13 @@ class TestSchemaValidation:
             title="SQLi",
             description="SQL injection",
             severity="high",
-            status="open",
+            status="potential",
+            proof_status="candidate",
+            verified_at=None,
             tool_source="sqlmap",
+            target_id="target-1",
+            target_address="10.0.0.1",
+            target_label="Primary web server",
             created_at="2025-01-01T00:00:00Z",
         )
         assert f.severity == "high"

@@ -29,9 +29,11 @@ _generate_secret ENCRYPTION_KEY 64
 # ── Resolve Docker secrets (Swarm mode) ──
 # Docker secrets are mounted as files at /run/secrets/<name>.
 # If a *_FILE env var is set, read the file content into the base env var.
-for secret_var in JWT_SECRET_KEY SECRET_KEY SERVICE_AUTH_SECRET ENCRYPTION_KEY \
-                  DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY REDIS_PASSWORD \
-                  CLICKHOUSE_PASSWORD OPENAI_API_KEY GARAGE_ADMIN_TOKEN; do
+for secret_var in JWT_SECRET_KEY JWT_PRIVATE_KEY JWT_PUBLIC_KEY SECRET_KEY \
+                  SERVICE_AUTH_SECRET ENCRYPTION_KEY DATABASE_URL \
+                  S3_ACCESS_KEY S3_SECRET_KEY REDIS_PASSWORD \
+                  CLICKHOUSE_PASSWORD OPENAI_API_KEY GARAGE_ADMIN_TOKEN \
+                  GARAGE_RPC_SECRET REGISTRY_HTTP_SECRET; do
     file_var="${secret_var}_FILE"
     if [[ -n "${!file_var:-}" ]] && [[ -f "${!file_var}" ]]; then
         export "$secret_var"="$(< "${!file_var}")"

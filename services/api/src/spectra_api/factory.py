@@ -281,4 +281,9 @@ def create_app() -> FastAPI:
                 logger.warning("WebSocket error for %s: %s", user.username, e)
                 await manager.disconnect(websocket)
 
+    if settings.SERVICE_MODE in CORE_API_FULL_ROUTER_MODES:
+        from spectra_api.ui.spa import register_spa
+
+        register_spa(app)
+
     return app

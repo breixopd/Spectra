@@ -90,7 +90,8 @@ services:
       spectra.role: "registry"
     environment:
       REGISTRY_STORAGE: s3
-      REGISTRY_STORAGE_S3_REGION: garage
+      # Must match garage.toml [s3_api].s3_region or Garage rejects the SigV4 scope.
+      REGISTRY_STORAGE_S3_REGION: ${S3_REGION:-us-east-1}
       REGISTRY_STORAGE_S3_REGIONENDPOINT: ${S3_ENDPOINT_URL:-http://garage:3900}
       REGISTRY_STORAGE_S3_BUCKET: spectra-registry
       REGISTRY_STORAGE_S3_ACCESSKEY: ${S3_ACCESS_KEY:-GK0123456789abcdef01234567}
@@ -98,14 +99,21 @@ services:
       REGISTRY_STORAGE_S3_FORCEPATHSTYLE: "true"
       REGISTRY_STORAGE_S3_SECURE: "false"
       REGISTRY_STORAGE_DELETE_ENABLED: "true"
+      # Proxy blob downloads through the registry instead of redirecting clients to
+      # presigned Garage URLs (the `garage` hostname is not resolvable off the backend net).
+      REGISTRY_STORAGE_REDIRECT_DISABLE: "true"
       REGISTRY_HTTP_ADDR: 0.0.0.0:5000
       REGISTRY_HTTP_SECRET: ${REGISTRY_HTTP_SECRET:-spectra-local-registry-secret}
     ports:
+      # Bound to loopback only: the host Docker daemon pulls golden/worker images
+      # from here. Requires a non-internal network (frontend) for host publishing;
+      # backend (internal) gives the registry its Garage S3 backend.
       - "127.0.0.1:5050:5000"
     depends_on:
       garage:
         condition: service_healthy
     networks:
+      - frontend
       - backend
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:5000/v2/ >/dev/null 2>&1 || exit 1"]
