@@ -23,11 +23,14 @@ x-logging: &default-logging
 x-security: &security-defaults
   cap_drop: [ALL]
   security_opt: ["no-new-privileges:true"]
+  # Tailscale host search domains break Docker embedded DNS for service names (db, redis).
+  dns_search: []
 
 x-security-stateful: &security-stateful
   cap_drop: [ALL]
   cap_add: [SETUID, SETGID, CHOWN, DAC_OVERRIDE]
   security_opt: ["no-new-privileges:true"]
+  dns_search: []
 
 x-common-env: &common-env
   # Always use the compose service hostname `db` for the default DSN. Do not interpolate
@@ -126,6 +129,7 @@ services:
   db:
     image: pgvector/pgvector:pg16
     container_name: spectra-db
+    dns_search: []
     labels:
       spectra.managed: "true"
       spectra.role: "database"
@@ -165,6 +169,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: spectra-redis
+    dns_search: []
     labels:
       spectra.managed: "true"
       spectra.role: "cache"
@@ -192,6 +197,7 @@ services:
   clickhouse:
     image: clickhouse/clickhouse-server:24.11-alpine
     container_name: spectra-clickhouse
+    dns_search: []
     labels:
       spectra.managed: "true"
       spectra.role: "analytics"
@@ -319,6 +325,7 @@ services:
       cache_from:
         - spectra-app:dev
     container_name: spectra-app
+    dns_search: []
     profiles: [app, test]
     labels:
       spectra.managed: "true"
