@@ -11,7 +11,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-COMPOSE_FILE="${PROJECT_ROOT}/docker/docker-compose.swarm.yml"
+COMPOSE_FILE="${PROJECT_ROOT}/deploy/docker/docker-compose.swarm.yml"
 STACK_NAME="spectra"
 LOG_PREFIX="[swarm]"
 HEALTH_CHECK_SCRIPT="${SCRIPT_DIR}/../health_check.sh"

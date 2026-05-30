@@ -11,7 +11,7 @@ from httpx import ASGITransport, AsyncClient
 
 from spectra_api.api.routers.admin.plans import router as plans_router
 from spectra_api.api.routers.admin.users import router as users_router
-from spectra_platform.models.audit_log import AuditEventType
+from spectra_persistence.models.audit_log import AuditEventType
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -80,7 +80,7 @@ class TestListUsers:
 
         mock_sess.execute = AsyncMock(side_effect=[mock_count_result, mock_rows_result, mock_plan_map])
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
@@ -108,7 +108,7 @@ class TestGetUser:
         mock_plan_map.all.return_value = [(target.id, "subscription-plan-id")]
         mock_sess.execute = AsyncMock(side_effect=[mock_lookup, mock_plan_map])
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
@@ -129,7 +129,7 @@ class TestGetUser:
         mock_result.scalar_one_or_none.return_value = None
         mock_sess.execute = AsyncMock(return_value=mock_result)
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
@@ -163,7 +163,7 @@ class TestUpdateUserRole:
         mock_sess.commit = AsyncMock()
         mock_sess.refresh = AsyncMock()
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
@@ -217,7 +217,7 @@ class TestUpdateUserRole:
         mock_sess.commit = AsyncMock()
         mock_sess.refresh = AsyncMock()
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
@@ -274,7 +274,7 @@ class TestCreateUser:
         mock_sess.add = MagicMock(side_effect=add_user)
         mock_sess.refresh = AsyncMock()
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
@@ -282,10 +282,10 @@ class TestCreateUser:
             patch("spectra_api.api.routers.admin.users.audit_log_event", new_callable=AsyncMock),
             patch.object(type(users_module.settings), "smtp_configured", new_callable=PropertyMock, return_value=True),
             patch(
-                "spectra_platform.services.auth.email_verification.send_registration_verification_email", new=AsyncMock(return_value=False)
+                "spectra_auth.services.email_verification.send_registration_verification_email", new=AsyncMock(return_value=False)
             ) as send_mock,
             patch(
-                "spectra_platform.services.auth.email_verification.build_email_verification_url",
+                "spectra_auth.services.email_verification.build_email_verification_url",
                 return_value="http://test/verify-email?token=abc123",
             ),
         ):
@@ -355,7 +355,7 @@ class TestSubscriptionBackedAssignments:
         mock_sess.commit = AsyncMock()
         mock_sess.refresh = AsyncMock()
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
@@ -407,7 +407,7 @@ class TestSubscriptionBackedAssignments:
             side_effect=[lookup_result, before_subscription, before_plan_map, duplicate_result]
         )
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
@@ -453,7 +453,7 @@ class TestSubscriptionBackedAssignments:
     @pytest.mark.asyncio
     async def test_sync_user_subscription_assignment_creates_active_subscription(self):
         from spectra_api.api.routers.admin.users import _sync_user_subscription_assignment
-        from spectra_platform.models.plan import Subscription
+        from spectra_persistence.models.plan import Subscription
 
         user = _make_user("user", user_id="00000000-0000-4000-a000-000000000010")
         mock_sess = _mock_session()
@@ -636,7 +636,7 @@ class TestSubscriptionBackedAssignments:
         mock_sess.commit = AsyncMock()
         mock_sess.refresh = AsyncMock()
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
@@ -671,7 +671,7 @@ class TestPendingActivationGuard:
         lookup.scalar_one_or_none.return_value = target
         mock_sess.execute = AsyncMock(return_value=lookup)
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
@@ -723,8 +723,8 @@ class TestCreatePlan:
         mock_sess.refresh = AsyncMock()
         mock_sess.commit = AsyncMock()
 
-        from spectra_platform.core.database import get_async_session
-        from spectra_platform.models.plan import Plan as PlanModel
+        from spectra_persistence.database import get_async_session
+        from spectra_persistence.models.plan import Plan as PlanModel
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
@@ -790,7 +790,7 @@ class TestListPlans:
         mock_result.scalars.return_value.all.return_value = [plan]
         mock_sess.execute = AsyncMock(return_value=mock_result)
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
@@ -882,7 +882,7 @@ class TestUpdatePlan:
         mock_sess.commit = AsyncMock()
         mock_sess.refresh = AsyncMock()
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
@@ -910,7 +910,7 @@ class TestUpdatePlan:
         mock_result.scalar_one_or_none.return_value = None
         mock_sess.execute = AsyncMock(return_value=mock_result)
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
@@ -936,7 +936,7 @@ class TestCreatePlanDuplicate:
         mock_dup.scalar_one_or_none.return_value = "existing-id"
         mock_sess.execute = AsyncMock(return_value=mock_dup)
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 

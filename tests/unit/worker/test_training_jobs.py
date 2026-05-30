@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from spectra_domain.jobs import WorkerJobName
-from spectra_platform.models.training import FineTuningJob
+from spectra_persistence.models.training import FineTuningJob
 from spectra_worker import _WORKER_FUNCTIONS
 from spectra_worker.training_jobs import run_fine_tuning_job
 

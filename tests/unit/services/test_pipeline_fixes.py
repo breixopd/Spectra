@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from spectra_ai_core.context import truncate_for_llm
 from spectra_common.constants import MISSION_TIMEOUT_SECONDS
-from spectra_platform.services.ai.context import truncate_for_llm
 
 # ---------------------------------------------------------------------------
 # Fix #4: Port extraction (rsplit for IPv6 safety)
@@ -45,7 +45,7 @@ class TestNewHandlers:
 
     @pytest.fixture
     def dispatcher(self):
-        from spectra_platform.services.mission.executor.handlers import TaskDispatcher
+        from spectra_mission.executor.handlers import TaskDispatcher
 
         tool_service = AsyncMock()
         exploit_manager = AsyncMock()
@@ -139,7 +139,7 @@ class TestLLMRetry:
 
     @pytest.mark.asyncio
     async def test_retry_attribute_exists(self):
-        from spectra_ai.llm import LLMClient
+        from spectra_ai_core.llm import LLMClient
 
         assert hasattr(LLMClient, "generate_with_retry")
         assert hasattr(LLMClient, "MAX_RETRIES")
@@ -155,12 +155,12 @@ class TestAutoExpandScope:
     """Verify auto_expand_scope is importable and callable."""
 
     def test_import(self):
-        from spectra_platform.services.mission.executor.analysis import auto_expand_scope
+        from spectra_mission.executor.analysis import auto_expand_scope
 
         assert callable(auto_expand_scope)
 
     def test_returns_expansions_for_new_hosts(self):
-        from spectra_platform.services.mission.executor.analysis import auto_expand_scope
+        from spectra_mission.executor.analysis import auto_expand_scope
 
         findings = [
             {"type": "subdomain", "value": "new.example.com"},
@@ -173,7 +173,7 @@ class TestAutoExpandScope:
         assert expansions[1]["type"] == "ip"
 
     def test_no_duplicates(self):
-        from spectra_platform.services.mission.executor.analysis import auto_expand_scope
+        from spectra_mission.executor.analysis import auto_expand_scope
 
         findings = [
             {"type": "subdomain", "value": "dup.example.com"},
@@ -192,13 +192,13 @@ class TestChainBuilderIntegration:
     """Verify ChainBuilder is importable and chains are valid."""
 
     def test_builtin_chains_load(self):
-        from spectra_platform.services.mission.chain_builder import get_builtin_chains
+        from spectra_mission.chain_builder import get_builtin_chains
 
         chains = get_builtin_chains()
         assert len(chains) >= 2
 
     def test_chain_validation(self):
-        from spectra_platform.services.mission.chain_builder import ChainBuilder, get_builtin_chains
+        from spectra_mission.chain_builder import ChainBuilder, get_builtin_chains
 
         for chain in get_builtin_chains():
             warnings = ChainBuilder.validate_chain(chain)
@@ -236,13 +236,13 @@ class TestBlackboardReads:
     """Verify blackboard read method works."""
 
     def test_blackboard_read_returns_none_for_missing(self):
-        from spectra_platform.services.ai.blackboard import MissionBlackboard
+        from spectra_ai_core.blackboard import MissionBlackboard
 
         bb = MissionBlackboard("test")
         assert bb.read("nonexistent") is None
 
     def test_blackboard_write_then_read(self):
-        from spectra_platform.services.ai.blackboard import MissionBlackboard
+        from spectra_ai_core.blackboard import MissionBlackboard
 
         bb = MissionBlackboard("test")
         bb.write("agent", "credentials", [{"user": "admin", "pass": "admin"}])

@@ -5,9 +5,9 @@ import os
 import pytest
 import pytest_asyncio
 
-from spectra_common.orm.base import Base
-from spectra_platform.core.database import engine
-from spectra_platform.services.tools.registry import get_registry
+from spectra_persistence.database import engine
+from spectra_persistence.orm.base import Base
+from spectra_tools_core.registry import get_registry
 
 # Configure logging to show thinking process
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +21,7 @@ pytestmark = [
 
 
 
-# Targets from docker/compose.yaml (profiles app + targets) when stack is running
+# Targets from deploy/docker/compose.yaml (profiles app + targets) when stack is running
 TARGET_SERVER = os.getenv("TARGET_SERVER", "172.21.0.50")  # Metasploitable
 TARGET_WEB = os.getenv("TARGET_WEB", "172.21.0.51")  # DVWA
 
@@ -40,7 +40,7 @@ class TestLiveCampaign:
     @pytest_asyncio.fixture(autouse=True)
     async def setup_campaign(self):
         await engine.dispose()
-        import spectra_platform.services.tools.registry as registry_module
+        import spectra_tools_core.registry as registry_module
         registry_module._registry = None
         registry = get_registry()
         await registry.load_plugins()

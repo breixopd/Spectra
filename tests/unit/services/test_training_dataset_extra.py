@@ -2,13 +2,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from spectra_platform.services.training.backends import (
+from spectra_billing.training.backends import (
     TrainingBackendDefinition,
     get_training_backend,
     list_training_backends,
     register_training_backend,
 )
-from spectra_platform.services.training.dataset import (
+from spectra_billing.training.dataset import (
     create_mission_completion_sample,
     create_training_sample,
     export_dataset,
@@ -43,15 +43,19 @@ async def test_create_training_sample():
 async def test_user_allows_training_data_requires_consent_and_unrestricted_account():
     mock_session = AsyncMock()
     mock_result = MagicMock()
-    mock_result.one_or_none.return_value = (False, True)
+    # Tuple is (training_opt_in, processing_restricted).
+    # Allowed only when opted in AND not restricted.
+    mock_result.one_or_none.return_value = (True, False)
     mock_session.execute = AsyncMock(return_value=mock_result)
-
     assert await user_allows_training_data(mock_session, "u1") is True
 
-    mock_result.one_or_none.return_value = (True, True)
+    mock_result.one_or_none.return_value = (True, True)  # opted in but restricted
     assert await user_allows_training_data(mock_session, "u1") is False
 
-    mock_result.one_or_none.return_value = (False, False)
+    mock_result.one_or_none.return_value = (False, False)  # not opted in
+    assert await user_allows_training_data(mock_session, "u1") is False
+
+    mock_result.one_or_none.return_value = (False, True)  # not opted in + restricted
     assert await user_allows_training_data(mock_session, "u1") is False
 
 
@@ -60,7 +64,7 @@ async def test_create_mission_completion_sample_is_consent_gated_and_deduplicate
     mock_session = AsyncMock()
     mock_session.add = MagicMock()
     consent_result = MagicMock()
-    consent_result.one_or_none.return_value = (False, True)
+    consent_result.one_or_none.return_value = (True, False)
     existing_result = MagicMock()
     existing_result.scalar_one_or_none.return_value = None
     mock_session.execute = AsyncMock(side_effect=[consent_result, existing_result])
@@ -91,7 +95,7 @@ async def test_create_mission_completion_sample_is_consent_gated_and_deduplicate
 async def test_create_mission_completion_sample_skips_existing_sample():
     mock_session = AsyncMock()
     consent_result = MagicMock()
-    consent_result.one_or_none.return_value = (False, True)
+    consent_result.one_or_none.return_value = (True, False)
     existing_result = MagicMock()
     existing_result.scalar_one_or_none.return_value = "sample-1"
     mock_session.execute = AsyncMock(side_effect=[consent_result, existing_result])
@@ -164,7 +168,7 @@ def test_training_backend_registry_allows_new_backend_registration():
     try:
         assert get_training_backend("demo_backend") == definition
     finally:
-        from spectra_platform.services.training import backends
+        from spectra_billing.training import backends
 
         backends._BACKENDS.pop("demo_backend", None)
 

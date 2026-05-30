@@ -9,9 +9,9 @@ import pytest
 import pytest_asyncio
 
 from spectra_domain.jobs import WorkerJobName
-from spectra_platform.infrastructure.queue import Job
-from spectra_platform.services.tools.registry import get_registry
+from spectra_infra.queue import Job
 from spectra_tools_core.models import ToolStatus
+from spectra_tools_core.registry import get_registry
 
 pytestmark = [
     pytest.mark.asyncio,
@@ -82,8 +82,8 @@ async def wait_for_job(job_id: str, timeout: int = 900):
     """Wait for a postgres job to complete."""
     from sqlalchemy import select as sa_select
 
-    from spectra_platform.core.database import async_session_maker
-    from spectra_platform.infrastructure.queue import JobQueue
+    from spectra_infra.queue import JobQueue
+    from spectra_persistence.database import async_session_maker
 
     start_time = asyncio.get_running_loop().time()
 
@@ -121,7 +121,7 @@ class TestPluginLifecycle:
         test_plugin_path = PLUGIN_TEST_DIR / plugin_path.name
         shutil.copy2(plugin_path, test_plugin_path)
 
-        from spectra_platform.infrastructure.queue import PostgresJobQueue, worker_loop
+        from spectra_infra.queue import PostgresJobQueue, worker_loop
         from spectra_worker import _WORKER_FUNCTIONS
 
         pool = PostgresJobQueue(PLUGIN_TEST_QUEUE)
@@ -149,7 +149,7 @@ class TestPluginLifecycle:
         test_plugin_path = PLUGIN_TEST_DIR / plugin_path.name
         shutil.copy2(plugin_path, test_plugin_path)
 
-        from spectra_platform.infrastructure.queue import PostgresJobQueue, worker_loop
+        from spectra_infra.queue import PostgresJobQueue, worker_loop
         from spectra_worker import _WORKER_FUNCTIONS
 
         pool = PostgresJobQueue(PLUGIN_TEST_QUEUE)

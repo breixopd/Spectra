@@ -2,7 +2,7 @@
 
 import pytest
 
-from spectra_platform.services.resource_manager import ResourceManager
+from spectra_scaling.resource_manager import ResourceManager
 
 
 class TestResourceManager:

@@ -106,7 +106,7 @@ To monitor auto-scaling activity:
 
 ```bash
 # Check scheduler logs for scaling events
-docker compose -f docker/compose.yaml logs scheduler | grep -i "scale"
+docker compose -f deploy/docker/compose.yaml logs scheduler | grep -i "scale"
 ```
 
 Capacity alerts (80% warning, 100% critical) are sent via `NOTIFICATION_WEBHOOK` regardless of whether auto-scaling is enabled.

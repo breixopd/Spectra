@@ -13,14 +13,14 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.authz import Permission, require_permission
+from spectra_billing.training.backends import get_training_backend, list_training_backends
+from spectra_billing.training.dataset import export_dataset, get_dataset_stats
+from spectra_common.config import settings
 from spectra_domain.jobs import WorkerJobName
-from spectra_platform.core.config import settings
-from spectra_platform.core.database import get_async_session
-from spectra_platform.infrastructure.queue import PostgresJobQueue
-from spectra_platform.models.training import FineTuningJob, TrainingSample
-from spectra_platform.models.user import User
-from spectra_platform.services.training.backends import get_training_backend, list_training_backends
-from spectra_platform.services.training.dataset import export_dataset, get_dataset_stats
+from spectra_infra.queue import PostgresJobQueue
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.training import FineTuningJob, TrainingSample
+from spectra_persistence.models.user import User
 
 logger = logging.getLogger(__name__)
 

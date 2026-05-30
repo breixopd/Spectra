@@ -39,7 +39,7 @@ class TestListServerNodes:
 
     @pytest.mark.asyncio
     async def test_list_returns_nodes(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         pool = ServerPoolManager()
         session = AsyncMock()
@@ -55,7 +55,7 @@ class TestListServerNodes:
 
     @pytest.mark.asyncio
     async def test_list_with_service_type_filter(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         pool = ServerPoolManager()
         session = AsyncMock()
@@ -75,7 +75,7 @@ class TestAddServerNode:
 
     @pytest.mark.asyncio
     async def test_add_creates_node_and_returns_dict(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         pool = ServerPoolManager()
         session = AsyncMock()
@@ -86,7 +86,7 @@ class TestAddServerNode:
         mock_node.to_dict.return_value = _mock_node_dict(name="new-worker")
 
         with (
-            patch("spectra_platform.models.server_node.ServerNode", return_value=mock_node),
+            patch("spectra_persistence.models.server_node.ServerNode", return_value=mock_node),
             patch.object(pool, "_auto_enable_autoscale", new_callable=AsyncMock),
         ):
             result = await pool.add_node(
@@ -108,7 +108,7 @@ class TestRemoveServerNode:
 
     @pytest.mark.asyncio
     async def test_remove_existing_node_returns_true(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         pool = ServerPoolManager()
         session = AsyncMock()
@@ -124,7 +124,7 @@ class TestRemoveServerNode:
 
     @pytest.mark.asyncio
     async def test_remove_nonexistent_returns_false(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         pool = ServerPoolManager()
         session = AsyncMock()
@@ -149,7 +149,7 @@ class TestUpdateServerNode:
 
     @pytest.mark.asyncio
     async def test_update_existing_node(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         pool = ServerPoolManager()
         session = AsyncMock()
@@ -170,7 +170,7 @@ class TestUpdateServerNode:
 
     @pytest.mark.asyncio
     async def test_update_nonexistent_returns_none(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         pool = ServerPoolManager()
         session = AsyncMock()
@@ -198,7 +198,7 @@ class TestHealthCheckAll:
 
     @pytest.mark.asyncio
     async def test_health_check_returns_grouped_results(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         pool = ServerPoolManager()
         mock_node = MagicMock()
@@ -216,7 +216,7 @@ class TestHealthCheckAll:
         mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("spectra_platform.services.scaling.pool_manager.async_session_maker", return_value=mock_session_ctx):
+        with patch("spectra_scaling.pool_manager.async_session_maker", return_value=mock_session_ctx):
             with patch.object(pool, "health_check_node", new_callable=AsyncMock) as mock_hc:
                 mock_hc.return_value = {"health_status": "healthy", "last_error": None}
                 with patch.object(pool, "_collect_node_metrics", new_callable=AsyncMock) as mock_nm:
@@ -233,7 +233,7 @@ class TestDeployToNode:
     @pytest.mark.asyncio
     async def test_forwards_pinned_known_host_from_node_metadata(self):
         from spectra_api.api.routers.admin.servers import deploy_to_node
-        from spectra_platform.services.infrastructure.deploy import DeploymentStatus, DeployResult
+        from spectra_scaling.infrastructure_services.deploy import DeploymentStatus, DeployResult
 
         node = MagicMock()
         node.id = 42
@@ -259,7 +259,7 @@ class TestDeployToNode:
 
         with (
             patch("spectra_api.api.routers.admin.servers.audit_log_event", new_callable=AsyncMock),
-            patch("spectra_platform.services.infrastructure.deploy.ServerDeployer.deploy_to_server", new_callable=AsyncMock) as mock_deploy,
+            patch("spectra_scaling.infrastructure_services.deploy.ServerDeployer.deploy_to_server", new_callable=AsyncMock) as mock_deploy,
         ):
             mock_deploy.return_value = deploy_result
             response = await deploy_to_node(
@@ -301,7 +301,7 @@ class TestProvisioningEndpointKnownHostForwarding:
         provisioner.verify_connection = AsyncMock(return_value={"connected": True})
         pinned_entry = "[verify.example.com]:2222 ssh-ed25519 AAAAPINNED"
 
-        with patch("spectra_platform.services.provisioning.ServerProvisioner", return_value=provisioner):
+        with patch("spectra_scaling.provisioning.ServerProvisioner", return_value=provisioner):
             response = await verify_server_connection(
                 body=ServerConnectionRequest(
                     host="verify.example.com",
@@ -320,7 +320,7 @@ class TestProvisioningEndpointKnownHostForwarding:
     @pytest.mark.asyncio
     async def test_provision_forwards_pinned_known_host(self):
         from spectra_api.api.routers.admin.servers import ProvisionRequest, provision_server
-        from spectra_platform.services.provisioning.provisioner import ProvisioningResult
+        from spectra_scaling.provisioning.provisioner import ProvisioningResult
 
         provisioner = MagicMock()
         provisioner.provision = AsyncMock(
@@ -337,7 +337,7 @@ class TestProvisioningEndpointKnownHostForwarding:
 
         with (
             patch("spectra_api.api.routers.admin.servers.audit_log_event", new_callable=AsyncMock),
-            patch("spectra_platform.services.provisioning.ServerProvisioner", return_value=provisioner),
+            patch("spectra_scaling.provisioning.ServerProvisioner", return_value=provisioner),
         ):
             response = await provision_server(
                 body=ProvisionRequest(
@@ -366,7 +366,7 @@ class TestProvisioningEndpointKnownHostForwarding:
     @pytest.mark.asyncio
     async def test_deprovision_forwards_pinned_known_host(self):
         from spectra_api.api.routers.admin.servers import DeprovisionRequest, deprovision_server
-        from spectra_platform.services.provisioning.provisioner import ProvisioningResult
+        from spectra_scaling.provisioning.provisioner import ProvisioningResult
 
         provisioner = MagicMock()
         provisioner.deprovision = AsyncMock(
@@ -381,7 +381,7 @@ class TestProvisioningEndpointKnownHostForwarding:
 
         with (
             patch("spectra_api.api.routers.admin.servers.audit_log_event", new_callable=AsyncMock),
-            patch("spectra_platform.services.provisioning.ServerProvisioner", return_value=provisioner),
+            patch("spectra_scaling.provisioning.ServerProvisioner", return_value=provisioner),
         ):
             response = await deprovision_server(
                 body=DeprovisionRequest(

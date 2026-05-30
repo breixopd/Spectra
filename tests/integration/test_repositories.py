@@ -8,7 +8,7 @@ from sqlalchemy import String
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from spectra_platform.repositories.base import BaseRepository
+from spectra_persistence.repositories.base import BaseRepository
 
 # --- Test Setup ---
 

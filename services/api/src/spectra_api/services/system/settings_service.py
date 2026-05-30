@@ -10,8 +10,8 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.schemas.system import SettingsUpdate
-from spectra_platform.core.config import settings
-from spectra_platform.services.system.runtime_settings import (
+from spectra_common.config import settings
+from spectra_system.runtime_settings import (
     hydrate_runtime_settings_from_db,
     upsert_system_config_values,
 )
@@ -156,7 +156,7 @@ def _build_settings_snapshot(fields: tuple[SettingsSnapshotSpec, ...]) -> dict[s
 def get_sandbox_status() -> dict:
     """Get sandbox pool availability status for the settings page."""
     try:
-        from spectra_platform.services.tools.sandbox import get_sandbox_pool
+        from spectra_tools.sandbox import get_sandbox_pool
 
         pool = get_sandbox_pool()
         if pool and pool.available:
@@ -188,7 +188,7 @@ async def apply_settings_update(
 ) -> dict[str, str]:
     """Persist settings update atomically.  Returns a status dict."""
     if "notification_webhook" in data.model_fields_set and data.notification_webhook:
-        from spectra_platform.utils.url_validation import is_safe_url
+        from spectra_common.utils.url_validation import is_safe_url
 
         if not await is_safe_url(data.notification_webhook):
             raise ValueError("Webhook URL points to a private/internal address")
@@ -221,7 +221,7 @@ def get_current_settings() -> dict[str, Any]:
 
 async def get_ai_status_snapshot() -> dict[str, Any]:
     """Build the AI status response payload."""
-    from spectra_ai.llm import get_global_llm_client
+    from spectra_ai_core.llm import get_global_llm_client
 
     client = await get_global_llm_client()
     is_healthy = await client.health_check()
@@ -239,7 +239,7 @@ async def test_llm_connection(
     model: str | None = None,
 ) -> dict[str, Any]:
     """Test connectivity to TensorZero gateway. Returns {success, error?}."""
-    from spectra_ai.llm import get_global_llm_client
+    from spectra_ai_core.llm import get_global_llm_client
 
     try:
         client = await get_global_llm_client()

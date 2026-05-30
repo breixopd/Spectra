@@ -2,8 +2,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from spectra_platform.services.scaling import docker_client, image_updater, metrics_collector, node_metrics
-from spectra_platform.services.scaling.healer import DiagnosticResult, ServiceHealer
+from spectra_scaling import docker_client, image_updater, metrics_collector, node_metrics
+from spectra_scaling.healer import DiagnosticResult, ServiceHealer
 
 
 @pytest.fixture(autouse=True)
@@ -29,9 +29,9 @@ async def test_image_update_dry_run_records_available_update(monkeypatch):
     async def fail_update_service_image(service: str, image: str):  # pragma: no cover - guard
         raise AssertionError("dry-run must not update service image")
 
-    monkeypatch.setattr("spectra_platform.services.scaling.docker_client.get_service", fake_get_service)
-    monkeypatch.setattr("spectra_platform.services.scaling.docker_client.get_registry_digest", fake_get_registry_digest)
-    monkeypatch.setattr("spectra_platform.services.scaling.docker_client.update_service_image", fail_update_service_image)
+    monkeypatch.setattr("spectra_scaling.docker_client.get_service", fake_get_service)
+    monkeypatch.setattr("spectra_scaling.docker_client.get_registry_digest", fake_get_registry_digest)
+    monkeypatch.setattr("spectra_scaling.docker_client.update_service_image", fail_update_service_image)
 
     results = await image_updater.check_and_update_services(apply=False)
 
@@ -67,9 +67,9 @@ async def test_image_update_applies_update_and_records_rollback(monkeypatch):
     async def no_sleep(seconds: int):
         assert seconds == 5
 
-    monkeypatch.setattr("spectra_platform.services.scaling.docker_client.get_service", fake_get_service)
-    monkeypatch.setattr("spectra_platform.services.scaling.docker_client.get_registry_digest", fake_get_registry_digest)
-    monkeypatch.setattr("spectra_platform.services.scaling.docker_client.update_service_image", fake_update_service_image)
+    monkeypatch.setattr("spectra_scaling.docker_client.get_service", fake_get_service)
+    monkeypatch.setattr("spectra_scaling.docker_client.get_registry_digest", fake_get_registry_digest)
+    monkeypatch.setattr("spectra_scaling.docker_client.update_service_image", fake_update_service_image)
     monkeypatch.setattr(image_updater.asyncio, "sleep", no_sleep)
 
     results = await image_updater.check_and_update_services()
@@ -93,7 +93,7 @@ async def test_image_update_reports_service_errors(monkeypatch):
             raise RuntimeError("docker unavailable")
         return None
 
-    monkeypatch.setattr("spectra_platform.services.scaling.docker_client.get_service", fake_get_service)
+    monkeypatch.setattr("spectra_scaling.docker_client.get_service", fake_get_service)
 
     results = await image_updater.check_and_update_services()
 
@@ -122,8 +122,8 @@ async def test_image_update_skips_services_without_changes(monkeypatch):
     async def fake_get_registry_digest(image: str):
         return None if image.endswith("worker:stable") else "same"
 
-    monkeypatch.setattr("spectra_platform.services.scaling.docker_client.get_service", fake_get_service)
-    monkeypatch.setattr("spectra_platform.services.scaling.docker_client.get_registry_digest", fake_get_registry_digest)
+    monkeypatch.setattr("spectra_scaling.docker_client.get_service", fake_get_service)
+    monkeypatch.setattr("spectra_scaling.docker_client.get_registry_digest", fake_get_registry_digest)
 
     results = await image_updater.check_and_update_services()
 
@@ -217,7 +217,7 @@ async def test_collect_node_metrics_counts_docker_containers_outside_event_loop(
     async def fake_count_running_containers():
         return 7
 
-    monkeypatch.setattr("spectra_platform.services.scaling.docker_client.count_running_containers", fake_count_running_containers)
+    monkeypatch.setattr("spectra_scaling.docker_client.count_running_containers", fake_count_running_containers)
 
     # The collector should use the synchronous Docker SDK path when an event loop is already running.
     fake_client = SimpleNamespace(
@@ -421,10 +421,10 @@ async def test_metrics_collector_returns_compose_replicas_when_swarm_unavailable
         coro.close()
         raise TimeoutError
 
-    monkeypatch.setattr("spectra_platform.services.scaling.metrics_collector.list_services", no_swarm_services, raising=False)
-    monkeypatch.setattr("spectra_platform.services.scaling.docker_client.list_services", no_swarm_services)
-    monkeypatch.setattr("spectra_platform.services.scaling.docker_client.list_running_containers", compose_containers)
-    monkeypatch.setattr("spectra_platform.services.scaling.docker_client.get_container_stats", slow_stats)
+    monkeypatch.setattr("spectra_scaling.metrics_collector.list_services", no_swarm_services, raising=False)
+    monkeypatch.setattr("spectra_scaling.docker_client.list_services", no_swarm_services)
+    monkeypatch.setattr("spectra_scaling.docker_client.list_running_containers", compose_containers)
+    monkeypatch.setattr("spectra_scaling.docker_client.get_container_stats", slow_stats)
     monkeypatch.setattr(metrics_collector.asyncio, "wait_for", timeout_wait_for)
 
     services = await metrics_collector.MetricsCollector()._collect_service_metrics()
@@ -557,7 +557,7 @@ async def test_collect_queue_metrics(monkeypatch):
             "oldest_job_age_seconds": 9.0,
         }
 
-    monkeypatch.setattr("spectra_platform.infrastructure.queue.queue_metrics", fake_queue_metrics)
+    monkeypatch.setattr("spectra_infra.queue.queue_metrics", fake_queue_metrics)
 
     queue = await metrics_collector.MetricsCollector()._collect_queue_metrics()
 

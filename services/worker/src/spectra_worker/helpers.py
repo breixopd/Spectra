@@ -182,7 +182,7 @@ async def _find_alternative_tools(tool_id: str, max_results: int = 3) -> list[An
     Returns:
         List of RegisteredTool objects that can serve as alternatives.
     """
-    from spectra_platform.services.tools.registry import get_registry
+    from spectra_tools_core.registry import get_registry
 
     registry = get_registry()
     tool = registry.get_tool(tool_id)
@@ -217,7 +217,7 @@ async def _track_tool_stats(
     duration: float,
 ) -> None:
     """Track tool execution statistics via cache."""
-    from spectra_platform.infrastructure.cache import CacheService
+    from spectra_infra.cache import CacheService
 
     cache = CacheService()
     stats_key = f"spectra:tool_stats:{tool_id}"
@@ -279,7 +279,7 @@ async def _sync_tool_status(
     result: dict[str, Any],
 ) -> None:
     """Sync tool status to PostgreSQL cache."""
-    from spectra_platform.infrastructure.cache import CacheService
+    from spectra_infra.cache import CacheService
 
     cache = CacheService()
     key = f"spectra:tool_status:{tool_id}"

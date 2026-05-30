@@ -1,0 +1,74 @@
+# Spectra API — FastAPI web application.
+# Built packages (first-party wheels) are installed via uv; the runtime image is
+# the resolved virtualenv plus repo-level runtime assets (plugins, migrations).
+ARG PYTHON_BASE_IMAGE=python:3.11.13-slim-bookworm
+
+# ── Builder: build Tailwind CSS, then resolve + build the spectra-api wheel closure ──
+FROM ${PYTHON_BASE_IMAGE} AS builder
+COPY --from=ghcr.io/astral-sh/uv:0.11.17 /uv /usr/local/bin/uv
+WORKDIR /src
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc libcairo2-dev libpq-dev pkg-config python3-dev nodejs npm \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml uv.lock ./
+COPY packages/ ./packages/
+COPY services/ ./services/
+COPY config/ ./config/
+
+# Build the Tailwind stylesheet BEFORE the wheel so it ships inside spectra-api.
+RUN cd config && npm ci \
+    && NODE_ENV=production ./node_modules/.bin/postcss ../services/api/static/css/input.css \
+       -o ../services/api/static/css/output.css --config postcss.config.js \
+    && rm -rf node_modules
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-editable --package spectra-api
+
+# ── Runtime ──
+FROM ${PYTHON_BASE_IMAGE}
+ARG BUILD_VERSION=dev
+LABEL org.opencontainers.image.title="Spectra API" \
+      org.opencontainers.image.description="Automated penetration testing platform — API" \
+      org.opencontainers.image.source="https://github.com/breixopd/Spectra" \
+      org.opencontainers.image.vendor="breixopd" \
+      org.opencontainers.image.version="${BUILD_VERSION}"
+
+WORKDIR /app
+RUN printf '%s' "${BUILD_VERSION}" > /app/.build-version
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl gnupg \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /etc/apt/trusted.gpg.d/postgresql.asc \
+    && echo "deb http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 postgresql-client-16 libcairo2 netcat-openbsd gosu \
+    && apt-get purge -y --auto-remove gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    SERVICE_MODE=api
+
+RUN useradd --create-home --shell /bin/bash spectra && \
+    mkdir -p /app/data /app/data/backups /app/logs && \
+    chown -R spectra:spectra /app
+
+COPY --chown=spectra:spectra scripts/ ./scripts/
+COPY --chown=spectra:spectra db/alembic/ ./alembic/
+COPY --chown=spectra:spectra db/alembic.ini ./config/alembic.ini
+COPY --chown=spectra:spectra plugins/ ./plugins/
+RUN chmod +x /app/scripts/start.sh
+
+ENTRYPOINT ["/app/scripts/start.sh"]
+EXPOSE 5000
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5000/api/health || exit 1
+CMD ["uvicorn", "spectra_api.main:app", "--host", "0.0.0.0", "--port", "5000", "--workers", "1", "--proxy-headers", "--forwarded-allow-ips", "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.1"]

@@ -2,7 +2,7 @@
 
 import pytest
 
-from spectra_platform.services.system.runtime_ai_config import apply_ai_settings, get_current_ai_config
+from spectra_system.runtime_ai_config import apply_ai_settings, get_current_ai_config
 
 
 class FakeSettings:

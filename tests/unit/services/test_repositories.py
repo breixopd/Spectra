@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from spectra_platform.repositories import (
+from spectra_persistence.repositories import (
     ApiKeyRepository,
     BaseRepository,
     ExploitRepository,
@@ -321,7 +321,7 @@ def _make_base_repo(columns=("id", "name", "status")):
     """Build a BaseRepository with a mocked model and patched inspect."""
     model, mapper = _mock_model_class(columns)
     session = _mock_session()
-    with patch("spectra_platform.repositories.base.inspect", return_value=mapper):
+    with patch("spectra_persistence.repositories.base.inspect", return_value=mapper):
         repo = BaseRepository(model, session)  # type: ignore[arg-type]
     return repo, model, session
 
@@ -383,7 +383,7 @@ class TestBaseRepositoryCRUD:
         result_mock = MagicMock()
         result_mock.scalar_one_or_none.return_value = None
         session.execute.return_value = result_mock
-        with patch("spectra_platform.repositories.base.select", return_value=MagicMock()):
+        with patch("spectra_persistence.repositories.base.select", return_value=MagicMock()):
             result = await repo.get_by_id("some-uuid")
         session.execute.assert_awaited_once()
         assert result is None
@@ -396,7 +396,7 @@ class TestBaseRepositoryCRUD:
         result_mock = MagicMock()
         result_mock.scalars.return_value = scalars_mock
         session.execute.return_value = result_mock
-        with patch("spectra_platform.repositories.base.select", return_value=MagicMock()):
+        with patch("spectra_persistence.repositories.base.select", return_value=MagicMock()):
             result = await repo.get_all(skip=0, limit=10)
         session.execute.assert_awaited_once()
         assert result == []
@@ -407,7 +407,7 @@ class TestBaseRepositoryCRUD:
         result_mock = MagicMock()
         result_mock.rowcount = 1
         session.execute.return_value = result_mock
-        with patch("spectra_platform.repositories.base.delete", return_value=MagicMock()):
+        with patch("spectra_persistence.repositories.base.delete", return_value=MagicMock()):
             assert await repo.delete("some-uuid") is True
 
     @pytest.mark.asyncio
@@ -416,7 +416,7 @@ class TestBaseRepositoryCRUD:
         result_mock = MagicMock()
         result_mock.rowcount = 0
         session.execute.return_value = result_mock
-        with patch("spectra_platform.repositories.base.delete", return_value=MagicMock()):
+        with patch("spectra_persistence.repositories.base.delete", return_value=MagicMock()):
             assert await repo.delete("missing-uuid") is False
 
     @pytest.mark.asyncio
@@ -443,7 +443,7 @@ class TestBaseRepositoryCRUD:
         result_mock = MagicMock()
         result_mock.scalar_one_or_none.return_value = MagicMock()
         session.execute.return_value = result_mock
-        with patch("spectra_platform.repositories.base.update", return_value=MagicMock()):
+        with patch("spectra_persistence.repositories.base.update", return_value=MagicMock()):
             result = await repo.update("some-uuid", name="new_name")
         session.execute.assert_awaited_once()
         session.flush.assert_awaited_once()

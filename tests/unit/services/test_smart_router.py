@@ -12,7 +12,7 @@ from spectra_ai.router import (
     create_smart_router,
     get_smart_router,
 )
-from spectra_platform.services.ai.agents.base import ROLE_TASK_MAP, AgentRole
+from spectra_ai_core.agents.base import ROLE_TASK_MAP, AgentRole
 
 
 class TestTaskTiers:

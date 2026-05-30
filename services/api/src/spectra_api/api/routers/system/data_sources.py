@@ -8,10 +8,10 @@ from typing import Any
 from fastapi import APIRouter, Depends, Request
 
 from spectra_api.api.dependencies import get_current_active_user, get_current_superuser
-from spectra_platform.core.database import async_session_maker
-from spectra_platform.models.audit_log import AuditEventType
-from spectra_platform.models.user import User
-from spectra_platform.services.system.audit import log_event as audit_log_event
+from spectra_persistence.database import async_session_maker
+from spectra_persistence.models.audit_log import AuditEventType
+from spectra_persistence.models.user import User
+from spectra_system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ async def get_data_source_status(
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
     """Get status of all managed data sources (exploit DB, CVE KB, etc.)."""
-    from spectra_platform.services.exploit_db import get_exploit_db
+    from spectra_ai_core.exploit_db import get_exploit_db
 
     db = get_exploit_db()
     return await db.data_status()
@@ -38,18 +38,18 @@ async def download_data_sources(
 
     Refreshes MSF modules, CISA KEV, and the CVE knowledge base.
     """
-    from spectra_platform.services.exploit_db import get_exploit_db
+    from spectra_ai_core.exploit_db import get_exploit_db
 
     db = get_exploit_db()
 
     # Write CVE knowledge base from curated data
-    from spectra_platform.services.exploit_db import CVE_KNOWLEDGE_BASE
+    from spectra_ai_core.exploit_db import CVE_KNOWLEDGE_BASE
 
     await db._cache_set("cve_knowledge_base", CVE_KNOWLEDGE_BASE)
     kb_count = len(CVE_KNOWLEDGE_BASE)
 
     # Reload CVE knowledge base in memory
-    from spectra_platform.services.ai.cve_intel import reload_cve_knowledge_base
+    from spectra_ai_core.cve_intel import reload_cve_knowledge_base
 
     await reload_cve_knowledge_base()
 

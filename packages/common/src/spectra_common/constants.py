@@ -72,7 +72,7 @@ GEOIP_API_URL: str = "https://ipwho.is"
 
 # --- Docker images ---------------------------------------------------------
 
-#: Base image for the golden tools container build (mirrors docker/Dockerfile.worker).
+#: Base image for the golden tools container build (mirrors deploy/docker/Dockerfile.worker).
 SANDBOX_BASE_IMAGE: str = "kalilinux/kali-rolling:latest"
 
 # ===========================================================================

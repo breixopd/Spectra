@@ -7,8 +7,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from spectra_platform.infrastructure.cache import CacheService, get_cache
-from spectra_platform.services.tools.registry import ToolRegistry, get_registry
+from spectra_infra.cache import CacheService, get_cache
+from spectra_tools_core.registry import ToolRegistry, get_registry
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +126,7 @@ def _get_cache() -> CacheService | None:
 def _get_tool_cache_stats() -> dict[str, int | float]:
     """Get tool result cache statistics."""
     try:
-        from spectra_platform.mission.core.optimizations import tool_cache
+        from spectra_mission.core.optimizations import tool_cache
 
         return tool_cache.stats
     except (OSError, RuntimeError, ImportError):

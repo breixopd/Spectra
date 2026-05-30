@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
-COMPOSE_FILE="${PROJECT_DIR}/docker/compose.yaml"
+COMPOSE_FILE="${PROJECT_DIR}/deploy/docker/compose.yaml"
 KEEP_STACK="${KEEP_STACK:-0}"
 # Enable app + test profiles for every compose invocation (load-test-runner is profile `test`;
 # without this, `compose run load-test-runner` can miss the service or join the wrong project context).

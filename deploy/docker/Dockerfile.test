@@ -1,0 +1,39 @@
+# Spectra test runner — editable workspace install via uv (coverage maps to source).
+# Not for production use.
+ARG PYTHON_BASE_IMAGE=python:3.11.13-slim-bookworm
+
+FROM ${PYTHON_BASE_IMAGE}
+COPY --from=ghcr.io/astral-sh/uv:0.11.17 /uv /usr/local/bin/uv
+WORKDIR /app
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never \
+    PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc libpq-dev libcairo2-dev pkg-config python3-dev git docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
+# Resolve the full workspace (editable) + all extras + dev/test tooling.
+COPY pyproject.toml uv.lock ./
+COPY packages/ ./packages/
+COPY services/ ./services/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --all-packages --all-extras --group dev
+
+# Test inputs and repo-level assets.
+COPY tests/ ./tests/
+COPY scripts/ ./scripts/
+COPY plugins/ ./plugins/
+COPY config/ ./config/
+COPY db/ ./db/
+
+RUN useradd --create-home --shell /bin/bash testuser && \
+    mkdir -p /app/.ruff_cache /tmp/spectra-coverage && \
+    chown -R testuser:testuser /app /tmp/spectra-coverage
+USER testuser
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 CMD python -c "import sys; sys.exit(0)"
+CMD ["pytest", "tests/unit/", "-q"]

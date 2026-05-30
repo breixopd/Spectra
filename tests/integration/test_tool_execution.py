@@ -16,8 +16,7 @@ from pathlib import Path
 import pytest
 
 from spectra_domain.enums import RiskLevel
-from spectra_platform.services.tools.adapter import CommandToolAdapter
-from spectra_platform.services.tools.registry import get_registry, initialize_registry
+from spectra_tools.adapter import CommandToolAdapter
 from spectra_tools_core.models import (
     ExecutionConfig,
     OutputFormat,
@@ -28,6 +27,7 @@ from spectra_tools_core.models import (
     ToolExecutionRequest,
     ToolMetadata,
 )
+from spectra_tools_core.registry import get_registry, initialize_registry
 
 pytestmark = [
     pytest.mark.e2e,
@@ -59,7 +59,7 @@ class TestToolRegistry:
     @pytest.fixture(autouse=True)
     def reset_registry(self):
         """Reset registry singleton before each test."""
-        import spectra_platform.services.tools.registry as registry_module
+        import spectra_tools_core.registry as registry_module
 
         registry_module._registry_instance = None
         yield
@@ -366,8 +366,8 @@ class TestToolIntegrationWithMission:
 
     async def test_tool_selector_uses_registry(self):
         """Test that tool selector uses the registry."""
-        from spectra_platform.services.ai.agents.base import AgentContext
-        from spectra_platform.services.ai.agents.tool_selector import (
+        from spectra_ai_core.agents.base import AgentContext
+        from spectra_ai_core.agents.tool_selector import (
             ToolSelectorAgent,
             ToolSelectorInput,
         )

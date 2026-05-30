@@ -8,12 +8,12 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.schemas.system import SystemSetupRequest
+from spectra_auth.security import get_password_hash
+from spectra_common.config import settings
 from spectra_common.errors import SpectraError
 from spectra_common.paths import data_path
-from spectra_platform.auth.security import get_password_hash
-from spectra_platform.core.config import settings
-from spectra_platform.models.user import User
-from spectra_platform.services.system.runtime_settings import (
+from spectra_persistence.models.user import User
+from spectra_system.runtime_settings import (
     hydrate_runtime_settings_from_db,
     upsert_system_config_values,
 )
@@ -248,13 +248,13 @@ class SystemSetupService:
 
     async def _reinitialize_llm(self, setup_in: SystemSetupRequest) -> None:
         """Re-initialize the global LLM client with TensorZero settings."""
-        import spectra_ai.llm as llm_module
-        from spectra_ai.llm import close_global_llm_client
+        import spectra_ai_core.llm as llm_module
+        from spectra_ai_core.llm import close_global_llm_client
 
         await close_global_llm_client()
 
         try:
-            from spectra_ai.llm import get_llm_client
+            from spectra_ai_core.llm import get_llm_client
 
             new_client = get_llm_client(
                 gateway_url=setup_in.tensorzero_gateway_url or settings.TENSORZERO_GATEWAY_URL,

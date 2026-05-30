@@ -7,7 +7,7 @@ import logging
 from typing import TYPE_CHECKING
 
 import spectra_scheduler.locking as _sched_lock
-from spectra_platform.core.database import advisory_lock_connection
+from spectra_persistence.database import advisory_lock_connection
 from spectra_scheduler import async_ops
 from spectra_scheduler.locks import _SCHEDULER_LEADER_LOCK_ID
 

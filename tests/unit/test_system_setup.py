@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from spectra_api.api.schemas.auth import UserCreate
 from spectra_api.api.schemas.system import SystemSetupRequest
 from spectra_api.services.system.setup import SystemSetupService
-from spectra_platform.models.config import SystemConfig
-from spectra_platform.models.user import User
+from spectra_persistence.models.config import SystemConfig
+from spectra_persistence.models.user import User
 
 
 @pytest.fixture

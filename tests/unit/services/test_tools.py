@@ -16,11 +16,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from spectra_platform.services.tools.adapter import CommandToolAdapter
-from spectra_platform.services.tools.registry import (
-    PluginValidationError,
-    ToolRegistry,
-)
+from spectra_tools.adapter import CommandToolAdapter
 from spectra_tools_core.models import (
     InstallationMethod,
     OutputFormat,
@@ -28,6 +24,10 @@ from spectra_tools_core.models import (
     ToolConfig,
     ToolExecutionRequest,
     ToolStatus,
+)
+from spectra_tools_core.registry import (
+    PluginValidationError,
+    ToolRegistry,
 )
 from spectra_tools_core.registry_constants import DANGEROUS_PATTERNS
 
@@ -374,7 +374,7 @@ class TestCommandToolAdapter:
         with (
             patch("asyncio.create_subprocess_exec") as mock_subprocess,
             patch(
-                "spectra_platform.services.tools.adapter.asyncio.wait_for",
+                "spectra_tools.adapter.asyncio.wait_for",
                 side_effect=wait_for_then_timeout,
             ),
             patch("os.killpg"),

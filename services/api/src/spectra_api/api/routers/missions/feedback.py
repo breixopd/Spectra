@@ -9,12 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.dependencies import check_resource_owner, get_current_active_user, validate_uuid_param
 from spectra_api.api.schemas.mission import ActionApprovalResponse
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.user import User
-from spectra_platform.repositories.mission import MissionRepository
-from spectra_platform.services.mission.manager import mission_manager
-from spectra_platform.services.mission.types import MissionProgress
+from spectra_auth.rate_limit import RateLimits, limiter
+from spectra_mission.manager import mission_manager
+from spectra_mission.types import MissionProgress
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.user import User
+from spectra_persistence.repositories.mission import MissionRepository
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +128,7 @@ async def approve_action(
     if not getattr(mission, "requires_approval", False):
         raise HTTPException(status_code=400, detail="Mission does not require approval")
 
-    from spectra_platform.mission.core.websocket import manager
+    from spectra_mission.core.websocket import manager
 
     await manager.broadcast_to_room_json(
         f"mission:{mission_id}",

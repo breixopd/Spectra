@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from spectra_platform.services.shell.relay_client import ShellRelayClient
+from spectra_infra.shell.relay_client import ShellRelayClient
 
 
 class _AsyncClientCM:
@@ -40,10 +40,10 @@ async def test_start_listener_posts_and_returns_port(auth_secret: MagicMock) -> 
 
     with (
         patch(
-            "spectra_platform.services.shell.relay_client.httpx.AsyncClient",
+            "spectra_infra.shell.relay_client.httpx.AsyncClient",
             side_effect=lambda *a, **k: _AsyncClientCM(inner),
         ),
-        patch("spectra_platform.services.shell.relay_client.settings.SERVICE_AUTH_SECRET", auth_secret),
+        patch("spectra_infra.shell.relay_client.settings.SERVICE_AUTH_SECRET", auth_secret),
     ):
         client = ShellRelayClient(base_url="http://worker-test:5012")
         port = await client.start_listener(
@@ -73,10 +73,10 @@ async def test_list_listeners_returns_list(auth_secret: MagicMock) -> None:
 
     with (
         patch(
-            "spectra_platform.services.shell.relay_client.httpx.AsyncClient",
+            "spectra_infra.shell.relay_client.httpx.AsyncClient",
             side_effect=lambda *a, **k: _AsyncClientCM(inner),
         ),
-        patch("spectra_platform.services.shell.relay_client.settings.SERVICE_AUTH_SECRET", auth_secret),
+        patch("spectra_infra.shell.relay_client.settings.SERVICE_AUTH_SECRET", auth_secret),
     ):
         client = ShellRelayClient(base_url="http://worker-test:5012")
         out = await client.list_listeners()
@@ -93,10 +93,10 @@ async def test_stop_listener_404_returns_false(auth_secret: MagicMock) -> None:
 
     with (
         patch(
-            "spectra_platform.services.shell.relay_client.httpx.AsyncClient",
+            "spectra_infra.shell.relay_client.httpx.AsyncClient",
             side_effect=lambda *a, **k: _AsyncClientCM(inner),
         ),
-        patch("spectra_platform.services.shell.relay_client.settings.SERVICE_AUTH_SECRET", auth_secret),
+        patch("spectra_infra.shell.relay_client.settings.SERVICE_AUTH_SECRET", auth_secret),
     ):
         client = ShellRelayClient(base_url="http://worker-test:5012")
         ok = await client.stop_listener("550e8400-e29b-41d4-a716-446655440000")
@@ -114,10 +114,10 @@ async def test_stop_listener_success_returns_true(auth_secret: MagicMock) -> Non
 
     with (
         patch(
-            "spectra_platform.services.shell.relay_client.httpx.AsyncClient",
+            "spectra_infra.shell.relay_client.httpx.AsyncClient",
             side_effect=lambda *a, **k: _AsyncClientCM(inner),
         ),
-        patch("spectra_platform.services.shell.relay_client.settings.SERVICE_AUTH_SECRET", auth_secret),
+        patch("spectra_infra.shell.relay_client.settings.SERVICE_AUTH_SECRET", auth_secret),
     ):
         client = ShellRelayClient(base_url="http://worker-test:5012")
         ok = await client.stop_listener("550e8400-e29b-41d4-a716-446655440000")
@@ -136,10 +136,10 @@ async def test_start_listener_propagates_http_status_error(auth_secret: MagicMoc
 
     with (
         patch(
-            "spectra_platform.services.shell.relay_client.httpx.AsyncClient",
+            "spectra_infra.shell.relay_client.httpx.AsyncClient",
             side_effect=lambda *a, **k: _AsyncClientCM(inner),
         ),
-        patch("spectra_platform.services.shell.relay_client.settings.SERVICE_AUTH_SECRET", auth_secret),
+        patch("spectra_infra.shell.relay_client.settings.SERVICE_AUTH_SECRET", auth_secret),
     ):
         client = ShellRelayClient(base_url="http://worker-test:5012")
         with pytest.raises(httpx.HTTPStatusError):

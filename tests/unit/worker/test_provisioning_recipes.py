@@ -8,7 +8,7 @@ import pytest
 
 
 def _load_recipes_module():
-    module_path = Path(__file__).resolve().parents[3] / "packages/platform/src/spectra_platform/services/provisioning/recipes.py"
+    module_path = Path(__file__).resolve().parents[3] / "packages/scaling/src/spectra_scaling/provisioning/recipes.py"
     spec = spec_from_file_location("test_provisioning_recipes_module", module_path)
     assert spec is not None
     assert spec.loader is not None
@@ -47,7 +47,7 @@ def test_sandbox_worker_recipe_uses_versioned_tools_image_with_local_tag_fallbac
 
 @pytest.mark.asyncio
 async def test_server_deployer_installs_docker_from_official_apt_repository():
-    from spectra_platform.services.infrastructure.deploy import DOCKER_APT_REPO_SIGNING_FINGERPRINT, ServerDeployer
+    from spectra_scaling.infrastructure_services.deploy import DOCKER_APT_REPO_SIGNING_FINGERPRINT, ServerDeployer
 
     deployer = ServerDeployer()
 
@@ -66,7 +66,7 @@ async def test_server_deployer_installs_docker_from_official_apt_repository():
 
 @pytest.mark.asyncio
 async def test_server_deployer_fails_when_service_deploy_step_fails():
-    from spectra_platform.services.infrastructure.deploy import DeploymentStatus, ServerDeployer
+    from spectra_scaling.infrastructure_services.deploy import DeploymentStatus, ServerDeployer
 
     deployer = ServerDeployer()
 
@@ -93,7 +93,7 @@ async def test_server_deployer_fails_when_service_deploy_step_fails():
 
 @pytest.mark.asyncio
 async def test_server_deployer_passes_requested_services_to_verification():
-    from spectra_platform.services.infrastructure.deploy import DeploymentStatus, ServerDeployer
+    from spectra_scaling.infrastructure_services.deploy import DeploymentStatus, ServerDeployer
 
     deployer = ServerDeployer()
     requested_services = ["app", "scheduler"]
@@ -137,7 +137,7 @@ async def test_server_deployer_passes_requested_services_to_verification():
 
 
 def test_server_deployer_builds_strict_known_hosts_ssh_base():
-    from spectra_platform.services.infrastructure.deploy import ServerDeployer
+    from spectra_scaling.infrastructure_services.deploy import ServerDeployer
 
     deployer = ServerDeployer()
 
@@ -171,7 +171,7 @@ def test_server_deployer_builds_strict_known_hosts_ssh_base():
 
 @pytest.mark.asyncio
 async def test_server_deployer_uses_pinned_known_host_entry_without_duplicates(tmp_path):
-    from spectra_platform.services.infrastructure.deploy import ServerDeployer
+    from spectra_scaling.infrastructure_services.deploy import ServerDeployer
 
     deployer = ServerDeployer()
     known_hosts_path = tmp_path / "config" / "deployer_known_hosts"
@@ -201,7 +201,7 @@ async def test_server_deployer_uses_pinned_known_host_entry_without_duplicates(t
 
 @pytest.mark.asyncio
 async def test_server_deployer_keyscan_failure_raises_runtime_error(tmp_path):
-    from spectra_platform.services.infrastructure.deploy import ServerDeployer
+    from spectra_scaling.infrastructure_services.deploy import ServerDeployer
 
     deployer = ServerDeployer()
     known_hosts_path = tmp_path / "config" / "deployer_known_hosts"
@@ -220,7 +220,7 @@ async def test_server_deployer_keyscan_failure_raises_runtime_error(tmp_path):
 
 @pytest.mark.asyncio
 async def test_server_deployer_keyscan_persists_scanned_host_keys(tmp_path):
-    from spectra_platform.services.infrastructure.deploy import ServerDeployer
+    from spectra_scaling.infrastructure_services.deploy import ServerDeployer
 
     deployer = ServerDeployer()
     known_hosts_path = tmp_path / "config" / "deployer_known_hosts"
@@ -249,7 +249,7 @@ async def test_server_deployer_keyscan_persists_scanned_host_keys(tmp_path):
 
 @pytest.mark.asyncio
 async def test_server_deployer_verify_deployment_checks_running_compose_services():
-    from spectra_platform.services.infrastructure.deploy import ServerDeployer
+    from spectra_scaling.infrastructure_services.deploy import ServerDeployer
 
     deployer = ServerDeployer()
 
@@ -259,14 +259,14 @@ async def test_server_deployer_verify_deployment_checks_running_compose_services
     assert result is True
     command = mock_run.await_args.args[1]
     assert 'docker compose -f "$COMPOSE_FILE" --profile app ps --services --status running' in command
-    assert "ERROR: Missing /opt/spectra/docker/compose.yaml during verification." in command
+    assert "ERROR: Missing /opt/spectra/deploy/docker/compose.yaml during verification." in command
     assert "ERROR: Requested services not running:${missing_services}" in command
     assert "for service in app ai-svc; do" in command
 
 
 @pytest.mark.asyncio
 async def test_server_deployer_deploy_services_fails_closed_without_compose_file():
-    from spectra_platform.services.infrastructure.deploy import ServerDeployer
+    from spectra_scaling.infrastructure_services.deploy import ServerDeployer
 
     deployer = ServerDeployer()
 
@@ -275,5 +275,5 @@ async def test_server_deployer_deploy_services_fails_closed_without_compose_file
 
     assert result == 1
     command = mock_run.await_args.args[1]
-    assert "ERROR: No docker/compose.yaml found at /opt/spectra. Upload config first." in command
+    assert "ERROR: No deploy/docker/compose.yaml found at /opt/spectra. Upload config first." in command
     assert "exit 1" in command

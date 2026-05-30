@@ -112,7 +112,7 @@ See [Configuration](configuration.md) for all available settings.
 
 ```bash
 # All services (microservices mode by default)
-docker compose -f docker/compose.yaml up -d
+docker compose -f deploy/docker/compose.yaml up -d
 ```
 
 This starts all services as separate containers with health checks:
@@ -135,7 +135,7 @@ First visit redirects to `/setup` → create the admin account.
 
 ```bash
 # Check all containers are healthy
-docker compose -f docker/compose.yaml ps
+docker compose -f deploy/docker/compose.yaml ps
 
 # Lightweight liveness/readiness-safe health
 curl -f 'http://localhost:5000/api/health'
@@ -148,7 +148,7 @@ curl -f -H "X-Service-Auth: ${SERVICE_AUTH_SECRET}" \
   'http://localhost:5000/api/v1/health?detail=full&include=services,nodes' | python3 -m json.tool
 
 # Tail logs
-docker compose -f docker/compose.yaml logs -f app
+docker compose -f deploy/docker/compose.yaml logs -f app
 ```
 
 ---
@@ -284,7 +284,7 @@ Caddy automatically provisions a Let's Encrypt certificate. Cloudflare proxies t
 
 ## Production: Docker Compose
 
-The main Compose file (`docker/compose.yaml`) is pre-configured with:
+The main Compose file (`deploy/docker/compose.yaml`) is pre-configured with:
 
 - Resource limits on all containers
 - Garage for S3 storage (internal only, no exposed ports)
@@ -294,7 +294,7 @@ The main Compose file (`docker/compose.yaml`) is pre-configured with:
 For production, create a `.env.prod` with required secrets and use:
 
 ```bash
-docker compose -f docker/compose.yaml --env-file .env.prod up -d
+docker compose -f deploy/docker/compose.yaml --env-file .env.prod up -d
 ```
 
 ### Required Environment Variables
@@ -331,7 +331,7 @@ When using `localhost`, Caddy serves on port 443 with a self-signed certificate.
 
 Docker Swarm is built into Docker Engine — no extra software to install. Use it when you need multiple hosts, rolling updates, or secret management.
 
-A pre-built Swarm stack is at `docker/docker-compose.swarm.yml`.
+A pre-built Swarm stack is at `deploy/docker/docker-compose.swarm.yml`.
 
 Swarm now mirrors the Compose runtime contract: `ai-svc` on `5010`, `scheduler` on `5011`, and `worker` on `5012`. The stack also supports `_FILE` secret environment variables such as `POSTGRES_PASSWORD_FILE`, `SERVICE_AUTH_SECRET_FILE`, and `JWT_SECRET_KEY_FILE`. **Scheduler** and **worker** HTTP healthchecks include a **`start_period` of 90s** so cold starts during rolling updates are less likely to be marked unhealthy before dependencies are ready.
 
@@ -369,7 +369,7 @@ done
 
 Swarm secrets are encrypted at rest and only available to services that reference them:
 
-Create `.env` with `VERSION`, registry settings, and secret source values, then let the deployment helper create the exact external secrets required by `docker/docker-compose.swarm.yml`:
+Create `.env` with `VERSION`, registry settings, and secret source values, then let the deployment helper create the exact external secrets required by `deploy/docker/docker-compose.swarm.yml`:
 
 ```bash
 ./scripts/ops/swarm_deploy.sh --secrets
@@ -475,11 +475,11 @@ For local/lab environments without TLS, configure each Docker daemon to allow in
 cd /path/to/spectra
 
 # Build all images
-docker build -t <registry>:5050/spectra-app:latest -f docker/Dockerfile.api .
-docker build -t <registry>:5050/spectra-ai-svc:latest -f docker/Dockerfile.ai .
-docker build -t <registry>:5050/spectra-scheduler:latest -f docker/Dockerfile.scheduler .
-docker build -t <registry>:5050/spectra-caddy:latest -f docker/Dockerfile.caddy .
-docker build -t <registry>:5050/spectra-worker:latest -f docker/Dockerfile.worker .
+docker build -t <registry>:5050/spectra-app:latest -f deploy/docker/Dockerfile.api .
+docker build -t <registry>:5050/spectra-ai-svc:latest -f deploy/docker/Dockerfile.ai .
+docker build -t <registry>:5050/spectra-scheduler:latest -f deploy/docker/Dockerfile.scheduler .
+docker build -t <registry>:5050/spectra-caddy:latest -f deploy/docker/Dockerfile.caddy .
+docker build -t <registry>:5050/spectra-worker:latest -f deploy/docker/Dockerfile.worker .
 
 # Push all
 for img in spectra-app spectra-ai-svc spectra-scheduler spectra-caddy spectra-worker; do
@@ -519,7 +519,7 @@ REGISTRY=<registry-ip>:5050/
 The compose files use the `${REGISTRY:-}spectra-app:${VERSION:-latest}` pattern, so the registry prefix is applied to all image references automatically.
 
 ```bash
-docker stack deploy -c docker/docker-compose.swarm.yml spectra
+docker stack deploy -c deploy/docker/docker-compose.swarm.yml spectra
 ```
 
 ### Custom Libraries and Modules
@@ -564,7 +564,7 @@ In the Portainer UI: **Environments → Add environment → Docker (Agent)** →
 ### Deploy Spectra as a Portainer Stack
 
 1. In Portainer, go to **Stacks → Add stack**
-2. Paste the contents of `docker/compose.yaml` (or the swarm file for multi-host)
+2. Paste the contents of `deploy/docker/compose.yaml` (or the swarm file for multi-host)
 3. Under **Environment variables**, add `POSTGRES_PASSWORD`, `JWT_SECRET_KEY`, `SERVICE_AUTH_SECRET`, `PLATFORM_DOMAIN`, etc.
 4. Click **Deploy the stack**
 

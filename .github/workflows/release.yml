@@ -86,49 +86,49 @@ jobs:
 
       # ── Run tests before release ──────────────────────────────
       - name: Build Docker test runners
-        run: docker compose -f docker/compose.yaml --profile app --profile test build unit-test-runner test-runner
+        run: docker compose -f deploy/docker/compose.yaml --profile app --profile test build unit-test-runner test-runner
 
       - name: Validate TensorZero config
         run: |
-          docker compose -f docker/compose.yaml --profile test run --rm --no-deps unit-test-runner \
+          docker compose -f deploy/docker/compose.yaml --profile test run --rm --no-deps unit-test-runner \
             "python -c \"import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')\""
 
       - name: Run unit tests with coverage in Docker
         run: |
-          docker compose -f docker/compose.yaml --profile test run --rm unit-test-runner \
+          docker compose -f deploy/docker/compose.yaml --profile test run --rm unit-test-runner \
             "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_platform --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov-report=term-missing --cov-fail-under=70"
 
       - name: Bootstrap Garage for integration tests
         run: |
-          ENV_FILE=../.env.test docker compose -f docker/compose.yaml --profile app --profile test up -d garage
-          GARAGE_CONTAINER="$(docker compose -f docker/compose.yaml ps -q garage)" \
+          ENV_FILE=../../.env.test docker compose -f deploy/docker/compose.yaml --profile app --profile test up -d garage
+          GARAGE_CONTAINER="$(docker compose -f deploy/docker/compose.yaml ps -q garage)" \
           GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}" \
           GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}" \
           GARAGE_PRINT_CREDENTIALS=0 \
-            bash docker/garage-init.sh
+            bash deploy/docker/garage-init.sh
 
       - name: Run integration tests in Docker
         run: |
-          docker compose -f docker/compose.yaml --profile app --profile test run --rm test-runner \
+          docker compose -f deploy/docker/compose.yaml --profile app --profile test run --rm test-runner \
             "python -m pytest tests/integration/ -v --tb=short --timeout=120 --override-ini=addopts= -k 'not live and not e2e'"
 
       # ── Security gate ─────────────────────────────────────────
       - name: Security scan (bandit)
         run: |
-          docker compose -f docker/compose.yaml --profile test run --rm --no-deps unit-test-runner \
+          docker compose -f deploy/docker/compose.yaml --profile test run --rm --no-deps unit-test-runner \
             "bandit -r packages/platform/src/spectra_platform -c pyproject.toml --severity-level high --confidence-level high"
 
       - name: Validate Docker Compose config
-        run: ENV_FILE=../.env.example docker compose --env-file .env.example -f docker/compose.yaml --profile app config --quiet
+        run: ENV_FILE=../../.env.example docker compose --env-file .env.example -f deploy/docker/compose.yaml --profile app config --quiet
 
       - name: Validate new Compose config
-        run: ENV_FILE=../.env.example docker compose --env-file .env.example -f docker/compose.yaml --profile app --profile test --profile targets config --quiet
+        run: ENV_FILE=../../.env.example docker compose --env-file .env.example -f deploy/docker/compose.yaml --profile app --profile test --profile targets config --quiet
 
       - name: Validate Swarm stack config
         env:
           VERSION: ${{ steps.version.outputs.version }}
           GARAGE_RPC_SECRET: release-config-validation
-        run: docker compose --env-file .env.example -f docker/docker-compose.swarm.yml config --quiet
+        run: docker compose --env-file .env.example -f deploy/docker/docker-compose.swarm.yml config --quiet
 
       # ── Build Python package artifacts ────────────────────────
       # GitHub Packages does not provide a PyPI-compatible registry. Release
@@ -177,7 +177,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: docker/Dockerfile.api
+          file: deploy/docker/Dockerfile.api
           push: true
           tags: |
             ${{ env.APP_IMAGE }}:latest
@@ -195,7 +195,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: docker/Dockerfile.ai
+          file: deploy/docker/Dockerfile.ai
           push: true
           tags: |
             ${{ env.AI_IMAGE }}:latest
@@ -213,7 +213,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: docker/Dockerfile.scheduler
+          file: deploy/docker/Dockerfile.scheduler
           push: true
           tags: |
             ${{ env.SCHEDULER_IMAGE }}:latest
@@ -231,7 +231,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: docker/Dockerfile.worker
+          file: deploy/docker/Dockerfile.worker
           push: true
           tags: |
             ${{ env.WORKER_IMAGE }}:latest
@@ -249,7 +249,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: docker/Dockerfile.caddy
+          file: deploy/docker/Dockerfile.caddy
           push: true
           tags: |
             ${{ env.CADDY_IMAGE }}:latest
@@ -360,7 +360,7 @@ jobs:
             TARGET_VERSION_FILE="$STATE_DIR/target-version"
             BACKUP_FILE_MARKER="$STATE_DIR/pending-backup-file"
             BACKUP_DIR="$PWD/data/backups"
-            COMPOSE_FILE="docker/compose.yaml"
+            COMPOSE_FILE="deploy/docker/compose.yaml"
 
             require_file_value() {
               local file_path="$1"
@@ -545,9 +545,9 @@ jobs:
             trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
             printf '%s\n' "${DEPLOY_GHCR_TOKEN}" | docker login ghcr.io --username "${DEPLOY_GHCR_USERNAME}" --password-stdin
 
-            docker compose -f docker/compose.yaml --profile app config >/dev/null
-            docker compose -f docker/compose.yaml --profile app pull
-            docker compose -f docker/compose.yaml --profile app up -d --remove-orphans
+            docker compose -f deploy/docker/compose.yaml --profile app config >/dev/null
+            docker compose -f deploy/docker/compose.yaml --profile app pull
+            docker compose -f deploy/docker/compose.yaml --profile app up -d --remove-orphans
             REMOTE
 
       - name: Post-deploy health check
@@ -657,10 +657,10 @@ jobs:
 
             trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
             printf '%s\n' "${DEPLOY_GHCR_TOKEN}" | docker login ghcr.io --username "${DEPLOY_GHCR_USERNAME}" --password-stdin
-            docker compose -f docker/compose.yaml --profile app config >/dev/null
-            docker compose -f docker/compose.yaml --profile app pull
-            docker compose -f docker/compose.yaml --profile app down --timeout 30
-            docker compose -f docker/compose.yaml up -d db
+            docker compose -f deploy/docker/compose.yaml --profile app config >/dev/null
+            docker compose -f deploy/docker/compose.yaml --profile app pull
+            docker compose -f deploy/docker/compose.yaml --profile app down --timeout 30
+            docker compose -f deploy/docker/compose.yaml up -d db
 
             echo "Waiting for rollback database container to become ready..."
             for i in 1 2 3 4 5 6 7 8 9 10; do
@@ -678,7 +678,7 @@ jobs:
             gunzip -c "$BACKUP_FILE" | docker exec -i spectra-db psql -v ON_ERROR_STOP=1 -U spectra -d spectra
             echo "Database restored from $BACKUP_FILE before rolling back ${TARGET_VERSION}"
 
-            docker compose -f docker/compose.yaml --profile app up -d --remove-orphans
+            docker compose -f deploy/docker/compose.yaml --profile app up -d --remove-orphans
 
             HEALTH_PORT="${HEALTH_PORT:-80}"
             WAIT=2

@@ -10,10 +10,10 @@ import pytest_asyncio
 from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-import spectra_platform.infrastructure.queue as queue_module
-from spectra_platform.core.config import settings
-from spectra_platform.infrastructure.queue import Job, PostgresJobQueue
-from spectra_platform.models.infrastructure import InfrastructureBase, JobQueue
+import spectra_infra.queue as queue_module
+from spectra_common.config import settings
+from spectra_infra.queue import Job, PostgresJobQueue
+from spectra_persistence.models.infrastructure import InfrastructureBase, JobQueue
 
 
 def _queue_database_url() -> str:

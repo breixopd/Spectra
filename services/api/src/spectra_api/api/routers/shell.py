@@ -15,17 +15,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket
 from sqlalchemy import select
 
 from spectra_api.api.dependencies import check_feature_allowed, get_current_active_user, validate_websocket_token
+from spectra_auth.rate_limit import RateLimits, limiter
 from spectra_common.constants import WS_KEEPALIVE_INTERVAL, WS_MAX_MESSAGE_SIZE, WS_MAX_MESSAGES_PER_SECOND
 from spectra_common.tasks import create_safe_task
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.core.database import async_session_maker
-from spectra_platform.models.audit_log import AuditEventType
-from spectra_platform.models.finding import Finding
-from spectra_platform.models.mission import Mission
-from spectra_platform.models.user import User
-from spectra_platform.services.shell.relay_client import shell_relay_client
-from spectra_platform.services.shell.session_manager import shell_manager
-from spectra_platform.services.system.audit import log_event as audit_log_event
+from spectra_infra.shell.relay_client import shell_relay_client
+from spectra_infra.shell.session_manager import shell_manager
+from spectra_persistence.database import async_session_maker
+from spectra_persistence.models.audit_log import AuditEventType
+from spectra_persistence.models.finding import Finding
+from spectra_persistence.models.mission import Mission
+from spectra_persistence.models.user import User
+from spectra_system.audit import log_event as audit_log_event
 
 router = APIRouter(prefix="/shell", tags=["Shell"])
 logger = logging.getLogger(__name__)

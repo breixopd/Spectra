@@ -1,6 +1,6 @@
 """Tests for mission abuse-prevention checks."""
 
-from spectra_platform.services.compliance.mission_abuse import evaluate_mission_abuse
+from spectra_system.compliance.mission_abuse import evaluate_mission_abuse
 
 
 def test_blocks_broad_public_cidr_even_with_authorization():

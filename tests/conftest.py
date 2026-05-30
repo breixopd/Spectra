@@ -44,9 +44,9 @@ def _is_live_test(item: pytest.Item) -> bool:
 @pytest_asyncio.fixture
 async def real_mission_manager():
     """Provide a real MissionManager instance for live tests."""
-    import spectra_ai.llm as llm_module
-    from spectra_ai.llm import get_default_llm_client
-    from spectra_platform.services.mission.manager import MissionManager
+    import spectra_ai_core.llm as llm_module
+    from spectra_ai_core.llm import get_default_llm_client
+    from spectra_mission.manager import MissionManager
 
     # Use real LLM client (configured via env vars/settings)
     real_llm = get_default_llm_client()
@@ -56,7 +56,7 @@ async def real_mission_manager():
     llm_module._global_llm_client = real_llm
 
     # Patch VotingSystem to be more lenient for tests
-    from spectra_platform.services.ai import consensus
+    from spectra_ai_core import consensus
 
     original_init = consensus.VotingSystem.__init__
 
@@ -149,11 +149,11 @@ def mock_websocket_for_unit_tests(request):
     mock_lifespan_create_task = MagicMock(return_value=None)
 
     with (
-        patch("spectra_platform.mission.core.websocket.manager.broadcast", mock_broadcast),
-        patch("spectra_platform.mission.core.websocket.manager.broadcast_event", mock_broadcast_event),
-        patch("spectra_platform.infrastructure.events.EventBus.emit_sync", mock_emit_sync),
-        patch("spectra_platform.infrastructure.background_tasks.cache_cleanup_loop", mock_cache_loop),
-        patch("spectra_platform.infrastructure.background_tasks.periodic_cleanup_loop", mock_periodic_loop),
+        patch("spectra_mission.core.websocket.manager.broadcast", mock_broadcast),
+        patch("spectra_mission.core.websocket.manager.broadcast_event", mock_broadcast_event),
+        patch("spectra_infra.events.EventBus.emit_sync", mock_emit_sync),
+        patch("spectra_infra.background_tasks.cache_cleanup_loop", mock_cache_loop),
+        patch("spectra_infra.background_tasks.periodic_cleanup_loop", mock_periodic_loop),
         patch("spectra_api.bootstrap.lifespan.asyncio.create_task", mock_lifespan_create_task),
         patch("spectra_api.api.routers.shell.asyncio.create_task", mock_lifespan_create_task),
         patch("asyncio.create_task", safe_create_task),
@@ -167,7 +167,7 @@ def disable_rate_limiting_for_unit_tests(request):
     if _is_live_test(request.node):
         yield
         return
-    from spectra_platform.auth.rate_limit import limiter
+    from spectra_auth.rate_limit import limiter
 
     original = limiter.enabled
     limiter.enabled = False
@@ -198,8 +198,8 @@ def mock_llm_for_unit_tests(request):
         return mock_instance
 
     with (
-        patch("spectra_ai.llm.get_llm_client", patched_get_llm_client),
-        patch("spectra_ai.llm.get_default_llm_client", patched_get_default_llm_client),
+        patch("spectra_ai_core.llm.get_llm_client", patched_get_llm_client),
+        patch("spectra_ai_core.llm.get_default_llm_client", patched_get_default_llm_client),
     ):
         yield
 
@@ -236,7 +236,7 @@ def mock_database_for_unit_tests(request):
         async def __aexit__(self, *args):
             pass
 
-    with patch("spectra_platform.core.database.async_session_maker", MockSessionMaker()):
+    with patch("spectra_persistence.database.async_session_maker", MockSessionMaker()):
         yield mock_session
 
 
@@ -248,7 +248,7 @@ async def mission_manager(mock_websocket_for_unit_tests, mock_database_for_unit_
     For live tests, this returns a real instance (via real_mission_manager).
     For unit/integration tests, it returns an instance with mocked dependencies.
     """
-    from spectra_platform.services.mission.manager import MissionManager
+    from spectra_mission.manager import MissionManager
     from tests.mocks.llm import MockLLMClient
 
     # If it's a live test, we should ideally use real_mission_manager,
@@ -265,10 +265,10 @@ async def mission_manager(mock_websocket_for_unit_tests, mock_database_for_unit_
 
     # Initialize agents with a mock LLM to avoid None errors in tests
     mock_llm = MockLLMClient()
-    from spectra_platform.services.ai.agents.mission_controller import MissionController
-    from spectra_platform.services.ai.agents.scope import ScopeAgent
-    from spectra_platform.services.ai.consensus import VotingSystem
-    from spectra_platform.services.mission.executor import MissionExecutor
+    from spectra_ai_core.agents.mission_controller import MissionController
+    from spectra_ai_core.agents.scope import ScopeAgent
+    from spectra_ai_core.consensus import VotingSystem
+    from spectra_mission.executor import MissionExecutor
 
     manager.execution.mission_controller = MissionController(mock_llm)
     manager.execution.scope_agent = ScopeAgent(mock_llm)
@@ -284,13 +284,13 @@ def reset_service_singletons():
     """Reset service singletons and caches between tests to prevent state leakage."""
     yield
     try:
-        import spectra_platform.services.exploit_db as _edb_mod
+        import spectra_ai_core.exploit_db as _edb_mod
 
         _edb_mod._instance = None
     except Exception:
         pass
     try:
-        import spectra_platform.services.ai.cve_intel as _cve_mod
+        import spectra_ai_core.cve_intel as _cve_mod
 
         _cve_mod._cve_knowledge_base = None
         _cve_mod._last_nvd_request = 0.0
@@ -329,5 +329,5 @@ def mock_storage_for_unit_tests(request):
     mock_storage.health_check = AsyncMock(return_value={"status": "healthy", "mode": "s3"})
     mock_storage.close = AsyncMock()
 
-    with patch("spectra_platform.services.storage.service._storage_service", mock_storage):
+    with patch("spectra_storage_policy.storage.service._storage_service", mock_storage):
         yield mock_storage

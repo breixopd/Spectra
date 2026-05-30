@@ -83,7 +83,7 @@ run_api_e2e() {
   fi
   echo ">>> [full-test-matrix] Async API e2e (tests/e2e/test_api_live.py)"
   export ENV_FILE="${ROOT}/.env.test"
-  COMPOSE=(docker compose -f "${ROOT}/docker/compose.yaml")
+  COMPOSE=(docker compose -f "${ROOT}/deploy/docker/compose.yaml")
   echo ">>> [full-test-matrix] compose --profile app up (stack for API e2e)"
   ENV_FILE="${ENV_FILE}" "${COMPOSE[@]}" --profile app up -d --build
 

@@ -19,24 +19,24 @@ from spectra_api.api.dependencies import (
 from spectra_api.api.schemas.common import PaginatedResponse
 from spectra_api.api.schemas.mission import MissionFindingSummary, MissionResponse, StartMissionRequest
 from spectra_api.authz import Permission, require_permission
+from spectra_auth.rate_limit import RateLimits, limiter
 from spectra_common.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from spectra_common.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.core.database import get_async_session
-from spectra_platform.mission.core.enums import MissionMilestone, MissionMilestoneStatus
-from spectra_platform.models.audit_log import AuditEventType
-from spectra_platform.models.user import User
-from spectra_platform.models.user_preferences import UserPreferences
-from spectra_platform.repositories.mission import MissionRepository
-from spectra_platform.services.compliance.mission_abuse import evaluate_mission_abuse
-from spectra_platform.services.mission.manager import mission_manager
-from spectra_platform.services.mission.output_model import (
+from spectra_domain.enums import MissionMilestone, MissionMilestoneStatus
+from spectra_mission.manager import mission_manager
+from spectra_mission.output_model import (
     get_mission_findings as get_mission_output_findings,
 )
-from spectra_platform.services.mission.output_model import (
+from spectra_mission.output_model import (
     get_mission_summary_dict,
 )
-from spectra_platform.services.system.audit import log_event as audit_log_event
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.audit_log import AuditEventType
+from spectra_persistence.models.user import User
+from spectra_persistence.models.user_preferences import UserPreferences
+from spectra_persistence.repositories.mission import MissionRepository
+from spectra_system.audit import log_event as audit_log_event
+from spectra_system.compliance.mission_abuse import evaluate_mission_abuse
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ def _mission_response_fields(
     current_phase: str | None,
     pentest_framework: str | None,
 ) -> dict[str, Any]:
-    from spectra_platform.services.mission.framework_progress import (
+    from spectra_mission.framework_progress import (
         framework_display_name,
         framework_phase_timeline,
         normalize_pentest_framework,
@@ -158,7 +158,7 @@ async def start_mission(
 
     if mission_request.roe:
         try:
-            from spectra_platform.models.roe import RulesOfEngagement
+            from spectra_persistence.models.roe import RulesOfEngagement
 
             roe = RulesOfEngagement(
                 mission_id=mission_id,
@@ -255,7 +255,7 @@ async def list_missions(
 
     from sqlalchemy import func, select
 
-    from spectra_platform.models.mission import Mission
+    from spectra_persistence.models.mission import Mission
 
     base = select(Mission)
 

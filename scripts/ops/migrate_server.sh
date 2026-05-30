@@ -51,7 +51,7 @@ export_bundle() {
 
     # 1. Database dump
     log "Dumping database..."
-    docker compose -f docker/compose.yaml exec -T db \
+    docker compose -f deploy/docker/compose.yaml exec -T db \
         pg_dump -U spectra spectra -Fc > "${output}/db/spectra.dump"
     log "Database dump: $(du -h "${output}/db/spectra.dump" | cut -f1)"
 
@@ -59,7 +59,7 @@ export_bundle() {
     log "Exporting S3 buckets..."
     for bucket in spectra-missions spectra-sessions spectra-knowledge spectra-backups; do
         mkdir -p "${output}/s3/${bucket}"
-        docker compose -f docker/compose.yaml exec -T garage \
+        docker compose -f deploy/docker/compose.yaml exec -T garage \
             /garage bucket list 2>/dev/null | grep -q "${bucket}" && \
         log "  Exporting ${bucket}..." || { warn "  Bucket ${bucket} not found, skipping"; continue; }
     done
@@ -103,7 +103,7 @@ import_bundle() {
     # 2. Database restore
     if [[ "${skip_db}" != "true" ]] && [[ -f "${bundle}/db/spectra.dump" ]]; then
         log "Restoring database..."
-        docker compose -f docker/compose.yaml exec -T db \
+        docker compose -f deploy/docker/compose.yaml exec -T db \
             pg_restore -U spectra -d spectra --clean --if-exists \
             < "${bundle}/db/spectra.dump" 2>/dev/null || warn "Some restore warnings (expected for clean install)"
         log "Database restored"
@@ -112,7 +112,7 @@ import_bundle() {
     # 3. VPN configs (stored in S3 — included in S3 data migration)
     log "VPN configs are in S3 (spectra-sessions bucket, vpn/ prefix) — no filesystem restore needed"
 
-    log "Import complete. Restart services: docker compose -f docker/compose.yaml restart"
+    log "Import complete. Restart services: docker compose -f deploy/docker/compose.yaml restart"
 }
 
 verify_migration() {
@@ -125,12 +125,12 @@ verify_migration() {
 
     # Check DB
     local user_count
-    user_count=$(docker compose -f docker/compose.yaml exec -T db \
+    user_count=$(docker compose -f deploy/docker/compose.yaml exec -T db \
         psql -U spectra -d spectra -t -c "SELECT COUNT(*) FROM users;" 2>/dev/null | tr -d ' ')
     log "Users in database: ${user_count}"
 
     local mission_count
-    mission_count=$(docker compose -f docker/compose.yaml exec -T db \
+    mission_count=$(docker compose -f deploy/docker/compose.yaml exec -T db \
         psql -U spectra -d spectra -t -c "SELECT COUNT(*) FROM missions;" 2>/dev/null | tr -d ' ')
     log "Missions in database: ${mission_count}"
 

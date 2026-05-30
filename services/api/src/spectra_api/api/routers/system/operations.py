@@ -12,11 +12,11 @@ from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.dependencies import get_current_superuser
-from spectra_platform.core.database import async_session_maker, get_async_session
-from spectra_platform.models.audit_log import AuditEventType
-from spectra_platform.models.mission import Mission
-from spectra_platform.models.user import User
-from spectra_platform.services.system.audit import log_event as audit_log_event
+from spectra_persistence.database import async_session_maker, get_async_session
+from spectra_persistence.models.audit_log import AuditEventType
+from spectra_persistence.models.mission import Mission
+from spectra_persistence.models.user import User
+from spectra_system.audit import log_event as audit_log_event
 
 from .schemas import (
     ClearMissionsRequest,

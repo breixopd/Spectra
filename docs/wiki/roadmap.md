@@ -15,7 +15,7 @@ Future improvements plan. Items prioritized by impact and complexity.
 **Status**: Core implementation complete.
 
 - Core API router mounting — `spectra_api.routing`: full surface for `api` / `all` / `""`; other values health-only (fail closed). AI/worker/scheduler use separate ASGI apps.
-- Per-service Dockerfiles (`docker/Dockerfile.api`, `docker/Dockerfile.ai`, `docker/Dockerfile.scheduler`, `docker/Dockerfile.worker`)
+- Per-service Dockerfiles (`deploy/docker/Dockerfile.api`, `deploy/docker/Dockerfile.ai`, `deploy/docker/Dockerfile.scheduler`, `deploy/docker/Dockerfile.worker`)
 - Per-service requirements files (`requirements/ai.txt`, `requirements/scheduler.txt`, `requirements/worker.txt`)
 - Per-service image optimization — scheduler: ~558 MB, AI: ~1.13 GB, API: ~1.34 GB, worker: ~4.13 GB
 - Import boundary enforcement (`scripts/check_import_boundaries.py`) — shared packages cannot import service-specific code

@@ -18,23 +18,23 @@ Each service has a dedicated Dockerfile. Each image copies only the dependencies
 
 ```bash
 # Build a specific service image
-docker build -f docker/Dockerfile.api -t spectra-app .
-docker build -f docker/Dockerfile.ai -t spectra-ai-svc .
-docker build -f docker/Dockerfile.scheduler -t spectra-scheduler .
-docker build -f docker/Dockerfile.worker -t spectra-worker .
+docker build -f deploy/docker/Dockerfile.api -t spectra-app .
+docker build -f deploy/docker/Dockerfile.ai -t spectra-ai-svc .
+docker build -f deploy/docker/Dockerfile.scheduler -t spectra-scheduler .
+docker build -f deploy/docker/Dockerfile.worker -t spectra-worker .
 
 # Or via docker compose (builds all services)
-docker compose -f docker/compose.yaml build
+docker compose -f deploy/docker/compose.yaml build
 ```
 
 ### Image Sizes
 
 | Service | Dockerfile | Requirements File | Approx. Size |
 |---------|--------|-------------------|--------------|
-| **Scheduler** | `docker/Dockerfile.scheduler` | `requirements/scheduler.txt` | ~558 MB |
-| **AI Service** | `docker/Dockerfile.ai` | `requirements/ai.txt` | ~1.13 GB |
-| **API** | `docker/Dockerfile.api` | `requirements/app.txt` | ~1.34 GB |
-| **Worker** | `docker/Dockerfile.worker` | `requirements/worker.txt` | ~4.13 GB |
+| **Scheduler** | `deploy/docker/Dockerfile.scheduler` | `requirements/scheduler.txt` | ~558 MB |
+| **AI Service** | `deploy/docker/Dockerfile.ai` | `requirements/ai.txt` | ~1.13 GB |
+| **API** | `deploy/docker/Dockerfile.api` | `requirements/app.txt` | ~1.34 GB |
+| **Worker** | `deploy/docker/Dockerfile.worker` | `requirements/worker.txt` | ~4.13 GB |
 
 ### Required Environment Variables (Production)
 
@@ -66,7 +66,7 @@ After a **clean `git pull`** on the host, mirror the CI unit + coverage gate:
 ./scripts/ops/vps-verify-tests.sh
 ```
 
-The script lives at `scripts/ops/vps-verify-tests.sh` and uses `docker/compose.yaml`
+The script lives at `scripts/ops/vps-verify-tests.sh` and uses `deploy/docker/compose.yaml`
 profile `test`. A tree that is missing new tests or still on an old commit can
 show **below 70%** aggregate coverage even when `main` is green — always verify
 `git rev-parse HEAD` matches the branch you intend.
@@ -114,7 +114,7 @@ Services can be scaled independently. The most common scaling target is the work
 
 ```bash
 # Scale workers horizontally
-docker compose -f docker/compose.yaml up -d --scale worker=3
+docker compose -f deploy/docker/compose.yaml up -d --scale worker=3
 
 # Workers use SELECT ... FOR UPDATE SKIP LOCKED, so multiple instances
 # naturally distribute jobs without conflicts.
@@ -137,7 +137,7 @@ The AI service can also be scaled for high LLM throughput. The scheduler should 
 |---------|-------|---------|
 | **db** | `pgvector/pgvector:pg16` | PostgreSQL + pgvector (persistent state, PostgreSQL-backed app cache, job queue, LISTEN/NOTIFY backbone, RAG) |
 | **redis** | `redis:7-alpine` | Shared distributed rate-limiting backend |
-| **caddy** | `ghcr.io/<owner>/spectra-caddy` | Custom Caddy image from `docker/Dockerfile.caddy` (TLS, security headers, WebSocket, bundled rate-limit module) |
+| **caddy** | `ghcr.io/<owner>/spectra-caddy` | Custom Caddy image from `deploy/docker/Dockerfile.caddy` (TLS, security headers, WebSocket, bundled rate-limit module) |
 | **app** | `ghcr.io/<owner>/spectra-app` | FastAPI backend (internal port 5000) |
 | **ai-svc** | `ghcr.io/<owner>/spectra-ai-svc` | AI/LLM service (internal port 5010) |
 | **scheduler** | `ghcr.io/<owner>/spectra-scheduler` | Background tasks (internal port 5011) |
@@ -216,14 +216,14 @@ APP_BASE_URL=https://spectra.example.com ./scripts/test.sh live-smoke
 
 ```bash
 # 1. Start services
-docker compose -f docker/compose.yaml up -d
+docker compose -f deploy/docker/compose.yaml up -d
 
 # 2. Bootstrap S3 storage
-bash docker/garage-init.sh
+bash deploy/docker/garage-init.sh
 
 # 3. Copy the printed S3 credentials to your .env file
 # 4. Restart to pick up new env vars
-docker compose -f docker/compose.yaml restart
+docker compose -f deploy/docker/compose.yaml restart
 
 # 5. Open /setup in your browser to create the admin account
 ```
@@ -452,8 +452,8 @@ Use this section for rollback mechanics. For the broader operator workflow aroun
 ```bash
 cd /opt/spectra
 export VERSION=2026.03.06
-docker compose -f docker/compose.yaml pull
-docker compose -f docker/compose.yaml up -d
+docker compose -f deploy/docker/compose.yaml pull
+docker compose -f deploy/docker/compose.yaml up -d
 curl -f https://spectra.example.com/api/health
 ```
 

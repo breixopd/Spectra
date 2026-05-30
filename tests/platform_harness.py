@@ -32,7 +32,7 @@ def get_env_bool(name: str, default: bool = False) -> bool:
 
 def get_app_base_url() -> str:
     # Default matches docker/compose app publish (5000:5000). Use in-container URL (http://app:5000)
-    # when running under compose (see load-test-runner environment in docker/compose.yaml).
+    # when running under compose (see load-test-runner environment in deploy/docker/compose.yaml).
     return os.getenv("LOAD_TEST_APP_URL", "http://127.0.0.1:5000")
 
 

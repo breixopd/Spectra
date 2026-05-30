@@ -17,7 +17,7 @@ Split into submodules:
 
 from __future__ import annotations
 
-from spectra_platform.services.maintenance import run_all_cleanup
+from spectra_system.maintenance import run_all_cleanup
 from spectra_worker.command_jobs import execute_script_job, run_command_job
 from spectra_worker.lifecycle import heartbeat_loop, shutdown, startup
 from spectra_worker.notification_jobs import (

@@ -11,14 +11,14 @@ from fastapi import HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from spectra_platform.auth.security import (
+from spectra_auth.security import (
     JWTError,
     create_access_token,
     create_refresh_token,
     decode_token,
 )
-from spectra_platform.core.config import settings
-from spectra_platform.models.user import User
+from spectra_common.config import settings
+from spectra_persistence.models.user import User
 
 logger = logging.getLogger(__name__)
 

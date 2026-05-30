@@ -12,8 +12,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-import spectra_platform.services.ai.knowledge as knowledge_module
-from spectra_platform.services.ai.knowledge import (
+import spectra_ai_core.knowledge as knowledge_module
+from spectra_ai_core.knowledge import (
     PTES_METHODOLOGY,
     close_rag_service,
     get_available_tools_context,
@@ -102,7 +102,7 @@ class TestGetExploitContext:
     async def test_successful_query_returns_formatted_context(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = "CVE-2021-44228 exploit data"
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             result = await get_exploit_context("log4j exploit", _target="10.0.0.1", max_tokens=500)
 
         assert "Past Exploits & CVEs" in result
@@ -117,7 +117,7 @@ class TestGetExploitContext:
     async def test_empty_result_returns_empty_string(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = ""
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             result = await get_exploit_context("unknown query")
 
         assert result == ""
@@ -126,7 +126,7 @@ class TestGetExploitContext:
     async def test_with_user_id_splits_tenant_and_cve_queries(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt = AsyncMock(side_effect=["tenant-ctx", "cve-ctx"])
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             result = await get_exploit_context(
                 "sqli",
                 max_tokens=1000,
@@ -152,7 +152,7 @@ class TestRAGBackendSelection:
     async def test_get_rag_service_uses_postgres_backend(self):
         await close_rag_service()
         try:
-            with patch("spectra_platform.services.ai.knowledge.RAGService") as mock_postgres_rag:
+            with patch("spectra_ai_core.knowledge.RAGService") as mock_postgres_rag:
                 mock_instance = AsyncMock()
                 mock_postgres_rag.return_value = mock_instance
 
@@ -168,7 +168,7 @@ class TestRAGBackendSelection:
     async def test_get_rag_service_returns_singleton_instance(self):
         await close_rag_service()
         try:
-            with patch("spectra_platform.services.ai.knowledge.RAGService") as mock_postgres_rag:
+            with patch("spectra_ai_core.knowledge.RAGService") as mock_postgres_rag:
                 rag_instance = AsyncMock()
                 mock_postgres_rag.return_value = rag_instance
 
@@ -185,7 +185,7 @@ class TestRAGBackendSelection:
     async def test_none_result_returns_empty_string(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = None
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             result = await get_exploit_context("query")
 
         assert result == ""
@@ -193,7 +193,7 @@ class TestRAGBackendSelection:
     @pytest.mark.asyncio
     async def test_exception_returns_empty_string(self):
         with patch(
-            "spectra_platform.services.ai.knowledge.get_rag_service",
+            "spectra_ai_core.knowledge.get_rag_service",
             side_effect=RuntimeError("Connection failed"),
         ):
             result = await get_exploit_context("query")
@@ -204,7 +204,7 @@ class TestRAGBackendSelection:
     async def test_rag_method_exception_returns_empty_string(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.side_effect = RuntimeError("search error")
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             result = await get_exploit_context("query")
 
         assert result == ""
@@ -227,7 +227,7 @@ class TestGetToolUsageContext:
             {"service": "ssh", "port": 22},
         ]
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             result = await get_tool_usage_context("discovery", services=services)
 
         assert "Past Successful Actions" in result
@@ -243,7 +243,7 @@ class TestGetToolUsageContext:
     async def test_with_empty_services(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = "tool data"
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             result = await get_tool_usage_context("enumeration", services=[])
 
         assert "Past Successful Actions" in result
@@ -255,7 +255,7 @@ class TestGetToolUsageContext:
     async def test_with_none_services(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = "context"
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             result = await get_tool_usage_context("exploitation", services=None)
 
         assert "Past Successful Actions" in result
@@ -264,7 +264,7 @@ class TestGetToolUsageContext:
     async def test_empty_rag_result(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = ""
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             result = await get_tool_usage_context("scope")
 
         assert result == ""
@@ -272,7 +272,7 @@ class TestGetToolUsageContext:
     @pytest.mark.asyncio
     async def test_exception_returns_empty_string(self):
         with patch(
-            "spectra_platform.services.ai.knowledge.get_rag_service",
+            "spectra_ai_core.knowledge.get_rag_service",
             side_effect=ConnectionError("down"),
         ):
             result = await get_tool_usage_context("discovery")
@@ -290,7 +290,7 @@ class TestGetToolUsageContext:
             {"service": "smtp"},
         ]
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             await get_tool_usage_context("discovery", services=services)
 
         call_args = mock_rag_service.get_context_for_prompt.call_args
@@ -301,7 +301,7 @@ class TestGetToolUsageContext:
     async def test_passes_user_and_exclude_session(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = ""
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             await get_tool_usage_context(
                 "discovery",
                 services=[{"service": "http"}],
@@ -326,7 +326,7 @@ class TestGetMissionContext:
     async def test_with_target(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = "past mission data"
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             result = await get_mission_context("scan network", target="10.0.0.0/24")
 
         assert "Past Successful Approaches" in result
@@ -341,7 +341,7 @@ class TestGetMissionContext:
     async def test_passes_user_and_exclude_session_to_rag(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = ""
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             await get_mission_context(
                 "directive",
                 target="t.example",
@@ -360,7 +360,7 @@ class TestGetMissionContext:
     async def test_without_target(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = "context"
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             result = await get_mission_context("enumerate services", target=None)
 
         assert "Past Successful Approaches" in result
@@ -373,7 +373,7 @@ class TestGetMissionContext:
     async def test_empty_result_returns_empty_string(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = ""
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             result = await get_mission_context("directive")
 
         assert result == ""
@@ -381,7 +381,7 @@ class TestGetMissionContext:
     @pytest.mark.asyncio
     async def test_exception_returns_empty_string(self):
         with patch(
-            "spectra_platform.services.ai.knowledge.get_rag_service",
+            "spectra_ai_core.knowledge.get_rag_service",
             side_effect=RuntimeError("fail"),
         ):
             result = await get_mission_context("directive", target="host")
@@ -433,7 +433,7 @@ class TestGetAvailableToolsContext:
         mock_registry.sync_status_from_cache = AsyncMock()
         mock_registry.list_tools.return_value = tools
 
-        with patch("spectra_platform.services.tools.registry.get_registry", return_value=mock_registry):
+        with patch("spectra_tools_core.registry.get_registry", return_value=mock_registry):
             result = await get_available_tools_context(grouped=True)
 
         assert "Available Security Tools" in result
@@ -462,7 +462,7 @@ class TestGetAvailableToolsContext:
         mock_registry.sync_status_from_cache = AsyncMock()
         mock_registry.list_tools.return_value = tools
 
-        with patch("spectra_platform.services.tools.registry.get_registry", return_value=mock_registry):
+        with patch("spectra_tools_core.registry.get_registry", return_value=mock_registry):
             result = await get_available_tools_context(grouped=False)
 
         assert "Security Tools" in result
@@ -489,7 +489,7 @@ class TestGetAvailableToolsContext:
         mock_registry.sync_status_from_cache = AsyncMock()
         mock_registry.list_tools.return_value = tools
 
-        with patch("spectra_platform.services.tools.registry.get_registry", return_value=mock_registry):
+        with patch("spectra_tools_core.registry.get_registry", return_value=mock_registry):
             result = await get_available_tools_context(grouped=False)
 
         assert "auto-install" in result
@@ -500,7 +500,7 @@ class TestGetAvailableToolsContext:
         mock_registry.sync_status_from_cache = AsyncMock()
         mock_registry.list_tools.return_value = []
 
-        with patch("spectra_platform.services.tools.registry.get_registry", return_value=mock_registry):
+        with patch("spectra_tools_core.registry.get_registry", return_value=mock_registry):
             result = await get_available_tools_context(grouped=True)
 
         assert result == ""
@@ -508,7 +508,7 @@ class TestGetAvailableToolsContext:
     @pytest.mark.asyncio
     async def test_exception_returns_empty_string(self):
         with patch(
-            "spectra_platform.services.tools.registry.get_registry",
+            "spectra_tools_core.registry.get_registry",
             side_effect=ImportError("no module"),
         ):
             result = await get_available_tools_context()
@@ -524,7 +524,7 @@ class TestGetAvailableToolsContext:
         mock_registry.sync_status_from_cache = AsyncMock(side_effect=RuntimeError("cache down"))
         mock_registry.list_tools.return_value = tools
 
-        with patch("spectra_platform.services.tools.registry.get_registry", return_value=mock_registry):
+        with patch("spectra_tools_core.registry.get_registry", return_value=mock_registry):
             result = await get_available_tools_context(grouped=True)
 
         assert "Nmap" in result
@@ -542,7 +542,7 @@ class TestIndexExploitAttempt:
     async def test_successful_indexing(self, mock_rag_service):
         mock_rag_service.index_document.return_value = True
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             result = await index_exploit_attempt(
                 vector_name="SQL Injection on login",
                 vector_type="exploit",
@@ -571,7 +571,7 @@ class TestIndexExploitAttempt:
     async def test_failed_exploit_uses_failure_doc_type(self, mock_rag_service):
         mock_rag_service.index_document.return_value = True
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             result = await index_exploit_attempt(
                 vector_name="XSS attempt",
                 vector_type="exploit",
@@ -594,7 +594,7 @@ class TestIndexExploitAttempt:
     @pytest.mark.asyncio
     async def test_failure_returns_false(self):
         with patch(
-            "spectra_platform.services.ai.knowledge.get_rag_service",
+            "spectra_ai_core.knowledge.get_rag_service",
             side_effect=RuntimeError("connection refused"),
         ):
             result = await index_exploit_attempt(
@@ -618,7 +618,7 @@ class TestIndexExploitAttempt:
     async def test_index_document_exception_returns_false(self, mock_rag_service):
         mock_rag_service.index_document.side_effect = RuntimeError("write error")
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             result = await index_exploit_attempt(
                 vector_name="test",
                 vector_type="exploit",
@@ -641,7 +641,7 @@ class TestIndexExploitAttempt:
         mock_rag_service.index_document.return_value = True
         long_output = "x" * 1000
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             await index_exploit_attempt(
                 vector_name="test",
                 vector_type="exploit",
@@ -667,7 +667,7 @@ class TestIndexExploitAttempt:
     async def test_document_metadata_contains_tool_and_mission(self, mock_rag_service):
         mock_rag_service.index_document.return_value = True
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             await index_exploit_attempt(
                 vector_name="test",
                 vector_type="exploit",
@@ -693,7 +693,7 @@ class TestIndexExploitAttempt:
     async def test_user_id_in_metadata_when_passed(self, mock_rag_service):
         mock_rag_service.index_document.return_value = True
 
-        with patch("spectra_platform.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch("spectra_ai_core.knowledge.get_rag_service", return_value=mock_rag_service):
             await index_exploit_attempt(
                 vector_name="test",
                 vector_type="exploit",

@@ -2,8 +2,7 @@
 
 import pytest
 
-from spectra_platform.mission.core.enums import MissionStatus
-from spectra_platform.services.ai.agents.base import (
+from spectra_ai_core.agents.base import (
     ActionRisk,
     Agent,
     AgentAction,
@@ -11,16 +10,17 @@ from spectra_platform.services.ai.agents.base import (
     AgentResult,
     AgentRole,
 )
-from spectra_platform.services.ai.agents.exploit_verifier import (
+from spectra_ai_core.agents.exploit_verifier import (
     FAILURE_PATTERNS,
     SUCCESS_PATTERNS,
     ExploitVerifierAgent,
     ExploitVerifierInput,
 )
-from spectra_platform.services.ai.agents.reporter import ReporterAgent
-from spectra_platform.services.ai.blackboard import MissionBlackboard, _blackboards, get_blackboard, remove_blackboard
-from spectra_platform.services.ai.consensus import VotingConfig, VotingSystem
-from spectra_platform.services.mission.task_tree import PentestTaskTree, TaskStatus
+from spectra_ai_core.agents.reporter import ReporterAgent
+from spectra_ai_core.blackboard import MissionBlackboard, _blackboards, get_blackboard, remove_blackboard
+from spectra_ai_core.consensus import VotingConfig, VotingSystem
+from spectra_domain.enums import MissionStatus
+from spectra_mission.task_tree import PentestTaskTree, TaskStatus
 from tests.mocks.llm import MockLLMClient
 
 # ---- Fixtures ----
@@ -282,14 +282,14 @@ class TestConfigurableConsensus:
 
 class TestPOCPromptMoved:
     def test_poc_prompt_in_prompts_module(self):
-        from spectra_ai.prompts import POC_DEVELOPER_PROMPT
+        from spectra_ai_core.prompts import POC_DEVELOPER_PROMPT
 
         assert "Exploit Developer" in POC_DEVELOPER_PROMPT
         assert "{target}" in POC_DEVELOPER_PROMPT
 
     def test_poc_developer_uses_prompt_from_prompts_module(self):
         """Verify the poc_developer module no longer defines its own prompt."""
-        import spectra_ai.prompts as prompts_mod
+        import spectra_ai_core.prompts as prompts_mod
 
         assert hasattr(prompts_mod, "POC_DEVELOPER_PROMPT")
 
@@ -512,19 +512,19 @@ class TestMissionFSMIntegration:
     @pytest.fixture(autouse=True)
     def _writable_data_root(self, tmp_path, monkeypatch):
         monkeypatch.setattr(
-            "spectra_platform.services.mission.mission.data_path",
+            "spectra_mission.mission.data_path",
             lambda *parts: tmp_path / "data" / "/".join(str(p) for p in parts),
         )
 
     def test_mission_has_fsm(self):
-        from spectra_platform.services.mission.mission import Mission
+        from spectra_mission.mission import Mission
 
         m = Mission("10.0.0.1", "test")
         assert hasattr(m, "fsm")
         assert m.fsm.state == MissionStatus.CREATED
 
     def test_set_status_valid_transition(self):
-        from spectra_platform.services.mission.mission import Mission
+        from spectra_mission.mission import Mission
 
         m = Mission("10.0.0.1", "test")
         m.set_status("initializing")
@@ -532,7 +532,7 @@ class TestMissionFSMIntegration:
         assert m.fsm.state == MissionStatus.INITIALIZING
 
     def test_set_status_invalid_transition_still_sets_raw(self):
-        from spectra_platform.services.mission.mission import Mission
+        from spectra_mission.mission import Mission
 
         m = Mission("10.0.0.1", "test")
         # CREATED -> COMPLETED is invalid, but raw status still updates
@@ -542,7 +542,7 @@ class TestMissionFSMIntegration:
         assert m.fsm.state == MissionStatus.CREATED
 
     def test_set_status_unknown_value(self):
-        from spectra_platform.services.mission.mission import Mission
+        from spectra_mission.mission import Mission
 
         m = Mission("10.0.0.1", "test")
         # "running" is not a direct FSM enum label for CREATED→…

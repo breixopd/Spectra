@@ -45,19 +45,19 @@ Supporting infrastructure:
 Production services use dedicated Dockerfiles with per-service dependency files:
 
 ```text
-docker/Dockerfile.api        → installs requirements/app.txt, runs spectra_api.main:app
-docker/Dockerfile.ai         → installs requirements/ai.txt, runs spectra_ai.main:app
-docker/Dockerfile.scheduler  → installs requirements/scheduler.txt, runs spectra_scheduler.main:app
-docker/Dockerfile.worker     → installs requirements/worker.txt, runs spectra_worker.main:app
+deploy/docker/Dockerfile.api        → installs requirements/app.txt, runs spectra_api.main:app
+deploy/docker/Dockerfile.ai         → installs requirements/ai.txt, runs spectra_ai.main:app
+deploy/docker/Dockerfile.scheduler  → installs requirements/scheduler.txt, runs spectra_scheduler.main:app
+deploy/docker/Dockerfile.worker     → installs requirements/worker.txt, runs spectra_worker.main:app
 ```
 
 Build a specific service image:
 
 ```bash
-docker build -f docker/Dockerfile.api -t spectra-api:local .
-docker build -f docker/Dockerfile.ai -t spectra-ai:local .
-docker build -f docker/Dockerfile.scheduler -t spectra-scheduler:local .
-docker build -f docker/Dockerfile.worker -t spectra-worker:local .
+docker build -f deploy/docker/Dockerfile.api -t spectra-api:local .
+docker build -f deploy/docker/Dockerfile.ai -t spectra-ai:local .
+docker build -f deploy/docker/Dockerfile.scheduler -t spectra-scheduler:local .
+docker build -f deploy/docker/Dockerfile.worker -t spectra-worker:local .
 ```
 
 ### Per-Service Requirements Files
@@ -94,7 +94,7 @@ Lazy imports inside functions are allowed. This keeps the dependency direction c
 All services run as microservices by default:
 
 ```bash
-docker compose -f docker/compose.yaml up -d
+docker compose -f deploy/docker/compose.yaml up -d
 ```
 
 The main compose file includes `app`, `ai-svc`, `scheduler`, and `worker` as separate containers, each with `SERVICE_MODE` set in their environment.
@@ -110,7 +110,7 @@ The main service handling all user-facing functionality.
 | Attribute | Value |
 |-----------|-------|
 | **Source** | `services/api/src/spectra_api/` + `SERVICE_MODE=api` (`spectra_api.main:app`) |
-| **Dockerfile** | `docker/Dockerfile.api` |
+| **Dockerfile** | `deploy/docker/Dockerfile.api` |
 | **Requirements** | `requirements/app.txt` |
 | **Port** | 5000 |
 | **Responsibilities** | Web UI, REST API, mission orchestration, user management, admin panel |
@@ -125,7 +125,7 @@ Dedicated LLM routing, embedding generation, and RAG queries.
 | Attribute | Value |
 |-----------|-------|
 | **Source** | `services/ai/src/spectra_ai/main.py` (implementation still under `spectra_platform/services/ai/`) |
-| **Dockerfile** | `docker/Dockerfile.ai` |
+| **Dockerfile** | `deploy/docker/Dockerfile.ai` |
 | **Requirements** | `requirements/ai.txt` |
 | **Port** | 5010 |
 | **API Surface** | `POST /api/v1/ai/chat`, `POST /api/v1/ai/embeddings`, `POST /api/v1/ai/rag`, `GET /health` |
@@ -141,7 +141,7 @@ Headless background task runner.
 | Attribute | Value |
 |-----------|-------|
 | **Source** | `services/scheduler/src/spectra_scheduler/main.py` (implementation still under `spectra_platform/services/**`) |
-| **Dockerfile** | `docker/Dockerfile.scheduler` |
+| **Dockerfile** | `deploy/docker/Dockerfile.scheduler` |
 | **Requirements** | `requirements/scheduler.txt` |
 | **Port** | 5011 (health endpoint only) |
 | **Responsibilities** | Sandbox watchdog (cleanup stale containers), warm pool maintenance, quota resets, metrics aggregation, automated backups |
@@ -155,7 +155,7 @@ Executes tool jobs from the PostgreSQL job queue.
 | Attribute | Value |
 |-----------|-------|
 | **Source** | `services/worker/src/spectra_worker/` |
-| **Dockerfile** | `docker/Dockerfile.worker` |
+| **Dockerfile** | `deploy/docker/Dockerfile.worker` |
 | **Requirements** | `requirements/worker.txt` |
 | **Port** | 5012 (health endpoint only) |
 | **Responsibilities** | Pull jobs from PG queue, execute security tools in sandbox containers, parse output, write results |
@@ -286,13 +286,13 @@ Docker Compose health checks poll these endpoints to determine container readine
 
 ```bash
 # All services (microservices by default):
-docker compose -f docker/compose.yaml up -d
+docker compose -f deploy/docker/compose.yaml up -d
 ```
 
 ### Multi-Server (Docker Swarm)
 
 ```bash
-docker stack deploy -c docker/docker-compose.swarm.yml spectra
+docker stack deploy -c deploy/docker/docker-compose.swarm.yml spectra
 ```
 
 See [Deployment Guide](deployment-guide.md) for full instructions. See [Topology](topology.md) for visual architecture diagrams.

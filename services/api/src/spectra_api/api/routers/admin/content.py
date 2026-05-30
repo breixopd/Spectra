@@ -10,11 +10,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.authz import Permission, require_permission
-from spectra_platform.auth.rate_limit import limiter
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.infrastructure import SystemContent
-from spectra_platform.models.user import User
-from spectra_platform.utils.html_sanitization import is_legal_content_type, sanitize_legal_html
+from spectra_auth.rate_limit import limiter
+from spectra_common.utils.html_sanitization import is_legal_content_type, sanitize_legal_html
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.infrastructure import SystemContent
+from spectra_persistence.models.user import User
 
 logger = logging.getLogger(__name__)
 

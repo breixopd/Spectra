@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from spectra_platform.services.tools.registry.executor import _read_stream_limit, run_command_safe
+from spectra_tools_core.registry.executor import _read_stream_limit, run_command_safe
 
 
 class TestRunCommandSafe:

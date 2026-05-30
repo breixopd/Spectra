@@ -7,8 +7,8 @@ import logging
 
 from sqlalchemy import select
 
-from spectra_platform.models.mission import Mission
-from spectra_platform.services.mission.output_model import get_reporter_findings
+from spectra_mission.output_model import get_reporter_findings
+from spectra_persistence.models.mission import Mission
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +18,10 @@ async def generate_mission_report(mission_id: str, report_format: str = "pdf") -
 
     Returns the path/URL where the report was saved.
     """
-    from spectra_ai.llm import get_global_llm_client
-    from spectra_platform.core.database import async_session_maker
-    from spectra_platform.services.ai.agents.base import AgentContext
-    from spectra_platform.services.ai.agents.reporter import ReporterAgent, ReporterInput
+    from spectra_ai_core.agents.base import AgentContext
+    from spectra_ai_core.agents.reporter import ReporterAgent, ReporterInput
+    from spectra_ai_core.llm import get_global_llm_client
+    from spectra_persistence.database import async_session_maker
 
     async with async_session_maker() as session:
         mission_result = await session.execute(select(Mission).where(Mission.id == mission_id))
@@ -54,10 +54,10 @@ async def generate_mission_report(mission_id: str, report_format: str = "pdf") -
 
 async def generate_executive_summary(mission_id: str) -> str:
     """Generate an executive summary for a mission."""
-    from spectra_ai.llm import get_global_llm_client
-    from spectra_platform.core.database import async_session_maker
-    from spectra_platform.services.ai.agents.base import AgentContext
-    from spectra_platform.services.ai.agents.reporter import ReporterAgent, ReporterInput
+    from spectra_ai_core.agents.base import AgentContext
+    from spectra_ai_core.agents.reporter import ReporterAgent, ReporterInput
+    from spectra_ai_core.llm import get_global_llm_client
+    from spectra_persistence.database import async_session_maker
 
     async with async_session_maker() as session:
         mission_result = await session.execute(select(Mission).where(Mission.id == mission_id))

@@ -17,7 +17,7 @@ def _make_cache_entry(key, value, expires_at=None):
 @pytest.mark.asyncio
 class TestMissionStateStoreRegister:
     async def test_register_new_mission(self):
-        from spectra_platform.services.mission.state_store import MissionStateStore
+        from spectra_mission.state_store import MissionStateStore
 
         session = AsyncMock()
         session.get = AsyncMock(return_value=None)
@@ -26,14 +26,14 @@ class TestMissionStateStoreRegister:
         session.__aenter__ = AsyncMock(return_value=session)
         session.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("spectra_platform.services.mission.state_store.async_session_maker", return_value=session):
+        with patch("spectra_mission.state_store.async_session_maker", return_value=session):
             store = MissionStateStore()
             await store.register("mission-1", {"status": "created"})
 
         session.add.assert_called_once()
 
     async def test_register_updates_existing(self):
-        from spectra_platform.services.mission.state_store import MissionStateStore
+        from spectra_mission.state_store import MissionStateStore
 
         existing = _make_cache_entry(
             "mission_state:mission-1",
@@ -47,7 +47,7 @@ class TestMissionStateStoreRegister:
         session.__aenter__ = AsyncMock(return_value=session)
         session.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("spectra_platform.services.mission.state_store.async_session_maker", return_value=session):
+        with patch("spectra_mission.state_store.async_session_maker", return_value=session):
             store = MissionStateStore()
             await store.register("mission-1", {"status": "running"})
 
@@ -57,7 +57,7 @@ class TestMissionStateStoreRegister:
 @pytest.mark.asyncio
 class TestMissionStateStoreHeartbeat:
     async def test_heartbeat_extends_ttl(self):
-        from spectra_platform.services.mission.state_store import MissionStateStore
+        from spectra_mission.state_store import MissionStateStore
 
         old_expiry = datetime.now(UTC) + timedelta(minutes=5)
         entry = _make_cache_entry("mission_state:m-1", {}, expires_at=old_expiry)
@@ -68,7 +68,7 @@ class TestMissionStateStoreHeartbeat:
         session.__aenter__ = AsyncMock(return_value=session)
         session.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("spectra_platform.services.mission.state_store.async_session_maker", return_value=session):
+        with patch("spectra_mission.state_store.async_session_maker", return_value=session):
             store = MissionStateStore(ttl_minutes=120)
             await store.heartbeat("m-1")
 
@@ -76,14 +76,14 @@ class TestMissionStateStoreHeartbeat:
         assert entry.expires_at > old_expiry
 
     async def test_heartbeat_noop_if_missing(self):
-        from spectra_platform.services.mission.state_store import MissionStateStore
+        from spectra_mission.state_store import MissionStateStore
 
         session = AsyncMock()
         session.get = AsyncMock(return_value=None)
         session.__aenter__ = AsyncMock(return_value=session)
         session.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("spectra_platform.services.mission.state_store.async_session_maker", return_value=session):
+        with patch("spectra_mission.state_store.async_session_maker", return_value=session):
             store = MissionStateStore()
             await store.heartbeat("nonexistent")
             # Should not raise
@@ -92,7 +92,7 @@ class TestMissionStateStoreHeartbeat:
 @pytest.mark.asyncio
 class TestMissionStateStoreGetState:
     async def test_returns_state(self):
-        from spectra_platform.services.mission.state_store import MissionStateStore
+        from spectra_mission.state_store import MissionStateStore
 
         entry = _make_cache_entry(
             "mission_state:m-1",
@@ -105,14 +105,14 @@ class TestMissionStateStoreGetState:
         session.__aenter__ = AsyncMock(return_value=session)
         session.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("spectra_platform.services.mission.state_store.async_session_maker", return_value=session):
+        with patch("spectra_mission.state_store.async_session_maker", return_value=session):
             store = MissionStateStore()
             state = await store.get_state("m-1")
 
         assert state == {"status": "running", "target": "10.0.0.1"}
 
     async def test_returns_none_if_expired(self):
-        from spectra_platform.services.mission.state_store import MissionStateStore
+        from spectra_mission.state_store import MissionStateStore
 
         entry = _make_cache_entry(
             "mission_state:m-1",
@@ -127,7 +127,7 @@ class TestMissionStateStoreGetState:
         session.__aenter__ = AsyncMock(return_value=session)
         session.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("spectra_platform.services.mission.state_store.async_session_maker", return_value=session):
+        with patch("spectra_mission.state_store.async_session_maker", return_value=session):
             store = MissionStateStore()
             state = await store.get_state("m-1")
 
@@ -135,14 +135,14 @@ class TestMissionStateStoreGetState:
         session.delete.assert_called_once()
 
     async def test_returns_none_if_not_found(self):
-        from spectra_platform.services.mission.state_store import MissionStateStore
+        from spectra_mission.state_store import MissionStateStore
 
         session = AsyncMock()
         session.get = AsyncMock(return_value=None)
         session.__aenter__ = AsyncMock(return_value=session)
         session.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("spectra_platform.services.mission.state_store.async_session_maker", return_value=session):
+        with patch("spectra_mission.state_store.async_session_maker", return_value=session):
             store = MissionStateStore()
             state = await store.get_state("m-1")
 
@@ -152,7 +152,7 @@ class TestMissionStateStoreGetState:
 @pytest.mark.asyncio
 class TestMissionStateStoreGetActive:
     async def test_returns_all_non_expired(self):
-        from spectra_platform.services.mission.state_store import MissionStateStore
+        from spectra_mission.state_store import MissionStateStore
 
         entries = [
             _make_cache_entry("mission_state:m-1", {"id": "m-1"}, datetime.now(UTC) + timedelta(hours=1)),
@@ -166,7 +166,7 @@ class TestMissionStateStoreGetActive:
         session.__aenter__ = AsyncMock(return_value=session)
         session.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("spectra_platform.services.mission.state_store.async_session_maker", return_value=session):
+        with patch("spectra_mission.state_store.async_session_maker", return_value=session):
             store = MissionStateStore()
             active = await store.get_active()
 
@@ -176,7 +176,7 @@ class TestMissionStateStoreGetActive:
 @pytest.mark.asyncio
 class TestMissionStateStoreUnregister:
     async def test_unregister_removes_entry(self):
-        from spectra_platform.services.mission.state_store import MissionStateStore
+        from spectra_mission.state_store import MissionStateStore
 
         entry = _make_cache_entry("mission_state:m-1", {})
 
@@ -187,21 +187,21 @@ class TestMissionStateStoreUnregister:
         session.__aenter__ = AsyncMock(return_value=session)
         session.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("spectra_platform.services.mission.state_store.async_session_maker", return_value=session):
+        with patch("spectra_mission.state_store.async_session_maker", return_value=session):
             store = MissionStateStore()
             await store.unregister("m-1")
 
         session.delete.assert_called_once_with(entry)
 
     async def test_unregister_noop_if_missing(self):
-        from spectra_platform.services.mission.state_store import MissionStateStore
+        from spectra_mission.state_store import MissionStateStore
 
         session = AsyncMock()
         session.get = AsyncMock(return_value=None)
         session.__aenter__ = AsyncMock(return_value=session)
         session.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("spectra_platform.services.mission.state_store.async_session_maker", return_value=session):
+        with patch("spectra_mission.state_store.async_session_maker", return_value=session):
             store = MissionStateStore()
             await store.unregister("nonexistent")
             # Should not raise
@@ -210,7 +210,7 @@ class TestMissionStateStoreUnregister:
 @pytest.mark.asyncio
 class TestMissionStateStoreCleanup:
     async def test_cleanup_expired(self):
-        from spectra_platform.services.mission.state_store import MissionStateStore
+        from spectra_mission.state_store import MissionStateStore
 
         session = AsyncMock()
         exec_result = MagicMock()
@@ -220,7 +220,7 @@ class TestMissionStateStoreCleanup:
         session.__aenter__ = AsyncMock(return_value=session)
         session.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("spectra_platform.services.mission.state_store.async_session_maker", return_value=session):
+        with patch("spectra_mission.state_store.async_session_maker", return_value=session):
             store = MissionStateStore()
             count = await store.cleanup_expired()
 

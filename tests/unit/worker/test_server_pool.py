@@ -39,12 +39,12 @@ class TestServerPoolManagerInit:
     """Basic init and import."""
 
     def test_import(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         assert ServerPoolManager is not None
 
     def test_init(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         assert mgr._health_task is None
@@ -56,7 +56,7 @@ class TestAddNode:
 
     @pytest.mark.asyncio
     async def test_add_node_creates_node(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         session = AsyncMock()
@@ -66,7 +66,7 @@ class TestAddNode:
         mock_instance = _make_mock_node(name="new-worker")
 
         with (
-            patch("spectra_platform.models.server_node.ServerNode", return_value=mock_instance),
+            patch("spectra_persistence.models.server_node.ServerNode", return_value=mock_instance),
             patch.object(
                 ServerPoolManager,
                 "_auto_enable_autoscale",
@@ -93,7 +93,7 @@ class TestRemoveNode:
 
     @pytest.mark.asyncio
     async def test_remove_existing_node(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         session = AsyncMock()
@@ -109,7 +109,7 @@ class TestRemoveNode:
 
     @pytest.mark.asyncio
     async def test_remove_nonexistent_node(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         session = AsyncMock()
@@ -126,7 +126,7 @@ class TestListNodes:
 
     @pytest.mark.asyncio
     async def test_list_all_nodes(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         session = AsyncMock()
@@ -140,7 +140,7 @@ class TestListNodes:
 
     @pytest.mark.asyncio
     async def test_list_nodes_with_filter(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         session = AsyncMock()
@@ -157,7 +157,7 @@ class TestSelectNode:
 
     @pytest.mark.asyncio
     async def test_select_node_returns_best(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         node1 = _make_mock_node(
@@ -188,7 +188,7 @@ class TestSelectNode:
         mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("spectra_platform.services.scaling.pool_manager.async_session_maker", return_value=mock_session_ctx):
+        with patch("spectra_scaling.pool_manager.async_session_maker", return_value=mock_session_ctx):
             result = await mgr.select_node("sandbox_worker")
 
         # node2 has lower load/weight ratio (2/2=1) vs node1 (5/1=5)
@@ -196,7 +196,7 @@ class TestSelectNode:
 
     @pytest.mark.asyncio
     async def test_select_node_returns_none_when_empty(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         mock_result = MagicMock()
@@ -208,7 +208,7 @@ class TestSelectNode:
         mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("spectra_platform.services.scaling.pool_manager.async_session_maker", return_value=mock_session_ctx):
+        with patch("spectra_scaling.pool_manager.async_session_maker", return_value=mock_session_ctx):
             result = await mgr.select_node("sandbox_worker")
         assert result is None
 
@@ -218,7 +218,7 @@ class TestLoadManagement:
 
     @pytest.mark.asyncio
     async def test_increment_load(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         mock_session = AsyncMock()
@@ -228,7 +228,7 @@ class TestLoadManagement:
         mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("spectra_platform.services.scaling.pool_manager.async_session_maker", return_value=mock_session_ctx):
+        with patch("spectra_scaling.pool_manager.async_session_maker", return_value=mock_session_ctx):
             await mgr.increment_load(1)
 
         mock_session.execute.assert_awaited_once()
@@ -236,7 +236,7 @@ class TestLoadManagement:
 
     @pytest.mark.asyncio
     async def test_decrement_load(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         mock_session = AsyncMock()
@@ -246,7 +246,7 @@ class TestLoadManagement:
         mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("spectra_platform.services.scaling.pool_manager.async_session_maker", return_value=mock_session_ctx):
+        with patch("spectra_scaling.pool_manager.async_session_maker", return_value=mock_session_ctx):
             await mgr.decrement_load(1)
 
         mock_session.execute.assert_awaited_once()
@@ -258,7 +258,7 @@ class TestHealthCheck:
 
     @pytest.mark.asyncio
     async def test_health_check_node_healthy(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         node = {"url": "http://worker:8080", "id": 1}
@@ -278,7 +278,7 @@ class TestHealthCheck:
 
     @pytest.mark.asyncio
     async def test_health_check_node_unhealthy_status(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         node = {"url": "http://worker:8080", "id": 1}
@@ -298,7 +298,7 @@ class TestHealthCheck:
 
     @pytest.mark.asyncio
     async def test_health_check_node_connection_error(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         node = {"url": "http://worker:8080", "id": 1}
@@ -315,7 +315,7 @@ class TestHealthCheck:
 
     @pytest.mark.asyncio
     async def test_health_check_all(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         mock_node = _make_mock_node(service_type="sandbox_worker")
@@ -330,7 +330,7 @@ class TestHealthCheck:
         mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("spectra_platform.services.scaling.pool_manager.async_session_maker", return_value=mock_session_ctx):
+        with patch("spectra_scaling.pool_manager.async_session_maker", return_value=mock_session_ctx):
             with patch.object(mgr, "health_check_node", new_callable=AsyncMock) as mock_hc:
                 mock_hc.return_value = {"health_status": "healthy", "last_error": None}
                 with patch.object(mgr, "_collect_node_metrics", new_callable=AsyncMock) as mock_nm:
@@ -346,7 +346,7 @@ class TestHealthLoop:
 
     @pytest.mark.asyncio
     async def test_start_health_loop_creates_task(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
 
@@ -359,7 +359,7 @@ class TestHealthLoop:
 
     @pytest.mark.asyncio
     async def test_stop_health_loop_cancels_task(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         mock_task = MagicMock()
@@ -371,7 +371,7 @@ class TestHealthLoop:
 
     @pytest.mark.asyncio
     async def test_stop_health_loop_noop_when_none(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         mgr._health_task = None
@@ -382,7 +382,7 @@ class TestGetPoolManager:
     """Singleton accessor."""
 
     def test_get_pool_manager_creates_singleton(self):
-        import spectra_platform.services.scaling.pool_manager as mod
+        import spectra_scaling.pool_manager as mod
 
         mod._pool_manager = None
         mgr = mod.get_pool_manager()
@@ -397,7 +397,7 @@ class TestGetNode:
 
     @pytest.mark.asyncio
     async def test_get_node_found(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         session = AsyncMock()
@@ -411,7 +411,7 @@ class TestGetNode:
 
     @pytest.mark.asyncio
     async def test_get_node_not_found(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         session = AsyncMock()
@@ -428,7 +428,7 @@ class TestUpdateNode:
 
     @pytest.mark.asyncio
     async def test_update_existing_node(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         session = AsyncMock()
@@ -444,7 +444,7 @@ class TestUpdateNode:
 
     @pytest.mark.asyncio
     async def test_update_nonexistent_node(self):
-        from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+        from spectra_scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
         session = AsyncMock()

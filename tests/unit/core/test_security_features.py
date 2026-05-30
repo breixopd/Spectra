@@ -14,7 +14,7 @@ from spectra_api.api.routers.auth._helpers import (
     _check_lockout,
     _record_failure,
 )
-from spectra_platform.auth.security import (
+from spectra_auth.security import (
     _blacklisted_tokens,
     _user_token_blacklist,
     create_access_token,
@@ -23,12 +23,12 @@ from spectra_platform.auth.security import (
     invalidate_token,
     is_token_blacklisted,
 )
-from spectra_platform.mission.core.websocket import ConnectionManager
+from spectra_mission.core.websocket import ConnectionManager
 
 
 @pytest.fixture(autouse=True)
 def _clear_blacklist():
-    from spectra_platform.auth.security import _blacklist_ready
+    from spectra_auth.security import _blacklist_ready
 
     _blacklisted_tokens.clear()
     _user_token_blacklist.clear()
@@ -190,20 +190,20 @@ class TestSettingsRBAC:
 
 class TestRAGFunctionalGuard:
     def test_embedding_service_is_functional_false_on_fallback(self):
-        from spectra_ai.embeddings import EmbeddingService
+        from spectra_ai_core.embeddings import EmbeddingService
 
         svc = EmbeddingService()
         svc._use_fallback = True
         assert svc.is_functional is False
 
     def test_embedding_service_is_functional_false_no_model(self):
-        from spectra_ai.embeddings import EmbeddingService
+        from spectra_ai_core.embeddings import EmbeddingService
 
         svc = EmbeddingService()
         assert svc.is_functional is False
 
     def test_rag_service_is_functional_false(self):
-        from spectra_ai.rag import RAGService
+        from spectra_ai_core.rag import RAGService
 
         svc = RAGService()
         svc.embeddings._use_fallback = True
@@ -212,7 +212,7 @@ class TestRAGFunctionalGuard:
 
     @pytest.mark.asyncio
     async def test_rag_search_returns_empty_on_fallback(self):
-        from spectra_ai.rag import RAGService
+        from spectra_ai_core.rag import RAGService
 
         svc = RAGService()
         svc.embeddings._use_fallback = True
@@ -223,7 +223,7 @@ class TestRAGFunctionalGuard:
 
 class TestAuditLogModel:
     def test_audit_event_type_values(self):
-        from spectra_platform.models.audit_log import AuditEventType
+        from spectra_persistence.models.audit_log import AuditEventType
 
         assert AuditEventType.LOGIN.value == "LOGIN"
         assert AuditEventType.LOGOUT.value == "LOGOUT"
@@ -231,6 +231,6 @@ class TestAuditLogModel:
         assert AuditEventType.TOKEN_REVOKED.value == "TOKEN_REVOKED"
 
     def test_audit_log_model_tablename(self):
-        from spectra_platform.models.audit_log import AuditLog
+        from spectra_persistence.models.audit_log import AuditLog
 
         assert AuditLog.__tablename__ == "audit_logs"

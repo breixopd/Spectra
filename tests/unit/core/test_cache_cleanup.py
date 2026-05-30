@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from spectra_platform.infrastructure.cache import CacheConfig, CacheService
+from spectra_infra.cache import CacheConfig, CacheService
 
 
 @pytest.fixture

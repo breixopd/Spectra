@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import spectra_scheduler.locking as _sched_lock
 from spectra_common.constants import SECONDS_PER_HOUR
-from spectra_platform.core.database import advisory_lock_connection, async_session_maker
+from spectra_persistence.database import advisory_lock_connection, async_session_maker
 from spectra_scheduler import async_ops
 from spectra_scheduler.locks import (
     _BACKUP_LOCK_ID,
@@ -37,7 +37,7 @@ class SchedulerCoreLoopsMixin:
                         await async_ops.sleep(60)
                         continue
 
-                    from spectra_platform.infrastructure.background_tasks import sandbox_watchdog_loop
+                    from spectra_infra.background_tasks import sandbox_watchdog_loop
 
                     await sandbox_watchdog_loop()
             except Exception:
@@ -61,7 +61,7 @@ class SchedulerCoreLoopsMixin:
                         logger.debug("Quota reset lock not acquired — skipping this iteration")
                         continue
 
-                    from spectra_platform.services.billing.usage_tracker import UsageTracker
+                    from spectra_billing.usage_tracker import UsageTracker
 
                     tracker = UsageTracker()
                     await tracker.reset_daily_counters()
@@ -81,7 +81,7 @@ class SchedulerCoreLoopsMixin:
                         await async_ops.sleep(30)
                         continue
 
-                    from spectra_platform.infrastructure.metrics_store import get_metrics_store
+                    from spectra_infra.metrics_store import get_metrics_store
 
                     store = get_metrics_store()
                     if store:
@@ -102,7 +102,7 @@ class SchedulerCoreLoopsMixin:
                         await async_ops.sleep(15)
                         continue
 
-                    from spectra_platform.infrastructure.cache import get_cache
+                    from spectra_infra.cache import get_cache
 
                     cache = get_cache()
                     if cache:
@@ -117,7 +117,7 @@ class SchedulerCoreLoopsMixin:
 
     async def _backup_scheduler(self):
         """Run automated backups on the configured schedule."""
-        from spectra_platform.core.config import get_settings
+        from spectra_common.config import get_settings
 
         while self.running:
             settings = get_settings()
@@ -133,7 +133,7 @@ class SchedulerCoreLoopsMixin:
                         continue
 
                     # Skip if a backup ran recently enough on another replica
-                    from spectra_platform.infrastructure.cache import get_cache
+                    from spectra_infra.cache import get_cache
 
                     cache = get_cache()
                     if cache:
@@ -149,13 +149,13 @@ class SchedulerCoreLoopsMixin:
                             except (ValueError, TypeError) as e:
                                 logger.debug("Could not parse last_backup_timestamp: %s", e)
 
-                    from spectra_platform.services.infrastructure.backup import BackupService
+                    from spectra_scaling.infrastructure_services.backup import BackupService
 
                     svc = BackupService()
                     result = await svc.create_backup()
                     logger.info("Scheduled backup: %s", result.get("status"))
 
-                    from spectra_platform.infrastructure.cache import get_cache as _get_cache
+                    from spectra_infra.cache import get_cache as _get_cache
 
                     _cache = _get_cache()
                     if _cache:
@@ -181,7 +181,7 @@ class SchedulerCoreLoopsMixin:
                         await async_ops.sleep(60)
                         continue
 
-                    from spectra_platform.infrastructure.background_tasks import cache_cleanup_loop
+                    from spectra_infra.background_tasks import cache_cleanup_loop
 
                     await cache_cleanup_loop()
             except asyncio.CancelledError:
@@ -202,7 +202,7 @@ class SchedulerCoreLoopsMixin:
                         await async_ops.sleep(60)
                         continue
 
-                    from spectra_platform.infrastructure.background_tasks import periodic_cleanup_loop
+                    from spectra_infra.background_tasks import periodic_cleanup_loop
 
                     await periodic_cleanup_loop()
             except asyncio.CancelledError:
@@ -225,24 +225,24 @@ class SchedulerCoreLoopsMixin:
                     if lock_owner is None:
                         continue
 
-                    from spectra_platform.core.config import get_settings
+                    from spectra_common.config import get_settings
 
                     settings = get_settings()
 
                     # Re-create AutoScaler each cycle to pick up runtime setting changes
                     scaler = None
                     if settings.AUTOSCALE_ENABLED:
-                        from spectra_platform.services.scaling.auto_scaler import AutoScaler
-                        from spectra_platform.services.scaling.backends import DockerSwarmBackend
-                        from spectra_platform.services.scaling.config import AutoScalerConfig
-                        from spectra_platform.services.scaling.notifiers import SpectraNotifier
+                        from spectra_scaling.auto_scaler import AutoScaler
+                        from spectra_scaling.backends import DockerSwarmBackend
+                        from spectra_scaling.config import AutoScalerConfig
+                        from spectra_scaling.notifiers import SpectraNotifier
 
                         config = AutoScalerConfig.from_settings(settings)
                         scaler = AutoScaler(config, DockerSwarmBackend(), SpectraNotifier())
 
                     # --- Auto-scaling with real metrics ---
                     if scaler is not None:
-                        from spectra_platform.services.scaling.metrics_collector import MetricsCollector
+                        from spectra_scaling.metrics_collector import MetricsCollector
 
                         collector = MetricsCollector()
                         cluster_metrics = await collector.collect_all()
@@ -260,7 +260,7 @@ class SchedulerCoreLoopsMixin:
                                 })
 
                     # --- Capacity warnings (always active) ---
-                    from spectra_platform.models.server_node import ServerNode
+                    from spectra_persistence.models.server_node import ServerNode
 
                     async with async_session_maker() as session:
                         from sqlalchemy import select as sa_select
@@ -273,7 +273,7 @@ class SchedulerCoreLoopsMixin:
                     if not nodes:
                         continue
 
-                    from spectra_platform.services.resource_manager import ResourceManager
+                    from spectra_scaling.resource_manager import ResourceManager
 
                     status = await ResourceManager.check_network_capacity(nodes)
 
@@ -284,7 +284,7 @@ class SchedulerCoreLoopsMixin:
                             status["total_capacity"],
                             status["utilization_pct"],
                         )
-                        from spectra_platform.services.infrastructure.storage_monitor import StorageMonitor
+                        from spectra_scaling.infrastructure_services.storage_monitor import StorageMonitor
 
                         if StorageMonitor.should_alert("capacity_at_full"):
                             await self._send_capacity_alert(status)
@@ -301,7 +301,7 @@ class SchedulerCoreLoopsMixin:
     async def _send_capacity_alert(self, status: dict) -> None:
         """Send capacity alert via configured notification channels."""
         try:
-            from spectra_platform.services.notifications import send_notification
+            from spectra_system.notifications import send_notification
 
             await send_notification(
                 title="Capacity Alert",
@@ -317,7 +317,7 @@ class SchedulerCoreLoopsMixin:
 
     async def _stale_job_recovery(self):
         """Recover jobs stuck in 'in_progress' state. Runs every 5 minutes."""
-        from spectra_platform.core.config import get_settings
+        from spectra_common.config import get_settings
 
         while self.running:
             settings = get_settings()
@@ -329,7 +329,7 @@ class SchedulerCoreLoopsMixin:
                     if lock_owner is None:
                         continue
 
-                    from spectra_platform.infrastructure.queue import PostgresJobQueue
+                    from spectra_infra.queue import PostgresJobQueue
 
                     mgr = PostgresJobQueue()
                     recovered = await mgr.recover_stale_jobs(max_age_minutes=30)
@@ -353,7 +353,7 @@ class SchedulerCoreLoopsMixin:
 
     async def _exploit_db_refresh(self):
         """Periodically refresh exploit database indexes."""
-        from spectra_platform.core.config import get_settings
+        from spectra_common.config import get_settings
 
         while self.running:
             settings = get_settings()
@@ -369,7 +369,7 @@ class SchedulerCoreLoopsMixin:
                         logger.debug("Exploit DB refresh lock not acquired — skipping")
                         continue
 
-                    from spectra_platform.services.exploit_db import get_exploit_db
+                    from spectra_ai_core.exploit_db import get_exploit_db
 
                     db = get_exploit_db()
                     stats = await db.update()

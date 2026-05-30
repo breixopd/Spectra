@@ -87,7 +87,7 @@ If your editor loads MCP servers from a user config file, you can run a stdio MC
 The primary CI test command is:
 
 ```bash
-docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner
+docker compose -f deploy/docker/compose.yaml --profile test run --rm settings-test-runner
 ```
 
 For local iteration, run unit tests through Docker:
@@ -246,5 +246,5 @@ config/                      # Build configs (tailwind, postcss)
 4. Add tests for new functionality
 5. Run `make check` (lint + import boundaries + unit tests)
 6. If you changed templates or CSS, run `make css-build-prod`
-7. Ensure `docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner` passes (see CI)
+7. Ensure `docker compose -f deploy/docker/compose.yaml --profile test run --rm settings-test-runner` passes (see CI)
 8. Submit a PR to `main`

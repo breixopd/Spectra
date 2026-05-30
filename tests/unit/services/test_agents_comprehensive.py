@@ -10,30 +10,30 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from spectra_ai.errors import LLMParseError
-from spectra_platform.services.ai.agents.base import (
+from spectra_ai_core.agents.base import (
     ActionRisk,
     AgentContext,
 )
-from spectra_platform.services.ai.agents.exploit_crafter import (
+from spectra_ai_core.agents.exploit_crafter import (
     ExploitCrafter,
     ExploitCrafterInput,
     ExploitCrafterOutput,
 )
-from spectra_platform.services.ai.agents.post_exploitation import (
+from spectra_ai_core.agents.post_exploitation import (
     PostExploitAction,
     PostExploitationAgent,
     PostExploitInput,
 )
-from spectra_platform.services.ai.agents.safety import (
+from spectra_ai_core.agents.safety import (
     SafetyInput,
     SafetySupervisorAgent,
 )
-from spectra_platform.services.ai.agents.vector_generator import (
+from spectra_ai_core.agents.vector_generator import (
     VectorGeneratorAgent,
     VectorGeneratorInput,
     VectorGeneratorOutput,
 )
+from spectra_ai_core.errors import LLMParseError
 from tests.mocks.llm import MockLLMClient
 
 # --- Fixtures ---

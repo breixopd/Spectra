@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from spectra_platform.services.ai.cve_intel import (
+from spectra_ai_core.cve_intel import (
     CVE_CACHE_TTL,
     _infer_vuln_type,
     _load_cache,
@@ -102,10 +102,10 @@ def _mock_cve_kb(tmp_path):
     kb_path = tmp_path / "cve_knowledge_base.json"
     kb_path.write_text(json.dumps(_TEST_CVE_KB))
 
-    import spectra_platform.services.ai.cve_intel as mod
+    import spectra_ai_core.cve_intel as mod
 
     mod._cve_knowledge_base = None  # Reset cache
-    with patch("spectra_platform.services.ai.cve_intel._load_cve_knowledge_base", return_value=_TEST_CVE_KB):
+    with patch("spectra_ai_core.cve_intel._load_cve_knowledge_base", return_value=_TEST_CVE_KB):
         yield
     mod._cve_knowledge_base = None
 
@@ -237,7 +237,7 @@ class TestCVECache:
         mock_db._cache_set = AsyncMock(side_effect=mock_set)
         mock_db._cache_get = AsyncMock(side_effect=mock_get)
 
-        with patch("spectra_platform.services.ai.cve_intel.get_exploit_db", return_value=mock_db):
+        with patch("spectra_ai_core.cve_intel.get_exploit_db", return_value=mock_db):
             await _save_cache("test_keyword", results)
             loaded = await _load_cache("test_keyword")
             assert loaded is not None
@@ -258,7 +258,7 @@ class TestCVECache:
         mock_db._cache_set = AsyncMock(side_effect=mock_set)
         mock_db._cache_get = AsyncMock(side_effect=mock_get)
 
-        with patch("spectra_platform.services.ai.cve_intel.get_exploit_db", return_value=mock_db):
+        with patch("spectra_ai_core.cve_intel.get_exploit_db", return_value=mock_db):
             await _save_cache("old_keyword", [{"cve": "CVE-2020-0001"}])
             # Make it expired by modifying the stored data
             for k in list(_store):
@@ -271,14 +271,14 @@ class TestCVECache:
     async def test_load_missing_cache(self):
         mock_db = MagicMock()
         mock_db._cache_get = AsyncMock(return_value=None)
-        with patch("spectra_platform.services.ai.cve_intel.get_exploit_db", return_value=mock_db):
+        with patch("spectra_ai_core.cve_intel.get_exploit_db", return_value=mock_db):
             assert await _load_cache("nonexistent") is None
 
     @pytest.mark.asyncio
     async def test_load_corrupt_cache(self):
         mock_db = MagicMock()
         mock_db._cache_get = AsyncMock(return_value=None)
-        with patch("spectra_platform.services.ai.cve_intel.get_exploit_db", return_value=mock_db):
+        with patch("spectra_ai_core.cve_intel.get_exploit_db", return_value=mock_db):
             assert await _load_cache("corrupt") is None
 
 
@@ -286,7 +286,7 @@ class TestFetchCVEsFromNVD:
     @pytest.mark.asyncio
     async def test_cached_result_returned(self, tmp_path):
         cached = [{"cve": "CVE-2021-CACHED", "severity": "high"}]
-        with patch("spectra_platform.services.ai.cve_intel._load_cache", return_value=cached):
+        with patch("spectra_ai_core.cve_intel._load_cache", return_value=cached):
             result = await fetch_cves_from_nvd("apache")
             assert result == cached
 
@@ -307,9 +307,9 @@ class TestFetchCVEsFromNVD:
             ]
         }
 
-        with patch("spectra_platform.services.ai.cve_intel._load_cache", return_value=None):
-            with patch("spectra_platform.services.ai.cve_intel._save_cache"):
-                with patch("spectra_platform.services.ai.cve_intel._last_nvd_request", 0):
+        with patch("spectra_ai_core.cve_intel._load_cache", return_value=None):
+            with patch("spectra_ai_core.cve_intel._save_cache"):
+                with patch("spectra_ai_core.cve_intel._last_nvd_request", 0):
                     with patch("httpx.AsyncClient") as MockClient:
                         mock_client = AsyncMock()
                         MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client)
@@ -326,8 +326,8 @@ class TestFetchCVEsFromNVD:
         mock_response = MagicMock()
         mock_response.status_code = 403
 
-        with patch("spectra_platform.services.ai.cve_intel._load_cache", return_value=None):
-            with patch("spectra_platform.services.ai.cve_intel._last_nvd_request", 0):
+        with patch("spectra_ai_core.cve_intel._load_cache", return_value=None):
+            with patch("spectra_ai_core.cve_intel._last_nvd_request", 0):
                 with patch("httpx.AsyncClient") as MockClient:
                     mock_client = AsyncMock()
                     MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client)
@@ -341,8 +341,8 @@ class TestFetchCVEsFromNVD:
     async def test_api_timeout(self):
         import httpx
 
-        with patch("spectra_platform.services.ai.cve_intel._load_cache", return_value=None):
-            with patch("spectra_platform.services.ai.cve_intel._last_nvd_request", 0):
+        with patch("spectra_ai_core.cve_intel._load_cache", return_value=None):
+            with patch("spectra_ai_core.cve_intel._last_nvd_request", 0):
                 with patch("httpx.AsyncClient") as MockClient:
                     mock_client = AsyncMock()
                     MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client)
@@ -354,8 +354,8 @@ class TestFetchCVEsFromNVD:
 
     @pytest.mark.asyncio
     async def test_api_generic_error(self):
-        with patch("spectra_platform.services.ai.cve_intel._load_cache", return_value=None):
-            with patch("spectra_platform.services.ai.cve_intel._last_nvd_request", 0):
+        with patch("spectra_ai_core.cve_intel._load_cache", return_value=None):
+            with patch("spectra_ai_core.cve_intel._last_nvd_request", 0):
                 with patch("httpx.AsyncClient") as MockClient:
                     mock_client = AsyncMock()
                     MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client)
@@ -369,10 +369,10 @@ class TestFetchCVEsFromNVD:
 class TestReloadKnowledgeBase:
     @pytest.mark.asyncio
     async def test_reload_resets_cache(self):
-        import spectra_platform.services.ai.cve_intel as mod
+        import spectra_ai_core.cve_intel as mod
 
         old = mod._cve_knowledge_base
-        with patch("spectra_platform.services.ai.cve_intel._load_cve_knowledge_base_async", new_callable=AsyncMock, return_value=_TEST_CVE_KB):
+        with patch("spectra_ai_core.cve_intel._load_cve_knowledge_base_async", new_callable=AsyncMock, return_value=_TEST_CVE_KB):
             count = await reload_cve_knowledge_base()
             assert count == len(_TEST_CVE_KB)
         mod._cve_knowledge_base = old
@@ -382,9 +382,9 @@ class TestEnrichCVE:
     def test_enrich_adds_exploit_fields(self):
         cve = {"cve": "CVE-2021-44228", "severity": "critical"}
         with patch(
-            "spectra_platform.services.ai.cve_intel.get_metasploit_modules",
+            "spectra_ai_core.cve_intel.get_metasploit_modules",
             return_value=[{"source": "metasploit", "module": "test"}],
-        ), patch("spectra_platform.services.exploit_db.get_exploit_db") as mock_db:
+        ), patch("spectra_ai_core.exploit_db.get_exploit_db") as mock_db:
             db = mock_db.return_value
             db.is_kev.return_value = True
 
@@ -396,8 +396,8 @@ class TestEnrichCVE:
 
     def test_enrich_no_exploits(self):
         cve = {"cve": "CVE-9999-0001", "severity": "low"}
-        with patch("spectra_platform.services.ai.cve_intel.get_metasploit_modules", return_value=[]):
-            with patch("spectra_platform.services.exploit_db.get_exploit_db") as mock_db:
+        with patch("spectra_ai_core.cve_intel.get_metasploit_modules", return_value=[]):
+            with patch("spectra_ai_core.exploit_db.get_exploit_db") as mock_db:
                 db = mock_db.return_value
                 db.is_kev.return_value = False
 
@@ -410,8 +410,8 @@ class TestLookupCVEsLive:
     @pytest.mark.asyncio
     async def test_merges_builtin_and_live(self):
         live = [{"cve": "CVE-2023-LIVE", "severity": "high", "products": []}]
-        with patch("spectra_platform.services.ai.cve_intel.fetch_cves_from_nvd", new_callable=AsyncMock, return_value=live):
-            with patch("spectra_platform.services.ai.cve_intel.enrich_cve_with_exploits", side_effect=lambda x: x):
+        with patch("spectra_ai_core.cve_intel.fetch_cves_from_nvd", new_callable=AsyncMock, return_value=live):
+            with patch("spectra_ai_core.cve_intel.enrich_cve_with_exploits", side_effect=lambda x: x):
                 results = await lookup_cves_live(product="Apache", version="2.4.49")
                 cve_ids = [r["cve"] for r in results]
                 assert "CVE-2021-41773" in cve_ids  # builtin
@@ -421,8 +421,8 @@ class TestLookupCVEsLive:
     async def test_deduplicates(self):
         # Live returns same CVE as builtin
         live = [{"cve": "CVE-2021-41773", "severity": "critical", "products": []}]
-        with patch("spectra_platform.services.ai.cve_intel.fetch_cves_from_nvd", new_callable=AsyncMock, return_value=live):
-            with patch("spectra_platform.services.ai.cve_intel.enrich_cve_with_exploits", side_effect=lambda x: x):
+        with patch("spectra_ai_core.cve_intel.fetch_cves_from_nvd", new_callable=AsyncMock, return_value=live):
+            with patch("spectra_ai_core.cve_intel.enrich_cve_with_exploits", side_effect=lambda x: x):
                 results = await lookup_cves_live(product="Apache")
                 ids = [r["cve"] for r in results]
                 assert ids.count("CVE-2021-41773") == 1
@@ -435,7 +435,7 @@ class TestLookupCVEsLive:
     @pytest.mark.asyncio
     async def test_live_failure_falls_back(self):
         with patch(
-            "spectra_platform.services.ai.cve_intel.fetch_cves_from_nvd", new_callable=AsyncMock, side_effect=RuntimeError("fail")
-        ), patch("spectra_platform.services.ai.cve_intel.enrich_cve_with_exploits", side_effect=lambda x: x):
+            "spectra_ai_core.cve_intel.fetch_cves_from_nvd", new_callable=AsyncMock, side_effect=RuntimeError("fail")
+        ), patch("spectra_ai_core.cve_intel.enrich_cve_with_exploits", side_effect=lambda x: x):
             results = await lookup_cves_live(product="Apache")
             assert len(results) > 0  # Falls back to builtin

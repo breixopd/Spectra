@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from spectra_common.errors import CircuitBreakerOpenError
-from spectra_platform.infrastructure.circuit_breaker import (
+from spectra_infra.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,
     CircuitBreakerRegistry,
@@ -28,8 +28,8 @@ def _make_breaker(failure_threshold=3, recovery_timeout=30, success_threshold=2)
 def _patch_cache_and_events():
     """Prevent real cache/event-bus calls in every test."""
     with (
-        patch("spectra_platform.infrastructure.cache.get_cache", return_value=None),
-        patch("spectra_platform.infrastructure.circuit_breaker.events") as mock_events,
+        patch("spectra_infra.cache.get_cache", return_value=None),
+        patch("spectra_infra.circuit_breaker.events") as mock_events,
     ):
         mock_events.emit_sync = MagicMock()
         yield

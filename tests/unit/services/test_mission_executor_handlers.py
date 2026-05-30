@@ -2,15 +2,15 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from spectra_platform.mission.core.enums import AssessmentPhase
-from spectra_platform.services.ai.agents.base import (
+from spectra_ai_core.agents.base import (
     AgentContext,
     AgentResult,
     ToolAction,
 )
-from spectra_platform.services.ai.agents.mission_controller import Task
-from spectra_platform.services.mission.executor.handlers import TaskDispatcher
-from spectra_platform.services.mission.mission import Mission
+from spectra_ai_core.agents.mission_controller import Task
+from spectra_domain.enums import AssessmentPhase
+from spectra_mission.executor.handlers import TaskDispatcher
+from spectra_mission.mission import Mission
 
 
 @pytest.fixture

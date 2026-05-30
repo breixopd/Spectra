@@ -5,7 +5,7 @@ import inspect
 
 import pytest
 
-from spectra_platform.services.ai.blackboard import (
+from spectra_ai_core.blackboard import (
     MAX_ENTRIES,
     MAX_HISTORY,
     MissionBlackboard,

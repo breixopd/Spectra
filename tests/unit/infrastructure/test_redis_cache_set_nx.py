@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from spectra_platform.infrastructure.redis_client import RedisCache
+from spectra_infra.redis_client import RedisCache
 
 
 @pytest.mark.asyncio

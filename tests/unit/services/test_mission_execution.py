@@ -5,11 +5,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from spectra_ai_core.agents.base import AgentContext
+from spectra_ai_core.agents.mission_controller import AssessmentPhase, MissionPlan, Task
 from spectra_common.constants import MISSION_TIMEOUT_SECONDS
-from spectra_platform.services.ai.agents.base import AgentContext
-from spectra_platform.services.ai.agents.mission_controller import AssessmentPhase, MissionPlan, Task
-from spectra_platform.services.mission.manager.execution import MissionExecutionManager
-from spectra_platform.services.mission.manager.helpers import _execute_task, execute_mission_tasks
+from spectra_mission.manager.execution import MissionExecutionManager
+from spectra_mission.manager.helpers import _execute_task, execute_mission_tasks
 
 
 @pytest.fixture
@@ -27,7 +27,7 @@ def execution_manager():
 class TestEnsureAgents:
     @pytest.mark.asyncio
     async def test_initializes_all_agents(self, execution_manager):
-        with patch("spectra_platform.services.mission.manager.execution.get_global_llm_client", new_callable=AsyncMock) as mock_llm:
+        with patch("spectra_mission.manager.execution.get_global_llm_client", new_callable=AsyncMock) as mock_llm:
             mock_llm.return_value = AsyncMock()
             await execution_manager.ensure_agents()
 
@@ -64,8 +64,8 @@ class TestMissionLoop:
         execution_manager._run_scope_phase = AsyncMock(side_effect=RuntimeError("scope failed"))
         execution_manager._broadcast_state = MagicMock()
 
-        with patch("spectra_platform.services.mission.manager.execution.shell_manager"):
-            with patch("spectra_platform.services.notifications.notify_mission_started", new_callable=AsyncMock, create=True):
+        with patch("spectra_mission.manager.execution.shell_manager"):
+            with patch("spectra_system.notifications.notify_mission_started", new_callable=AsyncMock, create=True):
                 await execution_manager.run_mission_loop(mission)
 
         mission.set_status.assert_called_with("failed")
@@ -87,8 +87,8 @@ class TestMissionLoop:
         execution_manager._run_scope_phase = AsyncMock(side_effect=RuntimeError("test"))
         execution_manager._broadcast_state = MagicMock()
 
-        with patch("spectra_platform.services.mission.manager.execution.shell_manager"):
-            with patch("spectra_platform.services.mission.demo_recorder.DemoRecorder") as MockRec:
+        with patch("spectra_mission.manager.execution.shell_manager"):
+            with patch("spectra_mission.demo_recorder.DemoRecorder") as MockRec:
                 mock_rec = MockRec.return_value
                 mock_rec.start = MagicMock()
                 mock_rec.stop = MagicMock()
@@ -126,9 +126,9 @@ class TestMissionLoop:
         execution_manager._broadcast_state = MagicMock()
         execution_manager._llm_provider_healthy = AsyncMock(return_value=True)
 
-        with patch("spectra_platform.services.mission.manager.execution.shell_manager"):
-            with patch("spectra_platform.services.notifications.notify_mission_started", new_callable=AsyncMock, create=True):
-                with patch("spectra_platform.services.mission.manager.execution.index_to_rag", new_callable=AsyncMock):
+        with patch("spectra_mission.manager.execution.shell_manager"):
+            with patch("spectra_system.notifications.notify_mission_started", new_callable=AsyncMock, create=True):
+                with patch("spectra_mission.manager.execution.index_to_rag", new_callable=AsyncMock):
                     await execution_manager.run_mission_loop(mission)
 
         mission.set_status.assert_called_with("completed")
@@ -152,7 +152,7 @@ class TestMissionLoop:
         execution_manager._run_planning_phase = AsyncMock()
         execution_manager._broadcast_state = MagicMock()
 
-        with patch("spectra_platform.services.mission.manager.execution.shell_manager"):
+        with patch("spectra_mission.manager.execution.shell_manager"):
             await execution_manager.run_mission_loop(mission)
 
         mission.set_status.assert_called_with("failed")

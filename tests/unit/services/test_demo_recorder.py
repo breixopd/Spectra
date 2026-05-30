@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from spectra_platform.services.mission.demo_recorder import DemoRecorder
+from spectra_mission.demo_recorder import DemoRecorder
 
 
 @pytest.fixture
@@ -109,7 +109,7 @@ class TestSaveRecording:
 
         mock_storage = MagicMock()
         mock_storage.upload = AsyncMock(return_value="s3://spectra-missions/test-mission-001/demo.cast")
-        with patch("spectra_platform.services.mission.demo_recorder.get_storage_service", return_value=mock_storage):
+        with patch("spectra_mission.demo_recorder.get_storage_service", return_value=mock_storage):
             result = await recorder.save()
             assert result is not None
             mock_storage.upload.assert_called_once()
@@ -133,7 +133,7 @@ class TestSaveRecording:
 
         mock_storage = MagicMock()
         mock_storage.upload = AsyncMock(side_effect=capture_upload)
-        with patch("spectra_platform.services.mission.demo_recorder.get_storage_service", return_value=mock_storage):
+        with patch("spectra_mission.demo_recorder.get_storage_service", return_value=mock_storage):
             await recorder.save()
 
         content = captured_data["content"]

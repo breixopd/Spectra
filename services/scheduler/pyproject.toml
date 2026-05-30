@@ -7,7 +7,19 @@ dependencies = [
     "spectra-common",
     "spectra-domain",
     "spectra-tools-core",
-    "spectra-platform",
+    "spectra-contracts",
+    "spectra-ai-core",
+    "spectra-persistence",
+    "spectra-infra",
+    "spectra-mission",
+    "spectra-scaling",
+    "spectra-billing",
+    "spectra-auth",
+    "spectra-system",
+    "uvicorn[standard]>=0.48.0",
+    "fastapi>=0.115.0",
+    "redis[hiredis]>=5.2.0",
+    "sqlalchemy[asyncio]>=2.0.48",
 ]
 
 [build-system]

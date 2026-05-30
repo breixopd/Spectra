@@ -1,6 +1,6 @@
 """Tests for pentest framework phase timeline helpers (dynamic framework-driven)."""
 
-from spectra_platform.services.mission.framework_progress import (
+from spectra_mission.framework_progress import (
     framework_display_name,
     framework_phase_timeline,
     normalize_pentest_framework,

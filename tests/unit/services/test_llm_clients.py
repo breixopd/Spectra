@@ -7,7 +7,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import BaseModel
 
-from spectra_ai.llm import (
+import spectra_ai.llm  # noqa: F401 — registers the LLM factory with spectra_ai_core
+from spectra_ai_core.llm import (
     LLMResponse,
     get_default_llm_client,
     get_llm_client,
@@ -265,8 +266,8 @@ class TestGetDefaultLLMClient:
             return TensorZeroRouter(**kwargs)
 
         with (
-            patch("spectra_ai.llm.get_ai_settings", return_value=mock_settings),
-            patch("spectra_ai.llm.get_llm_client", side_effect=make_router),
+            patch("spectra_ai_core.llm.get_ai_settings", return_value=mock_settings),
+            patch("spectra_ai_core.llm.get_llm_client", side_effect=make_router),
         ):
             client = get_default_llm_client()
 
@@ -277,7 +278,7 @@ class TestGetDefaultLLMClient:
         mock_settings.TENSORZERO_GATEWAY_URL = ""
         mock_settings.LLM_TIMEOUT = 600.0
 
-        with patch("spectra_ai.llm.get_ai_settings", return_value=mock_settings):
+        with patch("spectra_ai_core.llm.get_ai_settings", return_value=mock_settings):
             with pytest.raises((ValueError, RuntimeError)):
                 get_default_llm_client()
 
@@ -336,7 +337,7 @@ async def _call_base_generate_structured(
     system_prompt: str | None = None,
 ):
     """Call the base LLMClient.generate_structured instead of the mock override."""
-    from spectra_ai.llm import LLMClient
+    from spectra_ai_core.llm import LLMClient
 
     return await LLMClient.generate_structured(
         client,

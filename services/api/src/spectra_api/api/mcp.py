@@ -20,9 +20,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.core.config import settings
-from spectra_platform.core.database import get_async_session
+from spectra_auth.rate_limit import RateLimits, limiter
+from spectra_common.config import settings
+from spectra_persistence.database import get_async_session
 
 logger = logging.getLogger(__name__)
 
@@ -277,8 +277,8 @@ async def _execute_mcp_tool(tool_name: str, arguments: dict, session: AsyncSessi
 
 async def _tool_start_mission(arguments: dict, session: AsyncSession) -> dict:
     """Start a new pentesting mission."""
-    from spectra_platform.models.user import User
-    from spectra_platform.services.mission.manager import mission_manager
+    from spectra_mission.manager import mission_manager
+    from spectra_persistence.models.user import User
 
     target = arguments.get("target", "")
     directive = arguments.get("directive", "")
@@ -309,7 +309,7 @@ async def _tool_start_mission(arguments: dict, session: AsyncSession) -> dict:
 
 async def _tool_get_mission_status(arguments: dict, session: AsyncSession) -> dict:
     """Get mission status from the database."""
-    from spectra_platform.models.mission import Mission
+    from spectra_persistence.models.mission import Mission
 
     mission_id = arguments.get("mission_id", "")
     user_id = arguments.get("user_id", "")
@@ -339,8 +339,8 @@ async def _tool_get_mission_status(arguments: dict, session: AsyncSession) -> di
 
 async def _tool_get_findings(arguments: dict, session: AsyncSession) -> dict:
     """Get findings from a mission's persisted summary."""
-    from spectra_platform.models.mission import Mission
-    from spectra_platform.services.mission.output_model import get_mission_findings
+    from spectra_mission.output_model import get_mission_findings
+    from spectra_persistence.models.mission import Mission
 
     mission_id = arguments.get("mission_id", "")
     user_id = arguments.get("user_id", "")
@@ -373,7 +373,7 @@ async def _tool_get_findings(arguments: dict, session: AsyncSession) -> dict:
 
 async def _tool_list_targets(arguments: dict, session: AsyncSession) -> dict:
     """List known targets."""
-    from spectra_platform.models.target import Target
+    from spectra_persistence.models.target import Target
 
     limit = min(arguments.get("limit", 20), 100)
     user_id = arguments.get("user_id", "")
@@ -400,7 +400,7 @@ async def _tool_list_targets(arguments: dict, session: AsyncSession) -> dict:
 
 async def _tool_search_knowledge_base(arguments: dict) -> dict:
     """Search RAG knowledge base."""
-    from spectra_platform.services.gateway.ai_gateway import get_ai_gateway
+    from spectra_ai_core.gateway.ai_gateway import get_ai_gateway
 
     query = arguments.get("query", "")
     limit = min(arguments.get("limit", 5), 20)
@@ -427,7 +427,7 @@ async def _tool_search_knowledge_base(arguments: dict) -> dict:
 
 def _tool_list_tools() -> dict:
     """List available security tools."""
-    from spectra_platform.services.tools.registry import ToolRegistry
+    from spectra_tools_core.registry import ToolRegistry
 
     registry = ToolRegistry()
     tools = registry.list_tools()

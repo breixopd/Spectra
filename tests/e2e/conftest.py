@@ -6,7 +6,7 @@ import pytest
 import pytest_asyncio
 
 if TYPE_CHECKING:
-    from spectra_platform.services.mission.manager import MissionManager
+    from spectra_mission.manager import MissionManager
 
 
 def _plain_dsn() -> str:
@@ -23,7 +23,7 @@ def ensure_e2e_admin_user() -> None:
     async def _upsert_admin() -> None:
         import asyncpg
 
-        from spectra_platform.auth.security import get_password_hash
+        from spectra_auth.security import get_password_hash
 
         username = os.environ.get("APP_USERNAME", os.environ.get("TEST_USERNAME", "admin"))
         password = os.environ.get("APP_PASSWORD", os.environ.get("TEST_PASSWORD", "TestPassword123!"))
@@ -71,7 +71,7 @@ async def dispose_e2e_database_pool():
     """Avoid asyncpg connections leaking across pytest-asyncio event loops."""
     yield
 
-    from spectra_platform.core.database import engine
+    from spectra_persistence.database import engine
 
     await engine.dispose()
 

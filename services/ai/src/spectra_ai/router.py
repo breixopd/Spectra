@@ -21,9 +21,9 @@ from typing import Any, TypeVar
 import httpx
 from pydantic import BaseModel
 
-from spectra_ai.llm import LLMClient, LLMResponse
 from spectra_ai.settings import get_ai_settings
-from spectra_ai.telemetry_hooks import record_llm_call
+from spectra_ai_core.llm import LLMClient, LLMResponse
+from spectra_ai_core.telemetry_hooks import record_llm_call
 
 logger = logging.getLogger(__name__)
 

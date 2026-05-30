@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from spectra_platform.services.webhooks.service import (
+from spectra_system.webhooks.service import (
     MAX_RETRIES,
     RETRY_DELAYS,
     SUPPORTED_EVENTS,
@@ -58,7 +58,7 @@ class TestWebhookModel:
 
     def test_model_has_required_fields(self):
         """Webhook class has the expected mapped columns."""
-        from spectra_platform.services.webhooks.models import Webhook
+        from spectra_system.webhooks.models import Webhook
 
         assert hasattr(Webhook, "user_id")
         assert hasattr(Webhook, "url")
@@ -73,13 +73,13 @@ class TestWebhookModel:
         assert "abc" in str(wh.id)
 
     def test_model_tablename(self):
-        from spectra_platform.services.webhooks.models import Webhook
+        from spectra_system.webhooks.models import Webhook
 
         assert Webhook.__tablename__ == "webhooks"
 
     def test_model_inherits_base(self):
-        from spectra_common.orm.base import Base
-        from spectra_platform.services.webhooks.models import Webhook
+        from spectra_persistence.orm.base import Base
+        from spectra_system.webhooks.models import Webhook
 
         assert issubclass(Webhook, Base)
 
@@ -107,8 +107,8 @@ class TestWebhookRegistration:
         svc = WebhookService(session)
 
         with (
-            patch("spectra_platform.services.webhooks.service.is_safe_url", AsyncMock(return_value=True)),
-            patch("spectra_platform.services.webhooks.service.Webhook") as MockWH,
+            patch("spectra_system.webhooks.service.is_safe_url", AsyncMock(return_value=True)),
+            patch("spectra_system.webhooks.service.Webhook") as MockWH,
         ):
             instance = MagicMock()
             MockWH.return_value = instance
@@ -129,7 +129,7 @@ class TestWebhookRegistration:
         session = AsyncMock()
         svc = WebhookService(session)
         with (
-            patch("spectra_platform.services.webhooks.service.is_safe_url", AsyncMock(return_value=True)),
+            patch("spectra_system.webhooks.service.is_safe_url", AsyncMock(return_value=True)),
             pytest.raises(ValueError, match="Unsupported webhook events"),
         ):
             await svc.register(
@@ -143,7 +143,7 @@ class TestWebhookRegistration:
         session = AsyncMock()
         svc = WebhookService(session)
         with (
-            patch("spectra_platform.services.webhooks.service.is_safe_url", AsyncMock(return_value=True)),
+            patch("spectra_system.webhooks.service.is_safe_url", AsyncMock(return_value=True)),
             pytest.raises(ValueError),
         ):
             await svc.register(
@@ -159,8 +159,8 @@ class TestWebhookRegistration:
         svc = WebhookService(session)
 
         with (
-            patch("spectra_platform.services.webhooks.service.is_safe_url", AsyncMock(return_value=True)),
-            patch("spectra_platform.services.webhooks.service.Webhook") as MockWH,
+            patch("spectra_system.webhooks.service.is_safe_url", AsyncMock(return_value=True)),
+            patch("spectra_system.webhooks.service.Webhook") as MockWH,
         ):
             MockWH.return_value = MagicMock()
             await svc.register(
@@ -226,7 +226,7 @@ class TestWebhookDelivery:
         wh = _mock_webhook()
         mock_client = _mock_http_client(status_code=200)
 
-        with patch("spectra_platform.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
+        with patch("spectra_system.webhooks.service.httpx.AsyncClient", return_value=mock_client):
             await _deliver(wh, "mission.completed", {"id": "m-1"})
 
         assert mock_client.post.await_count == 1
@@ -236,7 +236,7 @@ class TestWebhookDelivery:
         wh = _mock_webhook()
         mock_client = _mock_http_client(status_code=200)
 
-        with patch("spectra_platform.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
+        with patch("spectra_system.webhooks.service.httpx.AsyncClient", return_value=mock_client):
             await _deliver(wh, "finding.new", {"severity": "high"})
 
         _, kwargs = mock_client.post.call_args
@@ -247,7 +247,7 @@ class TestWebhookDelivery:
         wh = _mock_webhook(url="https://my-server.com/webhook")
         mock_client = _mock_http_client(status_code=200)
 
-        with patch("spectra_platform.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
+        with patch("spectra_system.webhooks.service.httpx.AsyncClient", return_value=mock_client):
             await _deliver(wh, "mission.completed", {})
 
         args, _ = mock_client.post.call_args
@@ -258,7 +258,7 @@ class TestWebhookDelivery:
         wh = _mock_webhook()
         mock_client = _mock_http_client(status_code=200)
 
-        with patch("spectra_platform.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
+        with patch("spectra_system.webhooks.service.httpx.AsyncClient", return_value=mock_client):
             await _deliver(wh, "mission.completed", {})
 
         _, kwargs = mock_client.post.call_args
@@ -276,8 +276,8 @@ class TestWebhookRetry:
         wh = _mock_webhook()
         mock_client = _mock_http_client(status_code=500)
 
-        with patch("spectra_platform.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
-            with patch("spectra_platform.services.webhooks.service.asyncio.sleep", new_callable=AsyncMock):
+        with patch("spectra_system.webhooks.service.httpx.AsyncClient", return_value=mock_client):
+            with patch("spectra_system.webhooks.service.asyncio.sleep", new_callable=AsyncMock):
                 await _deliver(wh, "scan.error", {})
 
         assert mock_client.post.await_count == MAX_RETRIES
@@ -287,8 +287,8 @@ class TestWebhookRetry:
         wh = _mock_webhook()
         mock_client = _mock_http_client(side_effect=ConnectionError("refused"))
 
-        with patch("spectra_platform.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
-            with patch("spectra_platform.services.webhooks.service.asyncio.sleep", new_callable=AsyncMock):
+        with patch("spectra_system.webhooks.service.httpx.AsyncClient", return_value=mock_client):
+            with patch("spectra_system.webhooks.service.asyncio.sleep", new_callable=AsyncMock):
                 await _deliver(wh, "scan.error", {})
 
         assert mock_client.post.await_count == MAX_RETRIES
@@ -298,8 +298,8 @@ class TestWebhookRetry:
         wh = _mock_webhook()
         mock_client = _mock_http_client(side_effect=ConnectionError("refused"))
 
-        with patch("spectra_platform.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
-            with patch("spectra_platform.services.webhooks.service.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        with patch("spectra_system.webhooks.service.httpx.AsyncClient", return_value=mock_client):
+            with patch("spectra_system.webhooks.service.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
                 await _deliver(wh, "scan.error", {})
 
         expected_sleeps = RETRY_DELAYS[: MAX_RETRIES - 1]
@@ -317,8 +317,8 @@ class TestWebhookRetry:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("spectra_platform.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
-            with patch("spectra_platform.services.webhooks.service.asyncio.sleep", new_callable=AsyncMock):
+        with patch("spectra_system.webhooks.service.httpx.AsyncClient", return_value=mock_client):
+            with patch("spectra_system.webhooks.service.asyncio.sleep", new_callable=AsyncMock):
                 await _deliver(wh, "finding.new", {"id": "f-1"})
 
         assert mock_client.post.await_count == 2
@@ -328,8 +328,8 @@ class TestWebhookRetry:
         wh = _mock_webhook()
         mock_client = _mock_http_client(status_code=200)
 
-        with patch("spectra_platform.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
-            with patch("spectra_platform.services.webhooks.service.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        with patch("spectra_system.webhooks.service.httpx.AsyncClient", return_value=mock_client):
+            with patch("spectra_system.webhooks.service.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
                 await _deliver(wh, "mission.completed", {})
 
         mock_sleep.assert_not_awaited()
@@ -346,8 +346,8 @@ class TestWebhookSignature:
         wh = _mock_webhook(secret="my-secret-key")
         mock_client = _mock_http_client(status_code=200)
 
-        with patch("spectra_platform.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
-            with patch("spectra_platform.services.webhooks.service.time.time", return_value=1700000000.0):
+        with patch("spectra_system.webhooks.service.httpx.AsyncClient", return_value=mock_client):
+            with patch("spectra_system.webhooks.service.time.time", return_value=1700000000.0):
                 await _deliver(wh, "mission.completed", {"id": "m-1"})
 
         _, kwargs = mock_client.post.call_args
@@ -359,8 +359,8 @@ class TestWebhookSignature:
         wh = _mock_webhook(secret=None)
         mock_client = _mock_http_client(status_code=200)
 
-        with patch("spectra_platform.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
-            with patch("spectra_platform.services.webhooks.service.time.time", return_value=1700000000.0):
+        with patch("spectra_system.webhooks.service.httpx.AsyncClient", return_value=mock_client):
+            with patch("spectra_system.webhooks.service.time.time", return_value=1700000000.0):
                 await _deliver(wh, "mission.completed", {})
 
         _, kwargs = mock_client.post.call_args
@@ -371,7 +371,7 @@ class TestWebhookSignature:
         wh = _mock_webhook(secret=None)
         mock_client = _mock_http_client(status_code=200)
 
-        with patch("spectra_platform.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
+        with patch("spectra_system.webhooks.service.httpx.AsyncClient", return_value=mock_client):
             await _deliver(wh, "mission.completed", {})
 
         _, kwargs = mock_client.post.call_args
@@ -391,8 +391,8 @@ class TestWebhookSignature:
         expected = "sha256=" + hmac.new(secret.encode(), sig_payload, hashlib.sha256).hexdigest()
 
         mock_client = _mock_http_client(status_code=200)
-        with patch("spectra_platform.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
-            with patch("spectra_platform.services.webhooks.service.time.time", return_value=float(fixed_ts)):
+        with patch("spectra_system.webhooks.service.httpx.AsyncClient", return_value=mock_client):
+            with patch("spectra_system.webhooks.service.time.time", return_value=float(fixed_ts)):
                 await _deliver(wh, event, payload)
 
         _, kwargs = mock_client.post.call_args
@@ -404,7 +404,7 @@ class TestWebhookSignature:
         wh = _mock_webhook(secret="k")
         mock_client = _mock_http_client(status_code=200)
 
-        with patch("spectra_platform.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
+        with patch("spectra_system.webhooks.service.httpx.AsyncClient", return_value=mock_client):
             await _deliver(wh, "mission.completed", {"b": 2, "a": 1})
 
         _, kwargs = mock_client.post.call_args
@@ -429,7 +429,7 @@ class TestWebhookFire:
 
         svc = WebhookService(session)
 
-        with patch("spectra_platform.services.webhooks.service._deliver", new_callable=AsyncMock):
+        with patch("spectra_system.webhooks.service._deliver", new_callable=AsyncMock):
             with patch("spectra_common.tasks.create_safe_task") as mock_task:
 
                 def _close_coro(coro, *, name=None):

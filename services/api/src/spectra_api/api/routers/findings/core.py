@@ -14,16 +14,16 @@ from spectra_api.api.dependencies import check_resource_owner, get_current_activ
 from spectra_api.api.schemas.common import PaginatedResponse
 from spectra_api.api.schemas.finding import FindingResponse
 from spectra_api.authz import Permission, require_permission
+from spectra_auth.rate_limit import RateLimits, limiter
 from spectra_common.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from spectra_common.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.audit_log import AuditEventType
-from spectra_platform.models.finding import FindingStatus, Severity
-from spectra_platform.models.user import User
-from spectra_platform.repositories.finding import FindingRepository
-from spectra_platform.repositories.target import TargetRepository
-from spectra_platform.services.system.audit import log_event as audit_log_event
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.audit_log import AuditEventType
+from spectra_persistence.models.finding import FindingStatus, Severity
+from spectra_persistence.models.user import User
+from spectra_persistence.repositories.finding import FindingRepository
+from spectra_persistence.repositories.target import TargetRepository
+from spectra_system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +180,7 @@ async def _update_finding_status_response(
     current_user: User,
     new_status: FindingStatus,
     action: str,
-    request: Optional[Request],
+    request: Request,
     *,
     ensure_updated: bool = False,
 ) -> FindingDetailResponse:
@@ -218,7 +218,7 @@ async def _update_finding_status_response(
 )
 async def create_finding(
     finding_in: FindingCreate,
-    request: Optional[Request] = None,
+    request: Request,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_FINDINGS),
 ) -> FindingDetailResponse:
@@ -272,7 +272,7 @@ async def create_finding(
 )
 @limiter.limit(RateLimits.FINDINGS_LIST)
 async def list_findings(
-    request: Optional[Request] = None,
+    request: Request,
     page: int = Query(default=1, ge=1, description="Page number"),
     per_page: int = Query(
         default=DEFAULT_PAGE_SIZE,
@@ -289,7 +289,7 @@ async def list_findings(
 
     Pagination: max 100 items per page.
     """
-    from spectra_platform.models.finding import Finding
+    from spectra_persistence.models.finding import Finding
 
     repo = FindingRepository(db)
     filters = _finding_filters(_current_user, severity=severity, status_filter=status_filter)
@@ -333,7 +333,7 @@ async def get_finding(
 async def update_finding(
     finding_id: str,
     finding_in: FindingUpdate,
-    request: Optional[Request] = None,
+    request: Request,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_FINDINGS),
 ) -> FindingDetailResponse:
@@ -378,7 +378,7 @@ async def update_finding(
 )
 async def delete_finding(
     finding_id: str,
-    request: Optional[Request] = None,
+    request: Request,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_FINDINGS),
 ) -> None:
@@ -411,7 +411,7 @@ async def delete_finding(
 )
 async def verify_finding(
     finding_id: str,
-    request: Optional[Request] = None,
+    request: Request,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ) -> FindingDetailResponse:
@@ -437,7 +437,7 @@ async def verify_finding(
 )
 async def mark_false_positive(
     finding_id: str,
-    request: Optional[Request] = None,
+    request: Request,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ) -> FindingDetailResponse:
@@ -463,7 +463,7 @@ async def mark_false_positive(
 )
 async def confirm_finding(
     finding_id: str,
-    request: Optional[Request] = None,
+    request: Request,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ) -> FindingDetailResponse:
@@ -488,7 +488,7 @@ async def confirm_finding(
 )
 async def dismiss_finding(
     finding_id: str,
-    request: Optional[Request] = None,
+    request: Request,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ):
@@ -513,7 +513,7 @@ async def dismiss_finding(
 )
 async def retest_finding(
     finding_id: str,
-    request: Optional[Request] = None,
+    request: Request,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ):

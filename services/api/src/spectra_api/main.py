@@ -3,7 +3,7 @@
 import uvicorn
 
 from spectra_api.factory import create_app
-from spectra_platform.core.config import settings
+from spectra_common.config import settings
 
 app = create_app()
 

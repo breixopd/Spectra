@@ -10,8 +10,8 @@ set -euo pipefail
 ROOT="$(cd "${1:-.}" && pwd)"
 cd "$ROOT"
 
-if [[ ! -f docker/compose.yaml ]]; then
-  echo "error: docker/compose.yaml not found under $ROOT" >&2
+if [[ ! -f deploy/docker/compose.yaml ]]; then
+  echo "error: deploy/docker/compose.yaml not found under $ROOT" >&2
   exit 1
 fi
 

@@ -39,7 +39,7 @@ from spectra_api.api.routers import (
 )
 from spectra_api.ui import pages as ui
 from spectra_api.ui import public
-from spectra_platform.core.config import settings
+from spectra_common.config import settings
 
 logger = logging.getLogger(__name__)
 

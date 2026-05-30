@@ -1,0 +1,71 @@
+# Spectra Worker — security tools worker (Kali Linux).
+# First-party code is installed as wheels via uv; pentest tooling is baked into
+# the promoted golden image, not this control-plane image.
+#
+# SECURITY: runs as non-root USER spectra with selective sudo for tools needing caps.
+ARG KALI_BASE_IMAGE=kalilinux/kali-rolling@sha256:1fd0364490011f245688c6ed9fee498a11cd779badfbb0b1d3a721d0f49f2d15
+
+# ── Builder: resolve + build the spectra-worker wheel closure ──
+FROM ${KALI_BASE_IMAGE} AS builder
+COPY --from=ghcr.io/astral-sh/uv:0.11.17 /uv /usr/local/bin/uv
+WORKDIR /src
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_PYTHON=python3
+
+RUN sed -i 's|http://http.kali.org/kali|http://kali.download/kali|g' /etc/apt/sources.list && \
+    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    python3 python3-dev python3-venv \
+    gcc libpq-dev libffi-dev libcairo2-dev pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml uv.lock ./
+COPY packages/ ./packages/
+COPY services/ ./services/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-editable --package spectra-worker
+
+# ── Runtime: Kali + pentest control tooling + venv ──
+FROM ${KALI_BASE_IMAGE}
+ARG BUILD_VERSION=dev
+LABEL org.opencontainers.image.title="Spectra Worker" \
+      org.opencontainers.image.description="Security tools worker (Kali Linux)" \
+      org.opencontainers.image.source="https://github.com/breixopd/Spectra" \
+      org.opencontainers.image.vendor="breixopd" \
+      org.opencontainers.image.version="${BUILD_VERSION}"
+
+ENV SPECTRA_BUILD_VERSION="${BUILD_VERSION}" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    SERVICE_MODE=worker \
+    PATH="/opt/venv/bin:/opt/spectra_tools:$PATH"
+
+WORKDIR /app
+
+RUN sed -i 's|http://http.kali.org/kali|http://kali.download/kali|g' /etc/apt/sources.list && \
+    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    python3 \
+    libpq5 libcairo2 \
+    sudo curl wget git jq unzip \
+    nmap iputils-ping iproute2 netcat-openbsd iptables \
+    wireguard-tools openvpn \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc /usr/share/man
+
+RUN mkdir -p /opt/spectra_tools
+COPY --from=builder /opt/venv /opt/venv
+COPY scripts/ ./scripts/
+COPY plugins/ ./plugins/
+
+RUN useradd --create-home --shell /bin/bash spectra && \
+    mkdir -p /etc/sudoers.d && \
+    printf 'spectra ALL=(root) NOPASSWD: /usr/bin/apt-get, /usr/bin/apt, /usr/bin/dpkg, /usr/sbin/service, /usr/sbin/openvpn, /usr/bin/wg-quick\nDefaults:spectra !requiretty\n' > /etc/sudoers.d/spectra-tools && \
+    chmod 0440 /etc/sudoers.d/spectra-tools && \
+    chown -R spectra:spectra /app /opt/spectra_tools
+
+USER spectra
+EXPOSE 5012
+HEALTHCHECK --interval=60s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5012/health || exit 1
+CMD ["uvicorn", "spectra_worker.main:app", "--host", "0.0.0.0", "--port", "5012"]

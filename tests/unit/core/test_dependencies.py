@@ -292,11 +292,11 @@ class TestEnforceApiRateLimit:
 
         with (
             patch(
-                "spectra_platform.services.billing.quota_enforcer.QuotaEnforcer",
+                "spectra_billing.quota_enforcer.QuotaEnforcer",
                 return_value=mock_enforcer,
             ),
             patch(
-                "spectra_platform.services.billing.usage_tracker.UsageTracker",
+                "spectra_billing.usage_tracker.UsageTracker",
                 return_value=mock_tracker,
             ),
             patch("spectra_api.api.dependencies.async_session_maker", return_value=session),
@@ -323,11 +323,11 @@ class TestEnforceApiRateLimit:
 
         with (
             patch(
-                "spectra_platform.services.billing.quota_enforcer.QuotaEnforcer",
+                "spectra_billing.quota_enforcer.QuotaEnforcer",
                 return_value=mock_enforcer,
             ),
             patch(
-                "spectra_platform.services.billing.usage_tracker.UsageTracker",
+                "spectra_billing.usage_tracker.UsageTracker",
                 return_value=mock_tracker,
             ),
             patch("spectra_api.api.dependencies.async_session_maker", return_value=session),

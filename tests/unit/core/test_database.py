@@ -17,7 +17,7 @@ class TestConfigureDatabaseUrl:
     """Test the URL-rewriting helper that strips sslmode for asyncpg."""
 
     def _call(self, url: str):
-        from spectra_platform.core.database import _configure_database_url
+        from spectra_persistence.database import _configure_database_url
 
         return _configure_database_url(url)
 
@@ -73,19 +73,19 @@ class TestModuleLevelObjects:
     """Verify the module exports the expected engine / session maker."""
 
     def test_engine_exists(self):
-        from spectra_platform.core.database import engine
+        from spectra_persistence.database import engine
 
         assert engine is not None
 
     def test_async_session_maker_exists(self):
-        from spectra_platform.core.database import async_session_maker
+        from spectra_persistence.database import async_session_maker
 
         assert async_session_maker is not None
 
     def test_get_async_session_is_async_generator(self):
         import inspect
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         assert inspect.isasyncgenfunction(get_async_session)
 
@@ -112,8 +112,8 @@ class TestGetAsyncSession:
             async def __aexit__(self, *args):
                 pass
 
-        with patch("spectra_platform.core.database.async_session_maker", FakeSessionMaker()):
-            from spectra_platform.core.database import get_async_session
+        with patch("spectra_persistence.database.async_session_maker", FakeSessionMaker()):
+            from spectra_persistence.database import get_async_session
 
             gen = get_async_session()
             session = await gen.__anext__()
@@ -138,8 +138,8 @@ class TestGetAsyncSession:
             async def __aexit__(self, exc_type, exc_val, tb):
                 return False  # propagate exception
 
-        with patch("spectra_platform.core.database.async_session_maker", FakeSessionMaker()):
-            from spectra_platform.core.database import get_async_session
+        with patch("spectra_persistence.database.async_session_maker", FakeSessionMaker()):
+            from spectra_persistence.database import get_async_session
 
             gen = get_async_session()
             session = await gen.__anext__()
@@ -156,14 +156,14 @@ class TestGetAsyncSession:
 
 class TestEngineConfig:
     def test_engine_uses_async_driver(self):
-        from spectra_platform.core.database import engine
+        from spectra_persistence.database import engine
 
         url_str = str(engine.url)
         # CI / compose may use Postgres; scripts/test.sh uses sqlite for isolated runs.
         assert "asyncpg" in url_str or "aiosqlite" in url_str
 
     def test_session_maker_produces_async_sessions(self):
-        from spectra_platform.core.database import async_session_maker
+        from spectra_persistence.database import async_session_maker
 
         # The class_ attribute should be AsyncSession or similar
         assert async_session_maker is not None

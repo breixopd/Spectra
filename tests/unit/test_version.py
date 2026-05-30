@@ -6,7 +6,7 @@ import importlib
 
 
 def test_version_uses_runtime_env_override(monkeypatch):
-    import spectra_platform._meta.version as version_module
+    import spectra_common._meta.version as version_module
 
     monkeypatch.setenv("SPECTRA_BUILD_VERSION", "2026.04.13")
     monkeypatch.delenv("SPECTRA_BUILD_VERSION_FILE", raising=False)
@@ -17,7 +17,7 @@ def test_version_uses_runtime_env_override(monkeypatch):
 
 
 def test_version_uses_runtime_version_file(tmp_path, monkeypatch):
-    import spectra_platform._meta.version as version_module
+    import spectra_common._meta.version as version_module
 
     version_file = tmp_path / "build-version.txt"
     version_file.write_text("2026.04.13.1\n", encoding="utf-8")

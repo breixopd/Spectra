@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from spectra_ai.embeddings import EmbeddingService
+from spectra_ai_core.embeddings import EmbeddingService
 
 
 @pytest.fixture
@@ -31,7 +31,7 @@ class TestEmbeddingSingleText:
         service._openai_client = mock_client
         service._openai_model = "test-model"
 
-        result = await service.embed("hello world")
+        result = await service.embed_one("hello world")
 
         assert isinstance(result, list)
         assert all(isinstance(v, float) for v in result)
@@ -52,7 +52,7 @@ class TestEmbeddingSingleText:
         service._openai_client = mock_client
         service._openai_model = "test-model"
 
-        await service.embed("text")
+        await service.embed_one("text")
 
         mock_client.embeddings.create.assert_called_once_with(
             model="test-model",
@@ -81,7 +81,7 @@ class TestEmbeddingBatch:
         service._openai_client = mock_client
         service._openai_model = "test-model"
 
-        result = await service.embed_batch(["a", "b"])
+        result = await service.embed(["a", "b"])
 
         assert len(result) == 2
         assert all(isinstance(row, list) for row in result)
@@ -91,13 +91,33 @@ class TestEmbeddingBatch:
 class TestModelLoading:
     """Tests for _load_model() lazy-loading behaviour."""
 
+    @pytest.fixture(autouse=True)
+    def _fake_fastembed(self):
+        """Stub fastembed so local-model tests are deterministic and avoid the
+        real backend's "load once per process" limitation."""
+        import sys
+        import types
+
+        fake_mod = types.ModuleType("fastembed")
+
+        class _FakeTextEmbedding:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def embed(self, texts):
+                return [[0.1, 0.2, 0.3] for _ in texts]
+
+        fake_mod.TextEmbedding = _FakeTextEmbedding
+        with patch.dict(sys.modules, {"fastembed": fake_mod}):
+            yield
+
     @pytest.mark.asyncio
     async def test_load_model_uses_local_fallback_when_no_api_key(self, service):
         """_load_model falls back to local model when no API key is available."""
         mock_settings = MagicMock()
         mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
         mock_settings.EMBEDDING_MODEL = "test-model"
-        with patch("spectra_ai.embeddings.get_ai_settings", return_value=mock_settings):
+        with patch("spectra_ai_core.embeddings.get_ai_settings", return_value=mock_settings):
             await service._load_model()
         assert service._api_ready is True
         assert service._use_local is True
@@ -108,7 +128,7 @@ class TestModelLoading:
         mock_settings = MagicMock()
         mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
         mock_settings.EMBEDDING_MODEL = "test-model"
-        with patch("spectra_ai.embeddings.get_ai_settings", return_value=mock_settings):
+        with patch("spectra_ai_core.embeddings.get_ai_settings", return_value=mock_settings):
             await service._load_model()
         assert service._api_ready is True
         assert service._use_local is True
@@ -122,7 +142,7 @@ class TestModelLoading:
         mock_settings.EMBEDDING_API_BASE_URL = "https://api.example.com/v1"
         mock_settings.EMBEDDING_MODEL = "test-model"
         with (
-            patch("spectra_ai.embeddings.get_ai_settings", return_value=mock_settings),
+            patch("spectra_ai_core.embeddings.get_ai_settings", return_value=mock_settings),
             patch("openai.AsyncOpenAI") as mock_openai_cls,
         ):
             await service._load_model()
@@ -155,7 +175,7 @@ class TestModelLoading:
         mock_settings = MagicMock()
         mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
         mock_settings.EMBEDDING_MODEL = "test-model"
-        with patch("spectra_ai.embeddings.get_ai_settings", return_value=mock_settings):
+        with patch("spectra_ai_core.embeddings.get_ai_settings", return_value=mock_settings):
             await service._load_model()
         assert service._use_local is True
         assert service._api_ready is True
@@ -166,7 +186,7 @@ class TestModelLoading:
         mock_settings = MagicMock()
         mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
         mock_settings.EMBEDDING_MODEL = "test-model"
-        with patch("spectra_ai.embeddings.get_ai_settings", return_value=mock_settings):
+        with patch("spectra_ai_core.embeddings.get_ai_settings", return_value=mock_settings):
             await service._load_model()
         assert service._use_local is True
         assert service._api_ready is True
@@ -184,7 +204,7 @@ class TestModelLoading:
         mock_settings.EMBEDDING_API_BASE_URL = ""
         mock_settings.EMBEDDING_MODEL = "test-model"
         with (
-            patch("spectra_ai.embeddings.get_ai_settings", return_value=mock_settings),
+            patch("spectra_ai_core.embeddings.get_ai_settings", return_value=mock_settings),
             patch("openai.AsyncOpenAI"),
         ):
             await service._load_model()
@@ -198,7 +218,7 @@ class TestModelLoading:
         mock_settings.EMBEDDING_API_BASE_URL = ""
         mock_settings.EMBEDDING_MODEL = "test-model"
         with (
-            patch("spectra_ai.embeddings.get_ai_settings", return_value=mock_settings),
+            patch("spectra_ai_core.embeddings.get_ai_settings", return_value=mock_settings),
             patch("openai.AsyncOpenAI") as mock_openai_cls,
         ):
             await service._load_model()

@@ -9,19 +9,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from spectra_api.api.dependencies import get_current_active_user
 from spectra_api.api.routers.auth.schemas import ChangePasswordRequest
 from spectra_api.api.schemas.auth import ForgotPasswordRequest, ResetPasswordRequest
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.auth.security import (
+from spectra_auth.rate_limit import RateLimits, limiter
+from spectra_auth.security import (
     create_password_reset_token,
     get_password_hash,
     invalidate_token,
     verify_password,
     verify_password_reset_token,
 )
-from spectra_platform.core.config import settings
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.audit_log import AuditEventType
-from spectra_platform.models.user import User
-from spectra_platform.services.system.audit import log_event as audit_log_event
+from spectra_common.config import settings
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.audit_log import AuditEventType
+from spectra_persistence.models.user import User
+from spectra_system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +63,8 @@ async def forgot_password(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Request a password reset email. Always returns 204 to avoid user enumeration."""
-    from spectra_platform.repositories.user import UserRepository
-    from spectra_platform.services.email import EmailService
+    from spectra_persistence.repositories.user import UserRepository
+    from spectra_system.email.service import EmailService
 
     user_repo = UserRepository(session)
     user = await user_repo.get_by_email(body.email)
@@ -101,7 +101,7 @@ async def reset_password(
     if not user_id:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
-    from spectra_platform.repositories.user import UserRepository
+    from spectra_persistence.repositories.user import UserRepository
 
     user_repo = UserRepository(session)
     user = await user_repo.get_by_id(user_id)

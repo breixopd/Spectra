@@ -1,6 +1,6 @@
 """Tests for the MITRE ATT&CK mapping service."""
 
-from spectra_platform.services.ai.mitre_attack import (
+from spectra_ai_core.mitre_attack import (
     TECHNIQUE_MAP,
     _resolve_techniques,
     get_attack_summary,

@@ -3,7 +3,7 @@
 import logging
 
 import spectra_scheduler.locking as _sched_lock
-from spectra_platform.core.database import advisory_lock_connection
+from spectra_persistence.database import advisory_lock_connection
 from spectra_scheduler import async_ops
 from spectra_scheduler.locks import (
     _DISK_MONITOR_LOCK_ID,
@@ -17,8 +17,8 @@ class SchedulerInfraMonitorMixin:
     async def _send_infra_alert(self, *, event: str, message: str, priority: str = "urgent") -> None:
         """Send infrastructure monitor alerts through the configured notifier."""
         try:
-            from spectra_platform.services.infrastructure.storage_monitor import StorageMonitor
-            from spectra_platform.services.notifications import send_notification
+            from spectra_scaling.infrastructure_services.storage_monitor import StorageMonitor
+            from spectra_system.notifications import send_notification
 
             if not StorageMonitor.should_alert(event):
                 return
@@ -32,7 +32,7 @@ class SchedulerInfraMonitorMixin:
             logger.warning("Infrastructure alert send failed: %s", e)
 
     async def _check_postgres_pool_pressure(self, settings) -> None:
-        from spectra_platform.core.database import engine
+        from spectra_persistence.database import engine
 
         if engine is None:
             return
@@ -93,7 +93,7 @@ class SchedulerInfraMonitorMixin:
 
     async def _infrastructure_monitor(self):
         """Monitor configured infrastructure thresholds. Runs every 5 minutes."""
-        from spectra_platform.core.config import get_settings
+        from spectra_common.config import get_settings
 
         while self.running:
             await async_ops.sleep(300)
@@ -118,7 +118,7 @@ class SchedulerInfraMonitorMixin:
 
     async def _disk_monitor(self):
         """Monitor disk space and alert when low (with dedup)."""
-        from spectra_platform.services.infrastructure.storage_monitor import StorageMonitor
+        from spectra_scaling.infrastructure_services.storage_monitor import StorageMonitor
 
         while self.running:
             await async_ops.sleep(300)  # 5 minutes
@@ -134,7 +134,7 @@ class SchedulerInfraMonitorMixin:
 
                     import shutil
 
-                    from spectra_platform.core.config import get_settings
+                    from spectra_common.config import get_settings
 
                     settings = get_settings()
                     if not settings.INFRA_MONITOR_ENABLED:

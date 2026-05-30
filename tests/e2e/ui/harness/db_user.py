@@ -13,7 +13,7 @@ import asyncpg
 import pytest
 from playwright.sync_api import Page
 
-from spectra_platform.auth.security import get_password_hash
+from spectra_auth.security import get_password_hash
 
 DEFAULT_TEST_PASSWORD = "TestPassword123!"
 

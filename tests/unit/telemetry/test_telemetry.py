@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from spectra_platform.telemetry.telemetry import (
+from spectra_observability.telemetry import (
     MetricData,
     SpanData,
     TelemetryCollector,
@@ -195,7 +195,7 @@ def test_telemetry_collector_export_otlp_format():
 @pytest.mark.asyncio
 async def test_telemetry_collector_push_to_collector_no_endpoint():
     tc = TelemetryCollector()
-    with patch("spectra_platform.core.config.get_settings") as mock_settings:
+    with patch("spectra_common.config.get_settings") as mock_settings:
         mock_settings.return_value.OTEL_EXPORTER_ENDPOINT = ""
         result = await tc.push_to_collector()
     assert result is False
@@ -207,7 +207,7 @@ async def test_telemetry_collector_push_to_collector_success():
     tc.increment_counter("requests", 1)
     span = tc.start_span("test")
     tc.end_span(span)
-    with patch("spectra_platform.core.config.get_settings") as mock_settings:
+    with patch("spectra_common.config.get_settings") as mock_settings:
         mock_settings.return_value.OTEL_EXPORTER_ENDPOINT = "http://otel:4318"
         mock_client = AsyncMock()
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -259,7 +259,7 @@ async def test_record_mission_event():
 
 
 def test_trace_decorator():
-    from spectra_platform.telemetry.telemetry import trace
+    from spectra_observability.telemetry import trace
 
     @trace(name="traced_func")
     def traced_func():
@@ -279,7 +279,7 @@ def test_telemetry_collector_histogram_limit():
 @pytest.mark.asyncio
 async def test_telemetry_collector_start_export_loop_no_endpoint():
     tc = TelemetryCollector()
-    with patch("spectra_platform.core.config.get_settings") as mock_settings:
+    with patch("spectra_common.config.get_settings") as mock_settings:
         mock_settings.return_value.OTEL_EXPORTER_ENDPOINT = ""
         result = await tc.start_export_loop()
     assert result is None
@@ -320,7 +320,7 @@ def test_telemetry_collector_get_metrics_summary():
 async def test_telemetry_collector_push_to_collector_error():
     tc = TelemetryCollector()
     tc.increment_counter("x", 1)
-    with patch("spectra_platform.core.config.get_settings") as mock_settings:
+    with patch("spectra_common.config.get_settings") as mock_settings:
         mock_settings.return_value.OTEL_EXPORTER_ENDPOINT = "http://otel:4318"
         with patch("httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()

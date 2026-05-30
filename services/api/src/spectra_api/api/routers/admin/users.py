@@ -26,26 +26,26 @@ from spectra_api.api.schemas.system import (
 )
 from spectra_api.authz import Permission, require_permission
 from spectra_api.templates import templates
-from spectra_common.constants import API_DEFAULT_PAGE_SIZE, API_MAX_PAGE_SIZE
-from spectra_platform.auth.security import create_password_reset_token, get_password_hash
-from spectra_platform.core.config import settings
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.audit_log import AuditEventType
-from spectra_platform.models.exploit import Exploit
-from spectra_platform.models.finding import Finding
-from spectra_platform.models.mission import Mission
-from spectra_platform.models.pentest_session import PentestSession
-from spectra_platform.models.plan import ApiKey, Plan, Subscription, UsageRecord
-from spectra_platform.models.target import Target
-from spectra_platform.models.user import User
-from spectra_platform.models.user_preferences import UserPreferences
-from spectra_platform.services.billing import PaymentService
-from spectra_platform.services.billing.entitlements import (
+from spectra_auth.security import create_password_reset_token, get_password_hash
+from spectra_billing import PaymentService
+from spectra_billing.entitlements import (
     ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES,
     sync_user_plan_mirror,
 )
-from spectra_platform.services.system.audit import log_event as audit_log_event
-from spectra_platform.services.system.rollback import create_snapshot
+from spectra_common.config import settings
+from spectra_common.constants import API_DEFAULT_PAGE_SIZE, API_MAX_PAGE_SIZE
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.audit_log import AuditEventType
+from spectra_persistence.models.exploit import Exploit
+from spectra_persistence.models.finding import Finding
+from spectra_persistence.models.mission import Mission
+from spectra_persistence.models.pentest_session import PentestSession
+from spectra_persistence.models.plan import ApiKey, Plan, Subscription, UsageRecord
+from spectra_persistence.models.target import Target
+from spectra_persistence.models.user import User
+from spectra_persistence.models.user_preferences import UserPreferences
+from spectra_system.audit import log_event as audit_log_event
+from spectra_system.rollback import create_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -395,7 +395,7 @@ async def admin_page(
 
     maintenance_active = False
     try:
-        from spectra_platform.services.system.runtime_settings import get_runtime_setting_value
+        from spectra_system.runtime_settings import get_runtime_setting_value
 
         maintenance_active = bool(await get_runtime_setting_value("MAINTENANCE_MODE"))
     except OSError:
@@ -498,7 +498,7 @@ async def create_user(
 
     activation_url = None
     try:
-        from spectra_platform.services.auth.email_verification import (
+        from spectra_auth.services.email_verification import (
             build_email_verification_url,
             send_registration_verification_email,
         )
@@ -510,7 +510,7 @@ async def create_user(
             activation_url = build_email_verification_url(request, str(user.id))
     except Exception:
         logger.exception("Failed to prepare admin-created user activation flow for %s", user.username)
-        from spectra_platform.services.auth.email_verification import build_email_verification_url
+        from spectra_auth.services.email_verification import build_email_verification_url
 
         activation_url = build_email_verification_url(request, str(user.id))
 
@@ -636,7 +636,7 @@ async def reset_password(
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> dict:
-    from spectra_platform.services.email import EmailService
+    from spectra_system.email.service import EmailService
 
     row = await _get_user_or_404(session, user_id)
 

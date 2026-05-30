@@ -16,7 +16,7 @@
 # Environment:
 #   SPECTRA_TEST_IMAGE  Override the Docker image (default: spectra-app)
 #   REBUILD=1           Force rebuild the test image before running
-#   START_STACK=1       Bring up docker/compose.yaml (app + test profiles) before live-smoke
+#   START_STACK=1       Bring up deploy/docker/compose.yaml (app + test profiles) before live-smoke
 #   SPECTRA_KEEP_TEST_ARTIFACTS=1  Export coverage/smoke diagnostics to ./reports
 #
 # Full extended matrix (parity + load/perf/soak + Playwright + live targets; optional LLM live):
@@ -76,7 +76,7 @@ usage() {
 build_image() {
     if [[ "${REBUILD:-0}" == "1" ]] || ! docker image inspect "$IMAGE" &>/dev/null; then
         echo -e "${YELLOW}Building test image...${NC}"
-        docker build -f "$PROJECT_ROOT/docker/Dockerfile.test" -t "$IMAGE" "$PROJECT_ROOT"
+        docker build -f "$PROJECT_ROOT/deploy/docker/Dockerfile.test" -t "$IMAGE" "$PROJECT_ROOT"
     fi
 }
 
@@ -104,7 +104,7 @@ run_in_docker() {
         -v "$PROJECT_ROOT/pyproject.toml:/app/pyproject.toml:ro" \
         -v "$PROJECT_ROOT/.env.test:/app/.env.test:ro" \
         -v "$PROJECT_ROOT/alembic:/app/alembic:ro" \
-        -v "$PROJECT_ROOT/config/alembic.ini:/app/config/alembic.ini:ro" \
+        -v "$PROJECT_ROOT/db/alembic.ini:/app/config/alembic.ini:ro" \
         -v "$PROJECT_ROOT/plugins:/app/plugins:ro" \
         "${artifact_mounts[@]}" \
         --entrypoint sh "$IMAGE" \
@@ -124,8 +124,8 @@ collect_compose_logs() {
         out_dir="$PROJECT_ROOT/reports/live-smoke"
     fi
     mkdir -p "$out_dir"
-    docker compose -f "$PROJECT_ROOT/docker/compose.yaml" --profile app --profile test ps > "$out_dir/compose-ps.txt" 2>&1 || true
-    docker compose -f "$PROJECT_ROOT/docker/compose.yaml" --profile app --profile test logs --no-color --tail=300 \
+    docker compose -f "$PROJECT_ROOT/deploy/docker/compose.yaml" --profile app --profile test ps > "$out_dir/compose-ps.txt" 2>&1 || true
+    docker compose -f "$PROJECT_ROOT/deploy/docker/compose.yaml" --profile app --profile test logs --no-color --tail=300 \
         > "$out_dir/compose-logs.txt" 2>&1 || true
     echo -e "${YELLOW}Compose diagnostics written to ${out_dir}${NC}"
 }
@@ -142,7 +142,7 @@ bootstrap_test_garage() {
 run_live_smoke() {
     if [[ "${START_STACK:-0}" == "1" ]]; then
         echo -e "${CYAN}Starting test stack for live smoke...${NC}"
-        docker compose --env-file "$PROJECT_ROOT/.env.test" -f "$PROJECT_ROOT/docker/compose.yaml" --profile app --profile test up -d
+        docker compose --env-file "$PROJECT_ROOT/.env.test" -f "$PROJECT_ROOT/deploy/docker/compose.yaml" --profile app --profile test up -d
         export APP_BASE_URL="${APP_BASE_URL:-http://localhost:15080}"
         bootstrap_test_garage
     fi
@@ -204,7 +204,7 @@ case "$CMD" in
     compose)
         echo -e "${CYAN}Running integration test-runner via Compose (profiles app + test)...${NC}"
         docker compose --env-file "$PROJECT_ROOT/.env.test" \
-            -f "$PROJECT_ROOT/docker/compose.yaml" --profile app --profile test \
+            -f "$PROJECT_ROOT/deploy/docker/compose.yaml" --profile app --profile test \
             run --rm test-runner
         ;;
     -h|--help)

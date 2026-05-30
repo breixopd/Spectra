@@ -62,7 +62,7 @@ async def startup() -> None:
     _log_startup_banner()
 
     try:
-        from spectra_platform.services.tools.registry import initialize_registry
+        from spectra_tools_core.registry import initialize_registry
 
         registry = await initialize_registry(
             plugins_dir="plugins",
@@ -77,8 +77,8 @@ async def startup() -> None:
 
 async def _batch_sync_tool_statuses(tools: list[object]) -> list[str]:
     """Batch sync tool statuses to cache, return list of pending tool IDs."""
-    from spectra_platform.infrastructure.cache import CacheService
     from spectra_common.constants import SECONDS_PER_HOUR
+    from spectra_infra.cache import CacheService
 
     cache = CacheService()
     pending = []
@@ -129,7 +129,7 @@ async def _auto_install_pending() -> None:
     install when first used), but the worker does NOT attempt to install
     them — golden image is the delivery mechanism.
     """
-    from spectra_platform.services.tools.registry import get_registry
+    from spectra_tools_core.registry import get_registry
     from spectra_worker.tool_jobs import verify_golden_image_on_startup
 
     registry = get_registry()
@@ -158,7 +158,7 @@ async def shutdown() -> None:
     """Worker shutdown hook — release resources."""
     logger.info("Spectra PostgreSQL Worker shutting down...")
     try:
-        from spectra_platform.core.database import engine
+        from spectra_persistence.database import engine
 
         if engine is not None:
             await engine.dispose()
@@ -173,8 +173,8 @@ async def heartbeat_loop(queue_name: str, interval: int = 30) -> None:
 
     from sqlalchemy import update
 
-    from spectra_platform.core.database import async_session_maker
-    from spectra_platform.models.infrastructure import Sandbox
+    from spectra_persistence.database import async_session_maker
+    from spectra_persistence.models.infrastructure import Sandbox
 
     logger.info("Starting heartbeat loop (interval=%ds, queue=%s)", interval, queue_name)
     while True:

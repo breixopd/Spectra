@@ -46,7 +46,7 @@ If you cannot use the script, these are the same steps as the workflow file.
 **Static analysis (one image build — matches CI `static-analysis` job)**
 
 ```bash
-docker build -f docker/Dockerfile.test -t spectra-test-ci .
+docker build -f deploy/docker/Dockerfile.test -t spectra-test-ci .
   docker run --rm spectra-test-ci python -m ruff check packages/platform/src/spectra_platform tests/ services/ packages/
 docker run --rm spectra-test-ci python scripts/check_import_boundaries.py
 docker run --rm spectra-test-ci sh -c "pip install --no-cache-dir pyright && pyright"
@@ -58,23 +58,23 @@ docker run --rm spectra-test-ci sh -c "pip install --no-cache-dir pyright && pyr
 ```bash
 test -f .env.test || cp .env.test.example .env.test
 export ENCRYPTION_KEY=test-encryption-key
-docker compose -f docker/compose.yaml --profile test build unit-test-runner
-docker compose -f docker/compose.yaml --profile test run --rm --no-deps unit-test-runner \
+docker compose -f deploy/docker/compose.yaml --profile test build unit-test-runner
+docker compose -f deploy/docker/compose.yaml --profile test run --rm --no-deps unit-test-runner \
   "python -c \"import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')\""
-docker compose -f docker/compose.yaml --profile test run --rm unit-test-runner \
+docker compose -f deploy/docker/compose.yaml --profile test run --rm unit-test-runner \
   "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_platform --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov-report=term-missing --cov-fail-under=70"
-docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner
+docker compose -f deploy/docker/compose.yaml --profile test run --rm settings-test-runner
 ```
 
 **Integration**
 
 ```bash
-ENV_FILE=../.env.test docker compose -f docker/compose.yaml --profile app --profile test up -d garage
-GARAGE_CONTAINER="$(docker compose -f docker/compose.yaml ps -q garage)" \
+ENV_FILE=../.env.test docker compose -f deploy/docker/compose.yaml --profile app --profile test up -d garage
+GARAGE_CONTAINER="$(docker compose -f deploy/docker/compose.yaml ps -q garage)" \
   GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}" \
   GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}" \
-  GARAGE_PRINT_CREDENTIALS=0 bash docker/garage-init.sh
-docker compose -f docker/compose.yaml --profile app --profile test run --rm test-runner \
+  GARAGE_PRINT_CREDENTIALS=0 bash deploy/docker/garage-init.sh
+docker compose -f deploy/docker/compose.yaml --profile app --profile test run --rm test-runner \
   "python -m pytest tests/integration/ -v --tb=short --timeout=120 --override-ini=addopts= -k 'not live and not e2e'"
 ```
 
@@ -116,7 +116,7 @@ rm -f /tmp/spectra-vps-sync.bundle
 Images like `spectra-app:dev` are **built on the host** (not pulled from Docker Hub). After updating the tree:
 
 ```bash
-docker compose -f docker/compose.yaml --profile app up -d --build
+docker compose -f deploy/docker/compose.yaml --profile app up -d --build
 ```
 
 Then hit `http://<VPS_IP>:5000/api/health` (compose publishes **5000** on `0.0.0.0` when using the default `app` service ports).

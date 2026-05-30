@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from spectra_platform.services.ai.agents.base import AgentContext
-from spectra_platform.services.ai.agents.scope import ScopeAgent, ScopeInput
+from spectra_ai_core.agents.base import AgentContext
+from spectra_ai_core.agents.scope import ScopeAgent, ScopeInput
 from tests.mocks.llm import MockLLMClient
 
 

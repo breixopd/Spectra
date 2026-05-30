@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from spectra_common.constants import MAX_CONCURRENT_MISSIONS, MAX_REPLANS_PER_MISSION
-from spectra_platform.mission.core.optimizations import ToolResultCache
-from spectra_platform.services.mission.mission import Mission
+from spectra_mission.core.optimizations import ToolResultCache
+from spectra_mission.mission import Mission
 
 
 def _safe_create_task(coro, **kwargs):
@@ -21,8 +21,8 @@ def _safe_create_task(coro, **kwargs):
 @pytest.fixture(autouse=True)
 def _mission_runtime_isolation(tmp_path):
     with (
-        patch("spectra_platform.services.mission.mission.data_path", side_effect=tmp_path.joinpath),
-        patch("spectra_platform.services.mission.mission.asyncio.create_task", side_effect=_safe_create_task),
+        patch("spectra_mission.mission.data_path", side_effect=tmp_path.joinpath),
+        patch("spectra_mission.mission.asyncio.create_task", side_effect=_safe_create_task),
     ):
         yield
 
@@ -92,9 +92,9 @@ class TestConcurrentMissionIsolation:
 
     @pytest.mark.asyncio
     async def test_mission_manager_has_global_semaphore(self):
-        from spectra_platform.services.mission.manager import MissionManager
+        from spectra_mission.manager import MissionManager
 
-        with patch("spectra_platform.core.database.async_session_maker"):
+        with patch("spectra_persistence.database.async_session_maker"):
             manager = MissionManager()
             assert isinstance(manager._global_semaphore, asyncio.Semaphore)
 
@@ -217,7 +217,7 @@ class TestExtendedSteeringActions:
 
     @pytest.fixture
     def steering_manager(self):
-        from spectra_platform.services.mission.manager.steering import MissionSteeringManager
+        from spectra_mission.manager.steering import MissionSteeringManager
 
         missions = {}
         return MissionSteeringManager(missions), missions

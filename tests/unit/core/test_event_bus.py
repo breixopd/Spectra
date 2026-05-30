@@ -2,7 +2,7 @@
 
 import pytest
 
-from spectra_platform.services.ai.event_bus import AgentEventBus, AgentMessage
+from spectra_ai_core.event_bus import AgentEventBus, AgentMessage
 
 
 @pytest.mark.asyncio

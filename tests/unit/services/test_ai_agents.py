@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from spectra_platform.services.ai.agents.base import (
+from spectra_ai_core.agents.base import (
     ROLE_TASK_MAP,
     ActionRisk,
     Agent,
@@ -124,15 +124,15 @@ class TestRoleTaskMap:
 
 def _get_all_agent_classes():
     """Import every concrete agent and return (name, cls) pairs."""
-    from spectra_platform.services.ai.agents.debrief import DebriefAgent
-    from spectra_platform.services.ai.agents.exploit_crafter import ExploitCrafter
-    from spectra_platform.services.ai.agents.mission_controller import MissionController
-    from spectra_platform.services.ai.agents.post_exploitation import PostExploitationAgent
-    from spectra_platform.services.ai.agents.reporter import ReporterAgent
-    from spectra_platform.services.ai.agents.safety import SafetySupervisorAgent
-    from spectra_platform.services.ai.agents.scope import ScopeAgent
-    from spectra_platform.services.ai.agents.tool_selector import ToolSelectorAgent
-    from spectra_platform.services.ai.agents.vector_generator import VectorGeneratorAgent
+    from spectra_ai_core.agents.debrief import DebriefAgent
+    from spectra_ai_core.agents.exploit_crafter import ExploitCrafter
+    from spectra_ai_core.agents.mission_controller import MissionController
+    from spectra_ai_core.agents.post_exploitation import PostExploitationAgent
+    from spectra_ai_core.agents.reporter import ReporterAgent
+    from spectra_ai_core.agents.safety import SafetySupervisorAgent
+    from spectra_ai_core.agents.scope import ScopeAgent
+    from spectra_ai_core.agents.tool_selector import ToolSelectorAgent
+    from spectra_ai_core.agents.vector_generator import VectorGeneratorAgent
 
     return [
         ("ScopeAgent", ScopeAgent),
@@ -202,25 +202,25 @@ class TestConcreteAgentStructure:
 
 class TestAgentTemperature:
     def test_scope_agent_low_temperature(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         assert agent._get_temperature(None) == pytest.approx(0.1)
 
     def test_debrief_agent_medium_temperature(self):
-        from spectra_platform.services.ai.agents.debrief import DebriefAgent
+        from spectra_ai_core.agents.debrief import DebriefAgent
 
         agent = DebriefAgent(MockLLMClient())
         assert agent._get_temperature(None) == pytest.approx(0.4)
 
     def test_exploit_crafter_high_temperature(self):
-        from spectra_platform.services.ai.agents.exploit_crafter import ExploitCrafter
+        from spectra_ai_core.agents.exploit_crafter import ExploitCrafter
 
         agent = ExploitCrafter(MockLLMClient())
         assert agent._get_temperature(None) == pytest.approx(0.7)
 
     def test_temperature_increases_on_retry(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         t1 = agent._get_temperature(None, attempt=1)
@@ -228,7 +228,7 @@ class TestAgentTemperature:
         assert t2 > t1
 
     def test_temperature_capped_at_one(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         assert agent._get_temperature(None, attempt=50) <= 1.0
@@ -241,19 +241,19 @@ class TestAgentTemperature:
 
 class TestTaskTypeRouting:
     def test_scope_agent_task_type(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         assert agent._task_type == "scope"
 
     def test_debrief_agent_task_type(self):
-        from spectra_platform.services.ai.agents.debrief import DebriefAgent
+        from spectra_ai_core.agents.debrief import DebriefAgent
 
         agent = DebriefAgent(MockLLMClient())
         assert agent._task_type == "reporting"
 
     def test_mission_controller_task_type(self):
-        from spectra_platform.services.ai.agents.mission_controller import MissionController
+        from spectra_ai_core.agents.mission_controller import MissionController
 
         agent = MissionController(MockLLMClient())
         assert agent._task_type == "planning"
@@ -267,7 +267,7 @@ class TestTaskTypeRouting:
 class TestActionValidation:
     @pytest.mark.asyncio
     async def test_validate_action_passes_above_threshold(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         action = AgentAction(action_type="test", confidence=0.5, reasoning="ok")
@@ -277,7 +277,7 @@ class TestActionValidation:
 
     @pytest.mark.asyncio
     async def test_validate_action_fails_below_threshold(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         action = AgentAction(action_type="test", confidence=0.2, reasoning="low")
@@ -294,7 +294,7 @@ class TestActionValidation:
 
 class TestApprovalConsensus:
     def test_requires_approval_high_risk(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         action = AgentAction(
@@ -303,12 +303,12 @@ class TestApprovalConsensus:
             reasoning="dangerous",
             risk_level=ActionRisk.CRITICAL,
         )
-        with patch("spectra_platform.core.config.settings") as mock_settings:
+        with patch("spectra_common.config.settings") as mock_settings:
             mock_settings.REQUIRE_APPROVAL = True
             assert agent.requires_approval(action) is True
 
     def test_requires_approval_false_when_disabled(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         action = AgentAction(
@@ -317,13 +317,13 @@ class TestApprovalConsensus:
             reasoning="dangerous",
             risk_level=ActionRisk.CRITICAL,
         )
-        with patch("spectra_platform.core.config.settings") as mock_settings:
+        with patch("spectra_common.config.settings") as mock_settings:
             mock_settings.REQUIRE_APPROVAL = False
             agent._mission_requires_approval = False
             assert agent.requires_approval(action) is False
 
     def test_requires_approval_when_mission_requires_without_env_kill_switch(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         action = AgentAction(
@@ -332,13 +332,13 @@ class TestApprovalConsensus:
             reasoning="dangerous",
             risk_level=ActionRisk.CRITICAL,
         )
-        with patch("spectra_platform.core.config.settings") as mock_settings:
+        with patch("spectra_common.config.settings") as mock_settings:
             mock_settings.REQUIRE_APPROVAL = False
             agent._mission_requires_approval = True
             assert agent.requires_approval(action) is True
 
     def test_requires_consensus_high_risk(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         action = AgentAction(
@@ -350,7 +350,7 @@ class TestApprovalConsensus:
         assert agent.requires_consensus(action) is True
 
     def test_no_consensus_for_low_risk(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         action = AgentAction(
@@ -370,7 +370,7 @@ class TestApprovalConsensus:
 class TestLLMGenerateHelpers:
     @pytest.mark.asyncio
     async def test_llm_generate_returns_response(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         mock_llm = MockLLMClient()
         agent = ScopeAgent(mock_llm)
@@ -380,7 +380,7 @@ class TestLLMGenerateHelpers:
 
     @pytest.mark.asyncio
     async def test_llm_generate_structured_returns_model(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAction, ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAction, ScopeAgent
 
         mock_llm = MockLLMClient(
             structured_responses={
@@ -407,7 +407,7 @@ class TestLLMGenerateHelpers:
 
 class TestBuildSystemPrompt:
     def test_system_prompt_contains_name(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         ctx = _make_context()
@@ -415,7 +415,7 @@ class TestBuildSystemPrompt:
         assert "ScopeAgent" in prompt
 
     def test_system_prompt_contains_target(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         ctx = _make_context(target="example.com")
@@ -430,7 +430,7 @@ class TestBuildSystemPrompt:
 
 class TestScopeAgentExtraction:
     def test_extracts_ip(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         targets, _warnings = agent._extract_targets("scan 10.0.0.1")  # type: ignore[attr-defined]
@@ -438,7 +438,7 @@ class TestScopeAgentExtraction:
         assert "10.0.0.1" in values
 
     def test_extracts_cidr(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         targets, _ = agent._extract_targets("scan 10.0.0.0/24")  # type: ignore[attr-defined]
@@ -446,7 +446,7 @@ class TestScopeAgentExtraction:
         assert "10.0.0.0/24" in values
 
     def test_extracts_domain(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         targets, _ = agent._extract_targets("scan example.com")  # type: ignore[attr-defined]
@@ -454,7 +454,7 @@ class TestScopeAgentExtraction:
         assert "example.com" in values
 
     def test_no_targets_returns_empty(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         targets, _ = agent._extract_targets("nothing useful")  # type: ignore[attr-defined]
@@ -469,7 +469,7 @@ class TestScopeAgentExtraction:
 class TestScopeAgentExecute:
     @pytest.mark.asyncio
     async def test_execute_returns_result(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent, ScopeInput
+        from spectra_ai_core.agents.scope import ScopeAgent, ScopeInput
 
         agent = ScopeAgent(MockLLMClient())
         ctx = _make_context()
@@ -482,7 +482,7 @@ class TestScopeAgentExecute:
 
     @pytest.mark.asyncio
     async def test_execute_no_targets(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent, ScopeInput
+        from spectra_ai_core.agents.scope import ScopeAgent, ScopeInput
 
         agent = ScopeAgent(MockLLMClient())
         ctx = _make_context()
@@ -494,7 +494,7 @@ class TestScopeAgentExecute:
 class TestDebriefAgentExecute:
     @pytest.mark.asyncio
     async def test_execute_returns_result(self):
-        from spectra_platform.services.ai.agents.debrief import DebriefAgent, DebriefInput
+        from spectra_ai_core.agents.debrief import DebriefAgent, DebriefInput
 
         agent = DebriefAgent(
             MockLLMClient(
@@ -536,7 +536,7 @@ class TestDebriefAgentExecute:
 class TestAgentCallable:
     @pytest.mark.asyncio
     async def test_call_delegates_to_execute(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent, ScopeInput
+        from spectra_ai_core.agents.scope import ScopeAgent, ScopeInput
 
         agent = ScopeAgent(MockLLMClient())
         ctx = _make_context()
@@ -553,7 +553,7 @@ class TestAgentCallable:
 class TestRetryLogic:
     @pytest.mark.asyncio
     async def test_succeeds_first_try(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         call_count = 0
@@ -569,7 +569,7 @@ class TestRetryLogic:
 
     @pytest.mark.asyncio
     async def test_retries_on_failure(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
         call_count = 0
@@ -587,7 +587,7 @@ class TestRetryLogic:
 
     @pytest.mark.asyncio
     async def test_raises_after_max_retries(self):
-        from spectra_platform.services.ai.agents.scope import ScopeAgent
+        from spectra_ai_core.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
 

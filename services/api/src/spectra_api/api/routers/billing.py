@@ -10,14 +10,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.dependencies import get_current_active_user
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.core.config import get_settings
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.plan import Plan, UsageRecord
-from spectra_platform.models.user import User
-from spectra_platform.services.billing import PaymentService
-from spectra_platform.services.billing.entitlements import get_manageable_billing_subscription, get_user_entitlement
-from spectra_platform.services.billing.payment_adapter import get_payment_adapter, list_payment_providers
+from spectra_auth.rate_limit import RateLimits, limiter
+from spectra_billing import PaymentService
+from spectra_billing.entitlements import get_manageable_billing_subscription, get_user_entitlement
+from spectra_billing.payment_adapter import get_payment_adapter, list_payment_providers
+from spectra_common.config import get_settings
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.plan import Plan, UsageRecord
+from spectra_persistence.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -210,7 +210,7 @@ async def _claim_stripe_webhook_event(event_id: str) -> bool:
     """
     if not event_id:
         return True
-    from spectra_platform.infrastructure.redis_client import RedisCache
+    from spectra_infra.redis_client import RedisCache
 
     cache = RedisCache()
     key = f"spectra:billing:stripe_webhook:{event_id}"

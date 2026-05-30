@@ -7,8 +7,8 @@ import pytest_asyncio
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from spectra_platform.core.config import settings
-from spectra_platform.models.infrastructure import InfrastructureBase, JobQueue, SystemCache, SystemStatus
+from spectra_common.config import settings
+from spectra_persistence.models.infrastructure import InfrastructureBase, JobQueue, SystemCache, SystemStatus
 
 
 @pytest_asyncio.fixture

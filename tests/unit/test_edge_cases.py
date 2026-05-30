@@ -13,19 +13,19 @@ from spectra_api.api.routers.auth._helpers import (
     _record_failure,
 )
 from spectra_api.authz import ROLE_PERMISSIONS, Permission, has_permission
-from spectra_platform.auth.encryption import (
-    decrypt_field,
-    decrypt_sensitive_fields,
-    encrypt_field,
-    encrypt_sensitive_fields,
-    is_sensitive_key,
-)
-from spectra_platform.auth.security import (
+from spectra_auth.security import (
     _blacklisted_tokens,
     _user_token_blacklist,
     create_access_token,
     invalidate_token,
     is_token_blacklisted,
+)
+from spectra_common.encryption import (
+    decrypt_field,
+    decrypt_sensitive_fields,
+    encrypt_field,
+    encrypt_sensitive_fields,
+    is_sensitive_key,
 )
 
 # --- RBAC Permission Tests ---
@@ -180,7 +180,7 @@ class TestEncryption:
 @pytest.fixture(autouse=True)
 def _clear_blacklist_state():
     """Clear in-memory token blacklist state between tests."""
-    from spectra_platform.auth.security import _blacklist_ready
+    from spectra_auth.security import _blacklist_ready
 
     _blacklisted_tokens.clear()
     _user_token_blacklist.clear()

@@ -53,7 +53,7 @@ class TestAdminSettingsRouter:
         app = _build_app()
         mock_session = AsyncMock()
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         app.dependency_overrides[get_async_session] = lambda: mock_session
 
@@ -78,7 +78,7 @@ class TestAdminSettingsRouter:
         app = _build_app()
         mock_session = AsyncMock()
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         app.dependency_overrides[get_async_session] = lambda: mock_session
 
@@ -94,7 +94,7 @@ class TestAdminSettingsRouter:
         app = _build_app()
         mock_session = AsyncMock()
 
-        from spectra_platform.core.database import get_async_session
+        from spectra_persistence.database import get_async_session
 
         app.dependency_overrides[get_async_session] = lambda: mock_session
 

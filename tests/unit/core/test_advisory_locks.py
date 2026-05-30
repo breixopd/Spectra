@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from spectra_common.advisory_locks import advisory_lock_owner, stable_lock_id
+from spectra_persistence.advisory_locks import advisory_lock_owner, stable_lock_id
 
 
 def _connection_factory(connection):

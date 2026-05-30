@@ -13,11 +13,11 @@ from spectra_common.errors import (
     SpectraError,
     ToolExecutionError,
 )
-from spectra_platform.infrastructure.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState
-from spectra_platform.infrastructure.events import Event, EventBus, EventType
-from spectra_platform.mission.core.enums import MissionStatus
-from spectra_platform.mission.core.state_machine import VALID_TRANSITIONS, MissionStateMachine
-from spectra_platform.telemetry.telemetry import TelemetryCollector
+from spectra_domain.enums import MissionStatus
+from spectra_infra.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState
+from spectra_infra.events import Event, EventBus, EventType
+from spectra_mission.core.state_machine import VALID_TRANSITIONS, MissionStateMachine
+from spectra_observability.telemetry import TelemetryCollector
 
 
 class TestExceptionHierarchy:

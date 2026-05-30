@@ -38,7 +38,7 @@ def _fake_content_item(**overrides):
 
 
 def _make_app() -> FastAPI:
-    from spectra_platform.auth.rate_limit import limiter
+    from spectra_auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter
@@ -49,7 +49,7 @@ def _make_app() -> FastAPI:
 
 def _override_deps(app: FastAPI, user, mock_session):
     from spectra_api.api.dependencies import get_current_active_user
-    from spectra_platform.core.database import get_async_session
+    from spectra_persistence.database import get_async_session
 
     app.dependency_overrides[get_current_active_user] = lambda: user
 

@@ -2,9 +2,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from spectra_platform.services.ai.agents.base import AgentContext, ToolAction
-from spectra_platform.services.ai.agents.scope import ScopeAgent, ScopeInput
-from spectra_platform.services.ai.agents.tool_selector import (
+from spectra_ai_core.agents.base import AgentContext, ToolAction
+from spectra_ai_core.agents.scope import ScopeAgent, ScopeInput
+from spectra_ai_core.agents.tool_selector import (
     ToolSelectorAgent,
     ToolSelectorInput,
 )
@@ -20,7 +20,7 @@ def mock_llm():
 
 @pytest.fixture
 def mock_registry():
-    with patch("spectra_platform.services.ai.agents.tool_selector.get_registry") as mock_get:
+    with patch("spectra_ai_core.agents.tool_selector.get_registry") as mock_get:
         registry = MagicMock()
         mock_tool = MagicMock()
         mock_tool.config.id = "nmap"
@@ -109,7 +109,7 @@ async def test_scope_agent_flow(mock_llm):
 @pytest.mark.asyncio
 async def test_exploit_crafter_flow(mock_llm):
     """Test ExploitCrafter using Mock LLM."""
-    from spectra_platform.services.ai.agents.exploit_crafter import (
+    from spectra_ai_core.agents.exploit_crafter import (
         ExploitCrafter,
         ExploitCrafterInput,
         ExploitCrafterOutput,
@@ -134,7 +134,7 @@ async def test_exploit_crafter_flow(mock_llm):
 
     # Mock specialized methods via patching if needed or rely on MockLLM for simple flow
     # _find_exploit_candidates calls RAG which might fail if not mocked
-    with patch("spectra_platform.services.ai.agents.exploit_crafter.ExploitCrafter._find_exploit_candidates") as mock_find:
+    with patch("spectra_ai_core.agents.exploit_crafter.ExploitCrafter._find_exploit_candidates") as mock_find:
         mock_find.return_value = [{"name": "test_exploit", "type": "cve"}]
 
         result = await agent.execute(context, inp)
@@ -147,7 +147,7 @@ async def test_exploit_crafter_flow(mock_llm):
 @pytest.mark.asyncio
 async def test_mission_controller_planning(mock_llm):
     """Test MissionController planning logic."""
-    from spectra_platform.services.ai.agents.mission_controller import (
+    from spectra_ai_core.agents.mission_controller import (
         MissionController,
         MissionInput,
         MissionPlan,
@@ -177,11 +177,11 @@ async def test_mission_controller_planning(mock_llm):
     # Mock dependency imports inside execute method
     with (
         patch(
-            "spectra_platform.services.ai.knowledge.get_available_tools_context",
+            "spectra_ai_core.knowledge.get_available_tools_context",
             new_callable=AsyncMock,
         ) as mock_tools,
-        patch("spectra_platform.services.ai.knowledge.get_mission_context", new_callable=AsyncMock) as mock_ctx,
-        patch("spectra_platform.services.ai.knowledge.get_full_methodology", new_callable=MagicMock) as mock_meth,
+        patch("spectra_ai_core.knowledge.get_mission_context", new_callable=AsyncMock) as mock_ctx,
+        patch("spectra_ai_core.knowledge.get_full_methodology", new_callable=MagicMock) as mock_meth,
     ):
         mock_tools.return_value = "Tools available"
         mock_ctx.return_value = "Context"

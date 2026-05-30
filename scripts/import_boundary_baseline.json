@@ -1,0 +1,5 @@
+{
+  "description": "Baseline of known import-boundary violations. Burned to zero in P2. The checker passes when all violations are in this set and fails on any NEW violation not listed here.",
+  "count": 0,
+  "violation_keys": []
+}

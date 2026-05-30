@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from spectra_platform.services.mission.executor.handlers import (
+from spectra_mission.executor.handlers import (
     MAX_CHAIN_DEPTH,
     PHASE_TRANSITION_RULES,
     TaskDispatcher,
@@ -46,7 +46,7 @@ class TestGetKnownTools:
     def test_fallback_set_is_correct(self):
         """Verify the hardcoded fallback set has the expected tools."""
         # Directly test the fallback path by making get_registry raise
-        import spectra_platform.services.tools.registry as reg_mod
+        import spectra_tools_core.registry as reg_mod
 
         original = reg_mod._registry_instance
         try:
@@ -111,33 +111,33 @@ class TestTaskDispatcher:
 
     def test_extract_tool_hint_nmap(self, dispatcher):
         with patch(
-            "spectra_platform.services.mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}
+            "spectra_mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}
         ):
             hint = dispatcher._extract_tool_hint_from_description("Run nmap scan on target")
             assert hint == "nmap"
 
     def test_extract_tool_hint_using_pattern(self, dispatcher):
         with patch(
-            "spectra_platform.services.mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}
+            "spectra_mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}
         ):
             hint = dispatcher._extract_tool_hint_from_description("Scan ports using nmap")
             assert hint == "nmap"
 
     def test_extract_tool_hint_with_pattern(self, dispatcher):
         with patch(
-            "spectra_platform.services.mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}
+            "spectra_mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}
         ):
             hint = dispatcher._extract_tool_hint_from_description("Check vulnerabilities with nuclei")
             assert hint == "nuclei"
 
     def test_extract_tool_hint_no_match(self, dispatcher):
-        with patch("spectra_platform.services.mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei"}):
+        with patch("spectra_mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei"}):
             hint = dispatcher._extract_tool_hint_from_description("Analyze the target system")
             assert hint is None
 
     def test_extract_tool_hint_direct_mention(self, dispatcher):
         with patch(
-            "spectra_platform.services.mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}
+            "spectra_mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}
         ):
             hint = dispatcher._extract_tool_hint_from_description("sqlmap injection test")
             assert hint == "sqlmap"

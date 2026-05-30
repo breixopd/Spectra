@@ -11,15 +11,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.authz import Permission, require_permission
-from spectra_platform.auth.rate_limit import limiter
-from spectra_platform.auth.security import (
+from spectra_auth.rate_limit import limiter
+from spectra_auth.security import (
     create_unsubscribe_token,
     verify_unsubscribe_token,
 )
-from spectra_platform.core.config import settings
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.user import User
-from spectra_platform.models.user_preferences import UserPreferences
+from spectra_common.config import settings
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.user import User
+from spectra_persistence.models.user_preferences import UserPreferences
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +55,8 @@ async def send_test_email(
     _perm: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Send a test email to verify SMTP configuration."""
-    from spectra_platform.services.email import EmailService
-    from spectra_platform.services.email.templates import wrap_email
+    from spectra_system.email.service import EmailService
+    from spectra_system.email.templates import wrap_email
 
     svc = EmailService()
     html = wrap_email(
@@ -78,7 +78,7 @@ async def get_email_templates(
     _perm: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Return all email templates."""
-    from spectra_platform.services.email.templates import TEMPLATES
+    from spectra_system.email.templates import TEMPLATES
 
     return dict(TEMPLATES.items())
 
@@ -92,7 +92,7 @@ async def update_email_template(
     _perm: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Update an email template by name."""
-    from spectra_platform.services.email.templates import TEMPLATES
+    from spectra_system.email.templates import TEMPLATES
 
     if name not in TEMPLATES:
         raise HTTPException(status_code=404, detail=f"Template '{name}' not found")
@@ -112,8 +112,8 @@ async def send_announcement(
 
     If test_only=True, sends only to the admin's own email.
     """
-    from spectra_platform.services.email import EmailService
-    from spectra_platform.services.email.templates import TEMPLATES, wrap_email
+    from spectra_system.email.service import EmailService
+    from spectra_system.email.templates import TEMPLATES, wrap_email
 
     svc = EmailService()
     template = TEMPLATES["announcement"]

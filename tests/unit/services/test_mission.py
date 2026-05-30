@@ -7,11 +7,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from spectra_platform.models.attack_surface import (
+from spectra_mission.mission import Mission
+from spectra_persistence.models.attack_surface import (
     AttackVector,
     VectorPriority,
 )
-from spectra_platform.services.mission.mission import Mission
 
 
 def _safe_create_task(coro, **kwargs):
@@ -24,8 +24,8 @@ def _safe_create_task(coro, **kwargs):
 @pytest.fixture(autouse=True)
 def _mission_runtime_isolation(tmp_path):
     with (
-        patch("spectra_platform.services.mission.mission.data_path", side_effect=tmp_path.joinpath),
-        patch("spectra_platform.services.mission.mission.asyncio.create_task", side_effect=_safe_create_task),
+        patch("spectra_mission.mission.data_path", side_effect=tmp_path.joinpath),
+        patch("spectra_mission.mission.asyncio.create_task", side_effect=_safe_create_task),
     ):
         yield
 

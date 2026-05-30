@@ -1,6 +1,6 @@
 import pytest
 
-from spectra_platform.services.ai.agents.base import Agent, AgentResult, AgentRole
+from spectra_ai_core.agents.base import Agent, AgentResult, AgentRole
 from tests.mocks.llm import MockLLMClient
 
 

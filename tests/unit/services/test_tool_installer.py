@@ -2,12 +2,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from spectra_platform.services.tools.installer import ToolInstaller
+from spectra_tools.installer import ToolInstaller
 
 
 @pytest.fixture
 def mock_registry():
-    with patch("spectra_platform.services.tools.installer.get_registry") as mock_get_registry:
+    with patch("spectra_tools.installer.get_registry") as mock_get_registry:
         registry = MagicMock()
         mock_get_registry.return_value = registry
 
