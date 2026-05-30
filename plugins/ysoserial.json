@@ -7,9 +7,8 @@
   "metadata": {
     "ai_description": "ysoserial is the definitive Java deserialization exploitation tool. Use it when you discover a Java application that accepts serialized objects (e.g., via HTTP parameters, cookies, RMI, JMX). It generates malicious serialized Java objects using known gadget chains (CommonsCollections, Spring, Groovy, etc.) that execute arbitrary commands upon deserialization. The output can be delivered raw, base64-encoded, or hex-encoded depending on the target application.",
     "capabilities": [
-      "deserialization",
-      "code_execution",
-      "exploit_framework"
+      "exploit_framework",
+      "command_injection"
     ],
     "supported_targets": [
       "url",
@@ -67,7 +66,7 @@
     "max_timeout": 60
   },
   "parsing": {
-    "format": "raw",
+    "format": "text",
     "regex_patterns": [
       {
         "pattern": "Picked\\s+up\\s+_JAVA_OPTIONS",

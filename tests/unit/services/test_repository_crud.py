@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from spectra_platform.repositories.base import BaseRepository
+from spectra_persistence.repositories.base import BaseRepository
 
 # ---------------------------------------------------------------------------
 # Helpers (mirrors existing pattern from test_repositories)
@@ -41,7 +41,7 @@ def _mock_model_class(columns=("id", "name", "status")):
 def _make_base_repo(columns=("id", "name", "status")):
     model, mapper = _mock_model_class(columns)
     session = _mock_session()
-    with patch("spectra_platform.repositories.base.inspect", return_value=mapper):
+    with patch("spectra_persistence.repositories.base.inspect", return_value=mapper):
         repo = BaseRepository(model, session)  # type: ignore[arg-type]
     return repo, model, session
 
@@ -83,7 +83,7 @@ class TestBaseRepositoryGetById:
         result_mock = MagicMock()
         result_mock.scalar_one_or_none.return_value = None
         session.execute.return_value = result_mock
-        with patch("spectra_platform.repositories.base.select", return_value=MagicMock()):
+        with patch("spectra_persistence.repositories.base.select", return_value=MagicMock()):
             result = await repo.get_by_id("nonexistent")
         assert result is None
 
@@ -94,7 +94,7 @@ class TestBaseRepositoryGetById:
         result_mock = MagicMock()
         result_mock.scalar_one_or_none.return_value = entity
         session.execute.return_value = result_mock
-        with patch("spectra_platform.repositories.base.select", return_value=MagicMock()):
+        with patch("spectra_persistence.repositories.base.select", return_value=MagicMock()):
             result = await repo.get_by_id("some-id")
         assert result is entity
 
@@ -113,7 +113,7 @@ class TestBaseRepositoryGetAll:
         result_mock = MagicMock()
         result_mock.scalars.return_value = scalars_mock
         session.execute.return_value = result_mock
-        with patch("spectra_platform.repositories.base.select", return_value=MagicMock()):
+        with patch("spectra_persistence.repositories.base.select", return_value=MagicMock()):
             result = await repo.get_all()
         assert result == []
 
@@ -126,7 +126,7 @@ class TestBaseRepositoryGetAll:
         result_mock = MagicMock()
         result_mock.scalars.return_value = scalars_mock
         session.execute.return_value = result_mock
-        with patch("spectra_platform.repositories.base.select", return_value=MagicMock()):
+        with patch("spectra_persistence.repositories.base.select", return_value=MagicMock()):
             result = await repo.get_all(skip=0, limit=2)
         assert len(result) == 2
 
@@ -144,7 +144,7 @@ class TestBaseRepositoryUpdate:
         result_mock = MagicMock()
         result_mock.scalar_one_or_none.return_value = entity
         session.execute.return_value = result_mock
-        with patch("spectra_platform.repositories.base.update", return_value=MagicMock()):
+        with patch("spectra_persistence.repositories.base.update", return_value=MagicMock()):
             result = await repo.update("some-id", name="new")
         assert result is entity
         session.flush.assert_awaited()
@@ -155,7 +155,7 @@ class TestBaseRepositoryUpdate:
         result_mock = MagicMock()
         result_mock.scalar_one_or_none.return_value = None
         session.execute.return_value = result_mock
-        with patch("spectra_platform.repositories.base.update", return_value=MagicMock()):
+        with patch("spectra_persistence.repositories.base.update", return_value=MagicMock()):
             result = await repo.update("missing-id", name="x")
         assert result is None
 
@@ -172,7 +172,7 @@ class TestBaseRepositoryDelete:
         result_mock = MagicMock()
         result_mock.rowcount = 1
         session.execute.return_value = result_mock
-        with patch("spectra_platform.repositories.base.delete", return_value=MagicMock()):
+        with patch("spectra_persistence.repositories.base.delete", return_value=MagicMock()):
             assert await repo.delete("id-1") is True
 
     @pytest.mark.asyncio
@@ -181,7 +181,7 @@ class TestBaseRepositoryDelete:
         result_mock = MagicMock()
         result_mock.rowcount = 0
         session.execute.return_value = result_mock
-        with patch("spectra_platform.repositories.base.delete", return_value=MagicMock()):
+        with patch("spectra_persistence.repositories.base.delete", return_value=MagicMock()):
             assert await repo.delete("id-x") is False
 
 
@@ -210,7 +210,7 @@ class TestBaseRepositoryFinders:
         result_mock = MagicMock()
         result_mock.scalar_one_or_none.return_value = entity
         session.execute.return_value = result_mock
-        with patch("spectra_platform.repositories.base.select", return_value=MagicMock()):
+        with patch("spectra_persistence.repositories.base.select", return_value=MagicMock()):
             result = await repo.find_one_by(name="test")
         assert result is entity
 
@@ -223,7 +223,7 @@ class TestBaseRepositoryFinders:
         result_mock = MagicMock()
         result_mock.scalars.return_value = scalars_mock
         session.execute.return_value = result_mock
-        with patch("spectra_platform.repositories.base.select", return_value=MagicMock()):
+        with patch("spectra_persistence.repositories.base.select", return_value=MagicMock()):
             result = await repo.find_many_by(name="test")
         assert result == entities
 
@@ -240,7 +240,7 @@ class TestBaseRepositoryCount:
         result_mock = MagicMock()
         result_mock.scalar_one.return_value = 42
         session.execute.return_value = result_mock
-        with patch("spectra_platform.repositories.base.select", return_value=MagicMock()):
+        with patch("spectra_persistence.repositories.base.select", return_value=MagicMock()):
             result = await repo.count()
         assert result == 42
 
@@ -258,10 +258,10 @@ class TestBaseRepositoryCount:
 
 class TestAuditLogRepository:
     def test_instantiation(self):
-        from spectra_platform.repositories.audit_log import AuditLogRepository
+        from spectra_persistence.repositories.audit_log import AuditLogRepository
 
         session = _mock_session()
-        with patch("spectra_platform.repositories.base.inspect") as mock_inspect:
+        with patch("spectra_persistence.repositories.base.inspect") as mock_inspect:
             mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = AuditLogRepository(session)
         assert repo.session is session
@@ -269,7 +269,7 @@ class TestAuditLogRepository:
 
     @pytest.mark.asyncio
     async def test_list_events(self):
-        from spectra_platform.repositories.audit_log import AuditLogRepository
+        from spectra_persistence.repositories.audit_log import AuditLogRepository
 
         session = _mock_session()
         scalars_mock = MagicMock()
@@ -278,7 +278,7 @@ class TestAuditLogRepository:
         result_mock.scalars.return_value = scalars_mock
         session.execute.return_value = result_mock
 
-        with patch("spectra_platform.repositories.base.inspect") as mock_inspect:
+        with patch("spectra_persistence.repositories.base.inspect") as mock_inspect:
             mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = AuditLogRepository(session)
         events = await repo.list_events(skip=0, limit=10)
@@ -292,10 +292,10 @@ class TestAuditLogRepository:
 
 class TestUserRepository:
     def test_instantiation(self):
-        from spectra_platform.repositories.user import UserRepository
+        from spectra_persistence.repositories.user import UserRepository
 
         session = _mock_session()
-        with patch("spectra_platform.repositories.base.inspect") as mock_inspect:
+        with patch("spectra_persistence.repositories.base.inspect") as mock_inspect:
             mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = UserRepository(session)
         assert repo.session is session
@@ -303,10 +303,10 @@ class TestUserRepository:
 
     @pytest.mark.asyncio
     async def test_get_by_username_delegates(self):
-        from spectra_platform.repositories.user import UserRepository
+        from spectra_persistence.repositories.user import UserRepository
 
         session = _mock_session()
-        with patch("spectra_platform.repositories.base.inspect") as mock_inspect:
+        with patch("spectra_persistence.repositories.base.inspect") as mock_inspect:
             mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = UserRepository(session)
         with patch.object(repo, "find_one_by", new_callable=AsyncMock, return_value="user1") as mock:
@@ -316,10 +316,10 @@ class TestUserRepository:
 
     @pytest.mark.asyncio
     async def test_get_by_email_delegates(self):
-        from spectra_platform.repositories.user import UserRepository
+        from spectra_persistence.repositories.user import UserRepository
 
         session = _mock_session()
-        with patch("spectra_platform.repositories.base.inspect") as mock_inspect:
+        with patch("spectra_persistence.repositories.base.inspect") as mock_inspect:
             mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = UserRepository(session)
         with patch.object(repo, "find_one_by", new_callable=AsyncMock, return_value="user2") as mock:
@@ -329,10 +329,10 @@ class TestUserRepository:
 
     @pytest.mark.asyncio
     async def test_get_active_users_delegates(self):
-        from spectra_platform.repositories.user import UserRepository
+        from spectra_persistence.repositories.user import UserRepository
 
         session = _mock_session()
-        with patch("spectra_platform.repositories.base.inspect") as mock_inspect:
+        with patch("spectra_persistence.repositories.base.inspect") as mock_inspect:
             mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = UserRepository(session)
         with patch.object(repo, "find_many_by", new_callable=AsyncMock, return_value=["u1"]) as mock:
@@ -342,10 +342,10 @@ class TestUserRepository:
 
     @pytest.mark.asyncio
     async def test_get_superusers_delegates(self):
-        from spectra_platform.repositories.user import UserRepository
+        from spectra_persistence.repositories.user import UserRepository
 
         session = _mock_session()
-        with patch("spectra_platform.repositories.base.inspect") as mock_inspect:
+        with patch("spectra_persistence.repositories.base.inspect") as mock_inspect:
             mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = UserRepository(session)
         with patch.object(repo, "find_many_by", new_callable=AsyncMock, return_value=[]) as mock:
@@ -362,10 +362,10 @@ class TestUserRepository:
 class TestTargetRepositoryCrud:
     @pytest.mark.asyncio
     async def test_find_by_address_delegates(self):
-        from spectra_platform.repositories.target import TargetRepository
+        from spectra_persistence.repositories.target import TargetRepository
 
         session = _mock_session()
-        with patch("spectra_platform.repositories.base.inspect") as mock_inspect:
+        with patch("spectra_persistence.repositories.base.inspect") as mock_inspect:
             mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = TargetRepository(session)
         with patch.object(repo, "find_one_by", new_callable=AsyncMock, return_value="target1") as mock:
@@ -375,10 +375,10 @@ class TestTargetRepositoryCrud:
 
     @pytest.mark.asyncio
     async def test_find_by_address_with_user_id(self):
-        from spectra_platform.repositories.target import TargetRepository
+        from spectra_persistence.repositories.target import TargetRepository
 
         session = _mock_session()
-        with patch("spectra_platform.repositories.base.inspect") as mock_inspect:
+        with patch("spectra_persistence.repositories.base.inspect") as mock_inspect:
             mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = TargetRepository(session)
         with patch.object(repo, "find_one_by", new_callable=AsyncMock, return_value=None) as mock:
@@ -387,10 +387,10 @@ class TestTargetRepositoryCrud:
 
     @pytest.mark.asyncio
     async def test_update_status_delegates(self):
-        from spectra_platform.repositories.target import TargetRepository
+        from spectra_persistence.repositories.target import TargetRepository
 
         session = _mock_session()
-        with patch("spectra_platform.repositories.base.inspect") as mock_inspect:
+        with patch("spectra_persistence.repositories.base.inspect") as mock_inspect:
             mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = TargetRepository(session)
         with patch.object(repo, "update", new_callable=AsyncMock, return_value="updated") as mock:
@@ -406,10 +406,10 @@ class TestTargetRepositoryCrud:
 
 class TestMissionRepositoryCrud:
     def test_instantiation(self):
-        from spectra_platform.repositories.mission import MissionRepository
+        from spectra_persistence.repositories.mission import MissionRepository
 
         session = _mock_session()
-        with patch("spectra_platform.repositories.base.inspect") as mock_inspect:
+        with patch("spectra_persistence.repositories.base.inspect") as mock_inspect:
             mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = MissionRepository(session)
         assert issubclass(MissionRepository, BaseRepository)
@@ -423,10 +423,10 @@ class TestMissionRepositoryCrud:
 
 class TestExploitRepositoryCrud:
     def test_instantiation(self):
-        from spectra_platform.repositories.exploit import ExploitRepository
+        from spectra_persistence.repositories.exploit import ExploitRepository
 
         session = _mock_session()
-        with patch("spectra_platform.repositories.base.inspect") as mock_inspect:
+        with patch("spectra_persistence.repositories.base.inspect") as mock_inspect:
             mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = ExploitRepository(session)
         assert issubclass(ExploitRepository, BaseRepository)
@@ -440,10 +440,10 @@ class TestExploitRepositoryCrud:
 
 class TestFindingRepositoryCrud:
     def test_instantiation(self):
-        from spectra_platform.repositories.finding import FindingRepository
+        from spectra_persistence.repositories.finding import FindingRepository
 
         session = _mock_session()
-        with patch("spectra_platform.repositories.base.inspect") as mock_inspect:
+        with patch("spectra_persistence.repositories.base.inspect") as mock_inspect:
             mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = FindingRepository(session)
         assert issubclass(FindingRepository, BaseRepository)
@@ -457,10 +457,10 @@ class TestFindingRepositoryCrud:
 
 class TestPentestSessionRepositoryCrud:
     def test_instantiation(self):
-        from spectra_platform.repositories.pentest_session import PentestSessionRepository
+        from spectra_persistence.repositories.pentest_session import PentestSessionRepository
 
         session = _mock_session()
-        with patch("spectra_platform.repositories.base.inspect") as mock_inspect:
+        with patch("spectra_persistence.repositories.base.inspect") as mock_inspect:
             mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = PentestSessionRepository(session)
         assert issubclass(PentestSessionRepository, BaseRepository)

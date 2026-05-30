@@ -15,14 +15,14 @@ Use this checklist before tagging a release or deploying production images. All 
 2. **Compose files valid** (matches CI `docker-build` compose step):
 
    ```bash
-   docker compose --env-file .env.example -f docker/compose.yaml --profile app --profile test --profile targets config --quiet
-   docker compose --env-file .env.example -f docker/docker-compose.swarm.yml config --quiet
+   docker compose --env-file .env.example -f deploy/docker/compose.yaml --profile app --profile test --profile targets config --quiet
+   docker compose --env-file .env.example -f deploy/docker/docker-compose.swarm.yml config --quiet
    ```
 
 3. **Security scan on app** (Bandit is already in CI **static-analysis**; re-run locally if you skipped it):
 
    ```bash
-   docker build -f docker/Dockerfile.test -t spectra-test-ci .
+   docker build -f deploy/docker/Dockerfile.test -t spectra-test-ci .
    docker run --rm spectra-test-ci bandit -r packages/platform/src/spectra_platform -c pyproject.toml --severity-level high --confidence-level high
    ```
 

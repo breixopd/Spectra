@@ -40,7 +40,7 @@ def _mock_session(records=None, scalar_value=None):
 @pytest.mark.asyncio
 class TestCheckMissionQuota:
     async def test_allowed_when_under_concurrent_limit(self):
-        from spectra_platform.services.billing.quota_enforcer import QuotaEnforcer
+        from spectra_billing.quota_enforcer import QuotaEnforcer
 
         plan = _make_plan(max_concurrent_missions=5, max_missions_per_month=None)
 
@@ -51,7 +51,7 @@ class TestCheckMissionQuota:
         # Second execute: usage record (not reached since monthly is None)
         session.execute = AsyncMock(return_value=count_result)
 
-        with patch("spectra_platform.services.billing.quota_enforcer.async_session_maker", return_value=session):
+        with patch("spectra_billing.quota_enforcer.async_session_maker", return_value=session):
             enforcer = QuotaEnforcer()
             allowed, reason = await enforcer.check_mission_quota("user-1", plan)
 
@@ -59,7 +59,7 @@ class TestCheckMissionQuota:
         assert reason == ""
 
     async def test_blocked_when_at_concurrent_limit(self):
-        from spectra_platform.services.billing.quota_enforcer import QuotaEnforcer
+        from spectra_billing.quota_enforcer import QuotaEnforcer
 
         plan = _make_plan(max_concurrent_missions=2, max_missions_per_month=None)
 
@@ -68,7 +68,7 @@ class TestCheckMissionQuota:
         count_result.scalar.return_value = 2
         session.execute = AsyncMock(return_value=count_result)
 
-        with patch("spectra_platform.services.billing.quota_enforcer.async_session_maker", return_value=session):
+        with patch("spectra_billing.quota_enforcer.async_session_maker", return_value=session):
             enforcer = QuotaEnforcer()
             allowed, reason = await enforcer.check_mission_quota("user-1", plan)
 
@@ -76,7 +76,7 @@ class TestCheckMissionQuota:
         assert "Concurrent mission limit" in reason
 
     async def test_blocked_when_monthly_limit_reached(self):
-        from spectra_platform.services.billing.quota_enforcer import QuotaEnforcer
+        from spectra_billing.quota_enforcer import QuotaEnforcer
 
         plan = _make_plan(max_concurrent_missions=10, max_missions_per_month=5)
 
@@ -95,7 +95,7 @@ class TestCheckMissionQuota:
         advisory_lock_result = MagicMock()  # result of pg_advisory_xact_lock
         session.execute = AsyncMock(side_effect=[advisory_lock_result, locked_result, count_result, usage_result])
 
-        with patch("spectra_platform.services.billing.quota_enforcer.async_session_maker", return_value=session):
+        with patch("spectra_billing.quota_enforcer.async_session_maker", return_value=session):
             enforcer = QuotaEnforcer()
             allowed, reason = await enforcer.check_mission_quota("user-1", plan)
 
@@ -103,13 +103,13 @@ class TestCheckMissionQuota:
         assert "Monthly mission limit" in reason
 
     async def test_no_subscription_returns_false(self):
-        from spectra_platform.services.billing.quota_enforcer import QuotaEnforcer
+        from spectra_billing.quota_enforcer import QuotaEnforcer
 
         session = _mock_session()
 
         with (
-            patch("spectra_platform.services.billing.quota_enforcer.async_session_maker", return_value=session),
-            patch("spectra_platform.services.billing.quota_enforcer.get_user_entitlement_plan", new=AsyncMock(return_value=None)),
+            patch("spectra_billing.quota_enforcer.async_session_maker", return_value=session),
+            patch("spectra_billing.quota_enforcer.get_user_entitlement_plan", new=AsyncMock(return_value=None)),
         ):
             enforcer = QuotaEnforcer()
             allowed, reason = await enforcer.check_mission_quota("user-1")
@@ -118,7 +118,7 @@ class TestCheckMissionQuota:
         assert "No active subscription" in reason
 
     async def test_allowed_when_no_monthly_limit(self):
-        from spectra_platform.services.billing.quota_enforcer import QuotaEnforcer
+        from spectra_billing.quota_enforcer import QuotaEnforcer
 
         plan = _make_plan(max_concurrent_missions=10, max_missions_per_month=None)
 
@@ -127,7 +127,7 @@ class TestCheckMissionQuota:
         count_result.scalar.return_value = 0
         session.execute = AsyncMock(return_value=count_result)
 
-        with patch("spectra_platform.services.billing.quota_enforcer.async_session_maker", return_value=session):
+        with patch("spectra_billing.quota_enforcer.async_session_maker", return_value=session):
             enforcer = QuotaEnforcer()
             allowed, _reason = await enforcer.check_mission_quota("user-1", plan)
 
@@ -137,7 +137,7 @@ class TestCheckMissionQuota:
 @pytest.mark.asyncio
 class TestCheckApiQuota:
     async def test_allowed_under_limit(self):
-        from spectra_platform.services.billing.quota_enforcer import QuotaEnforcer
+        from spectra_billing.quota_enforcer import QuotaEnforcer
 
         plan = _make_plan(max_api_requests_per_hour=100)
 
@@ -148,7 +148,7 @@ class TestCheckApiQuota:
         result.scalar_one_or_none.return_value = record
         session.execute = AsyncMock(return_value=result)
 
-        with patch("spectra_platform.services.billing.quota_enforcer.async_session_maker", return_value=session):
+        with patch("spectra_billing.quota_enforcer.async_session_maker", return_value=session):
             enforcer = QuotaEnforcer()
             allowed, reason = await enforcer.check_api_quota("user-1", plan)
 
@@ -156,7 +156,7 @@ class TestCheckApiQuota:
         assert reason == ""
 
     async def test_blocked_at_limit(self):
-        from spectra_platform.services.billing.quota_enforcer import QuotaEnforcer
+        from spectra_billing.quota_enforcer import QuotaEnforcer
 
         plan = _make_plan(max_api_requests_per_hour=100)
 
@@ -167,7 +167,7 @@ class TestCheckApiQuota:
         result.scalar_one_or_none.return_value = record
         session.execute = AsyncMock(return_value=result)
 
-        with patch("spectra_platform.services.billing.quota_enforcer.async_session_maker", return_value=session):
+        with patch("spectra_billing.quota_enforcer.async_session_maker", return_value=session):
             enforcer = QuotaEnforcer()
             allowed, reason = await enforcer.check_api_quota("user-1", plan)
 
@@ -175,7 +175,7 @@ class TestCheckApiQuota:
         assert "Hourly API limit" in reason
 
     async def test_no_record_means_allowed(self):
-        from spectra_platform.services.billing.quota_enforcer import QuotaEnforcer
+        from spectra_billing.quota_enforcer import QuotaEnforcer
 
         plan = _make_plan(max_api_requests_per_hour=100)
 
@@ -184,27 +184,27 @@ class TestCheckApiQuota:
         result.scalar_one_or_none.return_value = None
         session.execute = AsyncMock(return_value=result)
 
-        with patch("spectra_platform.services.billing.quota_enforcer.async_session_maker", return_value=session):
+        with patch("spectra_billing.quota_enforcer.async_session_maker", return_value=session):
             enforcer = QuotaEnforcer()
             allowed, _reason = await enforcer.check_api_quota("user-1", plan)
 
         assert allowed is True
 
     async def test_zero_limit_means_unlimited(self):
-        from spectra_platform.services.billing.quota_enforcer import QuotaEnforcer
+        from spectra_billing.quota_enforcer import QuotaEnforcer
 
         plan = _make_plan(max_api_requests_per_hour=0, max_api_requests_per_day=0)
 
         session = _mock_session()
 
-        with patch("spectra_platform.services.billing.quota_enforcer.async_session_maker", return_value=session):
+        with patch("spectra_billing.quota_enforcer.async_session_maker", return_value=session):
             enforcer = QuotaEnforcer()
             allowed, _reason = await enforcer.check_api_quota("user-1", plan)
 
         assert allowed is True
 
     async def test_blocked_at_daily_limit_even_when_hourly_is_unlimited(self):
-        from spectra_platform.services.billing.quota_enforcer import QuotaEnforcer
+        from spectra_billing.quota_enforcer import QuotaEnforcer
 
         plan = _make_plan(max_api_requests_per_hour=0, max_api_requests_per_day=500)
 
@@ -215,7 +215,7 @@ class TestCheckApiQuota:
         daily_result.scalar_one_or_none.return_value = daily_record
         session.execute = AsyncMock(return_value=daily_result)
 
-        with patch("spectra_platform.services.billing.quota_enforcer.async_session_maker", return_value=session):
+        with patch("spectra_billing.quota_enforcer.async_session_maker", return_value=session):
             enforcer = QuotaEnforcer()
             allowed, reason = await enforcer.check_api_quota("user-1", plan)
 
@@ -223,7 +223,7 @@ class TestCheckApiQuota:
         assert "Daily API limit" in reason
 
     async def test_reuses_existing_session_for_api_quota_check(self):
-        from spectra_platform.services.billing.quota_enforcer import QuotaEnforcer
+        from spectra_billing.quota_enforcer import QuotaEnforcer
 
         plan = _make_plan(max_api_requests_per_hour=100)
 
@@ -234,7 +234,7 @@ class TestCheckApiQuota:
         result.scalar_one_or_none.return_value = record
         session.execute = AsyncMock(return_value=result)
 
-        with patch("spectra_platform.services.billing.quota_enforcer.async_session_maker", side_effect=AssertionError("unexpected new session")):
+        with patch("spectra_billing.quota_enforcer.async_session_maker", side_effect=AssertionError("unexpected new session")):
             enforcer = QuotaEnforcer()
             allowed, reason = await enforcer.check_api_quota("user-1", plan, session=session)
 
@@ -245,7 +245,7 @@ class TestCheckApiQuota:
 @pytest.mark.asyncio
 class TestCheckStorageQuota:
     async def test_allowed_under_limit(self):
-        from spectra_platform.services.billing.quota_enforcer import QuotaEnforcer
+        from spectra_billing.quota_enforcer import QuotaEnforcer
 
         plan = _make_plan(max_storage_mb=500)
 
@@ -256,14 +256,14 @@ class TestCheckStorageQuota:
         result.scalar_one_or_none.return_value = record
         session.execute = AsyncMock(return_value=result)
 
-        with patch("spectra_platform.services.billing.quota_enforcer.async_session_maker", return_value=session):
+        with patch("spectra_billing.quota_enforcer.async_session_maker", return_value=session):
             enforcer = QuotaEnforcer()
             allowed, _reason = await enforcer.check_storage_quota("user-1", plan)
 
         assert allowed is True
 
     async def test_blocked_at_limit(self):
-        from spectra_platform.services.billing.quota_enforcer import QuotaEnforcer
+        from spectra_billing.quota_enforcer import QuotaEnforcer
 
         plan = _make_plan(max_storage_mb=500)
 
@@ -274,7 +274,7 @@ class TestCheckStorageQuota:
         result.scalar_one_or_none.return_value = record
         session.execute = AsyncMock(return_value=result)
 
-        with patch("spectra_platform.services.billing.quota_enforcer.async_session_maker", return_value=session):
+        with patch("spectra_billing.quota_enforcer.async_session_maker", return_value=session):
             enforcer = QuotaEnforcer()
             allowed, reason = await enforcer.check_storage_quota("user-1", plan)
 
@@ -285,7 +285,7 @@ class TestCheckStorageQuota:
 @pytest.mark.asyncio
 class TestSecondsUntilApiReset:
     async def test_returns_positive_integer(self):
-        from spectra_platform.services.billing.quota_enforcer import QuotaEnforcer
+        from spectra_billing.quota_enforcer import QuotaEnforcer
 
         enforcer = QuotaEnforcer()
         seconds = await enforcer.seconds_until_api_reset()

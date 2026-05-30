@@ -67,7 +67,7 @@ cp .env.example .env  # Edit with your settings
 ### 2. Start services
 
 ```bash
-docker compose -f docker/compose.yaml up -d
+docker compose -f deploy/docker/compose.yaml up -d
 ```
 
 ### 3. Access the dashboard

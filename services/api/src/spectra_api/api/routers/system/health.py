@@ -11,12 +11,12 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.dependencies import get_current_active_user, get_current_superuser
-from spectra_platform.auth.rate_limit import limiter
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.user import User
-from spectra_platform.services.system.health import collect_platform_health
-from spectra_platform.services.tools.registry import ToolRegistry
+from spectra_auth.rate_limit import limiter
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.user import User
+from spectra_system.health import collect_platform_health
 from spectra_tools_core.models import ToolStatus
+from spectra_tools_core.registry import ToolRegistry
 
 from .schemas import (
     ComponentStatus,
@@ -62,7 +62,7 @@ async def get_safety_stats(
 ) -> dict:
     """Get safety supervisor statistics from EventBus history."""
     try:
-        from spectra_platform.infrastructure.events import events as event_bus
+        from spectra_infra.events import events as event_bus
 
         allowed = 0
         blocked = 0
@@ -134,7 +134,7 @@ async def get_system_status(
 
     # Storage health
     try:
-        from spectra_platform.services.storage import get_storage_service
+        from spectra_storage_policy.storage import get_storage_service
 
         storage = get_storage_service()
         storage_health = await storage.health_check()
@@ -198,7 +198,7 @@ async def get_system_status(
 
     rag_status = "unknown"
     try:
-        from spectra_platform.services.gateway.ai_gateway import get_ai_gateway
+        from spectra_ai_core.gateway.ai_gateway import get_ai_gateway
 
         gw = get_ai_gateway()
         emb = await gw.check_embeddings_status()
@@ -274,7 +274,7 @@ async def service_topology(
     _current_user: User = Depends(get_current_superuser),
 ) -> dict:
     """Return current service topology (local vs remote)."""
-    from spectra_platform.services.gateway.service_registry import get_service_registry
+    from spectra_ai_core.gateway.service_registry import get_service_registry
 
     registry = get_service_registry()
     return registry.get_service_topology()
@@ -289,7 +289,7 @@ async def get_audit_log(
     _current_user: User = Depends(get_current_superuser),
 ):
     """Get audit log entries. Superuser only."""
-    from spectra_platform.repositories.audit_log import AuditLogRepository
+    from spectra_persistence.repositories.audit_log import AuditLogRepository
 
     repo = AuditLogRepository(db)
     entries = await repo.list_events(skip=skip, limit=limit, event_type=event_type)

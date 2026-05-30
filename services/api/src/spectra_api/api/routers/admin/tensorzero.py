@@ -20,9 +20,9 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from spectra_api.authz import Permission, require_permission
+from spectra_common.config import settings
 from spectra_common.constants import API_DEFAULT_PAGE_SIZE, API_MAX_PAGE_SIZE
-from spectra_platform.core.config import settings
-from spectra_platform.models.user import User
+from spectra_persistence.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -347,7 +347,7 @@ async def tz_model_performance(
     _user: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Get model performance metrics from cost trackers."""
-    from spectra_ai.cost_tracker import get_cost_trackers
+    from spectra_ai_core.cost_tracker import get_cost_trackers
 
     cost_trackers = get_cost_trackers()
     performance = {}

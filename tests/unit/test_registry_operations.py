@@ -10,13 +10,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from spectra_platform.services.tools.registry import ToolRegistry
 from spectra_tools_core.models import (
     ExecutionConfig,
     RegisteredTool,
     ToolConfig,
     ToolStatus,
 )
+from spectra_tools_core.registry import ToolRegistry
 from spectra_tools_core.registry_exceptions import PluginValidationError
 
 # --- Helpers ---
@@ -79,8 +79,8 @@ async def test_sync_status_from_cache_uses_direct_cache_when_global_missing(regi
     )
 
     with (
-        patch("spectra_platform.infrastructure.cache.get_cache", return_value=None),
-        patch("spectra_platform.infrastructure.cache.CacheService", return_value=cache),
+        patch("spectra_infra.cache.get_cache", return_value=None),
+        patch("spectra_infra.cache.CacheService", return_value=cache),
     ):
         updated = await registry.sync_status_from_cache()
 
@@ -274,7 +274,7 @@ class TestSavePlugin:
     async def test_writes_to_disk(self, registry, tmp_path):
         config = _make_config("new-tool", name="New Tool")
 
-        with patch("spectra_platform.services.tools.registry.aiofiles.open") as mock_aiofiles:
+        with patch("spectra_tools_core.registry.aiofiles.open") as mock_aiofiles:
             mock_file = AsyncMock()
             mock_aiofiles.return_value.__aenter__ = AsyncMock(return_value=mock_file)
             mock_aiofiles.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -300,7 +300,7 @@ class TestSavePlugin:
         reg = ToolRegistry(plugins_dir=nested_dir)
         config = _make_config("test-tool")
 
-        with patch("spectra_platform.services.tools.registry.aiofiles.open") as mock_aiofiles:
+        with patch("spectra_tools_core.registry.aiofiles.open") as mock_aiofiles:
             mock_file = AsyncMock()
             mock_aiofiles.return_value.__aenter__ = AsyncMock(return_value=mock_file)
             mock_aiofiles.return_value.__aexit__ = AsyncMock(return_value=False)

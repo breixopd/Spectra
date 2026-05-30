@@ -7,8 +7,8 @@ from fastapi.testclient import TestClient
 
 from spectra_api.api.dependencies import get_current_active_user
 from spectra_api.ui.pages import router
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.user import User
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.user import User
 
 
 def _make_user(is_superuser: bool = False, username: str = "testuser") -> User:

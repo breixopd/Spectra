@@ -46,24 +46,24 @@ from spectra_api.api.schemas.tool import (
     ValidationResponse,
 )
 from spectra_api.authz import Permission, require_permission
+from spectra_auth.rate_limit import RateLimits, limiter
+from spectra_common.config import settings
 from spectra_domain.jobs import WorkerJobName
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.core.config import settings
-from spectra_platform.core.database import async_session_maker
-from spectra_platform.infrastructure.events import EventType, events
-from spectra_platform.models.audit_log import AuditEventType
-from spectra_platform.models.user import User
-from spectra_platform.services.system.audit import log_event as audit_log_event
-from spectra_platform.services.tools.registry import (
-    PluginValidationError,
-    ToolRegistry,
-    get_registry,
-)
+from spectra_infra.events import EventType, events
+from spectra_persistence.database import async_session_maker
+from spectra_persistence.models.audit_log import AuditEventType
+from spectra_persistence.models.user import User
+from spectra_system.audit import log_event as audit_log_event
 from spectra_tools_core.models import (
     RegisteredTool,
     ToolCategory,
     ToolConfig,
     ToolStatus,
+)
+from spectra_tools_core.registry import (
+    PluginValidationError,
+    ToolRegistry,
+    get_registry,
 )
 
 logger = logging.getLogger(__name__)
@@ -101,7 +101,7 @@ def _validate_tool_config_schema(config: dict) -> ToolConfig:
 
 async def _get_cached_status(tool_id: str) -> dict[str, str | list[str] | None]:
     """Read cached status data for a tool, ignoring cache transport failures."""
-    from spectra_platform.infrastructure.cache import get_cache
+    from spectra_infra.cache import get_cache
 
     cache = get_cache()
     if not cache:
@@ -185,7 +185,7 @@ def _queue_background_job(
 
     async def _enqueue() -> None:
         try:
-            from spectra_platform.infrastructure.queue import PostgresJobQueue
+            from spectra_infra.queue import PostgresJobQueue
 
             queue = PostgresJobQueue(settings.TOOL_QUEUE_NAME)
             await queue.enqueue_job(job_name, **job_kwargs)
@@ -682,7 +682,7 @@ async def test_tool(
     tool = _get_tool_or_404(registry, tool_id)
 
     try:
-        from spectra_platform.infrastructure.queue import Job, PostgresJobQueue
+        from spectra_infra.queue import Job, PostgresJobQueue
 
         queue = PostgresJobQueue(settings.TOOL_QUEUE_NAME)
 
@@ -742,7 +742,7 @@ async def get_tool_stats(
 
     Returns success/failure counts, last run time, and average duration.
     """
-    from spectra_platform.infrastructure.cache import get_cache
+    from spectra_infra.cache import get_cache
 
     _get_tool_or_404(registry, tool_id)
 

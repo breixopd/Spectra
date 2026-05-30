@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from spectra_ai.llm import get_llm_client
+from spectra_ai_core.llm import get_llm_client
 
 
 @pytest.mark.skipif(

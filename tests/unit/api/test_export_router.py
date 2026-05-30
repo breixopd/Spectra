@@ -101,7 +101,7 @@ class TestRowToDict:
 
 def _make_app() -> FastAPI:
     """Build a minimal FastAPI app with the export router mounted."""
-    from spectra_platform.auth.rate_limit import limiter
+    from spectra_auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter
@@ -172,7 +172,7 @@ async def client():
 
     # Override auth dependency
     from spectra_api.api.dependencies import get_current_active_user
-    from spectra_platform.core.database import get_async_session
+    from spectra_persistence.database import get_async_session
 
     user = _fake_user()
     app.dependency_overrides[get_current_active_user] = lambda: user

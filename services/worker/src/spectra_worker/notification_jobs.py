@@ -6,14 +6,14 @@ import logging
 
 from sqlalchemy import select
 
-from spectra_platform.services.mission.output_model import get_mission_finding_counts
+from spectra_mission.output_model import get_mission_finding_counts
 
 logger = logging.getLogger(__name__)
 
 
 async def send_webhook_notification(payload: dict, webhook_url: str) -> bool:
     """Deliver a webhook notification (POST JSON)."""
-    from spectra_platform.utils.url_validation import is_safe_url
+    from spectra_common.utils.url_validation import is_safe_url
 
     if not await is_safe_url(webhook_url):
         logger.warning("Blocked webhook to unsafe URL: %s", webhook_url)
@@ -35,8 +35,8 @@ async def send_webhook_notification(payload: dict, webhook_url: str) -> bool:
 
 async def send_mission_completion_notification(mission_id: str, session) -> None:
     """Notify relevant users that a mission has completed."""
-    from spectra_platform.models.mission import Mission
-    from spectra_platform.services.notifications import notify_mission_completed
+    from spectra_persistence.models.mission import Mission
+    from spectra_system.notifications import notify_mission_completed
 
     result = await session.execute(select(Mission).where(Mission.id == mission_id))
     mission = result.scalar_one_or_none()
@@ -55,8 +55,8 @@ async def send_mission_completion_notification(mission_id: str, session) -> None
 
 async def send_critical_finding_alert(finding_id: str, session) -> None:
     """Alert on critical/high severity findings."""
-    from spectra_platform.models.finding import Finding
-    from spectra_platform.services.notifications import send_notification
+    from spectra_persistence.models.finding import Finding
+    from spectra_system.notifications import send_notification
 
     result = await session.execute(select(Finding).where(Finding.id == finding_id))
     finding = result.scalar_one_or_none()

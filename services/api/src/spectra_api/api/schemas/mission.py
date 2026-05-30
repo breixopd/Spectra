@@ -6,8 +6,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from spectra_platform.models.target import TargetStatus
-from spectra_platform.services.mission.types import AttackSurfaceSummary, ToolExecutionRecord
+from spectra_mission.types import AttackSurfaceSummary, ToolExecutionRecord
+from spectra_persistence.models.target import TargetStatus
 
 
 class TargetCreate(BaseModel):
@@ -133,7 +133,7 @@ class StartMissionRequest(BaseModel):
     @field_validator("pentest_framework")
     @classmethod
     def normalize_pentest_framework_id(cls, v: str) -> str:
-        from spectra_platform.services.mission.framework_progress import normalize_pentest_framework
+        from spectra_mission.framework_progress import normalize_pentest_framework
 
         return normalize_pentest_framework(v)
 

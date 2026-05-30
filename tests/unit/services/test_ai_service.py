@@ -21,8 +21,8 @@ async def test_lifespan_initializes_embeddings_on_startup():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "spectra_ai.embeddings",
-            make_module("spectra_ai.embeddings", EmbeddingService=lambda: embedding_service),
+            "spectra_ai_core.embeddings",
+            make_module("spectra_ai_core.embeddings", EmbeddingService=lambda: embedding_service),
         )
 
         async with ai_service.lifespan(ai_service.app):
@@ -40,8 +40,8 @@ async def test_lifespan_tolerates_embedding_init_failure():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "spectra_ai.embeddings",
-            make_module("spectra_ai.embeddings", EmbeddingService=lambda: embedding_service),
+            "spectra_ai_core.embeddings",
+            make_module("spectra_ai_core.embeddings", EmbeddingService=lambda: embedding_service),
         )
 
         async with ai_service.lifespan(ai_service.app):
@@ -142,8 +142,8 @@ async def test_generate_embeddings_returns_vectors_and_dimensions():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "spectra_ai.embeddings",
-            make_module("spectra_ai.embeddings", EmbeddingService=lambda model_name="": embedding_service),
+            "spectra_ai_core.embeddings",
+            make_module("spectra_ai_core.embeddings", EmbeddingService=lambda model_name="": embedding_service),
         )
         response = await ai_service.generate_embeddings(
             ai_service.EmbeddingRequest(texts=["alpha", "beta"], model="mini-embed")
@@ -165,8 +165,8 @@ async def test_generate_embeddings_wraps_service_failures():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "spectra_ai.embeddings",
-            make_module("spectra_ai.embeddings", EmbeddingService=lambda model_name="": embedding_service),
+            "spectra_ai_core.embeddings",
+            make_module("spectra_ai_core.embeddings", EmbeddingService=lambda model_name="": embedding_service),
         )
         with pytest.raises(HTTPException) as exc:
             await ai_service.generate_embeddings(ai_service.EmbeddingRequest(texts=["alpha"]))
@@ -189,8 +189,8 @@ async def test_rag_query_returns_serialized_results():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "spectra_ai.rag",
-            make_module("spectra_ai.rag", RAGService=lambda: rag_service),
+            "spectra_ai_core.rag",
+            make_module("spectra_ai_core.rag", RAGService=lambda: rag_service),
         )
         response = await ai_service.rag_query(
             ai_service.RAGRequest(query="what changed", top_k=3, filters={"kind": "doc"})
@@ -215,8 +215,8 @@ async def test_rag_query_forwards_scoped_search_fields():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "spectra_ai.rag",
-            make_module("spectra_ai.rag", RAGService=lambda: rag_service),
+            "spectra_ai_core.rag",
+            make_module("spectra_ai_core.rag", RAGService=lambda: rag_service),
         )
         await ai_service.rag_query(
             ai_service.RAGRequest(
@@ -249,8 +249,8 @@ async def test_rag_query_wraps_service_failures():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "spectra_ai.rag",
-            make_module("spectra_ai.rag", RAGService=lambda: rag_service),
+            "spectra_ai_core.rag",
+            make_module("spectra_ai_core.rag", RAGService=lambda: rag_service),
         )
         with pytest.raises(HTTPException) as exc:
             await ai_service.rag_query(ai_service.RAGRequest(query="what changed"))

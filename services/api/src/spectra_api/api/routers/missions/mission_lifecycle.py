@@ -7,13 +7,13 @@ from spectra_api.api.dependencies import check_resource_owner, validate_uuid_par
 from spectra_api.api.schemas.common import StatusResponse
 from spectra_api.api.schemas.mission import MissionDeleteResponse
 from spectra_api.authz import Permission, require_permission
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.audit_log import AuditEventType
-from spectra_platform.models.user import User
-from spectra_platform.repositories.mission import MissionRepository
-from spectra_platform.services.mission.manager import mission_manager
-from spectra_platform.services.system.audit import log_event as audit_log_event
+from spectra_auth.rate_limit import RateLimits, limiter
+from spectra_mission.manager import mission_manager
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.audit_log import AuditEventType
+from spectra_persistence.models.user import User
+from spectra_persistence.repositories.mission import MissionRepository
+from spectra_system.audit import log_event as audit_log_event
 
 router = APIRouter()
 
@@ -59,8 +59,8 @@ async def delete_mission(
     await repo.delete(mission_id)
     await db.commit()
 
-    from spectra_platform.core.config import settings
-    from spectra_platform.services.storage import get_storage_service
+    from spectra_common.config import settings
+    from spectra_storage_policy.storage import get_storage_service
 
     storage = get_storage_service()
     keys = await storage.list_objects(settings.S3_BUCKET_MISSIONS, prefix=f"{mission_id}/")

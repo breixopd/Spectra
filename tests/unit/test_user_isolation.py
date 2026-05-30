@@ -14,22 +14,22 @@ class TestModelUserIdColumns:
     """All user-scoped models must have a user_id column."""
 
     def test_mission_model_has_user_id(self):
-        from spectra_platform.models.mission import Mission
+        from spectra_persistence.models.mission import Mission
 
         assert hasattr(Mission, "user_id")
 
     def test_target_model_has_user_id(self):
-        from spectra_platform.models.target import Target
+        from spectra_persistence.models.target import Target
 
         assert hasattr(Target, "user_id")
 
     def test_finding_model_has_user_id(self):
-        from spectra_platform.models.finding import Finding
+        from spectra_persistence.models.finding import Finding
 
         assert hasattr(Finding, "user_id")
 
     def test_exploit_model_has_user_id(self):
-        from spectra_platform.models.exploit import Exploit
+        from spectra_persistence.models.exploit import Exploit
 
         assert hasattr(Exploit, "user_id")
 

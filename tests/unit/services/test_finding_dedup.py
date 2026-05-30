@@ -1,6 +1,6 @@
 """Tests for app.services.mission.finding_dedup module."""
 
-from spectra_platform.services.mission.finding_dedup import (
+from spectra_mission.finding_dedup import (
     are_related_cves,
     finding_dedup_key,
     is_duplicate_finding,

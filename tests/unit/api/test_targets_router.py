@@ -37,7 +37,7 @@ def _fake_target(**overrides):
 
 
 def _make_app() -> FastAPI:
-    from spectra_platform.auth.rate_limit import limiter
+    from spectra_auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter
@@ -50,7 +50,7 @@ def _make_app() -> FastAPI:
 async def client():
     app = _make_app()
     from spectra_api.api.dependencies import get_current_active_user
-    from spectra_platform.core.database import get_async_session
+    from spectra_persistence.database import get_async_session
 
     user = _fake_user()
     app.dependency_overrides[get_current_active_user] = lambda: user
@@ -72,7 +72,7 @@ async def client():
 class TestListTargets:
     async def test_list_targets_empty(self, client):
         ac, _session, _user = client
-        from spectra_platform.repositories.target import TargetRepository
+        from spectra_persistence.repositories.target import TargetRepository
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(TargetRepository, "count", AsyncMock(return_value=0))
@@ -86,7 +86,7 @@ class TestListTargets:
 
     async def test_list_targets_with_data(self, client):
         ac, _session, _user = client
-        from spectra_platform.repositories.target import TargetRepository
+        from spectra_persistence.repositories.target import TargetRepository
 
         target = _fake_target()
         with pytest.MonkeyPatch.context() as mp:
@@ -104,7 +104,7 @@ class TestListTargets:
 class TestGetTarget:
     async def test_get_target_success(self, client):
         ac, _session, _user = client
-        from spectra_platform.repositories.target import TargetRepository
+        from spectra_persistence.repositories.target import TargetRepository
 
         target = _fake_target()
         with pytest.MonkeyPatch.context() as mp:
@@ -116,7 +116,7 @@ class TestGetTarget:
 
     async def test_get_target_not_found(self, client):
         ac, _session, _user = client
-        from spectra_platform.repositories.target import TargetRepository
+        from spectra_persistence.repositories.target import TargetRepository
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=None))
@@ -126,7 +126,7 @@ class TestGetTarget:
 
     async def test_get_target_forbidden(self, client):
         ac, _session, _user = client
-        from spectra_platform.repositories.target import TargetRepository
+        from spectra_persistence.repositories.target import TargetRepository
 
         target = _fake_target(user_id="other-user")
         with pytest.MonkeyPatch.context() as mp:
@@ -140,7 +140,7 @@ class TestGetTarget:
 class TestCreateTarget:
     async def test_create_target_success(self, client):
         ac, _session, _user = client
-        from spectra_platform.repositories.target import TargetRepository
+        from spectra_persistence.repositories.target import TargetRepository
 
         created = _fake_target()
         with pytest.MonkeyPatch.context() as mp:
@@ -160,7 +160,7 @@ class TestCreateTarget:
 
     async def test_create_target_duplicate(self, client):
         ac, _session, _ = client
-        from spectra_platform.repositories.target import TargetRepository
+        from spectra_persistence.repositories.target import TargetRepository
 
         existing = _fake_target()
         with pytest.MonkeyPatch.context() as mp:
@@ -185,7 +185,7 @@ class TestCreateTarget:
 class TestDeleteTarget:
     async def test_delete_target_success(self, client):
         ac, _session, _ = client
-        from spectra_platform.repositories.target import TargetRepository
+        from spectra_persistence.repositories.target import TargetRepository
 
         target = _fake_target()
         with pytest.MonkeyPatch.context() as mp:
@@ -197,7 +197,7 @@ class TestDeleteTarget:
 
     async def test_delete_target_not_found(self, client):
         ac, _session, _ = client
-        from spectra_platform.repositories.target import TargetRepository
+        from spectra_persistence.repositories.target import TargetRepository
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=None))
@@ -210,8 +210,8 @@ class TestDeleteTarget:
 class TestTargetFindings:
     async def test_list_findings_scoped_to_current_user(self, client):
         ac, _session, _user = client
-        from spectra_platform.repositories.finding import FindingRepository
-        from spectra_platform.repositories.target import TargetRepository
+        from spectra_persistence.repositories.finding import FindingRepository
+        from spectra_persistence.repositories.target import TargetRepository
 
         target = _fake_target()
         mock_find = AsyncMock(return_value=[])
@@ -229,8 +229,8 @@ class TestTargetFindings:
     async def test_superuser_list_findings_passes_no_user_filter(self, client):
         ac, _session, _user = client
         _user.is_superuser = True
-        from spectra_platform.repositories.finding import FindingRepository
-        from spectra_platform.repositories.target import TargetRepository
+        from spectra_persistence.repositories.finding import FindingRepository
+        from spectra_persistence.repositories.target import TargetRepository
 
         target = _fake_target()
         mock_find = AsyncMock(return_value=[])

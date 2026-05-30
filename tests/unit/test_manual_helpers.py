@@ -9,21 +9,21 @@ from spectra_api.api.routers.manual_helpers import (
     GenerateReportRequest,
     _build_report_source_from_mission,
 )
-from spectra_platform.services.system.checklists import (
+from spectra_system.checklists import (
     BUILTIN_CHECKLISTS,
     get_checklist,
     list_checklists,
 )
-from spectra_platform.services.system.cvss import calculate_cvss31
-from spectra_platform.services.system.gtfobins import GTFOBINS, search_gtfobins
-from spectra_platform.services.system.payloads import (
+from spectra_system.cvss import calculate_cvss31
+from spectra_system.gtfobins import GTFOBINS, search_gtfobins
+from spectra_system.payloads import (
     LFI_PAYLOADS,
     SQLI_PAYLOADS,
     XSS_PAYLOADS,
     get_payloads,
     list_payload_types,
 )
-from spectra_platform.services.system.report_templates import (
+from spectra_system.report_templates import (
     REPORT_TEMPLATES,
     build_report_data,
     get_report_template,

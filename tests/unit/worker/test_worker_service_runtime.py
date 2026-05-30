@@ -68,7 +68,7 @@ async def test_health_reports_worker_task_state():
     from fastapi import Response
 
     mock_response = Response()
-    with patch("spectra_platform.core.database.async_session_maker", return_value=mock_session):
+    with patch("spectra_persistence.database.async_session_maker", return_value=mock_session):
         result = await worker_service.health(mock_response)
 
     assert result == {
@@ -101,8 +101,8 @@ async def test_work_loop_calls_startup_worker_loop_and_shutdown_in_finally():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "spectra_platform.infrastructure.queue",
-            make_module("spectra_platform.infrastructure.queue", worker_loop=fake_worker_loop),
+            "spectra_infra.queue",
+            make_module("spectra_infra.queue", worker_loop=fake_worker_loop),
         )
         import spectra_worker as _sw
 
@@ -136,7 +136,7 @@ async def test_health_reports_db_failure():
     from fastapi import Response
 
     mock_response = Response()
-    with patch("spectra_platform.core.database.async_session_maker", side_effect=RuntimeError("db down")):
+    with patch("spectra_persistence.database.async_session_maker", side_effect=RuntimeError("db down")):
         result = await worker_service.health(mock_response)
 
     assert result["status"] == "degraded"

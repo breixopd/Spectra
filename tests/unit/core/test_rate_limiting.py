@@ -42,7 +42,7 @@ def _make_request(headers: list[tuple[bytes, bytes]] | None = None) -> Request:
 
 
 def test_rate_limit_identifier_handles_invalid_bearer_token():
-    from spectra_platform.auth.rate_limit import get_user_identifier
+    from spectra_auth.rate_limit import get_user_identifier
 
     request = _make_request(headers=[(b"authorization", b"Bearer not-a-jwt")])
 
@@ -70,8 +70,8 @@ async def test_enforce_rate_limit_allows_within_limit():
     mock_tracker.record_api_request = AsyncMock()
 
     with (
-        patch("spectra_platform.services.billing.quota_enforcer.QuotaEnforcer", return_value=mock_enforcer),
-        patch("spectra_platform.services.billing.usage_tracker.UsageTracker", return_value=mock_tracker),
+        patch("spectra_billing.quota_enforcer.QuotaEnforcer", return_value=mock_enforcer),
+        patch("spectra_billing.usage_tracker.UsageTracker", return_value=mock_tracker),
         patch("spectra_api.api.dependencies.async_session_maker", return_value=session),
         patch("spectra_api.api.dependencies.stable_lock_id", return_value=12345),
     ):
@@ -97,8 +97,8 @@ async def test_enforce_rate_limit_blocks_over_limit():
     mock_tracker.record_api_request = AsyncMock()
 
     with (
-        patch("spectra_platform.services.billing.quota_enforcer.QuotaEnforcer", return_value=mock_enforcer),
-        patch("spectra_platform.services.billing.usage_tracker.UsageTracker", return_value=mock_tracker),
+        patch("spectra_billing.quota_enforcer.QuotaEnforcer", return_value=mock_enforcer),
+        patch("spectra_billing.usage_tracker.UsageTracker", return_value=mock_tracker),
         patch("spectra_api.api.dependencies.async_session_maker", return_value=session),
         patch("spectra_api.api.dependencies.stable_lock_id", return_value=12345),
     ):
@@ -141,7 +141,7 @@ async def test_enforce_rate_limit_skips_admin_role():
 @pytest.mark.asyncio
 async def test_check_rate_limit_no_subscription_returns_false():
     """User without subscription is not within limit."""
-    from spectra_platform.services.billing.usage_tracker import UsageTracker
+    from spectra_billing.usage_tracker import UsageTracker
 
     tracker = UsageTracker()
 
@@ -150,8 +150,8 @@ async def test_check_rate_limit_no_subscription_returns_false():
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("spectra_platform.services.billing.usage_tracker.async_session_maker", return_value=mock_session),
-        patch("spectra_platform.services.billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=None)),
+        patch("spectra_billing.usage_tracker.async_session_maker", return_value=mock_session),
+        patch("spectra_billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=None)),
     ):
         within, current, maximum = await tracker.check_rate_limit("user-1", "api_requests")
 
@@ -164,7 +164,7 @@ async def test_check_rate_limit_no_subscription_returns_false():
 @pytest.mark.asyncio
 async def test_check_rate_limit_within_plan():
     """User within plan limits gets (True, current, max)."""
-    from spectra_platform.services.billing.usage_tracker import UsageTracker
+    from spectra_billing.usage_tracker import UsageTracker
 
     tracker = UsageTracker()
 
@@ -185,9 +185,9 @@ async def test_check_rate_limit_within_plan():
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("spectra_platform.services.billing.usage_tracker.async_session_maker", return_value=mock_session),
-        patch("spectra_platform.services.billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=entitlement)),
-        patch("spectra_platform.services.billing.usage_tracker.telemetry"),
+        patch("spectra_billing.usage_tracker.async_session_maker", return_value=mock_session),
+        patch("spectra_billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=entitlement)),
+        patch("spectra_billing.usage_tracker.telemetry"),
     ):
             within, current, maximum = await tracker.check_rate_limit("user-1", "api_requests")
 
@@ -199,7 +199,7 @@ async def test_check_rate_limit_within_plan():
 @pytest.mark.asyncio
 async def test_check_rate_limit_over_plan():
     """User at or over the plan limit gets (False, current, max)."""
-    from spectra_platform.services.billing.usage_tracker import UsageTracker
+    from spectra_billing.usage_tracker import UsageTracker
 
     tracker = UsageTracker()
 
@@ -220,9 +220,9 @@ async def test_check_rate_limit_over_plan():
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("spectra_platform.services.billing.usage_tracker.async_session_maker", return_value=mock_session),
-        patch("spectra_platform.services.billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=entitlement)),
-        patch("spectra_platform.services.billing.usage_tracker.telemetry"),
+        patch("spectra_billing.usage_tracker.async_session_maker", return_value=mock_session),
+        patch("spectra_billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=entitlement)),
+        patch("spectra_billing.usage_tracker.telemetry"),
     ):
             within, current, maximum = await tracker.check_rate_limit("user-1", "api_requests")
 
@@ -234,7 +234,7 @@ async def test_check_rate_limit_over_plan():
 @pytest.mark.asyncio
 async def test_check_rate_limit_no_plan_limit_always_allowed():
     """When plan has no limit (None), user is always within limit."""
-    from spectra_platform.services.billing.usage_tracker import UsageTracker
+    from spectra_billing.usage_tracker import UsageTracker
 
     tracker = UsageTracker()
 
@@ -252,8 +252,8 @@ async def test_check_rate_limit_no_plan_limit_always_allowed():
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("spectra_platform.services.billing.usage_tracker.async_session_maker", return_value=mock_session),
-        patch("spectra_platform.services.billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=entitlement)),
+        patch("spectra_billing.usage_tracker.async_session_maker", return_value=mock_session),
+        patch("spectra_billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=entitlement)),
     ):
         within, _current, maximum = await tracker.check_rate_limit("user-1", "api_requests")
 
@@ -269,7 +269,7 @@ async def test_check_rate_limit_no_plan_limit_always_allowed():
 
 def test_rate_limit_presets_defined():
     """RateLimits class has expected tier configurations."""
-    from spectra_platform.auth.rate_limit import RateLimits
+    from spectra_auth.rate_limit import RateLimits
 
     assert hasattr(RateLimits, "LOGIN")
     assert hasattr(RateLimits, "MISSION_START")
@@ -297,7 +297,7 @@ def _make_rate_limit_exc(limit_string: str):
 @pytest.mark.asyncio
 async def test_rate_limit_exceeded_handler_returns_429():
     """Handler produces a 429 JSON response with Retry-After header."""
-    from spectra_platform.auth.rate_limit import rate_limit_exceeded_handler
+    from spectra_auth.rate_limit import rate_limit_exceeded_handler
 
     request = MagicMock()
     request.url.path = "/api/test"
@@ -306,7 +306,7 @@ async def test_rate_limit_exceeded_handler_returns_429():
 
     exc = _make_rate_limit_exc("100/minute")
 
-    with patch("spectra_platform.auth.rate_limit.events"):
+    with patch("spectra_auth.rate_limit.events"):
         response = await rate_limit_exceeded_handler(request, exc)
 
     assert response.status_code == 429
@@ -319,7 +319,7 @@ async def test_rate_limit_exceeded_handler_body_structure():
     """Handler JSON body has expected keys."""
     import json
 
-    from spectra_platform.auth.rate_limit import rate_limit_exceeded_handler
+    from spectra_auth.rate_limit import rate_limit_exceeded_handler
 
     request = MagicMock()
     request.url.path = "/api/missions"
@@ -328,7 +328,7 @@ async def test_rate_limit_exceeded_handler_body_structure():
 
     exc = _make_rate_limit_exc("5/minute")
 
-    with patch("spectra_platform.auth.rate_limit.events"):
+    with patch("spectra_auth.rate_limit.events"):
         response = await rate_limit_exceeded_handler(request, exc)
 
     body = json.loads(response.body.decode())
@@ -352,7 +352,7 @@ async def test_main_api_429_handler_delegates_rate_limit_exceeded():
 
     exc = _make_rate_limit_exc("5/minute")
 
-    with patch("spectra_platform.auth.rate_limit.events"):
+    with patch("spectra_auth.rate_limit.events"):
         response = await make_error_handler(templates, 429, "Too many requests", "errors/429.html")(request, exc)
 
     body = json.loads(response.body.decode())
@@ -369,14 +369,14 @@ async def test_main_api_429_handler_delegates_rate_limit_exceeded():
 
 def test_limiter_headers_enabled():
     """Limiter instance has rate limit response headers enabled."""
-    from spectra_platform.auth.rate_limit import limiter
+    from spectra_auth.rate_limit import limiter
 
     assert limiter._headers_enabled is True
 
 
 def test_limiter_default_limits():
     """Limiter has a default limit configured."""
-    from spectra_platform.auth.rate_limit import limiter
+    from spectra_auth.rate_limit import limiter
 
     assert len(limiter._default_limits) > 0
 
@@ -387,7 +387,7 @@ def test_limiter_default_limits():
 
 
 def test_get_client_identifier_with_client():
-    from spectra_platform.auth.rate_limit import get_client_identifier
+    from spectra_auth.rate_limit import get_client_identifier
 
     request = MagicMock()
     request.client.host = "192.168.1.1"
@@ -395,7 +395,7 @@ def test_get_client_identifier_with_client():
 
 
 def test_get_client_identifier_without_client():
-    from spectra_platform.auth.rate_limit import get_client_identifier
+    from spectra_auth.rate_limit import get_client_identifier
 
     request = MagicMock()
     request.client = None
@@ -403,7 +403,7 @@ def test_get_client_identifier_without_client():
 
 
 def test_get_user_identifier_from_state():
-    from spectra_platform.auth.rate_limit import get_user_identifier
+    from spectra_auth.rate_limit import get_user_identifier
 
     request = MagicMock()
     request.state.user.username = "testuser"
@@ -411,7 +411,7 @@ def test_get_user_identifier_from_state():
 
 
 def test_get_user_identifier_falls_back_to_ip():
-    from spectra_platform.auth.rate_limit import get_user_identifier
+    from spectra_auth.rate_limit import get_user_identifier
 
     request = MagicMock()
     request.state = MagicMock(spec=[])  # no 'user' attribute

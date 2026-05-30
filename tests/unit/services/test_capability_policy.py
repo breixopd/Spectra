@@ -1,5 +1,5 @@
-from spectra_platform.services.ai.agents.base import AgentContext
-from spectra_platform.services.security.capabilities import (
+from spectra_ai_core.agents.base import AgentContext
+from spectra_ai_core.capabilities import (
     Capability,
     CapabilityRequest,
     CapabilityVerdict,

@@ -10,10 +10,10 @@ import pytest
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from spectra_common.orm.base import Base
-from spectra_platform.core.config import settings
-from spectra_platform.models.server_node import ServerNode
-from spectra_platform.services.scaling.pool_manager import ServerPoolManager
+from spectra_common.config import settings
+from spectra_persistence.models.server_node import ServerNode
+from spectra_persistence.orm.base import Base
+from spectra_scaling.pool_manager import ServerPoolManager
 
 pytestmark = [
     pytest.mark.asyncio,

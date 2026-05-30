@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from spectra_platform.infrastructure.redis_client import RedisCache, RedisConnectionPool
+from spectra_infra.redis_client import RedisCache, RedisConnectionPool
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.live, pytest.mark.performance]
 

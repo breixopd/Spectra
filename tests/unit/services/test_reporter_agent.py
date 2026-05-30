@@ -2,9 +2,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from spectra_ai.llm import LLMResponse
-from spectra_platform.services.ai.agents.base import ActionRisk, AgentContext
-from spectra_platform.services.ai.agents.reporter import ReporterAgent, ReporterInput, ReportOutput
+from spectra_ai_core.agents.base import ActionRisk, AgentContext
+from spectra_ai_core.agents.reporter import ReporterAgent, ReporterInput, ReportOutput
+from spectra_ai_core.llm import LLMResponse
 
 
 @pytest.fixture

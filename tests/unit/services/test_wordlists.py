@@ -1,6 +1,6 @@
 """Tests for the wordlists service."""
 
-from spectra_platform.services.ai.wordlists import generate_credential_list
+from spectra_ai_core.wordlists import generate_credential_list
 
 
 class TestGenerateCredentialList:

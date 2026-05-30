@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-import spectra_platform.services.infrastructure.storage_monitor as storage_monitor_module
-from spectra_platform.services.infrastructure.storage_monitor import StorageMonitor
+import spectra_scaling.infrastructure_services.storage_monitor as storage_monitor_module
+from spectra_scaling.infrastructure_services.storage_monitor import StorageMonitor
 
 
 @pytest.fixture(autouse=True)

@@ -7,9 +7,8 @@
   "metadata": {
     "ai_description": "tplmap is an automated Server-Side Template Injection detection and exploitation tool. Use it when you suspect SSTI vulnerabilities in web applications. It fingerprintes the template engine in use, then exploits the vulnerability to achieve code execution, file read/write, or OS shell access. Supports Jinja2, Twig, Smarty, Freemarker, Velocity, Jade, Mako, and more.",
     "capabilities": [
-      "ssti",
-      "code_execution",
-      "file_access"
+      "command_injection",
+      "data_exfil"
     ],
     "supported_targets": [
       "url"
@@ -46,14 +45,14 @@
     ]
   },
   "installation": {
-    "method": "pip",
+    "method": "pipx",
     "commands": [
-      "pip install tplmap"
+      "pipx install tplmap"
     ],
     "verification_command": "tplmap --help",
     "verification_regex": "tplmap",
     "uninstall_commands": [
-      "pip uninstall -y tplmap"
+      "pipx uninstall tplmap"
     ]
   },
   "execution": {

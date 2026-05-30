@@ -7,7 +7,7 @@ import pytest
 from fastapi import Response
 from starlette.requests import Request
 
-from spectra_platform.auth.security import (
+from spectra_auth.security import (
     _blacklisted_tokens,
     _user_token_blacklist,
     create_access_token,
@@ -19,7 +19,7 @@ from spectra_platform.auth.security import (
 
 @pytest.fixture(autouse=True)
 def _clear_blacklist():
-    from spectra_platform.auth.security import _blacklist_ready
+    from spectra_auth.security import _blacklist_ready
 
     _blacklisted_tokens.clear()
     _user_token_blacklist.clear()
@@ -176,7 +176,7 @@ async def test_token_without_type_claim_still_decodes():
 
     import jwt
 
-    from spectra_platform.core.config import settings
+    from spectra_common.config import settings
 
     payload = {
         "sub": "legacyuser",
@@ -199,7 +199,7 @@ async def test_get_current_user_rejects_token_without_type():
     from fastapi import HTTPException
 
     from spectra_api.api.dependencies import get_current_user
-    from spectra_platform.core.config import settings
+    from spectra_common.config import settings
 
     payload = {
         "sub": "legacyuser",
@@ -297,7 +297,7 @@ def test_login_response_sets_httponly_secure_cookie():
     assert any(header.startswith(f"{REFRESH_COOKIE_KEY}=refresh-token") for header in headers)
     assert all("HttpOnly" in header for header in headers)
     assert all("Secure" in header for header in headers)
-    assert all("samesite=strict" in header.lower() for header in headers)
+    assert all("samesite=lax" in header.lower() for header in headers)
 
 
 def test_logout_deletes_cookie_with_secure_flags():
@@ -322,4 +322,4 @@ def test_logout_deletes_cookie_with_secure_flags():
     auth_headers = [h for h in headers if "csrf_token" not in h]
     assert all("HttpOnly" in header for header in auth_headers)
     assert all("Secure" in header for header in auth_headers)
-    assert all("samesite=strict" in header.lower() for header in auth_headers)
+    assert all("samesite=lax" in header.lower() for header in auth_headers)

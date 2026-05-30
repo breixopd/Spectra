@@ -30,11 +30,11 @@ async def lifespan(app: FastAPI):
     logger.info("AI Service starting...")
     _ai_embedded_task = None
 
-    from spectra_platform.runtime.embedded_daemon import spawn_embedded_ops_task
+    from spectra_scaling.runtime.embedded_daemon import spawn_embedded_ops_task
 
     _ai_embedded_task = spawn_embedded_ops_task("ai-svc")
 
-    from spectra_ai.embeddings import EmbeddingService
+    from spectra_ai_core.embeddings import EmbeddingService
 
     try:
         svc = EmbeddingService()
@@ -63,7 +63,7 @@ async def lifespan(app: FastAPI):
 
     # Unload embedding model
     try:
-        from spectra_ai.embeddings import EmbeddingService
+        from spectra_ai_core.embeddings import EmbeddingService
 
         svc = EmbeddingService()
         if hasattr(svc, "unload"):
@@ -81,7 +81,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-from spectra_platform.core.config import get_settings as _get_cors_settings
+from spectra_common.config import get_settings as _get_cors_settings
 
 _cors_settings = _get_cors_settings()
 _cors_origins = (
@@ -102,7 +102,7 @@ app.add_middleware(
 )
 
 # Service auth middleware
-from spectra_platform.di.service_auth import ServiceAuthMiddleware
+from spectra_infra.di.service_auth import ServiceAuthMiddleware
 
 _settings = _cors_settings
 _secret = _settings.SERVICE_AUTH_SECRET.get_secret_value()
@@ -154,7 +154,7 @@ async def health_ready(response: Response):
     overall = overall and checks["tensorzero"]
 
     try:
-        from spectra_ai.embeddings import EmbeddingService
+        from spectra_ai_core.embeddings import EmbeddingService
 
         svc = EmbeddingService()
         await svc._load_model()
@@ -164,7 +164,7 @@ async def health_ready(response: Response):
     overall = overall and checks["embeddings"]
 
     try:
-        from spectra_ai.rag import RAGService
+        from spectra_ai_core.rag import RAGService
 
         # Ephemeral probe: deep readiness does not share the monolith singleton.
         rag = RAGService()
@@ -266,7 +266,7 @@ async def ai_chat(req: ChatRequest):
 async def generate_embeddings(req: EmbeddingRequest):
     """Generate embeddings for a list of texts."""
     try:
-        from spectra_ai.embeddings import EmbeddingService
+        from spectra_ai_core.embeddings import EmbeddingService
 
         svc = EmbeddingService(model_name=req.model or "")
         await svc._load_model()
@@ -291,7 +291,7 @@ async def rag_query(req: RAGRequest):
     ``RAGService`` instance (AI worker has no long-lived monolith singleton).
     """
     try:
-        from spectra_ai.rag import RAGService
+        from spectra_ai_core.rag import RAGService
 
         svc = RAGService()
         results = await svc.search(query=req.query, **req.to_search_kwargs())

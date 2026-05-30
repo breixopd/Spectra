@@ -12,11 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.dependencies import check_feature_allowed, get_current_active_user
 from spectra_api.authz import Permission, require_permission
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.core.config import settings
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.user import User
-from spectra_platform.services.tools.vpn import VPNManager
+from spectra_auth.rate_limit import RateLimits, limiter
+from spectra_common.config import settings
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.user import User
+from spectra_tools.vpn import VPNManager
 
 logger = logging.getLogger(__name__)
 

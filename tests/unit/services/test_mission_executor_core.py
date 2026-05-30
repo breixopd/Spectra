@@ -2,10 +2,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from spectra_ai.llm import LLMClient
-from spectra_platform.models.mission import Mission
-from spectra_platform.services.ai.agents.mission_controller import AssessmentPhase, Task
-from spectra_platform.services.mission.executor import MissionExecutor
+from spectra_ai_core.agents.mission_controller import AssessmentPhase, Task
+from spectra_ai_core.llm import LLMClient
+from spectra_mission.executor import MissionExecutor
+from spectra_persistence.models.mission import Mission
 
 
 @pytest.fixture

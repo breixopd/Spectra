@@ -15,11 +15,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.authz import Permission, require_permission
-from spectra_platform.core.database import get_async_session
-from spectra_platform.infrastructure.metrics_store import get_metrics_store
-from spectra_platform.models.mission import Mission
-from spectra_platform.models.user import User
-from spectra_platform.telemetry.telemetry import telemetry
+from spectra_infra.metrics_store import get_metrics_store
+from spectra_observability.telemetry import telemetry
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.mission import Mission
+from spectra_persistence.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ async def monitoring_overview(
     except (OSError, RuntimeError):
         pass
 
-    from spectra_ai.cost_tracker import get_cost_trackers
+    from spectra_ai_core.cost_tracker import get_cost_trackers
 
     cost_trackers = get_cost_trackers()
     llm = _cost_summary(cost_trackers) if cost_trackers else {"total_cost_usd": 0, "total_tokens": 0, "total_calls": 0}
@@ -137,7 +137,7 @@ async def llm_usage_breakdown(
     _user: User = require_permission(Permission.VIEW_MONITORING),
 ) -> dict[str, Any]:
     """Detailed LLM usage breakdown by mission/tracker."""
-    from spectra_ai.cost_tracker import get_cost_trackers
+    from spectra_ai_core.cost_tracker import get_cost_trackers
 
     cost_trackers = get_cost_trackers()
     breakdown = {}

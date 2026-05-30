@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, stat
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.dependencies import check_feature_allowed, get_current_active_user
+from spectra_auth.rate_limit import RateLimits, limiter
 from spectra_common.constants import (
     SECLISTS_COMMON_PASSWORDS_URL,
     SECLISTS_COMMON_WEB_URL,
@@ -27,9 +28,8 @@ from spectra_common.constants import (
 from spectra_common.constants import (
     WORDLISTS_DIR as WORDLISTS_DIR_STR,
 )
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.user import User
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.user import User
 
 logger = logging.getLogger(__name__)
 

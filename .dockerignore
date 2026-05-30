@@ -32,7 +32,7 @@ dist/
 build/
 keys/*.pem
 keys/*.key
-docker/targets/
+deploy/docker/targets/
 requirements/test.txt
 requirements/dev.txt
 scripts/ops/
@@ -40,5 +40,6 @@ scripts/ops/
 .chunkhound/
 .chunkhound.db
 .sisyphus/
-packages/storage-policy/
-uv.lock
+**/.venv
+node_modules
+**/node_modules

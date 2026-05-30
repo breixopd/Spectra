@@ -18,10 +18,10 @@ from spectra_api.api.dependencies import (
     _load_active_user_from_payload_with_session,
     get_current_active_user,
 )
-from spectra_platform._meta.version import __version__
-from spectra_platform.core.config import get_settings as _get_settings
-from spectra_platform.core.database import get_async_session
-from spectra_platform.services.system.health import collect_platform_health, probe_http_health, readiness_from_health
+from spectra_common._meta.version import __version__
+from spectra_common.config import get_settings as _get_settings
+from spectra_persistence.database import get_async_session
+from spectra_system.health import collect_platform_health, probe_http_health, readiness_from_health
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +204,7 @@ async def deep_health_check(
 
     start = time.monotonic()
     try:
-        from spectra_platform.services.gateway.ai_gateway import get_ai_gateway
+        from spectra_ai_core.gateway.ai_gateway import get_ai_gateway
 
         gw = get_ai_gateway()
         chat_resp = await gw.chat([{"role": "user", "content": "say ok"}], tier=1, max_tokens=1)
@@ -220,7 +220,7 @@ async def deep_health_check(
 
     start = time.monotonic()
     try:
-        from spectra_ai.embeddings import EmbeddingService
+        from spectra_ai_core.embeddings import EmbeddingService
 
         svc = EmbeddingService()
         await svc._load_model()
@@ -237,7 +237,7 @@ async def deep_health_check(
 
     start = time.monotonic()
     try:
-        from spectra_platform.services.storage import get_storage_service
+        from spectra_storage_policy.storage import get_storage_service
 
         storage = get_storage_service()
         bucket = _get_settings().S3_BUCKET_MISSIONS
@@ -257,7 +257,7 @@ async def deep_health_check(
 
     start = time.monotonic()
     try:
-        from spectra_platform.services.tools.sandbox import get_sandbox_pool
+        from spectra_tools.sandbox import get_sandbox_pool
 
         pool = get_sandbox_pool()
         if pool and pool.available:

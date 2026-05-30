@@ -25,7 +25,7 @@ async def client():
 @pytest.mark.asyncio
 async def test_oversized_request_rejected_with_413(client):
     """A request declaring content-length above MAX_REQUEST_BODY_SIZE gets 413."""
-    from spectra_platform.core.config import settings
+    from spectra_common.config import settings
 
     oversized = settings.MAX_REQUEST_BODY_SIZE + 1
     resp = await client.post(
@@ -46,7 +46,7 @@ async def test_normal_request_passes_through(client):
 @pytest.mark.asyncio
 async def test_request_at_exact_limit_passes(client):
     """A request whose content-length equals the limit should pass."""
-    from spectra_platform.core.config import settings
+    from spectra_common.config import settings
 
     resp = await client.post(
         "/api/v1/health",
@@ -60,7 +60,7 @@ async def test_request_at_exact_limit_passes(client):
 @pytest.mark.asyncio
 async def test_configurable_limit():
     """The limit comes from settings.MAX_REQUEST_BODY_SIZE and is configurable."""
-    from spectra_platform.core.config import settings
+    from spectra_common.config import settings
 
     assert hasattr(settings, "MAX_REQUEST_BODY_SIZE")
     assert isinstance(settings.MAX_REQUEST_BODY_SIZE, int)

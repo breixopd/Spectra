@@ -1,0 +1,53 @@
+# Spectra AI service — LLM/RAG runtime adapters.
+ARG PYTHON_BASE_IMAGE=python:3.11.13-slim-bookworm
+
+FROM ${PYTHON_BASE_IMAGE} AS builder
+COPY --from=ghcr.io/astral-sh/uv:0.11.17 /uv /usr/local/bin/uv
+WORKDIR /src
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc libcairo2-dev libpq-dev pkg-config python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml uv.lock ./
+COPY packages/ ./packages/
+COPY services/ ./services/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-editable --package spectra-ai
+
+FROM ${PYTHON_BASE_IMAGE}
+ARG BUILD_VERSION=dev
+LABEL org.opencontainers.image.title="Spectra AI" \
+      org.opencontainers.image.description="Automated penetration testing platform — AI/LLM service" \
+      org.opencontainers.image.source="https://github.com/breixopd/Spectra" \
+      org.opencontainers.image.vendor="breixopd" \
+      org.opencontainers.image.version="${BUILD_VERSION}"
+
+WORKDIR /app
+RUN printf '%s' "${BUILD_VERSION}" > /app/.build-version
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl libpq5 libcairo2 netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    SERVICE_MODE=ai
+
+RUN useradd --create-home --shell /bin/bash spectra && \
+    mkdir -p /app/data /app/logs && chown -R spectra:spectra /app
+COPY --chown=spectra:spectra scripts/ ./scripts/
+COPY --chown=spectra:spectra db/alembic/ ./alembic/
+COPY --chown=spectra:spectra db/alembic.ini ./config/alembic.ini
+RUN chmod +x /app/scripts/start.sh
+
+ENTRYPOINT ["/app/scripts/start.sh"]
+EXPOSE 5010
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5010/health || exit 1
+CMD ["uvicorn", "spectra_ai.main:app", "--host", "0.0.0.0", "--port", "5010"]

@@ -18,8 +18,8 @@ from spectra_api.api.routers.auth._helpers import (
     _token_response_payload,
 )
 from spectra_api.api.schemas.auth import MFADisableRequest, MFASetupResponse, MFAVerifyRequest
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.auth.security import (
+from spectra_auth.rate_limit import RateLimits, limiter
+from spectra_auth.security import (
     JWTError,
     decode_token,
     decrypt_mfa_secret,
@@ -28,10 +28,10 @@ from spectra_platform.auth.security import (
     verify_password,
     verify_totp,
 )
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.audit_log import AuditEventType
-from spectra_platform.models.user import User
-from spectra_platform.services.system.audit import log_event as audit_log_event
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.audit_log import AuditEventType
+from spectra_persistence.models.user import User
+from spectra_system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 

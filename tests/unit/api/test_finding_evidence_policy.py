@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from spectra_api.api.routers.findings.core import FindingCreate
-from spectra_platform.models.finding import FindingStatus, Severity
+from spectra_persistence.models.finding import FindingStatus, Severity
 
 
 def _finding_payload(**overrides):

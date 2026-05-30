@@ -1,6 +1,6 @@
 """Tests for app.services.ai.calibration.ConfidenceCalibrator."""
 
-from spectra_platform.services.ai.calibration import ConfidenceCalibrator
+from spectra_ai_core.calibration import ConfidenceCalibrator
 
 
 class TestRecordPrediction:

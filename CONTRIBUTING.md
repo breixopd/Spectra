@@ -91,7 +91,7 @@ pre-commit run --all-files
 
 ```bash
 # Start all services
-docker compose -f docker/compose.yaml up -d
+docker compose -f deploy/docker/compose.yaml up -d
 
 # The app is at http://localhost:5000
 # First run redirects to /setup for admin account creation
@@ -309,7 +309,7 @@ make test                            # Runs unit tests in Docker
 ./tests/run_live_tests.sh
 
 # --- Containerized test runner via docker-compose ---
-docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner
+docker compose -f deploy/docker/compose.yaml --profile test run --rm settings-test-runner
 
 # --- UI tests (requires Playwright) ---
 ./tests/run_ui_tests.sh

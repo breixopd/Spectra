@@ -20,14 +20,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.dependencies import get_current_active_user
+from spectra_auth.rate_limit import RateLimits, limiter
 from spectra_common.constants import MAX_EXPORT_ROWS
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.exploit import Exploit
-from spectra_platform.models.finding import Finding, FindingStatus
-from spectra_platform.models.mission import Mission, MissionStatus
-from spectra_platform.models.target import Target, TargetStatus
-from spectra_platform.models.user import User
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.exploit import Exploit
+from spectra_persistence.models.finding import Finding, FindingStatus
+from spectra_persistence.models.mission import Mission, MissionStatus
+from spectra_persistence.models.target import Target, TargetStatus
+from spectra_persistence.models.user import User
 
 logger = logging.getLogger(__name__)
 

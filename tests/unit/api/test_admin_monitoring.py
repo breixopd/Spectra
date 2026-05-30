@@ -9,7 +9,7 @@ from httpx import ASGITransport, AsyncClient
 
 def _make_app():
     from spectra_api.api.routers.admin.monitoring import router
-    from spectra_platform.auth.rate_limit import limiter
+    from spectra_auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter
@@ -20,7 +20,7 @@ def _make_app():
 
 def _override_deps(app, role="admin"):
     from spectra_api.api.dependencies import get_current_active_user
-    from spectra_platform.core.database import get_async_session
+    from spectra_persistence.database import get_async_session
 
     user = MagicMock()
     user.id = "u-1"
@@ -51,7 +51,7 @@ class TestMonitoringOverview:
         _override_deps(app)
 
         with (
-            patch("spectra_ai.cost_tracker.get_cost_trackers", return_value={}),
+            patch("spectra_ai_core.cost_tracker.get_cost_trackers", return_value={}),
             patch("spectra_api.api.routers.admin.monitoring.get_metrics_store") as mock_ms,
         ):
             mock_ms.return_value.get_history.return_value = []

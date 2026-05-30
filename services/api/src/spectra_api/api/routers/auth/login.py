@@ -27,18 +27,18 @@ from spectra_api.api.routers.auth._helpers import (
     _validate_refresh_token_payload,
 )
 from spectra_api.api.schemas.auth import Token
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.auth.security import (
+from spectra_auth.rate_limit import RateLimits, limiter
+from spectra_auth.security import (
     create_access_token,
     invalidate_token,
     verify_password,
 )
-from spectra_platform.core.config import settings
-from spectra_platform.core.database import get_async_session
-from spectra_platform.infrastructure.events import EventType, events
-from spectra_platform.models.audit_log import AuditEventType
-from spectra_platform.services.system.audit import log_event as audit_log_event
-from spectra_platform.telemetry.telemetry import telemetry
+from spectra_common.config import settings
+from spectra_infra.events import EventType, events
+from spectra_observability.telemetry import telemetry
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.audit_log import AuditEventType
+from spectra_system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from spectra_platform.auth.encryption import (
+from spectra_common.encryption import (
     decrypt_data_with_password,
     decrypt_file,
     encrypt_data_with_password,
@@ -51,7 +51,7 @@ class TestEncryptFile:
         p = tmp_path / "test.txt"
         p.write_text("data")
 
-        with patch("spectra_platform.auth.encryption._get_default_secret", return_value="app-secret"):
+        with patch("spectra_common.encryption._get_default_secret", return_value="app-secret"):
             encrypt_file(p)
             result = decrypt_file(p)
 
@@ -95,7 +95,7 @@ class TestReportEncryptionAtRest:
         """save_report should encrypt content before passing to storage."""
         from unittest.mock import AsyncMock, MagicMock
 
-        from spectra_platform.auth.encryption import _derive_fernet_key
+        from spectra_common.encryption import _derive_fernet_key
 
         # Capture what is uploaded to storage
         uploaded: list[bytes] = []
@@ -106,10 +106,10 @@ class TestReportEncryptionAtRest:
         )
 
         with (
-            patch("spectra_platform.services.mission.report_generator._get_default_secret", return_value="test-key"),
-            patch("spectra_platform.services.mission.report_generator.get_storage_service", return_value=mock_storage),
+            patch("spectra_mission.report_generator._get_default_secret", return_value="test-key"),
+            patch("spectra_mission.report_generator.get_storage_service", return_value=mock_storage),
         ):
-            from spectra_platform.services.mission.report_generator import save_report
+            from spectra_mission.report_generator import save_report
 
             path = await save_report("mission-1", "<html>report</html>")
 
@@ -128,7 +128,7 @@ class TestReportEncryptionAtRest:
         """save_pdf_report should encrypt bytes before passing to storage."""
         from unittest.mock import AsyncMock, MagicMock
 
-        from spectra_platform.auth.encryption import _derive_fernet_key
+        from spectra_common.encryption import _derive_fernet_key
 
         pdf_data = b"%PDF-1.4 fake pdf content"
         uploaded: list[bytes] = []
@@ -139,10 +139,10 @@ class TestReportEncryptionAtRest:
         )
 
         with (
-            patch("spectra_platform.services.mission.report_generator._get_default_secret", return_value="test-key"),
-            patch("spectra_platform.services.mission.report_generator.get_storage_service", return_value=mock_storage),
+            patch("spectra_mission.report_generator._get_default_secret", return_value="test-key"),
+            patch("spectra_mission.report_generator.get_storage_service", return_value=mock_storage),
         ):
-            from spectra_platform.services.mission.report_generator import save_pdf_report
+            from spectra_mission.report_generator import save_pdf_report
 
             path = await save_pdf_report("mission-2", pdf_data)
 

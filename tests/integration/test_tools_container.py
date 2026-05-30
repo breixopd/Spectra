@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from spectra_platform.services.tools.adapter import CommandToolAdapter, ToolExecutionRequest
-from spectra_platform.services.tools.registry import get_registry
+from spectra_tools.adapter import CommandToolAdapter, ToolExecutionRequest
+from spectra_tools_core.registry import get_registry
 
 if TYPE_CHECKING:
-    from spectra_platform.services.tools.registry import ToolRegistry
+    from spectra_tools_core.registry import ToolRegistry
 
 pytestmark = pytest.mark.integration
 

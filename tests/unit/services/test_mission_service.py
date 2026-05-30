@@ -4,13 +4,13 @@ from unittest.mock import patch
 
 import pytest
 
-from spectra_platform.services.mission.credentials import Credential
-from spectra_platform.services.mission.mission import Mission
+from spectra_mission.credentials import Credential
+from spectra_mission.mission import Mission
 
 
 @pytest.fixture
 def mission():
-    with patch("spectra_platform.services.mission.mission.get_blackboard") as mock_bb:
+    with patch("spectra_mission.mission.get_blackboard") as mock_bb:
         mock_bb.return_value = type(
             "BB",
             (),

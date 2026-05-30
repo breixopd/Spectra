@@ -3,7 +3,7 @@
 import logging
 
 import spectra_scheduler.locking as _sched_lock
-from spectra_platform.core.database import advisory_lock_connection
+from spectra_persistence.database import advisory_lock_connection
 from spectra_scheduler import async_ops
 from spectra_scheduler.locks import _DB_MAINTENANCE_LOCK_ID
 
@@ -13,7 +13,7 @@ logger = logging.getLogger("spectra_scheduler")
 class SchedulerDbMaintenanceMixin:
     async def _db_maintenance(self):
         """Weekly VACUUM ANALYZE on high-traffic tables."""
-        from spectra_platform.core.config import get_settings
+        from spectra_common.config import get_settings
 
         while self.running:
             settings = get_settings()

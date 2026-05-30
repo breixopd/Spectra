@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-COMPOSE_FILE="${PROJECT_ROOT}/docker/compose.yaml"
+COMPOSE_FILE="${PROJECT_ROOT}/deploy/docker/compose.yaml"
 ENV_FILE="${PROJECT_ROOT}/.env"
 
 # Colors
@@ -140,13 +140,13 @@ bootstrap_garage() {
         fi
     fi
 
-    if [[ ! -f "${PROJECT_ROOT}/docker/garage-init.sh" ]]; then
+    if [[ ! -f "${PROJECT_ROOT}/deploy/docker/garage-init.sh" ]]; then
         err "garage-init.sh not found"
         exit 1
     fi
 
     local init_output
-    init_output="$(bash "${PROJECT_ROOT}/docker/garage-init.sh" 2>&1)" || {
+    init_output="$(bash "${PROJECT_ROOT}/deploy/docker/garage-init.sh" 2>&1)" || {
         err "Garage bootstrap failed:"
         echo "$init_output" >&2
         exit 1
@@ -218,8 +218,8 @@ print_summary() {
     echo -e "  Create your admin account, then start your first assessment."
     echo ""
     echo -e "  ${BLUE}Useful commands:${NC}"
-    echo -e "    Logs:    docker compose -f docker/compose.yaml logs -f app"
-    echo -e "    Stop:    docker compose -f docker/compose.yaml down"
+    echo -e "    Logs:    docker compose -f deploy/docker/compose.yaml logs -f app"
+    echo -e "    Stop:    docker compose -f deploy/docker/compose.yaml down"
     echo -e "    Health:  curl -sf '${url}/api/v1/health?scope=public' | python3 -m json.tool"
     echo ""
 }

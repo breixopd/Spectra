@@ -12,7 +12,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from spectra_api.bootstrap.logging_config import get_correlation_id
-from spectra_platform.telemetry.telemetry import telemetry
+from spectra_observability.telemetry import telemetry
 
 # Pre-compiled pattern: one or more path segments that look like IDs
 # (UUIDs, integers, hex strings ≥6 chars)

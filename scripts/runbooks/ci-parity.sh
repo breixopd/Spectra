@@ -20,7 +20,7 @@ cd "$ROOT"
 
 export ENCRYPTION_KEY="${ENCRYPTION_KEY:-test-encryption-key}"
 IMAGE="${SPECTRA_CI_IMAGE:-spectra-test-ci}"
-COMPOSE=(docker compose -f docker/compose.yaml)
+COMPOSE=(docker compose -f deploy/docker/compose.yaml)
 
 ensure_env_test() {
   if [[ -f .env.test ]]; then
@@ -36,13 +36,13 @@ ensure_env_test() {
 }
 
 build_ci_image() {
-  echo "==> Build Docker test image ($IMAGE) from docker/Dockerfile.test"
-  docker build -f docker/Dockerfile.test -t "$IMAGE" .
+  echo "==> Build Docker test image ($IMAGE) from deploy/docker/Dockerfile.test"
+  docker build -f deploy/docker/Dockerfile.test -t "$IMAGE" .
 }
 
 lint_ruff_and_boundaries() {
   echo "==> Ruff"
-  docker run --rm "$IMAGE" python -m ruff check packages/platform/src/spectra_platform tests/ services/ packages/
+  docker run --rm "$IMAGE" python -m ruff check tests/ services/ packages/
   echo "==> Import boundaries"
   docker run --rm "$IMAGE" python scripts/check_import_boundaries.py
 }
@@ -62,7 +62,7 @@ bandit_job() {
     return 0
   fi
   echo "==> Bandit"
-  docker run --rm "$IMAGE" bandit -r packages/platform/src/spectra_platform -c pyproject.toml --severity-level high --confidence-level high
+  docker run --rm "$IMAGE" bandit -r packages/ services/ -c pyproject.toml --severity-level high --confidence-level high
 }
 
 static_analysis_job() {
@@ -85,7 +85,7 @@ unit_coverage_job() {
   echo "==> Unit tests + coverage (fail-under 70%, matches CI)"
   set +e
   "${COMPOSE[@]}" --profile test run --name spectra-unit-local unit-test-runner \
-    "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_platform --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=70"
+    "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_api --cov=spectra_ai --cov=spectra_ai_core --cov=spectra_common --cov=spectra_persistence --cov=spectra_mission --cov=spectra_scaling --cov=spectra_billing --cov=spectra_contracts --cov=spectra_tools_core --cov=spectra_worker --cov=spectra_scheduler --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=70"
   st=$?
   docker rm -f spectra-unit-local >/dev/null 2>&1 || true
   set -e
@@ -108,7 +108,7 @@ integration_job() {
     GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}" \
     GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}" \
     GARAGE_PRINT_CREDENTIALS=0 \
-    bash docker/garage-init.sh
+    bash deploy/docker/garage-init.sh
   echo "==> Integration pytest (excludes live / e2e)"
   "${COMPOSE[@]}" --profile app --profile test run --rm test-runner \
     "python -m pytest tests/integration/ -v --tb=short --timeout=120 --override-ini=addopts= -k 'not live and not e2e'"

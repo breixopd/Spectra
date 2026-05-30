@@ -8,9 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.dependencies import get_current_active_user
 from spectra_api.authz import Permission, require_permission
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.user import User
-from spectra_platform.services.mission.output_model import get_mission_finding_counts
+from spectra_mission.output_model import get_mission_finding_counts
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.user import User
 
 router = APIRouter()
 
@@ -28,7 +28,7 @@ async def get_scan_presets(
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, dict[str, Any]]:
     """Get available scan presets."""
-    from spectra_platform.services.mission.presets import SCAN_PRESETS
+    from spectra_mission.presets import SCAN_PRESETS
 
     return SCAN_PRESETS
 
@@ -43,7 +43,7 @@ async def get_missions_summary(
     """Get aggregated mission summary with finding counts — paginated."""
     from sqlalchemy import func, select
 
-    from spectra_platform.models.mission import Mission
+    from spectra_persistence.models.mission import Mission
 
     base = select(Mission)
     if not _current_user.is_superuser:
@@ -86,7 +86,7 @@ async def get_adversary_playbooks(
     _current_user: User = Depends(get_current_active_user),
 ) -> list[dict[str, Any]]:
     """List available adversary simulation playbooks."""
-    from spectra_platform.services.ai.adversary_playbooks import list_adversary_playbooks
+    from spectra_ai_core.adversary_playbooks import list_adversary_playbooks
 
     return list_adversary_playbooks()
 
@@ -97,7 +97,7 @@ async def get_adversary_playbook_detail(
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
     """Get full details of an adversary playbook."""
-    from spectra_platform.services.ai.adversary_playbooks import get_adversary_playbook
+    from spectra_ai_core.adversary_playbooks import get_adversary_playbook
 
     pb = get_adversary_playbook(playbook_id)
     if not pb:
@@ -110,7 +110,7 @@ async def get_exploit_chains(
     _current_user: User = Depends(get_current_active_user),
 ) -> list[dict[str, Any]]:
     """List available exploit chains (builtin + custom)."""
-    from spectra_platform.services.mission.chain_builder import get_builtin_chains, load_custom_chains
+    from spectra_mission.chain_builder import get_builtin_chains, load_custom_chains
 
     builtin = [c.model_dump() for c in get_builtin_chains()]
     custom = [c.model_dump() for c in load_custom_chains()]
@@ -123,7 +123,7 @@ async def create_exploit_chain(
     _current_user: User = require_permission(Permission.MANAGE_TOOLS),
 ) -> dict[str, Any]:
     """Create a custom exploit chain."""
-    from spectra_platform.services.mission.chain_builder import ChainBuilder, save_custom_chain
+    from spectra_mission.chain_builder import ChainBuilder, save_custom_chain
 
     chain = ChainBuilder.create_chain(chain_in.name, chain_in.stages)
     chain.description = chain_in.description
@@ -139,11 +139,11 @@ async def get_attack_coverage(
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
     """Get MITRE ATT&CK technique coverage from all recent missions."""
-    from spectra_platform.services.ai.mitre_attack import get_attack_summary
+    from spectra_ai_core.mitre_attack import get_attack_summary
 
     # Get recent mission findings from memory
     try:
-        from spectra_platform.services.ai.memory import get_memory
+        from spectra_ai_core.memory import get_memory
 
         memory = get_memory(str(_current_user.id))
         findings: list[dict[str, str]] = []

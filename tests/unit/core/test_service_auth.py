@@ -4,7 +4,7 @@ import pytest
 from fastapi import FastAPI, HTTPException
 from httpx import ASGITransport, AsyncClient
 
-from spectra_platform.di.service_auth import ServiceAuthMiddleware
+from spectra_infra.di.service_auth import ServiceAuthMiddleware
 
 
 def _make_app(secret: str = "test-secret") -> FastAPI:

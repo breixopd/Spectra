@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Build Docker test runner
-        run: docker build -f docker/Dockerfile.test -t spectra-test-ci .
+        run: docker build -f deploy/deploy/docker/Dockerfile.test -t spectra-test-ci .
       - name: Ruff
         run: docker run --rm spectra-test-ci python -m ruff check packages/platform/src/spectra_platform tests/ services/ packages/
       - name: Import boundaries
@@ -41,14 +41,14 @@ jobs:
       - name: Ensure .env.test for Docker Compose
         run: test -f .env.test || cp .env.test.example .env.test
       - name: Build Docker unit runner
-        run: docker compose -f docker/compose.yaml --profile test build unit-test-runner
+        run: docker compose -f deploy/docker/compose.yaml --profile test build unit-test-runner
       - name: Validate TensorZero config
         run: |
-          docker compose -f docker/compose.yaml --profile test run --rm --no-deps unit-test-runner "python -c \"import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')\""
+          docker compose -f deploy/docker/compose.yaml --profile test run --rm --no-deps unit-test-runner "python -c \"import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')\""
       - name: Run unit tests with coverage in Docker
         run: |
           set +e
-          docker compose -f docker/compose.yaml --profile test run --name spectra-unit-coverage unit-test-runner \
+          docker compose -f deploy/docker/compose.yaml --profile test run --name spectra-unit-coverage unit-test-runner \
             "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_platform --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=70"
           status=$?
           docker cp spectra-unit-coverage:/tmp/coverage.xml coverage.xml 2>/dev/null || true
@@ -56,7 +56,7 @@ jobs:
           exit "$status"
       - name: Run settings tests in Docker
         run: |
-          docker compose -f docker/compose.yaml --profile test run --rm settings-test-runner
+          docker compose -f deploy/docker/compose.yaml --profile test run --rm settings-test-runner
       - name: Coverage summary
         if: always()
         run: |
@@ -88,24 +88,24 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ENCRYPTION_KEY: test-encryption-key
-      ENV_FILE: ../.env.test
+      ENV_FILE: ../../.env.test
     steps:
       - uses: actions/checkout@v6
       - name: Ensure .env.test for Docker Compose
         run: test -f .env.test || cp .env.test.example .env.test
       - name: Build Docker integration runner
-        run: docker compose -f docker/compose.yaml --profile app --profile test build test-runner
+        run: docker compose -f deploy/docker/compose.yaml --profile app --profile test build test-runner
       - name: Bootstrap Garage for integration tests
         run: |
-          ENV_FILE=../.env.test docker compose -f docker/compose.yaml --profile app --profile test up -d garage
-          GARAGE_CONTAINER="$(docker compose -f docker/compose.yaml ps -q garage)" \
+          ENV_FILE=../../.env.test docker compose -f deploy/docker/compose.yaml --profile app --profile test up -d garage
+          GARAGE_CONTAINER="$(docker compose -f deploy/docker/compose.yaml ps -q garage)" \
           GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}" \
           GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}" \
           GARAGE_PRINT_CREDENTIALS=0 \
-            bash docker/garage-init.sh
+            bash deploy/docker/garage-init.sh
       - name: Run integration tests in Docker
         run: |
-          docker compose -f docker/compose.yaml --profile app --profile test run --rm test-runner \
+          docker compose -f deploy/docker/compose.yaml --profile app --profile test run --rm test-runner \
             "python -m pytest tests/integration/ -v --tb=short --timeout=120 --override-ini=addopts= -k 'not live and not e2e'"
 
   docker-build:
@@ -117,16 +117,16 @@ jobs:
       - name: Ensure .env.test for Docker Compose
         run: test -f .env.test || cp .env.test.example .env.test
       - name: Validate Compose config
-        run: ENV_FILE=../.env.example docker compose --env-file .env.example -f docker/compose.yaml --profile app --profile test --profile targets config --quiet
+        run: ENV_FILE=../../.env.example docker compose --env-file .env.example -f deploy/docker/compose.yaml --profile app --profile test --profile targets config --quiet
       - name: Validate Swarm compose
-        run: docker compose --env-file .env.example -f docker/docker-compose.swarm.yml config --quiet
+        run: docker compose --env-file .env.example -f deploy/docker/docker-compose.swarm.yml config --quiet
       - name: Free hosted runner tool cache before image builds
         run: df -h
       - name: Build Caddy image
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: docker/Dockerfile.caddy
+          file: deploy/deploy/docker/Dockerfile.caddy
           push: false
           load: true
           tags: spectra-caddy:ci
@@ -145,7 +145,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: docker/Dockerfile.api
+          file: deploy/deploy/docker/Dockerfile.api
           push: false
           load: true
           tags: spectra-api:ci
@@ -164,7 +164,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: docker/Dockerfile.ai
+          file: deploy/deploy/docker/Dockerfile.ai
           push: false
           load: true
           tags: spectra-ai:ci
@@ -183,7 +183,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: docker/Dockerfile.scheduler
+          file: deploy/deploy/docker/Dockerfile.scheduler
           push: false
           load: true
           tags: spectra-scheduler:ci
@@ -202,7 +202,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: docker/Dockerfile.worker
+          file: deploy/deploy/docker/Dockerfile.worker
           push: false
           load: true
           tags: spectra-worker:ci
@@ -254,21 +254,21 @@ jobs:
     if: github.event_name == 'push'
     env:
       ENCRYPTION_KEY: test-encryption-key
-      ENV_FILE: ../.env.test
+      ENV_FILE: ../../.env.test
     steps:
       - uses: actions/checkout@v6
       - name: Ensure .env.test for Docker Compose
         run: test -f .env.test || cp .env.test.example .env.test
       - name: Start test stack
         run: |
-          docker compose -f docker/compose.yaml --profile app --profile targets --profile test up -d --build
+          docker compose -f deploy/docker/compose.yaml --profile app --profile targets --profile test up -d --build
       - name: Bootstrap Garage buckets
         run: |
-          GARAGE_CONTAINER="$(docker compose -f docker/compose.yaml ps -q garage)" \
+          GARAGE_CONTAINER="$(docker compose -f deploy/docker/compose.yaml ps -q garage)" \
           GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}" \
           GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}" \
           GARAGE_PRINT_CREDENTIALS=0 \
-            bash docker/garage-init.sh
+            bash deploy/docker/garage-init.sh
       - name: Wait for services to be healthy
         run: |
           echo "Waiting for services to become healthy..."
@@ -298,19 +298,19 @@ jobs:
       # admin user before e2e tests authenticate (see tests/platform_harness.py defaults).
       - name: Run performance smoke tests
         run: |
-          docker compose -f docker/compose.yaml --profile app --profile targets --profile test run --rm \
+          docker compose -f deploy/docker/compose.yaml --profile app --profile targets --profile test run --rm \
             -e LOAD_TEST_APP_URL=http://app:5000 \
             test-runner \
             "python -m pytest tests/performance/test_api_latency.py -v --tb=short --timeout=120 --override-ini=addopts="
       - name: Run e2e API live tests
         run: |
-          docker compose -f docker/compose.yaml --profile app --profile targets --profile test run --rm \
+          docker compose -f deploy/docker/compose.yaml --profile app --profile targets --profile test run --rm \
             -e APP_BASE_URL=http://app:5000 \
             test-runner \
             "python -m pytest tests/e2e/test_api_live.py -v --tb=short --timeout=120 --override-ini=addopts="
       - name: Run health endpoint integration test
         run: |
-          docker compose -f docker/compose.yaml --profile app --profile targets --profile test run --rm \
+          docker compose -f deploy/docker/compose.yaml --profile app --profile targets --profile test run --rm \
             -e APP_BASE_URL=http://app:5000 \
             test-runner \
             "python -m pytest tests/integration/test_api_health_live.py -v --tb=short --timeout=120 --override-ini=addopts="
@@ -331,7 +331,7 @@ jobs:
       - name: Stop test stack
         if: always()
         run: |
-          docker compose -f docker/compose.yaml --profile app --profile targets --profile test down -v --remove-orphans
+          docker compose -f deploy/docker/compose.yaml --profile app --profile targets --profile test down -v --remove-orphans
 
   # ── Package Build Verification ─────────────────────────────────
   # GitHub Packages does not expose a PyPI-compatible registry. CI verifies

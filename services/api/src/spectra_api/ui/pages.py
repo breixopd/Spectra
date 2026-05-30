@@ -4,8 +4,6 @@ UI router for serving the frontend dashboard.
 
 import logging
 
-from typing import Any
-
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, select
@@ -27,12 +25,12 @@ from spectra_api.services.system.settings_service import (
     get_current_settings,
 )
 from spectra_api.templates import templates
-from spectra_platform.core.config import settings
-from spectra_platform.core.database import async_session_maker, get_async_session
-from spectra_platform.models.user import User
-from spectra_platform.services.billing.entitlements import ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES
-from spectra_platform.services.shell.session_manager import shell_manager
-from spectra_platform.services.system.runtime_settings import get_runtime_setting_bool, get_runtime_setting_str
+from spectra_billing.entitlements import ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES
+from spectra_common.config import settings
+from spectra_infra.shell.session_manager import shell_manager
+from spectra_persistence.database import async_session_maker, get_async_session
+from spectra_persistence.models.user import User
+from spectra_system.runtime_settings import get_runtime_setting_bool, get_runtime_setting_str
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -61,8 +59,8 @@ async def _get_user_features_dict(username: str | None) -> dict[str, bool]:
     if not username:
         return {}
     try:
-        from spectra_platform.models.plan import Plan, Subscription
-        from spectra_platform.models.user import User
+        from spectra_persistence.models.plan import Plan, Subscription
+        from spectra_persistence.models.user import User
 
         async with async_session_maker() as session:
             user_result = await session.execute(select(User).where(User.username == username))
@@ -185,7 +183,7 @@ async def dashboard(request: Request):
         return RedirectResponse(url="/login")
 
     user_features = await _get_user_features_dict(user_payload.get("sub"))
-    from spectra_platform.services.mission.framework_loader import list_frameworks
+    from spectra_mission.framework_loader import list_frameworks
     available_frameworks = list_frameworks()
     return templates.TemplateResponse(
         request,

@@ -62,7 +62,7 @@ class TestSetSystemStatus:
     async def test_set_system_status_handles_error(self):
         from spectra_api.bootstrap.lifespan import set_system_status
 
-        with patch("spectra_platform.infrastructure.cache.get_cache", side_effect=RuntimeError("fail")):
+        with patch("spectra_infra.cache.get_cache", side_effect=RuntimeError("fail")):
             # Should not raise
             await set_system_status("error", "bad")
 
@@ -73,7 +73,7 @@ class TestAddRemoveSystemOperation:
         from spectra_api.bootstrap.lifespan import add_system_operation
 
         mock_cache = AsyncMock()
-        with patch("spectra_platform.infrastructure.cache.get_cache", return_value=mock_cache):
+        with patch("spectra_infra.cache.get_cache", return_value=mock_cache):
             await add_system_operation("op1", "install", "Installing tools")
             mock_cache.set.assert_called_once()
 
@@ -82,7 +82,7 @@ class TestAddRemoveSystemOperation:
         from spectra_api.bootstrap.lifespan import remove_system_operation
 
         mock_cache = AsyncMock()
-        with patch("spectra_platform.infrastructure.cache.get_cache", return_value=mock_cache):
+        with patch("spectra_infra.cache.get_cache", return_value=mock_cache):
             await remove_system_operation("op1")
             mock_cache.delete.assert_called_once()
 
@@ -99,7 +99,7 @@ def _make_done_task(coro):
 class TestLifespanContextManager:
     @pytest.mark.asyncio
     @patch("spectra_api.bootstrap.lifespan.engine")
-    @patch("spectra_ai.llm.close_global_llm_client", new_callable=AsyncMock)
+    @patch("spectra_ai_core.llm.close_global_llm_client", new_callable=AsyncMock)
     @patch("spectra_api.bootstrap.lifespan.async_session_maker")
     @patch("spectra_api.bootstrap.lifespan.CacheService")
     @patch("spectra_api.bootstrap.lifespan.set_cache")
@@ -113,7 +113,7 @@ class TestLifespanContextManager:
     @patch("spectra_api.bootstrap.lifespan.run_startup_tasks", new_callable=AsyncMock)
     @patch("spectra_api.bootstrap.lifespan.add_system_operation", new_callable=AsyncMock)
     @patch("spectra_api.bootstrap.lifespan.remove_system_operation", new_callable=AsyncMock)
-    @patch("spectra_platform.services.system.secret_bootstrap.ensure_persistent_secrets", new_callable=AsyncMock)
+    @patch("spectra_system.secret_bootstrap.ensure_persistent_secrets", new_callable=AsyncMock)
     async def test_lifespan_startup_and_shutdown(
         self,
         mock_ensure_secrets,
@@ -147,22 +147,22 @@ class TestLifespanContextManager:
         mock_storage.health_check = AsyncMock(return_value={"status": "healthy", "endpoint": "http://garage:3900"})
 
         with (
-            patch("spectra_platform.services.storage.get_storage_service", return_value=mock_storage),
-            patch("spectra_platform.services.storage.close_storage_service", new_callable=AsyncMock),
+            patch("spectra_storage_policy.storage.get_storage_service", return_value=mock_storage),
+            patch("spectra_storage_policy.storage.close_storage_service", new_callable=AsyncMock),
             patch(
-                "spectra_platform.services.tools.registry.initialize_registry",
+                "spectra_tools_core.registry.initialize_registry",
                 new_callable=AsyncMock,
                 return_value=MagicMock(list_tools=MagicMock(return_value=[])),
             ),
-            patch("spectra_platform.services.tools.sandbox.SandboxPool", return_value=MagicMock(available=False)),
-            patch("spectra_platform.services.tools.sandbox.set_sandbox_pool"),
-            patch("spectra_platform.services.gateway.service_registry.get_service_registry", return_value=MagicMock()),
-            patch("spectra_platform.services.gateway.service_registry.close_service_registry", new_callable=AsyncMock),
-            patch("spectra_ai.embeddings.EmbeddingService", return_value=MagicMock(_load_model=AsyncMock())),
-            patch("spectra_platform.infrastructure.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock())),
+            patch("spectra_tools.sandbox.SandboxPool", return_value=MagicMock(available=False)),
+            patch("spectra_tools.sandbox.set_sandbox_pool"),
+            patch("spectra_ai_core.gateway.service_registry.get_service_registry", return_value=MagicMock()),
+            patch("spectra_ai_core.gateway.service_registry.close_service_registry", new_callable=AsyncMock),
+            patch("spectra_ai_core.embeddings.EmbeddingService", return_value=MagicMock(_load_model=AsyncMock())),
+            patch("spectra_infra.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock())),
             patch("spectra_api.bootstrap.lifespan._validate_rate_limit_storage"),
             patch(
-                "spectra_platform.services.scaling.get_pool_manager",
+                "spectra_scaling.get_pool_manager",
                 return_value=MagicMock(start_health_loop=AsyncMock(), stop_health_loop=AsyncMock()),
             ),
             patch("spectra_api.bootstrap.lifespan._config_change_listener", new_callable=AsyncMock),
@@ -171,7 +171,7 @@ class TestLifespanContextManager:
                 "spectra_api.bootstrap.lifespan.create_safe_task",
                 side_effect=lambda coro, **kw: _make_done_task(coro),
             ),
-            patch("spectra_platform.mission.core.bridge.EventWebSocketBridge", return_value=MagicMock()),
+            patch("spectra_mission.core.bridge.EventWebSocketBridge", return_value=MagicMock()),
         ):
             app = FastAPI()
             app.state = MagicMock()

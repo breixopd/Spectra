@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from spectra_platform.services.billing.payment_adapter import (
+from spectra_billing.payment_adapter import (
     ManualPaymentAdapter,
     NoopPaymentAdapter,
     PaymentService,
@@ -48,7 +48,7 @@ class TestGetPaymentAdapter:
             assert isinstance(adapter, DemoPaymentAdapter)
             assert provider_id in list_payment_providers()
         finally:
-            from spectra_platform.services.billing import payment_adapter
+            from spectra_billing import payment_adapter
 
             payment_adapter._ADAPTERS.pop(provider_id, None)
 
@@ -100,8 +100,8 @@ class TestCheckSubscriptionActive:
         entitlement = MagicMock()
 
         with (
-            patch("spectra_platform.services.billing.payment_adapter.async_session_maker", return_value=mock_session),
-            patch("spectra_platform.services.billing.payment_adapter.get_user_entitlement", new=AsyncMock(return_value=entitlement)),
+            patch("spectra_billing.payment_adapter.async_session_maker", return_value=mock_session),
+            patch("spectra_billing.payment_adapter.get_user_entitlement", new=AsyncMock(return_value=entitlement)),
         ):
             svc = PaymentService(NoopPaymentAdapter())
             active = await svc.check_subscription_active("u-1")
@@ -114,8 +114,8 @@ class TestCheckSubscriptionActive:
         mock_session.__aexit__ = AsyncMock(return_value=False)
 
         with (
-            patch("spectra_platform.services.billing.payment_adapter.async_session_maker", return_value=mock_session),
-            patch("spectra_platform.services.billing.payment_adapter.get_user_entitlement", new=AsyncMock(return_value=None)),
+            patch("spectra_billing.payment_adapter.async_session_maker", return_value=mock_session),
+            patch("spectra_billing.payment_adapter.get_user_entitlement", new=AsyncMock(return_value=None)),
         ):
             svc = PaymentService(NoopPaymentAdapter())
             active = await svc.check_subscription_active("u-1")
@@ -138,7 +138,7 @@ class TestPaymentServiceExternalCancellation:
 
         with (
             patch.dict("sys.modules", {"stripe": fake_stripe}),
-            patch("spectra_platform.core.config.get_settings", return_value=fake_settings),
+            patch("spectra_common.config.get_settings", return_value=fake_settings),
         ):
             adapter = StripePaymentAdapter()
             cancelled = await adapter.cancel_subscription("sub_123")
@@ -158,7 +158,7 @@ class TestPaymentServiceExternalCancellation:
         stripe_adapter.cancel_subscription = AsyncMock(return_value=True)
 
         service = PaymentService(ManualPaymentAdapter())
-        with patch("spectra_platform.services.billing.payment_adapter.get_payment_adapter", return_value=stripe_adapter):
+        with patch("spectra_billing.payment_adapter.get_payment_adapter", return_value=stripe_adapter):
             cancelled = await service.cancel_external_subscription(subscription)
 
         assert cancelled is True
@@ -480,9 +480,9 @@ class TestStripeReconciliation:
 
         svc = PaymentService(NoopPaymentAdapter())
         with (
-            patch("spectra_platform.services.billing.payment_adapter.async_session_maker", return_value=mock_session),
+            patch("spectra_billing.payment_adapter.async_session_maker", return_value=mock_session),
             patch.object(svc, "_find_local_subscription", new=AsyncMock(return_value=None)),
-            patch("spectra_platform.services.billing.payment_adapter.sync_user_plan_mirror", new=AsyncMock()) as mirror_mock,
+            patch("spectra_billing.payment_adapter.sync_user_plan_mirror", new=AsyncMock()) as mirror_mock,
         ):
             subscription, created = await svc._set_local_subscription_state(
                 user_id="u-1",
@@ -517,7 +517,7 @@ class TestStripeReconciliation:
 
         svc = PaymentService(NoopPaymentAdapter())
         with (
-            patch("spectra_platform.services.billing.payment_adapter.async_session_maker", return_value=mock_session),
+            patch("spectra_billing.payment_adapter.async_session_maker", return_value=mock_session),
             patch.object(svc, "_set_local_subscription_state", new=AsyncMock(return_value=(MagicMock(), False))) as set_state,
         ):
             handled = await svc.reconcile_stripe_event(
@@ -557,7 +557,7 @@ class TestStripeReconciliation:
 
         svc = PaymentService(NoopPaymentAdapter())
         with (
-            patch("spectra_platform.services.billing.payment_adapter.async_session_maker", return_value=mock_session),
+            patch("spectra_billing.payment_adapter.async_session_maker", return_value=mock_session),
             patch.object(svc, "_set_local_subscription_state", new=AsyncMock(return_value=(MagicMock(), False))) as set_state,
         ):
             handled = await svc.reconcile_stripe_event(
@@ -585,7 +585,7 @@ class TestStripeReconciliation:
 
         svc = PaymentService(NoopPaymentAdapter())
         with (
-            patch("spectra_platform.services.billing.payment_adapter.async_session_maker", return_value=mock_session),
+            patch("spectra_billing.payment_adapter.async_session_maker", return_value=mock_session),
             patch.object(svc, "_set_local_subscription_state", new=AsyncMock()) as set_state,
         ):
             handled = await svc.reconcile_stripe_event(
@@ -615,7 +615,7 @@ class TestStripeReconciliation:
 
         svc = PaymentService(NoopPaymentAdapter())
         with (
-            patch("spectra_platform.services.billing.payment_adapter.async_session_maker", return_value=mock_session),
+            patch("spectra_billing.payment_adapter.async_session_maker", return_value=mock_session),
             patch.object(svc, "_set_local_subscription_state", new=AsyncMock(return_value=(MagicMock(), False))) as set_state,
         ):
             handled = await svc.reconcile_stripe_event(
@@ -645,7 +645,7 @@ class TestStripeReconciliation:
 
         svc = PaymentService(NoopPaymentAdapter())
         with (
-            patch("spectra_platform.services.billing.payment_adapter.async_session_maker", return_value=mock_session),
+            patch("spectra_billing.payment_adapter.async_session_maker", return_value=mock_session),
             patch.object(svc, "_set_local_subscription_state", new=AsyncMock(return_value=(MagicMock(), False))) as set_state,
         ):
             handled = await svc.reconcile_stripe_event(
@@ -666,7 +666,7 @@ class TestStripeReconciliation:
         mock_session.__aexit__ = AsyncMock(return_value=False)
 
         svc = PaymentService(NoopPaymentAdapter())
-        with patch("spectra_platform.services.billing.payment_adapter.async_session_maker", return_value=mock_session):
+        with patch("spectra_billing.payment_adapter.async_session_maker", return_value=mock_session):
             handled = await svc.reconcile_stripe_event(
                 "charge.refunded",
                 {"customer": "cus_unknown"},
@@ -693,7 +693,7 @@ class TestStripeReconciliation:
 
         svc = PaymentService(NoopPaymentAdapter())
         with (
-            patch("spectra_platform.services.billing.payment_adapter.async_session_maker", return_value=mock_session),
+            patch("spectra_billing.payment_adapter.async_session_maker", return_value=mock_session),
             patch.object(svc, "_set_local_subscription_state", new=AsyncMock()) as set_state,
         ):
             handled = await svc.reconcile_stripe_event(
@@ -721,7 +721,7 @@ class TestStripeReconciliation:
 
         svc = PaymentService(NoopPaymentAdapter())
         with (
-            patch("spectra_platform.services.billing.payment_adapter.async_session_maker", return_value=mock_session),
+            patch("spectra_billing.payment_adapter.async_session_maker", return_value=mock_session),
             patch.object(svc, "_set_local_subscription_state", new=AsyncMock(return_value=(None, False))) as set_state,
         ):
             handled = await svc.reconcile_stripe_event(
@@ -757,7 +757,7 @@ class TestStripeReconciliation:
 
         svc = PaymentService(NoopPaymentAdapter())
         with (
-            patch("spectra_platform.services.billing.payment_adapter.async_session_maker", return_value=mock_session),
+            patch("spectra_billing.payment_adapter.async_session_maker", return_value=mock_session),
             patch.object(svc, "_set_local_subscription_state", new=AsyncMock()) as set_state,
         ):
             handled = await svc.reconcile_stripe_event(
@@ -783,7 +783,7 @@ class TestStripeReconciliation:
 @pytest.mark.asyncio
 class TestUsageTrackerRecord:
     async def test_record_creates_new_entry(self):
-        from spectra_platform.services.billing.usage_tracker import UsageTracker
+        from spectra_billing.usage_tracker import UsageTracker
 
         mock_session = AsyncMock()
         mock_result = MagicMock()
@@ -818,12 +818,12 @@ class TestUsageTrackerRecord:
 
         with (
             patch(
-                "spectra_platform.services.billing.usage_tracker.async_session_maker",
+                "spectra_billing.usage_tracker.async_session_maker",
                 return_value=mock_session,
             ),
-            patch("spectra_platform.services.billing.usage_tracker.telemetry"),
+            patch("spectra_billing.usage_tracker.telemetry"),
         ):
-            from spectra_platform.services.billing.usage_tracker import UsageTracker
+            from spectra_billing.usage_tracker import UsageTracker
 
             tracker = UsageTracker()
             await tracker.record("u-1", "api_requests", 3)
@@ -832,14 +832,14 @@ class TestUsageTrackerRecord:
         mock_session.commit.assert_awaited_once()
 
     async def test_record_unknown_metric_raises(self):
-        from spectra_platform.services.billing.usage_tracker import UsageTracker
+        from spectra_billing.usage_tracker import UsageTracker
 
         tracker = UsageTracker()
         with pytest.raises(ValueError, match="Unknown usage metric"):
             await tracker.record("u-1", "nonexistent", 1)
 
     async def test_record_api_request_tracks_hourly_and_daily(self):
-        from spectra_platform.services.billing.usage_tracker import UsageTracker
+        from spectra_billing.usage_tracker import UsageTracker
 
         mock_session = AsyncMock()
         mock_session.execute = AsyncMock()
@@ -848,8 +848,8 @@ class TestUsageTrackerRecord:
         mock_session.__aexit__ = AsyncMock(return_value=False)
 
         with (
-            patch("spectra_platform.services.billing.usage_tracker.async_session_maker", return_value=mock_session),
-            patch("spectra_platform.services.billing.usage_tracker.telemetry") as mock_telemetry,
+            patch("spectra_billing.usage_tracker.async_session_maker", return_value=mock_session),
+            patch("spectra_billing.usage_tracker.telemetry") as mock_telemetry,
         ):
             tracker = UsageTracker()
             await tracker.record_api_request("u-1")
@@ -859,13 +859,13 @@ class TestUsageTrackerRecord:
         assert mock_telemetry.increment_counter.call_count == 2
 
     async def test_record_mission_start_tracks_month_day_week_in_existing_session(self):
-        from spectra_platform.services.billing.usage_tracker import UsageTracker
+        from spectra_billing.usage_tracker import UsageTracker
 
         mock_session = AsyncMock()
         mock_session.execute = AsyncMock()
         mock_session.commit = AsyncMock()
 
-        with patch("spectra_platform.services.billing.usage_tracker.telemetry") as mock_telemetry:
+        with patch("spectra_billing.usage_tracker.telemetry") as mock_telemetry:
             tracker = UsageTracker()
             await tracker.record_mission_start("u-1", session=mock_session)
 
@@ -899,13 +899,13 @@ class TestUsageTrackerCheckRateLimit:
 
         with (
             patch(
-                "spectra_platform.services.billing.usage_tracker.async_session_maker",
+                "spectra_billing.usage_tracker.async_session_maker",
                 return_value=mock_session,
             ),
-            patch("spectra_platform.services.billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=entitlement)),
-            patch("spectra_platform.services.billing.usage_tracker.telemetry"),
+            patch("spectra_billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=entitlement)),
+            patch("spectra_billing.usage_tracker.telemetry"),
         ):
-            from spectra_platform.services.billing.usage_tracker import UsageTracker
+            from spectra_billing.usage_tracker import UsageTracker
 
             tracker = UsageTracker()
             within, current, maximum = await tracker.check_rate_limit("u-1", "api_requests")
@@ -932,13 +932,13 @@ class TestUsageTrackerCheckRateLimit:
 
         with (
             patch(
-                "spectra_platform.services.billing.usage_tracker.async_session_maker",
+                "spectra_billing.usage_tracker.async_session_maker",
                 return_value=mock_session,
             ),
-            patch("spectra_platform.services.billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=entitlement)),
-            patch("spectra_platform.services.billing.usage_tracker.telemetry"),
+            patch("spectra_billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=entitlement)),
+            patch("spectra_billing.usage_tracker.telemetry"),
         ):
-            from spectra_platform.services.billing.usage_tracker import UsageTracker
+            from spectra_billing.usage_tracker import UsageTracker
 
             tracker = UsageTracker()
             within, current, maximum = await tracker.check_rate_limit("u-1", "api_requests")
@@ -957,13 +957,13 @@ class TestUsageTrackerCheckRateLimit:
 
         with (
             patch(
-                "spectra_platform.services.billing.usage_tracker.async_session_maker",
+                "spectra_billing.usage_tracker.async_session_maker",
                 return_value=mock_session,
             ),
-            patch("spectra_platform.services.billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=None)),
-            patch("spectra_platform.services.billing.usage_tracker.telemetry"),
+            patch("spectra_billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=None)),
+            patch("spectra_billing.usage_tracker.telemetry"),
         ):
-            from spectra_platform.services.billing.usage_tracker import UsageTracker
+            from spectra_billing.usage_tracker import UsageTracker
 
             tracker = UsageTracker()
             within, current, maximum = await tracker.check_rate_limit("u-1", "api_requests")

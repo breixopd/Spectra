@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from spectra_platform.services.tools.execution import ensure_tool_installed, execute_via_worker
+from spectra_tools.execution import ensure_tool_installed, execute_via_worker
 from spectra_tools_core.models import ToolExecutionResult
 
 
@@ -12,7 +12,7 @@ async def test_execute_via_worker_cache_hit():
         tool_id="nmap", target="1.2.3.4", success=True, stdout="ok", stderr="", exit_code=0, duration_seconds=1.0
     )
 
-    with patch("spectra_platform.mission.core.optimizations.tool_cache") as mock_cache:
+    with patch("spectra_mission.core.optimizations.tool_cache") as mock_cache:
         mock_cache.get.return_value = cached_result
         result = await execute_via_worker("nmap", "1.2.3.4", {}, None, "/tmp", "m1", "tools", 300, 30)
         assert result == cached_result
@@ -35,10 +35,10 @@ async def test_execute_via_worker_success():
         "duration_seconds": 1.0,
     })
 
-    with patch("spectra_platform.mission.core.optimizations.tool_cache") as mock_cache:
+    with patch("spectra_mission.core.optimizations.tool_cache") as mock_cache:
         mock_cache.get.return_value = None
-        with patch("spectra_platform.infrastructure.queue.PostgresJobQueue", return_value=mock_queue):
-            with patch("spectra_platform.infrastructure.queue.Job", return_value=mock_job):
+        with patch("spectra_infra.queue.PostgresJobQueue", return_value=mock_queue):
+            with patch("spectra_infra.queue.Job", return_value=mock_job):
                 result = await execute_via_worker("nmap", "1.2.3.4", {"-p": "80"}, 60, "/tmp", "m1", "tools", 300, 30)
 
     assert result.success is True
@@ -54,10 +54,10 @@ async def test_execute_via_worker_timeout():
     mock_job = MagicMock()
     mock_job.result = AsyncMock(side_effect=TimeoutError)
 
-    with patch("spectra_platform.mission.core.optimizations.tool_cache") as mock_cache:
+    with patch("spectra_mission.core.optimizations.tool_cache") as mock_cache:
         mock_cache.get.return_value = None
-        with patch("spectra_platform.infrastructure.queue.PostgresJobQueue", return_value=mock_queue):
-            with patch("spectra_platform.infrastructure.queue.Job", return_value=mock_job):
+        with patch("spectra_infra.queue.PostgresJobQueue", return_value=mock_queue):
+            with patch("spectra_infra.queue.Job", return_value=mock_job):
                 result = await execute_via_worker("nmap", "1.2.3.4", {}, 60, "/tmp", "m1", "tools", 300, 30)
 
     assert result.success is False
@@ -83,11 +83,11 @@ async def test_execute_via_worker_oom_escalation():
         },
     ])
 
-    with patch("spectra_platform.mission.core.optimizations.tool_cache") as mock_cache:
+    with patch("spectra_mission.core.optimizations.tool_cache") as mock_cache:
         mock_cache.get.return_value = None
-        with patch("spectra_platform.infrastructure.queue.PostgresJobQueue", return_value=mock_queue):
-            with patch("spectra_platform.infrastructure.queue.Job", return_value=mock_job):
-                with patch("spectra_platform.services.tools.sandbox.escalation.attempt_oom_escalation", new_callable=AsyncMock, return_value=(True, "escalated")):
+        with patch("spectra_infra.queue.PostgresJobQueue", return_value=mock_queue):
+            with patch("spectra_infra.queue.Job", return_value=mock_job):
+                with patch("spectra_tools.sandbox.escalation.attempt_oom_escalation", new_callable=AsyncMock, return_value=(True, "escalated")):
                     result = await execute_via_worker("nmap", "1.2.3.4", {}, 60, "/tmp", "m1", "tools", 300, 30)
 
     assert result.success is True
@@ -101,11 +101,11 @@ async def test_execute_via_worker_oom_escalation_fails():
     mock_job = MagicMock()
     mock_job.result = AsyncMock(return_value={"oom": True})
 
-    with patch("spectra_platform.mission.core.optimizations.tool_cache") as mock_cache:
+    with patch("spectra_mission.core.optimizations.tool_cache") as mock_cache:
         mock_cache.get.return_value = None
-        with patch("spectra_platform.infrastructure.queue.PostgresJobQueue", return_value=mock_queue):
-            with patch("spectra_platform.infrastructure.queue.Job", return_value=mock_job):
-                with patch("spectra_platform.services.tools.sandbox.escalation.attempt_oom_escalation", new_callable=AsyncMock, return_value=(False, "max tier")):
+        with patch("spectra_infra.queue.PostgresJobQueue", return_value=mock_queue):
+            with patch("spectra_infra.queue.Job", return_value=mock_job):
+                with patch("spectra_tools.sandbox.escalation.attempt_oom_escalation", new_callable=AsyncMock, return_value=(False, "max tier")):
                     result = await execute_via_worker("nmap", "1.2.3.4", {}, 60, "/tmp", "m1", "tools", 300, 30)
 
     assert result.success is False
@@ -123,9 +123,9 @@ async def test_ensure_tool_installed_success():
     mock_registry = MagicMock()
     mock_registry.get_tool.return_value = mock_tool
 
-    with patch("spectra_platform.infrastructure.queue.PostgresJobQueue", return_value=mock_queue):
-        with patch("spectra_platform.infrastructure.queue.Job", return_value=mock_job):
-            with patch("spectra_platform.services.tools.registry.get_registry", return_value=mock_registry):
+    with patch("spectra_infra.queue.PostgresJobQueue", return_value=mock_queue):
+        with patch("spectra_infra.queue.Job", return_value=mock_job):
+            with patch("spectra_tools_core.registry.get_registry", return_value=mock_registry):
                 result = await ensure_tool_installed("nmap", 300)
 
     assert result is True
@@ -140,8 +140,8 @@ async def test_ensure_tool_installed_failure():
     mock_job = MagicMock()
     mock_job.result = AsyncMock(return_value={"status": "validation_failed"})
 
-    with patch("spectra_platform.infrastructure.queue.PostgresJobQueue", return_value=mock_queue):
-        with patch("spectra_platform.infrastructure.queue.Job", return_value=mock_job):
+    with patch("spectra_infra.queue.PostgresJobQueue", return_value=mock_queue):
+        with patch("spectra_infra.queue.Job", return_value=mock_job):
             result = await ensure_tool_installed("nmap", 300)
 
     assert result is False
@@ -152,7 +152,7 @@ async def test_ensure_tool_installed_exception():
     mock_queue = AsyncMock()
     mock_queue.enqueue_job = AsyncMock(side_effect=RuntimeError("boom"))
 
-    with patch("spectra_platform.infrastructure.queue.PostgresJobQueue", return_value=mock_queue):
+    with patch("spectra_infra.queue.PostgresJobQueue", return_value=mock_queue):
         result = await ensure_tool_installed("nmap", 300)
 
     assert result is False

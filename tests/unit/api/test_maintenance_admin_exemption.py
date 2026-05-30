@@ -9,7 +9,7 @@ from httpx import ASGITransport, AsyncClient
 @pytest.mark.asyncio
 async def test_v1_admin_not_blocked_by_maintenance_mode():
     from spectra_api.main import app
-    from spectra_platform.core.config import settings
+    from spectra_common.config import settings
 
     transport = ASGITransport(app=app)
     with patch.object(settings, "MAINTENANCE_MODE", True):
@@ -23,7 +23,7 @@ async def test_v1_admin_not_blocked_by_maintenance_mode():
 @pytest.mark.asyncio
 async def test_non_admin_api_gets_503_under_maintenance():
     from spectra_api.main import app
-    from spectra_platform.core.config import settings
+    from spectra_common.config import settings
 
     transport = ASGITransport(app=app)
     with patch.object(settings, "MAINTENANCE_MODE", True):

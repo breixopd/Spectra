@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from spectra_platform.utils.geoip import _is_private_ip, resolve_batch, resolve_ip
+from spectra_common.utils.geoip import _is_private_ip, resolve_batch, resolve_ip
 
 # ---------------------------------------------------------------------------
 # _is_private_ip
@@ -91,7 +91,7 @@ class TestResolveIp:
         mock_session = MagicMock()
         mock_session.get.return_value = mock_session_ctx
 
-        with patch("spectra_platform.utils.geoip._get_session", return_value=mock_session):
+        with patch("spectra_common.utils.geoip._get_session", return_value=mock_session):
             result = await resolve_ip("8.8.8.8")
 
         assert result is not None
@@ -111,7 +111,7 @@ class TestResolveIp:
         mock_session = MagicMock()
         mock_session.get.return_value = mock_session_ctx
 
-        with patch("spectra_platform.utils.geoip._get_session", return_value=mock_session):
+        with patch("spectra_common.utils.geoip._get_session", return_value=mock_session):
             result = await resolve_ip("8.8.8.8")
 
         assert result is None
@@ -122,7 +122,7 @@ class TestResolveIp:
         mock_session = MagicMock()
         mock_session.get.side_effect = aiohttp.ClientError("connection refused")
 
-        with patch("spectra_platform.utils.geoip._get_session", return_value=mock_session):
+        with patch("spectra_common.utils.geoip._get_session", return_value=mock_session):
             result = await resolve_ip("8.8.8.8")
 
         assert result is None
@@ -138,7 +138,7 @@ class TestResolveIp:
         mock_session = MagicMock()
         mock_session.get.return_value = mock_session_ctx
 
-        with patch("spectra_platform.utils.geoip._get_session", return_value=mock_session):
+        with patch("spectra_common.utils.geoip._get_session", return_value=mock_session):
             result = await resolve_ip("8.8.8.8")
 
         assert result is None

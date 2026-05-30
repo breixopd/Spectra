@@ -16,7 +16,7 @@ import pytest
 from fastapi import HTTPException, Response
 from starlette.requests import Request
 
-from spectra_platform.auth.security import (
+from spectra_auth.security import (
     create_access_token,
     create_refresh_token,
     is_token_blacklisted,
@@ -81,7 +81,7 @@ class TestLogoutRevokesRefreshToken:
 
     def setup_method(self):
         """Clear JWT blacklist module-level state to isolate each test."""
-        from spectra_platform.auth import security as _sec
+        from spectra_auth import security as _sec
 
         _sec._blacklisted_tokens.clear()
         _sec._user_token_blacklist.clear()
@@ -183,7 +183,7 @@ class TestMfaCancelBlocklist:
     """cancel_mfa places the MFA-pending token in the JWT blacklist."""
 
     def setup_method(self):
-        from spectra_platform.auth import security as _sec
+        from spectra_auth import security as _sec
 
         _sec._blacklisted_tokens.clear()
         _sec._user_token_blacklist.clear()
@@ -360,7 +360,7 @@ class TestPreSetupRegistrationBlocked:
         with (
             patch("spectra_api.ui.public.async_session_maker", maker),
             patch("spectra_api.ui.public.PlanRepository.get_self_service_registration_plan", new=AsyncMock(return_value=None)),
-            patch("spectra_platform.services.system.audit.log_event", AsyncMock()),
+            patch("spectra_system.audit.log_event", AsyncMock()),
         ):
             result = await register_user.__wrapped__(request, body, Response())
 
@@ -566,7 +566,7 @@ class TestEmailVerifyIdempotency:
                 pass
 
         with (
-            patch("spectra_platform.auth.security.verify_email_verification_token", return_value="user-id-123"),
+            patch("spectra_auth.security.verify_email_verification_token", return_value="user-id-123"),
             patch("spectra_api.ui.public.async_session_maker", return_value=_MockCtx()),
             patch("spectra_api.ui.public.templates") as mock_tmpl,
         ):
@@ -610,7 +610,7 @@ class TestEmailVerifyIdempotency:
                 pass
 
         with (
-            patch("spectra_platform.auth.security.verify_email_verification_token", return_value="user-id-123"),
+            patch("spectra_auth.security.verify_email_verification_token", return_value="user-id-123"),
             patch("spectra_api.ui.public.async_session_maker", return_value=_MockCtx()),
             patch("spectra_api.ui.public.invalidate_token", new_callable=AsyncMock),
             patch("spectra_api.ui.public.templates") as mock_tmpl,
@@ -653,7 +653,7 @@ class TestEmailVerifyIdempotency:
                 pass
 
         with (
-            patch("spectra_platform.auth.security.verify_email_verification_token", return_value="user-id-456"),
+            patch("spectra_auth.security.verify_email_verification_token", return_value="user-id-456"),
             patch("spectra_api.ui.public.async_session_maker", return_value=_MockCtx()),
             patch("spectra_api.ui.public.invalidate_token", new_callable=AsyncMock),
             patch("spectra_api.ui.public.templates") as mock_tmpl,

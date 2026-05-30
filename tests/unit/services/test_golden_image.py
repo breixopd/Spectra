@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from spectra_platform.services.tools.sandbox.golden_image import GoldenImageBuilder
+from spectra_tools.sandbox.golden_image import GoldenImageBuilder
 
 
 def test_builder_not_available():

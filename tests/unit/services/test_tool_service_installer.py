@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from spectra_platform.services.tools.installer import ToolInstaller
+from spectra_tools.installer import ToolInstaller
 
 
 @pytest.fixture
@@ -32,8 +32,8 @@ def installer():
 
 
 @pytest.mark.asyncio
-@patch("spectra_platform.services.tools.installer.get_registry")
-@patch("spectra_platform.services.tools.installer.ToolInstaller._is_installed")
+@patch("spectra_tools.installer.get_registry")
+@patch("spectra_tools.installer.ToolInstaller._is_installed")
 async def test_install_success(mock_is_installed, mock_get_registry, installer, mock_registry):
     mock_get_registry.return_value = mock_registry
     mock_is_installed.return_value = False
@@ -46,8 +46,8 @@ async def test_install_success(mock_is_installed, mock_get_registry, installer, 
 
 
 @pytest.mark.asyncio
-@patch("spectra_platform.services.tools.installer.get_registry")
-@patch("spectra_platform.services.tools.installer.ToolInstaller._is_installed")
+@patch("spectra_tools.installer.get_registry")
+@patch("spectra_tools.installer.ToolInstaller._is_installed")
 async def test_install_already_installed(mock_is_installed, mock_get_registry, installer, mock_registry):
     mock_get_registry.return_value = mock_registry
     mock_is_installed.return_value = True
@@ -59,7 +59,7 @@ async def test_install_already_installed(mock_is_installed, mock_get_registry, i
 
 
 @pytest.mark.asyncio
-@patch("spectra_platform.services.tools.installer.get_registry")
+@patch("spectra_tools.installer.get_registry")
 async def test_uninstall_success(mock_get_registry, installer, mock_registry):
     mock_get_registry.return_value = mock_registry
     mock_registry.uninstall_tool.return_value = True

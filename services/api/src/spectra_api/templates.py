@@ -3,9 +3,9 @@
 from fastapi.templating import Jinja2Templates
 
 from spectra_api.paths import template_directory
+from spectra_common._meta.version import __version__
+from spectra_common.config import settings
 from spectra_common.constants import format_feature_label
-from spectra_platform._meta.version import __version__
-from spectra_platform.core.config import settings
 
 templates = Jinja2Templates(directory=str(template_directory()))
 templates.env.auto_reload = settings.DEBUG

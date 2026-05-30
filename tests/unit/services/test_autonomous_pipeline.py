@@ -16,19 +16,19 @@ def _safe_create_task(coro, **kwargs):
 @pytest.fixture(autouse=True)
 def _mission_runtime_isolation(tmp_path):
     with (
-        patch("spectra_platform.services.mission.mission.data_path", side_effect=tmp_path.joinpath),
-        patch("spectra_platform.services.mission.mission.asyncio.create_task", side_effect=_safe_create_task),
+        patch("spectra_mission.mission.data_path", side_effect=tmp_path.joinpath),
+        patch("spectra_mission.mission.asyncio.create_task", side_effect=_safe_create_task),
     ):
         yield
 
 
-from spectra_platform.services.ai.agents.exploit_crafter import ExploitCrafter
-from spectra_platform.services.ai.agents.tool_selector import ToolSelectorAgent
-from spectra_platform.services.ai.agents.vector_generator import VectorGeneratorAgent
-from spectra_platform.services.mission.executor.analysis import auto_expand_scope
-from spectra_platform.services.mission.executor.handlers import PHASE_TRANSITION_RULES, TaskDispatcher
-from spectra_platform.services.mission.mission import Mission
-from spectra_platform.services.mission.task_tree import TaskStatus
+from spectra_ai_core.agents.exploit_crafter import ExploitCrafter
+from spectra_ai_core.agents.tool_selector import ToolSelectorAgent
+from spectra_ai_core.agents.vector_generator import VectorGeneratorAgent
+from spectra_mission.executor.analysis import auto_expand_scope
+from spectra_mission.executor.handlers import PHASE_TRANSITION_RULES, TaskDispatcher
+from spectra_mission.mission import Mission
+from spectra_mission.task_tree import TaskStatus
 
 # ===== Mission Progress =====
 

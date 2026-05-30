@@ -9,27 +9,27 @@ class TestTierEscalationPath:
     """TIER_ESCALATION_PATH defines correct upgrade chain."""
 
     def test_light_escalates_to_medium(self):
-        from spectra_platform.services.tools.sandbox.escalation import next_tier
+        from spectra_tools.sandbox.escalation import next_tier
 
         assert next_tier("light") == "medium"
 
     def test_medium_escalates_to_heavy(self):
-        from spectra_platform.services.tools.sandbox.escalation import next_tier
+        from spectra_tools.sandbox.escalation import next_tier
 
         assert next_tier("medium") == "heavy"
 
     def test_heavy_escalates_to_extreme(self):
-        from spectra_platform.services.tools.sandbox.escalation import next_tier
+        from spectra_tools.sandbox.escalation import next_tier
 
         assert next_tier("heavy") == "extreme"
 
     def test_extreme_has_no_escalation(self):
-        from spectra_platform.services.tools.sandbox.escalation import next_tier
+        from spectra_tools.sandbox.escalation import next_tier
 
         assert next_tier("extreme") is None
 
     def test_unknown_tier_has_no_escalation(self):
-        from spectra_platform.services.tools.sandbox.escalation import next_tier
+        from spectra_tools.sandbox.escalation import next_tier
 
         assert next_tier("nonexistent") is None
 
@@ -39,9 +39,9 @@ class TestAttemptOomEscalation:
 
     @pytest.mark.asyncio
     async def test_disabled_returns_false(self):
-        from spectra_platform.services.tools.sandbox.escalation import attempt_oom_escalation
+        from spectra_tools.sandbox.escalation import attempt_oom_escalation
 
-        with patch("spectra_platform.services.tools.sandbox.escalation.get_settings") as mock:
+        with patch("spectra_tools.sandbox.escalation.get_settings") as mock:
             mock.return_value = MagicMock(SANDBOX_OOM_ESCALATION_ENABLED=False)
             success, msg = await attempt_oom_escalation("mission-123")
             assert success is False
@@ -49,7 +49,7 @@ class TestAttemptOomEscalation:
 
     @pytest.mark.asyncio
     async def test_already_escalated_returns_false(self):
-        from spectra_platform.services.tools.sandbox.escalation import attempt_oom_escalation
+        from spectra_tools.sandbox.escalation import attempt_oom_escalation
 
         mock_sandbox = MagicMock(
             id="sb1",
@@ -66,8 +66,8 @@ class TestAttemptOomEscalation:
         mock_session.execute = AsyncMock(return_value=mock_result)
 
         with (
-            patch("spectra_platform.services.tools.sandbox.escalation.get_settings") as mock_settings,
-            patch("spectra_platform.services.tools.sandbox.escalation.async_session_maker", return_value=mock_session),
+            patch("spectra_tools.sandbox.escalation.get_settings") as mock_settings,
+            patch("spectra_tools.sandbox.escalation.async_session_maker", return_value=mock_session),
         ):
             mock_settings.return_value = MagicMock(SANDBOX_OOM_ESCALATION_ENABLED=True)
             success, msg = await attempt_oom_escalation("m1")
@@ -76,7 +76,7 @@ class TestAttemptOomEscalation:
 
     @pytest.mark.asyncio
     async def test_extreme_tier_cannot_escalate(self):
-        from spectra_platform.services.tools.sandbox.escalation import attempt_oom_escalation
+        from spectra_tools.sandbox.escalation import attempt_oom_escalation
 
         mock_sandbox = MagicMock(
             id="sb1",
@@ -93,8 +93,8 @@ class TestAttemptOomEscalation:
         mock_session.execute = AsyncMock(return_value=mock_result)
 
         with (
-            patch("spectra_platform.services.tools.sandbox.escalation.get_settings") as mock_settings,
-            patch("spectra_platform.services.tools.sandbox.escalation.async_session_maker", return_value=mock_session),
+            patch("spectra_tools.sandbox.escalation.get_settings") as mock_settings,
+            patch("spectra_tools.sandbox.escalation.async_session_maker", return_value=mock_session),
         ):
             mock_settings.return_value = MagicMock(SANDBOX_OOM_ESCALATION_ENABLED=True)
             success, msg = await attempt_oom_escalation("m1")
@@ -108,12 +108,12 @@ class TestOomConfig:
     def test_oom_escalation_enabled_default(self):
         from pydantic import SecretStr
 
-        from spectra_platform.core.config import Settings
+        from spectra_common.config import Settings
 
         s = Settings(DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"))
         assert s.SANDBOX_OOM_ESCALATION_ENABLED is True
 
     def test_escalated_column_on_sandbox(self):
-        from spectra_platform.models.infrastructure import Sandbox
+        from spectra_persistence.models.infrastructure import Sandbox
 
         assert hasattr(Sandbox, "escalated")

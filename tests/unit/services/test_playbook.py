@@ -2,7 +2,7 @@
 
 import pytest
 
-from spectra_platform.services.ai.playbook import (
+from spectra_ai_core.playbook import (
     ExploitPattern,
     PlaybookEngine,
     PlaybookStep,
@@ -149,7 +149,7 @@ class TestExploitPattern:
 
 class TestSingleton:
     def test_get_playbook_engine_returns_same(self):
-        import spectra_platform.services.ai.playbook as mod
+        import spectra_ai_core.playbook as mod
 
         mod._engine = None
         e1 = get_playbook_engine()

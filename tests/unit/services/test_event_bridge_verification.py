@@ -2,8 +2,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from spectra_platform.infrastructure.events import EventType, events
-from spectra_platform.mission.core.bridge import EventWebSocketBridge
+from spectra_infra.events import EventType, events
+from spectra_mission.core.bridge import EventWebSocketBridge
 
 
 @pytest.mark.asyncio
@@ -12,7 +12,7 @@ async def test_event_bridge_broadcasts_user_scoped_events():
     bridge = EventWebSocketBridge()
     mock_ws_manager = AsyncMock()
 
-    with patch("spectra_platform.mission.core.bridge.ws_manager", mock_ws_manager):
+    with patch("spectra_mission.core.bridge.ws_manager", mock_ws_manager):
         bridge.start()
 
         try:
@@ -34,7 +34,7 @@ async def test_event_bridge_suppresses_security_events():
     bridge = EventWebSocketBridge()
     mock_ws_manager = AsyncMock()
 
-    with patch("spectra_platform.mission.core.bridge.ws_manager", mock_ws_manager):
+    with patch("spectra_mission.core.bridge.ws_manager", mock_ws_manager):
         bridge.start()
 
         try:
@@ -53,7 +53,7 @@ async def test_event_bridge_broadcasts_system_events_globally():
     bridge = EventWebSocketBridge()
     mock_ws_manager = AsyncMock()
 
-    with patch("spectra_platform.mission.core.bridge.ws_manager", mock_ws_manager):
+    with patch("spectra_mission.core.bridge.ws_manager", mock_ws_manager):
         bridge.start()
 
         try:
@@ -72,7 +72,7 @@ async def test_event_bridge_broadcasts_agent_state_globally():
     bridge = EventWebSocketBridge()
     mock_ws_manager = AsyncMock()
 
-    with patch("spectra_platform.mission.core.bridge.ws_manager", mock_ws_manager):
+    with patch("spectra_mission.core.bridge.ws_manager", mock_ws_manager):
         bridge.start()
 
         try:

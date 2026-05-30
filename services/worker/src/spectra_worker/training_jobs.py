@@ -5,10 +5,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from spectra_platform.core.database import async_session_maker
-from spectra_platform.models.training import FineTuningJob
-from spectra_platform.services.training.backends import get_training_backend
-from spectra_platform.services.training.dataset import export_dataset
+from spectra_billing.training.backends import get_training_backend
+from spectra_billing.training.dataset import export_dataset
+from spectra_persistence.database import async_session_maker
+from spectra_persistence.models.training import FineTuningJob
 
 
 async def run_fine_tuning_job(job_id: str) -> dict[str, Any]:

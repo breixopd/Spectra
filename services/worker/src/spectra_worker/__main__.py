@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 from spectra_common.tasks import create_safe_task
-from spectra_platform.services.shell.session_manager import shell_manager
+from spectra_infra.shell.session_manager import shell_manager
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
     logger.info("Worker service starting...")
     _worker_task = create_safe_task(work_loop(), name="worker_loop")
     _heartbeat_task = create_safe_task(_run_heartbeat(), name="heartbeat_loop")
-    from spectra_platform.runtime.embedded_daemon import spawn_embedded_ops_task
+    from spectra_scaling.runtime.embedded_daemon import spawn_embedded_ops_task
 
     _embedded_ops_task = spawn_embedded_ops_task("worker")
     yield
@@ -56,8 +56,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Spectra Worker", version="1.0.0", lifespan=lifespan)
 
 # Service auth middleware (applied after app creation)
-from spectra_platform.core.config import get_settings
-from spectra_platform.di.service_auth import ServiceAuthMiddleware
+from spectra_common.config import get_settings
+from spectra_infra.di.service_auth import ServiceAuthMiddleware
 
 _settings = get_settings()
 _secret = _settings.SERVICE_AUTH_SECRET.get_secret_value()
@@ -77,7 +77,7 @@ async def health(response: Response):
         "task_alive": _worker_task is not None and not _worker_task.done(),
     }
     try:
-        from spectra_platform.core.database import async_session_maker
+        from spectra_persistence.database import async_session_maker
 
         async with async_session_maker() as session:
             await session.execute(text("SELECT 1"))
@@ -96,7 +96,7 @@ async def health_deep(response: Response):
 
     start = time.monotonic()
     try:
-        from spectra_platform.core.database import async_session_maker
+        from spectra_persistence.database import async_session_maker
 
         async with async_session_maker() as session:
             row = await session.execute(text("SELECT COUNT(*) FROM missions LIMIT 1"))
@@ -110,7 +110,7 @@ async def health_deep(response: Response):
     try:
         import asyncpg
 
-        from spectra_platform.core.config import settings as _cfg
+        from spectra_common.config import settings as _cfg
 
         dsn = _cfg.DATABASE_URL.get_secret_value().replace("postgresql+asyncpg://", "postgresql://")
         conn = await asyncpg.connect(dsn)
@@ -123,7 +123,7 @@ async def health_deep(response: Response):
 
     start = time.monotonic()
     try:
-        from spectra_platform.services.tools.registry import get_registry
+        from spectra_tools_core.registry import get_registry
 
         registry = get_registry()
         tools = registry.list_tools() if registry else []
@@ -154,7 +154,7 @@ async def health_deep(response: Response):
 
     start = time.monotonic()
     try:
-        from spectra_platform.infrastructure.queue import queue_metrics
+        from spectra_infra.queue import queue_metrics
 
         queue_name = os.environ.get("QUEUE_NAME", "default")
         metrics = await queue_metrics(queue_name)
@@ -231,7 +231,7 @@ async def _run_heartbeat():
 
 async def work_loop():
     """Pull and execute tool jobs from the PG queue using the existing worker infrastructure."""
-    from spectra_platform.infrastructure.queue import worker_loop
+    from spectra_infra.queue import worker_loop
     from spectra_worker import _WORKER_FUNCTIONS
     from spectra_worker.lifecycle import shutdown, startup
 

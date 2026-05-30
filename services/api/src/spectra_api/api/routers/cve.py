@@ -16,9 +16,9 @@ from spectra_api.api.schemas.cve import (
     CVELookupResponse,
     SearchExploitResponse,
 )
+from spectra_auth.rate_limit import RateLimits, limiter
 from spectra_common.constants import CVE_RESULTS_LIMIT
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.models.user import User
+from spectra_persistence.models.user import User
 
 _CVE_PATTERN = re.compile(r"^CVE-\d{4}-\d{4,}$")
 _SEARCHSPLOIT_QUERY_PATTERN = re.compile(r"^[a-zA-Z0-9._ -]{1,200}$")
@@ -29,19 +29,19 @@ router = APIRouter(prefix="/cve", tags=["CVE Intelligence"])
 
 
 async def _lookup_cves_live(*, product: str | None, version: str | None, service: str | None):
-    from spectra_platform.services.ai.cve_intel import lookup_cves_live
+    from spectra_ai_core.cve_intel import lookup_cves_live
 
     return await lookup_cves_live(product=product, version=version, service=service)
 
 
 def _get_metasploit_modules(cve_id: str):
-    from spectra_platform.services.ai.cve_intel import get_metasploit_modules
+    from spectra_ai_core.cve_intel import get_metasploit_modules
 
     return get_metasploit_modules(cve_id)
 
 
 async def _search_exploitdb(query: str):
-    from spectra_platform.services.ai.cve_intel import search_exploitdb
+    from spectra_ai_core.cve_intel import search_exploitdb
 
     return await search_exploitdb(query)
 
@@ -104,7 +104,7 @@ async def get_cve_enriched(
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
     """Get unified exploit intelligence for a CVE (exploits + EPSS + KEV)."""
-    from spectra_platform.services.exploit_db import get_exploit_db
+    from spectra_ai_core.exploit_db import get_exploit_db
 
     db = get_exploit_db()
     return await db.enrich(cve_id)

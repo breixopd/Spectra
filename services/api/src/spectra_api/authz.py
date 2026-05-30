@@ -8,7 +8,7 @@ from enum import StrEnum
 
 from fastapi import Depends, HTTPException
 
-from spectra_platform.models.user import User
+from spectra_persistence.models.user import User
 
 
 class Permission(StrEnum):

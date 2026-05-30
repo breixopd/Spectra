@@ -22,15 +22,15 @@ from spectra_api.api.schemas.common import PaginatedResponse
 from spectra_api.api.schemas.finding import FindingResponse
 from spectra_api.api.schemas.mission import TargetCreate, TargetResponse, TargetUpdate
 from spectra_api.authz import Permission, require_permission
+from spectra_auth.rate_limit import RateLimits, limiter
 from spectra_common.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from spectra_common.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.audit_log import AuditEventType
-from spectra_platform.models.user import User
-from spectra_platform.repositories.finding import FindingRepository
-from spectra_platform.repositories.target import TargetRepository
-from spectra_platform.services.system.audit import log_event as audit_log_event
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.audit_log import AuditEventType
+from spectra_persistence.models.user import User
+from spectra_persistence.repositories.finding import FindingRepository
+from spectra_persistence.repositories.target import TargetRepository
+from spectra_system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +155,7 @@ async def list_targets(
 
     Pagination: max 100 items per page.
     """
-    from spectra_platform.models.target import Target
+    from spectra_persistence.models.target import Target
 
     repo = TargetRepository(db)
     filters = _target_scope_filters(_current_user)

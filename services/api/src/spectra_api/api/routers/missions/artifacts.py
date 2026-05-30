@@ -9,12 +9,12 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.dependencies import check_resource_owner, get_current_active_user, validate_uuid_param
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.audit_log import AuditEventType
-from spectra_platform.models.user import User
-from spectra_platform.repositories.mission import MissionRepository
-from spectra_platform.services.mission.artifact_workspace import MissionArtifact, MissionArtifactWorkspace
-from spectra_platform.services.system.audit import log_event as audit_log_event
+from spectra_mission.artifact_workspace import MissionArtifact, MissionArtifactWorkspace
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.audit_log import AuditEventType
+from spectra_persistence.models.user import User
+from spectra_persistence.repositories.mission import MissionRepository
+from spectra_system.audit import log_event as audit_log_event
 
 router = APIRouter()
 

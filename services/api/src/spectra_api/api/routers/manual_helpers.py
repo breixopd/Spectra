@@ -14,20 +14,20 @@ from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.dependencies import check_feature_allowed, check_resource_owner, get_current_active_user
+from spectra_auth.rate_limit import RateLimits, limiter
 from spectra_common.errors import NotFoundError, ValidationError
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.user import User
-from spectra_platform.repositories.mission import MissionRepository
-from spectra_platform.services.mission.output_model import (
+from spectra_mission.output_model import (
     get_mission_findings,
     get_mission_summary_dict,
 )
-from spectra_platform.services.system.checklists import get_checklist, list_checklists
-from spectra_platform.services.system.cvss import calculate_cvss31
-from spectra_platform.services.system.gtfobins import search_gtfobins
-from spectra_platform.services.system.payloads import get_payloads, list_payload_types
-from spectra_platform.services.system.report_templates import (
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.user import User
+from spectra_persistence.repositories.mission import MissionRepository
+from spectra_system.checklists import get_checklist, list_checklists
+from spectra_system.cvss import calculate_cvss31
+from spectra_system.gtfobins import search_gtfobins
+from spectra_system.payloads import get_payloads, list_payload_types
+from spectra_system.report_templates import (
     build_report_data,
     list_report_templates,
 )
@@ -193,7 +193,7 @@ async def api_generate_report(
             report_data["source_type"] = "mission"
             return report_data
 
-        from spectra_platform.services.pentest.session_loader import load_session
+        from spectra_mission.pentest.session_loader import load_session
 
         session = await load_session(req.session_id)
         if session.get("owner_id") != str(_current_user.id) and not getattr(_current_user, "is_superuser", False):

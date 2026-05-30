@@ -1,183 +1,283 @@
 #!/usr/bin/env python3
-"""Verify that shared packages and microservice entry points don't import across boundaries.
+"""Boundary checker: enforce package dependency direction across the full workspace.
 
-Shared packages must not depend on:
-- spectra_api.api.*
-- spectra_worker.* (worker implementation package)
-- spectra_platform.services.ai.* (except via lazy imports inside functions)
-- spectra_ai / spectra_scheduler (deployable service packages)
-- spectra_worker.__main__
+Rules (from spec section 5.1):
+- Bounded packages (packages/*) must NEVER import any service package:
+    spectra_api, spectra_ai, spectra_scheduler, spectra_worker
+- Services must not import each other:
+    services/api  -> must not import spectra_ai, spectra_scheduler, spectra_worker
+    services/ai   -> must not import spectra_api, spectra_scheduler, spectra_worker
+    services/scheduler -> must not import spectra_api, spectra_ai, spectra_worker
+    services/worker    -> must not import spectra_api, spectra_ai, spectra_scheduler
 
-Microservice entry points must not import from other services:
-- services/scheduler/src/** must not import from spectra_api.api, spectra_api, spectra_ai, spectra_worker
-- services/worker/src/spectra_worker/__main__.py must not import from spectra_api.api, spectra_scheduler, spectra_ai
-- services/ai/src/** must not import from spectra_api.api, spectra_api, spectra_scheduler, spectra_worker
-- services/worker/src/** must not import from spectra_api.api, spectra_scheduler, spectra_ai, spectra_api
+Scan scope: EVERY packages/*/src/**/*.py and services/*/src/**/*.py.
+Detects BOTH top-level and lazy/in-function imports.
 
-This keeps the shared → service dependency direction clean for future extraction.
+Baseline mode:
+  On first run (or `--generate-baseline`), writes scripts/import_boundary_baseline.json.
+  On subsequent runs the checker PASSES if all violations are in the baseline but FAILS
+  on any NEW violation not present in the baseline. This lets P2 burn the baseline to zero.
+
+Usage:
+    python scripts/check_import_boundaries.py               # baseline mode (default)
+    python scripts/check_import_boundaries.py --strict      # fail on ALL violations
+    python scripts/check_import_boundaries.py --generate-baseline   # regenerate baseline
+    python scripts/check_import_boundaries.py --report      # print full human-readable report
 """
 
+from __future__ import annotations
+
 import ast
+import json
 import sys
 from pathlib import Path
 
-SHARED_PACKAGES = [
-    "packages/platform/src/spectra_platform/core",
-    "packages/platform/src/spectra_platform/models",
-    "packages/common/src",
-    "packages/domain/src",
-    "packages/tools-core/src",
-]
-FORBIDDEN_IMPORTS = [
-    "spectra_api.api",
-    "spectra_worker",
-    "spectra_platform.services.ai",
-    "spectra_scheduler",
+ROOT = Path(__file__).resolve().parent.parent
+BASELINE_FILE = ROOT / "scripts" / "import_boundary_baseline.json"
+
+# ---------------------------------------------------------------------------
+# Service package names (deployable service packages — must never be imported
+# by bounded packages or by sibling services).
+# ---------------------------------------------------------------------------
+SERVICE_PACKAGES = {
+    "spectra_api",
     "spectra_ai",
-    "spectra_worker.__main__",
-]
-
-# Cross-service boundary rules: {file_or_dir: [forbidden_import_prefixes]}
-SERVICE_BOUNDARIES: dict[str, list[str]] = {
-    "services/worker/src/spectra_worker/__main__.py": ["spectra_api.api", "spectra_scheduler", "spectra_ai"],
-    "services/api/src": ["spectra_ai", "spectra_scheduler", "spectra_worker"],
-    "services/ai/src": ["spectra_api.api", "spectra_api", "spectra_scheduler", "spectra_worker"],
-    "services/scheduler/src": ["spectra_api.api", "spectra_api", "spectra_ai", "spectra_worker"],
-    "services/worker/src": ["spectra_api.api", "spectra_api", "spectra_ai", "spectra_scheduler"],
+    "spectra_scheduler",
+    "spectra_worker",
 }
 
-# Known cross-service couplings (lazy imports) — emitted as warnings, not failures.
-# worker → spectra_platform.services.ai: tool jobs use AI service for RAG/LLM features at runtime.
-WARN_LAZY_IMPORTS: dict[str, list[str]] = {
-    "services/worker/src": ["spectra_platform.services.ai"],
+# ---------------------------------------------------------------------------
+# Boundary rules:
+#   Each entry maps a source-tree path (relative to repo root) to the set of
+#   import prefixes that are forbidden within that tree.
+# ---------------------------------------------------------------------------
+PACKAGE_ROOTS = sorted((ROOT / "packages").glob("*/src"))
+SERVICE_ROOTS = sorted((ROOT / "services").glob("*/src"))
+
+# Forbidden imports for bounded packages: any service package import is a violation.
+PACKAGE_FORBIDDEN = sorted(SERVICE_PACKAGES)
+
+# Forbidden imports per service: all other services.
+SERVICE_FORBIDDEN: dict[str, list[str]] = {
+    "services/api/src": [p for p in sorted(SERVICE_PACKAGES) if p != "spectra_api"],
+    "services/ai/src": [p for p in sorted(SERVICE_PACKAGES) if p != "spectra_ai"],
+    "services/scheduler/src": [p for p in sorted(SERVICE_PACKAGES) if p != "spectra_scheduler"],
+    "services/worker/src": [p for p in sorted(SERVICE_PACKAGES) if p != "spectra_worker"],
 }
 
-# Allowed exceptions (lazy imports inside functions are OK)
-ALLOWED_FILES = set()
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _iter_imports(tree: ast.Module) -> list[tuple[ast.stmt, str, bool]]:
+    """Yield (node, module_name, is_lazy) for every import in the AST.
+
+    is_lazy=True means the import is inside a function/class body (col_offset > 0
+    is a fast but imperfect proxy; we also check parent node depth via a walk).
+    """
+    results: list[tuple[ast.stmt, str, bool]] = []
+
+    # Build a set of nodes that are direct children of the module (top-level).
+    top_level: set[int] = {id(n) for n in ast.iter_child_nodes(tree) if isinstance(n, ast.stmt)}
+
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Import, ast.ImportFrom)):
+            continue
+        is_lazy = id(node) not in top_level
+        if isinstance(node, ast.ImportFrom) and node.module:
+            results.append((node, node.module, is_lazy))
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                results.append((node, alias.name, is_lazy))
+    return results
 
 
-def check_file(filepath: Path, forbidden: list[str] | None = None, label: str = "shared package") -> list[str]:
-    """Check a single Python file for forbidden top-level imports."""
-    if forbidden is None:
-        forbidden = FORBIDDEN_IMPORTS
-    violations = []
+def check_file(
+    filepath: Path,
+    forbidden: list[str],
+    label: str,
+) -> list[dict]:
+    """Return a list of violation dicts for a single file."""
+    violations: list[dict] = []
     try:
-        tree = ast.parse(filepath.read_text(), filename=str(filepath))
+        source = filepath.read_text(encoding="utf-8", errors="replace")
+        tree = ast.parse(source, filename=str(filepath))
     except SyntaxError:
         return []
 
-    for node in ast.walk(tree):
-        # Only check top-level imports (not inside functions/classes)
-        if not isinstance(node, (ast.Import, ast.ImportFrom)):
-            continue
-
-        # Skip imports inside function/method bodies
-        # (ast.walk doesn't track parent, so we check col_offset as heuristic)
-        if node.col_offset > 0:
-            continue
-
-        if isinstance(node, ast.ImportFrom) and node.module:
-            module = node.module
-            for fb in forbidden:
-                if module.startswith(fb):
-                    violations.append(f"{filepath}:{node.lineno}: top-level import of '{module}' in {label}")
-        elif isinstance(node, ast.Import):
-            for alias in node.names:
-                for fb in forbidden:
-                    if alias.name.startswith(fb):
-                        violations.append(
-                            f"{filepath}:{node.lineno}: top-level import of '{alias.name}' in {label}"
-                        )
-
+    for node, module, is_lazy in _iter_imports(tree):
+        for fb in forbidden:
+            if module == fb or module.startswith(fb + "."):
+                violations.append(
+                    {
+                        "file": str(filepath.relative_to(ROOT)),
+                        "line": node.lineno,
+                        "module": module,
+                        "label": label,
+                        "lazy": is_lazy,
+                        "key": f"{filepath.relative_to(ROOT)}:{node.lineno}:{module}",
+                    }
+                )
     return violations
 
 
-def check_lazy_imports(filepath: Path, warned: list[str]) -> list[str]:
-    """Detect lazy (non-top-level) imports matching warned prefixes. Returns warnings, not errors."""
-    warnings = []
-    try:
-        tree = ast.parse(filepath.read_text(), filename=str(filepath))
-    except SyntaxError:
+def scan_tree(
+    tree_path: Path,
+    forbidden: list[str],
+    label: str,
+) -> list[dict]:
+    """Scan every .py file under tree_path and return all violations."""
+    if not tree_path.exists():
         return []
-
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.Import, ast.ImportFrom)):
-            continue
-        # Only interested in indented (lazy) imports
-        if node.col_offset == 0:
-            continue
-        if isinstance(node, ast.ImportFrom) and node.module:
-            for prefix in warned:
-                if node.module.startswith(prefix):
-                    warnings.append(
-                        f"{filepath}:{node.lineno}: lazy import of '{node.module}' (known coupling)"
-                    )
-        elif isinstance(node, ast.Import):
-            for alias in node.names:
-                for prefix in warned:
-                    if alias.name.startswith(prefix):
-                        warnings.append(
-                            f"{filepath}:{node.lineno}: lazy import of '{alias.name}' (known coupling)"
-                        )
-    return warnings
+    violations: list[dict] = []
+    for py_file in sorted(tree_path.rglob("*.py")):
+        violations.extend(check_file(py_file, forbidden, label))
+    return violations
 
 
-def main() -> int:
-    root = Path(__file__).resolve().parent.parent
-    all_violations = []
+# ---------------------------------------------------------------------------
+# Baseline I/O
+# ---------------------------------------------------------------------------
+
+def load_baseline() -> set[str]:
+    if not BASELINE_FILE.exists():
+        return set()
+    try:
+        data = json.loads(BASELINE_FILE.read_text())
+        return set(data.get("violation_keys", []))
+    except (json.JSONDecodeError, KeyError):
+        return set()
+
+
+def write_baseline(violations: list[dict]) -> None:
+    keys = sorted({v["key"] for v in violations})
+    payload = {
+        "description": (
+            "Baseline of known import-boundary violations as of P0. "
+            "Burn this list to zero in P2. "
+            "The checker passes when all violations are in this set "
+            "and fails on any NEW violation not listed here."
+        ),
+        "count": len(keys),
+        "violation_keys": keys,
+    }
+    BASELINE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    BASELINE_FILE.write_text(json.dumps(payload, indent=2) + "\n")
+    print(f"Baseline written to {BASELINE_FILE.relative_to(ROOT)} ({len(keys)} violations)")
+
+
+# ---------------------------------------------------------------------------
+# Reporting
+# ---------------------------------------------------------------------------
+
+def print_report(violations: list[dict], *, new_only: bool = False, baseline: set[str]) -> None:
+    label = "NEW violations (not in baseline)" if new_only else "All violations"
+    items = [v for v in violations if v["key"] not in baseline] if new_only else violations
+    if not items:
+        print(f"{label}: none")
+        return
+    print(f"\n{label} ({len(items)}):")
+    for v in sorted(items, key=lambda x: (x["file"], x["line"])):
+        lazy_tag = " [lazy/in-function]" if v["lazy"] else " [top-level]"
+        print(f"  {v['file']}:{v['line']}: imports '{v['module']}' in {v['label']}{lazy_tag}")
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main(argv: list[str] | None = None) -> int:
+    args = argv if argv is not None else sys.argv[1:]
+    strict = "--strict" in args
+    generate_baseline = "--generate-baseline" in args
+    report = "--report" in args
+
+    all_violations: list[dict] = []
     files_checked = 0
 
-    # Check shared packages (core, models) against FORBIDDEN_IMPORTS
-    for pkg in SHARED_PACKAGES:
-        pkg_path = root / pkg
-        if not pkg_path.exists():
+    # Scan all bounded packages (packages/*/src)
+    for pkg_src in PACKAGE_ROOTS:
+        pkg_name = pkg_src.parent.name  # e.g. "platform"
+        label = f"packages/{pkg_name} (bounded package)"
+        violations = scan_tree(pkg_src, PACKAGE_FORBIDDEN, label)
+        all_violations.extend(violations)
+        files_checked += sum(1 for _ in pkg_src.rglob("*.py")) if pkg_src.exists() else 0
+
+    # Scan all services (services/*/src)
+    for svc_src in SERVICE_ROOTS:
+        svc_key = str(svc_src.relative_to(ROOT))
+        forbidden = SERVICE_FORBIDDEN.get(svc_key, [])
+        if not forbidden:
             continue
-        for py_file in pkg_path.rglob("*.py"):
-            if str(py_file) in ALLOWED_FILES:
-                continue
-            violations = check_file(py_file)
-            all_violations.extend(violations)
-            files_checked += 1
+        svc_name = svc_src.parent.name  # e.g. "api"
+        label = f"services/{svc_name} (service boundary)"
+        violations = scan_tree(svc_src, forbidden, label)
+        all_violations.extend(violations)
+        files_checked += sum(1 for _ in svc_src.rglob("*.py")) if svc_src.exists() else 0
 
-    # Check cross-service boundaries
-    for target, forbidden in SERVICE_BOUNDARIES.items():
-        target_path = root / target
-        if not target_path.exists():
-            continue
-        if target_path.is_file():
-            violations = check_file(target_path, forbidden=forbidden, label=f"service boundary ({target})")
-            all_violations.extend(violations)
-            files_checked += 1
-        else:
-            for py_file in target_path.rglob("*.py"):
-                if str(py_file) in ALLOWED_FILES:
-                    continue
-                violations = check_file(py_file, forbidden=forbidden, label=f"service boundary ({target})")
-                all_violations.extend(violations)
-                files_checked += 1
+    # Deduplicate (same import can appear as both top-level and lazy due to AST walk)
+    seen_keys: set[str] = set()
+    deduped: list[dict] = []
+    for v in all_violations:
+        if v["key"] not in seen_keys:
+            seen_keys.add(v["key"])
+            deduped.append(v)
+    all_violations = deduped
 
-    # Warn about known lazy cross-service imports (non-blocking)
-    all_warnings: list[str] = []
-    for target, warned_prefixes in WARN_LAZY_IMPORTS.items():
-        target_path = root / target
-        if not target_path.exists():
-            continue
-        py_files = [target_path] if target_path.is_file() else target_path.rglob("*.py")
-        for py_file in py_files:
-            all_warnings.extend(check_lazy_imports(py_file, warned_prefixes))
+    # Handle --generate-baseline: write and exit 0
+    if generate_baseline:
+        write_baseline(all_violations)
+        if report:
+            print_report(all_violations, new_only=False, baseline=set())
+        return 0
 
-    if all_warnings:
-        print(f"Cross-service coupling warnings ({len(all_warnings)}):")
-        for w in sorted(all_warnings):
-            print(f"  WARNING: {w}")
+    baseline = load_baseline()
+    new_violations = [v for v in all_violations if v["key"] not in baseline]
+    baseline_violations = [v for v in all_violations if v["key"] in baseline]
 
-    if all_violations:
-        print("Import boundary violations found:")
-        for v in sorted(all_violations):
-            print(f"  {v}")
+    # Summary line
+    print(
+        f"Import boundary check: {files_checked} files scanned, "
+        f"{len(all_violations)} total violations "
+        f"({len(baseline_violations)} baselined, {len(new_violations)} NEW)"
+    )
+
+    # Always print new violations
+    if new_violations or report:
+        print_report(all_violations, new_only=not report, baseline=baseline)
+
+    if report and baseline_violations:
+        print(f"\nBaselined violations ({len(baseline_violations)}) — tracked for P2 burn-down:")
+        for v in sorted(baseline_violations, key=lambda x: (x["file"], x["line"])):
+            lazy_tag = " [lazy]" if v["lazy"] else ""
+            print(f"  {v['file']}:{v['line']}: '{v['module']}'{lazy_tag}")
+
+    if strict:
+        if all_violations:
+            print(
+                f"\nFAIL (--strict): {len(all_violations)} violations (including baselined). "
+                "Use P2 to eliminate all violations."
+            )
+            return 1
+        print(f"\nPASS (--strict): 0 violations across {files_checked} files")
+        return 0
+
+    # Baseline mode (default): pass if no NEW violations
+    if new_violations:
+        print(
+            f"\nFAIL: {len(new_violations)} NEW violation(s) not in baseline. "
+            "Fix them or regenerate the baseline after deliberate review."
+        )
         return 1
 
-    print(f"Import boundaries clean: checked {files_checked} files")
+    if all_violations:
+        print(
+            f"PASS (baseline mode): {len(baseline_violations)} known violation(s) within baseline. "
+            "Run with --report for details. Burn them down in P2."
+        )
+    else:
+        print(f"PASS: 0 violations across {files_checked} files")
     return 0
 
 

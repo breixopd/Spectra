@@ -19,7 +19,7 @@ def _fake_user(is_superuser: bool = False):
 
 
 def _make_app() -> FastAPI:
-    from spectra_platform.auth.rate_limit import limiter
+    from spectra_auth.rate_limit import limiter
 
     app = FastAPI()
     app.state.limiter = limiter
@@ -95,7 +95,7 @@ class TestCveEnriched:
         enriched = {"cve_id": "CVE-2026-0001", "epss": 0.5, "kev": False}
         mock_db = MagicMock()
         mock_db.enrich = AsyncMock(return_value=enriched)
-        with patch("spectra_platform.services.exploit_db.get_exploit_db", return_value=mock_db):
+        with patch("spectra_ai_core.exploit_db.get_exploit_db", return_value=mock_db):
             resp = await client.get("/api/v1/cve/CVE-2026-0001/enriched")
         assert resp.status_code == 200
         assert resp.json()["cve_id"] == "CVE-2026-0001"

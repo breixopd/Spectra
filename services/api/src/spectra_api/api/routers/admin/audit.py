@@ -12,15 +12,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.schemas.common import PaginatedResponse
 from spectra_api.authz import Permission, require_permission
-from spectra_platform.auth.rate_limit import RateLimits, limiter
-from spectra_platform.core.config import settings
-from spectra_platform.core.database import get_async_session
-from spectra_platform.models.audit_log import AuditLog
-from spectra_platform.models.mission import Mission
-from spectra_platform.models.plan import Plan
-from spectra_platform.models.user import User
-from spectra_platform.repositories.audit_log import AuditLogRepository
-from spectra_platform.telemetry.telemetry import telemetry
+from spectra_auth.rate_limit import RateLimits, limiter
+from spectra_common.config import settings
+from spectra_observability.telemetry import telemetry
+from spectra_persistence.database import get_async_session
+from spectra_persistence.models.audit_log import AuditLog
+from spectra_persistence.models.mission import Mission
+from spectra_persistence.models.plan import Plan
+from spectra_persistence.models.user import User
+from spectra_persistence.repositories.audit_log import AuditLogRepository
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ async def admin_stats(
             role_counts[role_name] = cnt
 
     # Service topology
-    from spectra_platform.services.gateway.service_registry import get_service_registry
+    from spectra_ai_core.gateway.service_registry import get_service_registry
 
     svc_registry = get_service_registry()
     topology = svc_registry.get_service_topology()
@@ -142,7 +142,7 @@ async def admin_usage(
 ) -> dict[str, Any]:
     """Return aggregated LLM usage stats from active cost trackers."""
     _ = request
-    from spectra_ai.cost_tracker import get_cost_trackers
+    from spectra_ai_core.cost_tracker import get_cost_trackers
 
     trackers = get_cost_trackers()
     saas = telemetry.get_saas_metrics()

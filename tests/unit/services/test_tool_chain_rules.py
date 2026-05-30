@@ -1,6 +1,6 @@
 """Tests for tool chain rules — deterministic follow-up tool queueing."""
 
-from spectra_platform.services.mission.tool_chain_rules import (
+from spectra_mission.tool_chain_rules import (
     CHAIN_RULES,
     ChainRule,
     get_triggered_rules,

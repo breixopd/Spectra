@@ -8,13 +8,12 @@ import json
 import logging
 import time
 
-from typing import Callable
-
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from starlette.responses import Response as StarletteResponse
@@ -27,15 +26,15 @@ from spectra_api.paths import static_directory
 from spectra_api.routing import CORE_API_FULL_ROUTER_MODES, include_routers
 from spectra_api.telemetry_middleware import TelemetryMiddleware
 from spectra_api.templates import templates as shared_templates
-from spectra_common.constants import SECONDS_PER_DAY
-from spectra_platform._meta.version import __version__
-from spectra_platform.auth.rate_limit import (
+from spectra_auth.rate_limit import (
     RateLimits,
     limiter,
     rate_limit_exceeded_handler_sync,
 )
-from spectra_platform.core.config import settings
-from spectra_platform.mission.core.websocket import manager
+from spectra_common._meta.version import __version__
+from spectra_common.config import settings
+from spectra_common.constants import SECONDS_PER_DAY
+from spectra_mission.core.websocket import manager
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +92,6 @@ def create_app() -> FastAPI:
         openapi_url="/api/openapi.json" if settings.DEBUG else None,
     )
 
-    from slowapi import Limiter
 
     app.state.limiter = limiter
     app.state.limiter._rate_limit_exceeded_handler = _safe_rate_limit_handler  # type: ignore[attr-defined]
@@ -122,7 +120,7 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def maintenance_mode_check(request: Request, call_next):
         """Return 503 for authenticated UI when maintenance mode is on."""
-        from spectra_platform.core.config import settings as _settings
+        from spectra_common.config import settings as _settings
 
         path = request.url.path
         exempt = (
@@ -208,7 +206,7 @@ def create_app() -> FastAPI:
     @limiter.limit(RateLimits.INTERNAL_METRICS)
     async def internal_node_metrics(request: Request):
         """Return local system metrics. Requires service auth."""
-        from spectra_platform.services.scaling.node_metrics import collect_node_metrics
+        from spectra_scaling.node_metrics import collect_node_metrics
 
         auth = request.headers.get("X-Service-Auth", "")
         secret = settings.SERVICE_AUTH_SECRET.get_secret_value()

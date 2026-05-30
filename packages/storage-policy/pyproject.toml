@@ -1,15 +1,19 @@
 [project]
-name = "storage-policy"
+name = "spectra-storage-policy"
 version = "0.1.0"
-description = "Standalone hot/cold tiered storage module for S3-compatible storage with auto-promotion based on access frequency"
-readme = "README.md"
-license = { text = "MIT" }
+description = "Object storage service and hot/cold tiering policy."
 requires-python = ">=3.11"
 dependencies = [
-    "aioboto3",
-    "redis",
+    "spectra-common",
+    "aioboto3>=12.0.0",
+    "redis[hiredis]>=5.2.0",
+    "botocore>=1.34.0",
+    "httpx>=0.28.0",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/spectra_storage_policy"]

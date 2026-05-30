@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import pytest_asyncio
 
-from spectra_platform.services.mission.manager import MissionManager
+from spectra_mission.manager import MissionManager
 
 
 @pytest.fixture(autouse=True)
@@ -19,7 +19,7 @@ def _disable_rate_limiting():
     Without Redis, the SlowAPIMiddleware raises ConnectionError
     which crashes the default handler.
     """
-    from spectra_platform.auth.rate_limit import limiter
+    from spectra_auth.rate_limit import limiter
 
     original = limiter.enabled
     limiter.enabled = False
@@ -31,9 +31,9 @@ def _disable_rate_limiting():
 def _mock_ws_broadcast():
     """Prevent Mission._broadcast from calling asyncio.create_task outside event loop."""
     with (
-        patch("spectra_platform.services.mission.mission.ws_manager") as mock_ws,
+        patch("spectra_mission.mission.ws_manager") as mock_ws,
         patch.object(
-            __import__("spectra_platform.services.mission.mission", fromlist=["Mission"]).Mission,
+            __import__("spectra_mission.mission", fromlist=["Mission"]).Mission,
             "_broadcast",
             lambda self, *a, **kw: None,
         ),
@@ -48,10 +48,10 @@ async def _close_global_async_clients():
     """Close singleton async HTTP clients created by ASGI-style integration tests."""
     yield
 
-    from spectra_platform.core.database import engine
-    from spectra_platform.services.gateway.ai_gateway import close_ai_gateway
-    from spectra_platform.services.system.health import close_health_clients
-    from spectra_platform.utils.geoip import close_geoip_session
+    from spectra_ai_core.gateway.ai_gateway import close_ai_gateway
+    from spectra_common.utils.geoip import close_geoip_session
+    from spectra_persistence.database import engine
+    from spectra_system.health import close_health_clients
 
     await close_ai_gateway()
     await close_geoip_session()
@@ -68,7 +68,7 @@ def _mock_db_session():
     is not running.
     """
     from spectra_api.main import app
-    from spectra_platform.core.database import get_async_session
+    from spectra_persistence.database import get_async_session
 
     mock_session = AsyncMock()
     # SELECT 1 for health check
@@ -98,10 +98,10 @@ async def mission_manager():
     Prevents ``asyncio.create_task`` from spawning uncontrolled background
     coroutines that outlive ``with patch(...)`` scopes and crash on DB access.
     """
-    from spectra_platform.services.ai.agents.mission_controller import MissionController
-    from spectra_platform.services.ai.agents.scope import ScopeAgent
-    from spectra_platform.services.ai.consensus import VotingSystem
-    from spectra_platform.services.mission.executor import MissionExecutor
+    from spectra_ai_core.agents.mission_controller import MissionController
+    from spectra_ai_core.agents.scope import ScopeAgent
+    from spectra_ai_core.consensus import VotingSystem
+    from spectra_mission.executor import MissionExecutor
     from tests.mocks.llm import MockLLMClient
 
     manager = MissionManager()
@@ -115,7 +115,7 @@ async def mission_manager():
     manager._agents_initialized = True
 
     # Provide _handle_task_failure on execution manager (refactored to helpers.py)
-    from spectra_platform.services.mission.manager.helpers import handle_task_failure
+    from spectra_mission.manager.helpers import handle_task_failure
 
     async def _handle_task_failure_wrapper(mission, task, error, context):
         await handle_task_failure(
@@ -197,9 +197,9 @@ async def mission_manager():
     mock_maker = _MockSessionMaker()
 
     with (
-        patch("spectra_platform.services.mission.manager.lifecycle.async_session_maker", mock_maker),
-        patch("spectra_platform.services.mission.state_store.async_session_maker", mock_maker),
-        patch("spectra_platform.services.billing.quota_enforcer.async_session_maker", mock_maker),
+        patch("spectra_mission.manager.lifecycle.async_session_maker", mock_maker),
+        patch("spectra_mission.state_store.async_session_maker", mock_maker),
+        patch("spectra_billing.quota_enforcer.async_session_maker", mock_maker),
     ):
         yield manager
 

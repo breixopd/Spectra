@@ -13,7 +13,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-COMPOSE_BASE="docker/compose.yaml"
+COMPOSE_BASE="deploy/docker/compose.yaml"
 
 cd "$PROJECT_DIR"
 

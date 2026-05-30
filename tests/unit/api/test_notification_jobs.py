@@ -20,7 +20,7 @@ async def test_send_webhook_makes_http_post():
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("spectra_platform.utils.url_validation.is_safe_url", return_value=True),
+        patch("spectra_common.utils.url_validation.is_safe_url", return_value=True),
         patch("httpx.AsyncClient", return_value=mock_client),
     ):
         result = await send_webhook_notification({"event": "test"}, "https://hooks.example.com/test")
@@ -42,7 +42,7 @@ async def test_send_webhook_handles_http_error_gracefully():
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("spectra_platform.utils.url_validation.is_safe_url", return_value=True),
+        patch("spectra_common.utils.url_validation.is_safe_url", return_value=True),
         patch("httpx.AsyncClient", return_value=mock_client),
     ):
         result = await send_webhook_notification({"event": "fail"}, "https://hooks.example.com/fail")
@@ -60,7 +60,7 @@ async def test_send_webhook_handles_network_exception():
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("spectra_platform.utils.url_validation.is_safe_url", return_value=True),
+        patch("spectra_common.utils.url_validation.is_safe_url", return_value=True),
         patch("httpx.AsyncClient", return_value=mock_client),
     ):
         result = await send_webhook_notification({"event": "err"}, "https://hooks.example.com/err")
@@ -72,7 +72,7 @@ async def test_send_webhook_handles_network_exception():
 async def test_send_webhook_blocks_unsafe_url():
     from spectra_worker.notification_jobs import send_webhook_notification
 
-    with patch("spectra_platform.utils.url_validation.is_safe_url", return_value=False):
+    with patch("spectra_common.utils.url_validation.is_safe_url", return_value=False):
         result = await send_webhook_notification({"event": "bad"}, "http://169.254.169.254/metadata")
 
     assert result is False
@@ -100,7 +100,7 @@ async def test_send_mission_completion_notification_finds_and_notifies():
     session = AsyncMock()
     session.execute = AsyncMock(return_value=mission_result)
 
-    with patch("spectra_platform.services.notifications.notify_mission_completed", new_callable=AsyncMock) as mock_notify:
+    with patch("spectra_system.notifications.notify_mission_completed", new_callable=AsyncMock) as mock_notify:
         await send_mission_completion_notification("mission-1", session)
 
     mock_notify.assert_awaited_once_with("10.0.0.1", 1, 1)
@@ -127,7 +127,7 @@ async def test_send_mission_completion_notification_normalizes_severity_counts()
     session = AsyncMock()
     session.execute = AsyncMock(return_value=mission_result)
 
-    with patch("spectra_platform.services.notifications.notify_mission_completed", new_callable=AsyncMock) as mock_notify:
+    with patch("spectra_system.notifications.notify_mission_completed", new_callable=AsyncMock) as mock_notify:
         await send_mission_completion_notification("mission-2", session)
 
     mock_notify.assert_awaited_once_with("10.0.0.2", 3, 1)
@@ -165,7 +165,7 @@ async def test_send_critical_finding_alert_sends_for_critical():
     session = AsyncMock()
     session.execute = AsyncMock(return_value=finding_result)
 
-    with patch("spectra_platform.services.notifications.send_notification", new_callable=AsyncMock) as mock_send:
+    with patch("spectra_system.notifications.send_notification", new_callable=AsyncMock) as mock_send:
         await send_critical_finding_alert("finding-1", session)
 
     mock_send.assert_awaited_once()
@@ -188,7 +188,7 @@ async def test_send_critical_finding_alert_skips_low_severity():
     session = AsyncMock()
     session.execute = AsyncMock(return_value=finding_result)
 
-    with patch("spectra_platform.services.notifications.send_notification", new_callable=AsyncMock) as mock_send:
+    with patch("spectra_system.notifications.send_notification", new_callable=AsyncMock) as mock_send:
         await send_critical_finding_alert("finding-2", session)
 
     mock_send.assert_not_awaited()

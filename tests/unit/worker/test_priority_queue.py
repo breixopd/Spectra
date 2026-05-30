@@ -10,13 +10,13 @@ class TestPriorityConfig:
     """Priority queue settings exist with defaults."""
 
     def test_per_user_limit_default(self):
-        from spectra_platform.core.config import Settings
+        from spectra_common.config import Settings
 
         s = Settings(DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"))
         assert s.SANDBOX_PER_USER_LIMIT == 3
 
     def test_default_priority_default(self):
-        from spectra_platform.core.config import Settings
+        from spectra_common.config import Settings
 
         s = Settings(DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"))
         assert s.SANDBOX_DEFAULT_PRIORITY == 5
@@ -26,12 +26,12 @@ class TestJobQueuePriority:
     """JobQueue model has priority column."""
 
     def test_priority_column_exists(self):
-        from spectra_platform.models.infrastructure import JobQueue
+        from spectra_persistence.models.infrastructure import JobQueue
 
         assert hasattr(JobQueue, "priority")
 
     def test_priority_default_is_five(self):
-        from spectra_platform.models.infrastructure import JobQueue
+        from spectra_persistence.models.infrastructure import JobQueue
 
         col = JobQueue.__table__.c.priority
         assert col.default.arg == 5
@@ -45,15 +45,15 @@ class TestEnqueueWithPriority:
         """enqueue_job should accept _priority keyword argument."""
         import inspect
 
-        from spectra_platform.infrastructure.queue import PostgresJobQueue
+        from spectra_infra.queue import PostgresJobQueue
 
         sig = inspect.signature(PostgresJobQueue.enqueue_job)
         assert "_priority" in sig.parameters
 
     @pytest.mark.asyncio
     async def test_enqueue_with_explicit_priority(self):
-        from spectra_platform.infrastructure.queue import PostgresJobQueue
-        from spectra_platform.models.infrastructure import JobQueue
+        from spectra_infra.queue import PostgresJobQueue
+        from spectra_persistence.models.infrastructure import JobQueue
 
         mock_session = AsyncMock()
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
@@ -77,7 +77,7 @@ class TestEnqueueWithPriority:
 
         mock_session.add = capture_add
 
-        with patch("spectra_platform.infrastructure.queue.async_session_maker", return_value=mock_session):
+        with patch("spectra_infra.queue.async_session_maker", return_value=mock_session):
             q = PostgresJobQueue("default")
             await q.enqueue_job("test_fn", _priority=1)
 
@@ -89,11 +89,11 @@ class TestSandboxUserIdColumn:
     """Sandbox model has user_id column for per-user limits."""
 
     def test_user_id_column_exists(self):
-        from spectra_platform.models.infrastructure import Sandbox
+        from spectra_persistence.models.infrastructure import Sandbox
 
         assert hasattr(Sandbox, "user_id")
 
     def test_escalated_column_exists(self):
-        from spectra_platform.models.infrastructure import Sandbox
+        from spectra_persistence.models.infrastructure import Sandbox
 
         assert hasattr(Sandbox, "escalated")

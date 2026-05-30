@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from spectra_platform.services.tools.scope_validator import (
+from spectra_domain.scope_validator import (
     is_target_in_scope,
     parse_scope,
     validate_command_target,
@@ -118,14 +118,14 @@ class TestValidateCommandTarget:
 
     @pytest.mark.asyncio
     async def test_dns_resolution_in_scope(self):
-        with patch("spectra_platform.services.tools.scope_validator._resolve_hostname", new_callable=AsyncMock, return_value=("192.168.1.1",)):
+        with patch("spectra_domain.scope_validator._resolve_hostname", new_callable=AsyncMock, return_value=("192.168.1.1",)):
             networks, _domains = parse_scope(["192.168.1.0/24"])
             result = await is_target_in_scope("host.local", networks, [])
             assert result is True
 
     @pytest.mark.asyncio
     async def test_dns_resolution_out_of_scope(self):
-        with patch("spectra_platform.services.tools.scope_validator._resolve_hostname", new_callable=AsyncMock, return_value=("10.0.0.1",)):
+        with patch("spectra_domain.scope_validator._resolve_hostname", new_callable=AsyncMock, return_value=("10.0.0.1",)):
             networks, _domains = parse_scope(["192.168.1.0/24"])
             result = await is_target_in_scope("host.local", networks, [])
             assert result is False

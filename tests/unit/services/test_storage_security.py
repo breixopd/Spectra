@@ -9,9 +9,9 @@ class TestStorageS3Required:
     """Test that StorageService raises clearly when S3 is not configured."""
 
     def test_no_endpoint_raises_runtime_error(self):
-        from spectra_platform.services.storage.service import StorageService
+        from spectra_storage_policy.storage.service import StorageService
 
-        with patch("spectra_platform.core.config.settings") as mock_settings:
+        with patch("spectra_common.config.settings") as mock_settings:
             mock_settings.S3_ENDPOINT_URL = ""
             mock_settings.S3_ACCESS_KEY = MagicMock()
             mock_settings.S3_SECRET_KEY = MagicMock()
@@ -19,9 +19,9 @@ class TestStorageS3Required:
                 StorageService()
 
     def test_missing_access_key_raises_runtime_error(self):
-        from spectra_platform.services.storage.service import StorageService
+        from spectra_storage_policy.storage.service import StorageService
 
-        with patch("spectra_platform.core.config.settings") as mock_settings:
+        with patch("spectra_common.config.settings") as mock_settings:
             mock_settings.S3_ENDPOINT_URL = "http://garage:3900"
             mock_settings.S3_ACCESS_KEY = MagicMock()
             mock_settings.S3_ACCESS_KEY.get_secret_value.return_value = ""
@@ -31,9 +31,9 @@ class TestStorageS3Required:
                 StorageService()
 
     def test_missing_secret_key_raises_runtime_error(self):
-        from spectra_platform.services.storage.service import StorageService
+        from spectra_storage_policy.storage.service import StorageService
 
-        with patch("spectra_platform.core.config.settings") as mock_settings:
+        with patch("spectra_common.config.settings") as mock_settings:
             mock_settings.S3_ENDPOINT_URL = "http://garage:3900"
             mock_settings.S3_ACCESS_KEY = MagicMock()
             mock_settings.S3_ACCESS_KEY.get_secret_value.return_value = "key"
@@ -50,9 +50,9 @@ class TestStorageS3Required:
 
     def test_error_message_is_actionable(self):
         """Error message should tell the admin exactly what to set."""
-        from spectra_platform.services.storage.service import StorageService
+        from spectra_storage_policy.storage.service import StorageService
 
-        with patch("spectra_platform.core.config.settings") as mock_settings:
+        with patch("spectra_common.config.settings") as mock_settings:
             mock_settings.S3_ENDPOINT_URL = ""
             mock_settings.S3_ACCESS_KEY = MagicMock()
             mock_settings.S3_SECRET_KEY = MagicMock()

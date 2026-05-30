@@ -16,7 +16,7 @@ Each mission runs in its own ephemeral Docker container with a dedicated worker.
 
 | Layer | Image | Contents |
 | ------- | ------- | ---------- |
-| Base | `spectra-tools:base` | `docker/Dockerfile.worker` base tooling — Kali rolling + OS essentials (curl, git, networking, VPN tools). No security tools preinstalled. |
+| Base | `spectra-tools:base` | `deploy/docker/Dockerfile.worker` base tooling — Kali rolling + OS essentials (curl, git, networking, VPN tools). No security tools preinstalled. |
 | Golden | `spectra-tools:latest` | Base plus Dockerfile `RUN` layers generated from current `plugins/*.json` install steps (built image), not a runtime “install everything on first boot” step |
 
 The base image is intentionally minimal (~1.1 GB). Security scanners and similar tools are added when the golden pipeline rebuilds `spectra-tools:latest` from plugin definitions; new sandboxes pull that tag. Individual tool runs can still trigger installs if a plugin marks something missing.

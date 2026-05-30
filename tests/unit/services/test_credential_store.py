@@ -1,6 +1,6 @@
 """Unit tests for CredentialStore and credential extraction."""
 
-from spectra_platform.services.mission.credentials import (
+from spectra_mission.credentials import (
     MAX_CREDENTIALS_PER_MISSION,
     Credential,
     CredentialStore,

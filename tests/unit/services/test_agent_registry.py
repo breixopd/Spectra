@@ -7,14 +7,14 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import BaseModel
 
-from spectra_platform.services.ai.agents.base import (
+from spectra_ai_core.agents.base import (
     Agent,
     AgentAction,
     AgentContext,
     AgentResult,
     AgentRole,
 )
-from spectra_platform.services.ai.agents.registry import (
+from spectra_ai_core.agents.registry import (
     AgentRegistry,
     _registry,
     get_agent_registry,

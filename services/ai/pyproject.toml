@@ -6,13 +6,21 @@ requires-python = ">=3.11"
 dependencies = [
     "spectra-common",
     "spectra-domain",
-    "spectra-platform",
+    "spectra-contracts",
+    "spectra-ai-core[local-embeddings]",
+    "spectra-persistence",
+    "spectra-infra",
+    "spectra-scaling",
     "httpx>=0.28.1",
     "json-repair>=0.58.5",
     "openai>=2.26.0",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.13.1",
     "sqlalchemy[asyncio]>=2.0.48",
+    "uvicorn[standard]>=0.48.0",
+    "tensorzero>=2025.1.0",
+    "fastembed>=0.3.0",
+    "fastapi>=0.115.0",
 ]
 
 [build-system]

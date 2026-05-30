@@ -44,7 +44,7 @@ class TestGetSandboxStatus:
         pool = MagicMock()
         pool.available = True
         with patch(
-            "spectra_platform.services.tools.sandbox.get_sandbox_pool",
+            "spectra_tools.sandbox.get_sandbox_pool",
             return_value=pool,
         ):
             status = self._fn()()
@@ -54,7 +54,7 @@ class TestGetSandboxStatus:
         pool = MagicMock()
         pool.available = False
         with patch(
-            "spectra_platform.services.tools.sandbox.get_sandbox_pool",
+            "spectra_tools.sandbox.get_sandbox_pool",
             return_value=pool,
         ):
             status = self._fn()()
@@ -62,7 +62,7 @@ class TestGetSandboxStatus:
 
     def test_pool_none(self):
         with patch(
-            "spectra_platform.services.tools.sandbox.get_sandbox_pool",
+            "spectra_tools.sandbox.get_sandbox_pool",
             return_value=None,
         ):
             status = self._fn()()
@@ -70,7 +70,7 @@ class TestGetSandboxStatus:
 
     def test_exception_returns_unavailable(self):
         with patch(
-            "spectra_platform.services.tools.sandbox.get_sandbox_pool",
+            "spectra_tools.sandbox.get_sandbox_pool",
             side_effect=RuntimeError("no docker"),
         ):
             status = self._fn()()

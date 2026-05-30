@@ -5,10 +5,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from spectra_platform.services.scaling.auto_scaler import AutoScaler, ScalingDecision
-from spectra_platform.services.scaling.backends import OrchestratorBackend, ScaleResult
-from spectra_platform.services.scaling.config import AutoScalerConfig, ServicePolicy
-from spectra_platform.services.scaling.notifiers import ScalingNotifier
+from spectra_scaling.auto_scaler import AutoScaler, ScalingDecision
+from spectra_scaling.backends import OrchestratorBackend, ScaleResult
+from spectra_scaling.config import AutoScalerConfig, ServicePolicy
+from spectra_scaling.notifiers import ScalingNotifier
 
 # --- Test doubles ---
 

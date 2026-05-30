@@ -1,6 +1,6 @@
 """Tests for adversary playbooks."""
 
-from spectra_platform.services.ai.adversary_playbooks import (
+from spectra_ai_core.adversary_playbooks import (
     ADVERSARY_PLAYBOOKS,
     get_adversary_playbook,
     list_adversary_playbooks,

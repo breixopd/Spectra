@@ -18,7 +18,8 @@ import pytest
 import pytest_asyncio
 
 from spectra_domain.enums import RiskLevel
-from spectra_platform.models.attack_surface import (
+from spectra_mission.mission import Mission
+from spectra_persistence.models.attack_surface import (
     AttackSurface,
     AttackVector,
     DiscoveredService,
@@ -28,9 +29,7 @@ from spectra_platform.models.attack_surface import (
     VectorStatus,
     Vulnerability,
 )
-from spectra_platform.services.mission.mission import Mission
-from spectra_platform.services.tools.adapter import CommandToolAdapter
-from spectra_platform.services.tools.registry import ToolRegistry, initialize_registry
+from spectra_tools.adapter import CommandToolAdapter
 from spectra_tools_core.models import (
     ExecutionConfig,
     OutputFormat,
@@ -41,6 +40,7 @@ from spectra_tools_core.models import (
     ToolExecutionRequest,
     ToolMetadata,
 )
+from spectra_tools_core.registry import ToolRegistry, initialize_registry
 
 # === REAL TOOL REGISTRY TESTS ===
 

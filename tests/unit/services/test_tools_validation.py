@@ -7,7 +7,7 @@ try:
 except ImportError:
     jsonschema = None
 
-from spectra_platform.services.tools.validation import validate_and_resolve_tool
+from spectra_tools.validation import validate_and_resolve_tool
 
 
 @pytest.mark.asyncio
@@ -30,7 +30,7 @@ async def test_validate_and_resolve_tool_not_found():
     mock_registry.sync_status_from_cache = AsyncMock()
     mock_registry.get_tool.return_value = None
 
-    with patch("spectra_platform.services.tools.validation.get_registry", return_value=mock_registry):
+    with patch("spectra_tools.validation.get_registry", return_value=mock_registry):
         tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {})
 
     assert tool is None
@@ -50,7 +50,7 @@ async def test_validate_and_resolve_tool_not_installed():
     mock_registry.sync_status_from_cache = AsyncMock()
     mock_registry.get_tool.return_value = mock_tool
 
-    with patch("spectra_platform.services.tools.validation.get_registry", return_value=mock_registry):
+    with patch("spectra_tools.validation.get_registry", return_value=mock_registry):
         tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {})
 
     assert tool == mock_tool
@@ -71,7 +71,7 @@ async def test_validate_and_resolve_tool_already_available():
     mock_registry.sync_status_from_cache = AsyncMock()
     mock_registry.get_tool.return_value = mock_tool
 
-    with patch("spectra_platform.services.tools.validation.get_registry", return_value=mock_registry):
+    with patch("spectra_tools.validation.get_registry", return_value=mock_registry):
         tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {})
 
     assert tool == mock_tool
@@ -91,8 +91,8 @@ async def test_validate_and_resolve_tool_jsonschema_invalid():
     mock_registry.sync_status_from_cache = AsyncMock()
     mock_registry.get_tool.return_value = mock_tool
 
-    with patch("spectra_platform.services.tools.validation.get_registry", return_value=mock_registry):
-        with patch("spectra_platform.services.tools.validation.HAS_JSONSCHEMA", True):
+    with patch("spectra_tools.validation.get_registry", return_value=mock_registry):
+        with patch("spectra_tools.validation.HAS_JSONSCHEMA", True):
             if jsonschema is not None:
                 with patch("jsonschema.validate", side_effect=jsonschema.ValidationError("missing target")):
                     tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {})
@@ -115,8 +115,8 @@ async def test_validate_and_resolve_tool_jsonschema_missing():
     mock_registry.sync_status_from_cache = AsyncMock()
     mock_registry.get_tool.return_value = mock_tool
 
-    with patch("spectra_platform.services.tools.validation.get_registry", return_value=mock_registry):
-        with patch("spectra_platform.services.tools.validation.HAS_JSONSCHEMA", False):
+    with patch("spectra_tools.validation.get_registry", return_value=mock_registry):
+        with patch("spectra_tools.validation.HAS_JSONSCHEMA", False):
             tool, error = await validate_and_resolve_tool(mission, "nmap", "1.2.3.4", {})
 
     assert tool == mock_tool
