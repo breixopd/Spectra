@@ -9,13 +9,21 @@ from __future__ import annotations
 import asyncio
 import functools
 import logging
+import re
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 import docker
 from docker.errors import APIError, DockerException, NotFound
 
 logger = logging.getLogger(__name__)
+
+# How recently a Swarm task must have entered a failed/rejected state to count as
+# an *active* failure (crash-loop signal). Older, already-superseded failures are
+# ignored so a single historical OOM or a finished rollout never triggers a heal.
+_ACTIVE_FAILURE_WINDOW_SECS = 180.0
+_TS_FRACTION_RE = re.compile(r"\.(\d+)")
 
 
 @dataclass
@@ -83,39 +91,61 @@ def _task_as_dict(task: Any) -> dict[str, Any]:
     return {}
 
 
+def _parse_swarm_timestamp(value: str) -> datetime | None:
+    """Parse a Docker/Swarm RFC3339 timestamp (nanosecond precision, trailing Z).
+
+    Python's ``fromisoformat`` rejects the 9-digit fractional seconds Docker emits,
+    so truncate the fraction to microseconds before parsing. Returns an aware UTC
+    datetime, or ``None`` if the value is missing/unparseable.
+    """
+    if not value:
+        return None
+    cleaned = value.replace("Z", "+00:00")
+    cleaned = _TS_FRACTION_RE.sub(lambda m: "." + m.group(1)[:6], cleaned)
+    try:
+        parsed = datetime.fromisoformat(cleaned)
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+
 def _failed_tasks_from_swarm(svc) -> int:
-    """Count Swarm tasks in failed/rejected states (not replica gaps during updates)."""
-    failed = 0
+    """Count Swarm tasks that represent an *active* failure for ``svc``.
+
+    A task counts when either:
+
+    1. Swarm still wants it running (``DesiredState == "running"``) but its actual
+       state is ``failed``/``rejected`` — it's down *right now*, or
+    2. It entered ``failed``/``rejected`` within ``_ACTIVE_FAILURE_WINDOW_SECS`` —
+       catching crash-loops where each attempt dies between poll cycles.
+
+    Tasks are de-duplicated by ID. Crucially this does NOT count old, already
+    superseded failures (a one-off OOM, a completed rolling update), which the
+    previous "scan the last 80 tasks" approach did — that made a perfectly healthy
+    N/N service report failures forever and triggered needless force-restarts.
+    """
+    bad_states = ("failed", "rejected")
     try:
-        for task in svc.tasks(filters={"desired-state": "running"}):
-            state = (_task_as_dict(task).get("Status") or {}).get("State", "")
-            if state in ("failed", "rejected"):
-                failed += 1
+        tasks = list(svc.tasks())
     except Exception:
-        logger.debug("Failed-task scan (desired-state=running) for %s", svc.name, exc_info=True)
-        return 0
-    if failed:
-        return failed
-
-    try:
-        all_tasks = list(svc.tasks())
-    except Exception:
-        logger.debug("Failed-task scan (all tasks) for %s", svc.name, exc_info=True)
+        logger.debug("Failed-task scan for %s", svc.name, exc_info=True)
         return 0
 
-    def _version_index(task: Any) -> int:
-        try:
-            return int((_task_as_dict(task).get("Version") or {}).get("Index", 0))
-        except (TypeError, ValueError):
-            return 0
-
-    all_tasks.sort(key=_version_index, reverse=True)
-    tail_failed = 0
-    for task in all_tasks[:80]:
-        state = (_task_as_dict(task).get("Status") or {}).get("State", "")
-        if state in ("failed", "rejected"):
-            tail_failed += 1
-    return tail_failed
+    now = datetime.now(UTC)
+    failing: set[str] = set()
+    for idx, task in enumerate(tasks):
+        td = _task_as_dict(task)
+        status = td.get("Status") or {}
+        if status.get("State", "") not in bad_states:
+            continue
+        task_id = td.get("ID") or f"_{idx}"
+        if td.get("DesiredState", "") == "running":
+            failing.add(task_id)
+            continue
+        failed_at = _parse_swarm_timestamp(status.get("Timestamp", ""))
+        if failed_at and (now - failed_at).total_seconds() <= _ACTIVE_FAILURE_WINDOW_SECS:
+            failing.add(task_id)
+    return len(failing)
 
 
 def _parse_service(svc) -> ServiceInfo:
