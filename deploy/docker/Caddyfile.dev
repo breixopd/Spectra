@@ -5,7 +5,8 @@ import Caddyfile.snippets
 	admin off
 }
 
-{$PLATFORM_DOMAIN::80} {
+# Bind all Host headers on port 80 (127.0.0.1:15080, localhost, etc.) for local dev.
+:80 {
 	import security_headers
 
 	@websocket {
