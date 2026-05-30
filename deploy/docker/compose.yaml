@@ -9,6 +9,7 @@
 # Examples:
 #   docker compose -f docker/compose.yaml --profile app --profile targets up -d
 #   docker compose -f docker/compose.yaml --profile test up -d
+#   docker compose -f docker/compose.yaml --profile app --profile observability up -d
 #
 # Migration notes:
 # - Prod: add POSTGRES_DB=spectra to .env (db defaults to spectra_test for test compatibility)
@@ -417,8 +418,10 @@ services:
       SHELL_LISTEN_HOST: 0.0.0.0
       DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-8}
       DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-8}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
       EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
-      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-https://openrouter.ai/api/v1}
+      EMBEDDING_API_BASE_URL: ${EMBEDDING_API_BASE_URL:-https://openrouter.ai/api/v1}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     volumes:
       - spectra_data:/app/data
     read_only: true
@@ -580,7 +583,7 @@ services:
       - ../../packages:/app/packages:ro
       - ../../services:/app/services:ro
       - ../../db/alembic:/app/alembic:ro
-      - ../../db/alembic.ini:/app/config/alembic.ini:ro
+      - ../../db/alembic.ini:/app/alembic.ini:ro
       - ../../plugins:/app/plugins
       - ../../tests:/app/tests:ro
     read_only: true
@@ -753,7 +756,7 @@ services:
       - ../../pyproject.toml:/app/pyproject.toml:ro
       - ../docker:/app/docker:ro
       - ../../db/alembic:/app/alembic:ro
-      - ../../db/alembic.ini:/app/config/alembic.ini:ro
+      - ../../db/alembic.ini:/app/alembic.ini:ro
       - ../../plugins:/app/plugins:ro
     depends_on:
       db:
@@ -811,7 +814,7 @@ services:
       - ../../pyproject.toml:/app/pyproject.toml:ro
       - ../docker:/app/docker:ro
       - ../../db/alembic:/app/alembic:ro
-      - ../../db/alembic.ini:/app/config/alembic.ini:ro
+      - ../../db/alembic.ini:/app/alembic.ini:ro
       - ../../plugins:/app/plugins:ro
     depends_on:
       db:
@@ -852,7 +855,7 @@ services:
       - ../../pyproject.toml:/app/pyproject.toml:ro
       - ../docker:/app/docker:ro
       - ../../db/alembic:/app/alembic:ro
-      - ../../db/alembic.ini:/app/config/alembic.ini:ro
+      - ../../db/alembic.ini:/app/alembic.ini:ro
       - ../../plugins:/app/plugins:ro
     depends_on:
       db:
@@ -990,6 +993,42 @@ services:
           memory: 32M
     networks:
       - targets
+
+  # ── Profiling / resource metrics (profile: observability) ─────
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: spectra-cadvisor
+    profiles: [observability]
+    labels:
+      spectra.managed: "true"
+      spectra.role: "metrics"
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - backend
+    restart: unless-stopped
+    logging: *default-logging
+
+  pyroscope:
+    image: grafana/pyroscope:1.12.0
+    container_name: spectra-pyroscope
+    profiles: [observability]
+    labels:
+      spectra.managed: "true"
+      spectra.role: "profiling"
+    ports:
+      - "127.0.0.1:4040:4040"
+    command: ["server"]
+    networks:
+      - backend
+    restart: unless-stopped
+    logging: *default-logging
 
 networks:
   frontend:

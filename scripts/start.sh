@@ -120,7 +120,7 @@ else
     max_retries=3
     retry=0
     while [ $retry -lt $max_retries ]; do
-        if gosu spectra alembic -c config/alembic.ini upgrade heads 2>&1; then
+        if gosu spectra python -m alembic -c /app/alembic.ini upgrade heads 2>&1; then
             echo "Migrations applied."
             break
         fi
@@ -144,6 +144,10 @@ if [ -d /app/plugins ] && [ -d /app/plugins_shared ]; then
     cp -a /app/plugins/. /app/plugins_shared/ 2>/dev/null || true
 fi
 
-# Drop privileges and start application
+# Drop privileges when running as root (API image). Worker/scheduler/ai images
+# already use USER spectra and omit gosu.
 echo "Starting application..."
-exec gosu spectra "$@"
+if command -v gosu >/dev/null 2>&1 && [ "$(id -u)" = "0" ]; then
+    exec gosu spectra "$@"
+fi
+exec "$@"

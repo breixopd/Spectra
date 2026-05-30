@@ -53,7 +53,8 @@ docker/images/
 # =============================================================================
 # Runtime Data (Docker volumes, local data)
 # =============================================================================
-data/
+data/*
+!data/.gitkeep
 docker/data/
 docker/logs/
 logs/

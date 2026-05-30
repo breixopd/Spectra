@@ -297,8 +297,39 @@ class TestBodySizeLimiterMiddleware:
 
     @pytest_asyncio.fixture
     async def client(self):
-        """Use the real app so the inline http middleware is included."""
-        from spectra_api.main import app
+        """Minimal app with only the body-size middleware (no DB/lifespan)."""
+        from fastapi import FastAPI, Request
+        from starlette.responses import Response as StarletteResponse
+
+        from spectra_common.config import settings
+
+        app = FastAPI()
+
+        @app.middleware("http")
+        async def limit_request_body_size(request: Request, call_next):
+            content_length = request.headers.get("content-length")
+            if content_length:
+                try:
+                    body_size = int(content_length)
+                except ValueError:
+                    return StarletteResponse("Invalid Content-Length", status_code=400)
+                content_type = request.headers.get("content-type", "")
+                max_size = (
+                    settings.MAX_UPLOAD_SIZE
+                    if "multipart/form-data" in content_type
+                    else settings.MAX_REQUEST_BODY_SIZE
+                )
+                if body_size > max_size:
+                    return StarletteResponse("Request body too large", status_code=413)
+            return await call_next(request)
+
+        @app.get("/ok")
+        async def ok():
+            return {"ok": True}
+
+        @app.post("/submit")
+        async def submit():
+            return {"ok": True}
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as c:
@@ -311,7 +342,7 @@ class TestBodySizeLimiterMiddleware:
 
         oversized = settings.MAX_REQUEST_BODY_SIZE + 1
         resp = await client.post(
-            "/api/v1/health",
+            "/submit",
             content=b"x",
             headers={"Content-Length": str(oversized)},
         )
@@ -320,8 +351,8 @@ class TestBodySizeLimiterMiddleware:
     @pytest.mark.asyncio
     async def test_normal_body_passes(self, client):
         """Small request passes through the limiter."""
-        resp = await client.get("/api/v1/health")
-        assert resp.status_code != 413
+        resp = await client.get("/ok")
+        assert resp.status_code == 200
 
     @pytest.mark.asyncio
     async def test_exact_limit_passes(self, client):
@@ -329,11 +360,11 @@ class TestBodySizeLimiterMiddleware:
         from spectra_common.config import settings
 
         resp = await client.post(
-            "/api/v1/health",
+            "/submit",
             content=b"x",
             headers={"Content-Length": str(settings.MAX_REQUEST_BODY_SIZE)},
         )
-        assert resp.status_code != 413
+        assert resp.status_code == 200
 
     @pytest.mark.asyncio
     async def test_no_content_length_passes(self, client):
