@@ -103,7 +103,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                     logger.debug("Cross-origin request from %s allowed (DEBUG mode)", origin)
 
         # --- CSRF Protection (Double-Submit Cookie) ---
-        if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+        csrf_exempt_paths = {
+            "/api/v1/auth/token",
+            "/api/v1/auth/setup",
+        }
+        if request.method in ("POST", "PUT", "DELETE", "PATCH") and request.url.path not in csrf_exempt_paths:
             auth_header = request.headers.get("authorization", "")
             api_key = request.headers.get("x-api-key", "")
             access_token = request.cookies.get("access_token")

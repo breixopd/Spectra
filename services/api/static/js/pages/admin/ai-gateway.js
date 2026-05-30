@@ -11,7 +11,7 @@ async function loadTZConfig() {
         if (tzData?.models) {
             for (const tier of ['fast', 'balanced', 'capable']) {
                 const m = tzData.models[tier] || {};
-                const primary = typeof m === 'string' ? m : (m.primary || '');
+                const primary = typeof m === 'string' ? m : (m.model || m.primary || '');
                 const fallback = typeof m === 'string' ? '' : (m.fallback || '');
                 if (el(`tz-model-${tier}`)) el(`tz-model-${tier}`).value = primary;
                 if (el(`tz-model-${tier}-fallback`)) el(`tz-model-${tier}-fallback`).value = fallback;
@@ -48,12 +48,12 @@ async function saveTZConfig() {
                 fallback: document.getElementById('tz-model-capable-fallback')?.value || '',
             },
         },
-        provider_type: document.getElementById('tz-provider-type')?.value || 'openai',
+        provider_type: document.getElementById('tz-provider-type')?.value || 'deepseek',
     };
     try {
-        const { error } = await spectraApi.put('/api/v1/admin/tensorzero/config', modelPayload);
+        const { data: tzSave, error } = await spectraApi.put('/api/v1/admin/tensorzero/config', modelPayload);
         if (error) showToast('Settings saved. Note: TZ config update failed — ' + error, 'warning');
-        else showToast('Configuration saved. Restart TensorZero container to apply model changes.', 'success');
+        else showToast(tzSave?.message || 'Configuration saved and gateway restarted when possible.', 'success');
     } catch(e) { showToast('Settings saved but TZ update failed: ' + e.message, 'warning'); }
 }
 

@@ -17,13 +17,8 @@ from spectra_api.api.dependencies import (
     get_ui_user,
     require_feature,
 )
-from spectra_api.api.schemas.system import SettingsUpdate
 from spectra_api.authz import Permission, has_permission, require_permission
-from spectra_api.services.system.settings_service import (
-    apply_settings_update,
-    get_ai_status_snapshot,
-    get_current_settings,
-)
+from spectra_api.services.system.settings_service import get_current_settings
 from spectra_api.templates import templates
 from spectra_billing.entitlements import ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES
 from spectra_common.config import settings

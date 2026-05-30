@@ -18,13 +18,21 @@ x-logging: &default-logging
 x-security: &security-defaults
   cap_drop: [ALL]
   security_opt: ["no-new-privileges:true"]
+  dns:
+    - 127.0.0.11
   dns_search: []
+  dns_opt:
+    - ndots:1
 
 x-security-stateful: &security-stateful
   cap_drop: [ALL]
   cap_add: [SETUID, SETGID, CHOWN, FOWNER, DAC_OVERRIDE]
   security_opt: ["no-new-privileges:true"]
+  dns:
+    - 127.0.0.11
   dns_search: []
+  dns_opt:
+    - ndots:1
 
 x-common-env: &common-env
   APP_ENV: production

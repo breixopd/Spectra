@@ -27,7 +27,20 @@ from spectra_persistence.models.user import User
 
 logger = logging.getLogger(__name__)
 
-_CONFIG_PATH = Path(__file__).resolve().parents[4] / "config" / "tensorzero.toml"
+def _tensorzero_config_path() -> Path:
+    """Resolve tensorzero.toml in container (/app/config) or repo checkout."""
+    container_path = Path("/app/config/tensorzero.toml")
+    if container_path.exists():
+        return container_path
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        candidate = parent / "config" / "tensorzero.toml"
+        if candidate.exists():
+            return candidate
+    return container_path
+
+
+_CONFIG_PATH = _tensorzero_config_path()
 
 router = APIRouter()
 
@@ -314,6 +327,8 @@ async def tz_update_config(
         from spectra_scaling import docker_client
 
         applied = await docker_client.restart_service("spectra_tensorzero")
+        if not applied:
+            applied = await docker_client.restart_container("spectra-tensorzero")
     except Exception:
         # Apply is best-effort; the config write already succeeded.
         logger.warning("Could not auto-restart TensorZero after config update", exc_info=True)

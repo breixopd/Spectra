@@ -24,14 +24,23 @@ x-logging: &default-logging
 x-security: &security-defaults
   cap_drop: [ALL]
   security_opt: ["no-new-privileges:true"]
-  # Tailscale host search domains break Docker embedded DNS for service names (db, redis).
+  # Tailscale on the host sets search domains + ndots:0, which breaks single-label
+  # compose service names (db, garage, redis). Force Docker embedded DNS behaviour.
+  dns:
+    - 127.0.0.11
   dns_search: []
+  dns_opt:
+    - ndots:1
 
 x-security-stateful: &security-stateful
   cap_drop: [ALL]
   cap_add: [SETUID, SETGID, CHOWN, DAC_OVERRIDE]
   security_opt: ["no-new-privileges:true"]
+  dns:
+    - 127.0.0.11
   dns_search: []
+  dns_opt:
+    - ndots:1
 
 x-common-env: &common-env
   # Always use the compose service hostname `db` for the default DSN. Do not interpolate
@@ -364,6 +373,7 @@ services:
     volumes:
       - spectra_data:/app/data
       - spectra_plugins:/app/plugins
+      - ../../config/tensorzero.toml:/app/config/tensorzero.toml:rw
     read_only: true
     tmpfs:
       - /tmp

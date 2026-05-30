@@ -103,34 +103,30 @@
                         <div>
                             <label class="form-label">Fast (Tier 1) — Primary</label>
                             <p class="text-xs text-slate-600 mb-1">Scope, tool selection, parsing</p>
-                            <input id="tz-model-fast" class="form-input font-mono text-xs" placeholder="stepfun/step-2-16k:free">
+                            <input id="tz-model-fast" class="form-input font-mono text-xs" placeholder="deepseek-v4-flash">
                             <label class="form-label mt-2">Fallback</label>
-                            <input id="tz-model-fast-fallback" class="form-input font-mono text-xs" placeholder="google/gemma-3-4b-it:free">
+                            <input id="tz-model-fast-fallback" class="form-input font-mono text-xs" placeholder="(optional)">
                         </div>
                         <div>
                             <label class="form-label">Balanced (Tier 2) — Primary</label>
                             <p class="text-xs text-slate-600 mb-1">Planning, steering, reporting</p>
-                            <input id="tz-model-balanced" class="form-input font-mono text-xs" placeholder="nvidia/llama-3.3-nemotron-super-49b-v1:free">
+                            <input id="tz-model-balanced" class="form-input font-mono text-xs" placeholder="deepseek-v4-flash">
                             <label class="form-label mt-2">Fallback</label>
-                            <input id="tz-model-balanced-fallback" class="form-input font-mono text-xs" placeholder="deepseek/deepseek-r1-0528:free">
+                            <input id="tz-model-balanced-fallback" class="form-input font-mono text-xs" placeholder="(optional)">
                         </div>
                         <div>
                             <label class="form-label">Capable (Tier 3) — Primary</label>
                             <p class="text-xs text-slate-600 mb-1">Exploit crafting, PoC generation</p>
-                            <input id="tz-model-capable" class="form-input font-mono text-xs" placeholder="nvidia/llama-3.1-nemotron-ultra-253b-v1:free">
+                            <input id="tz-model-capable" class="form-input font-mono text-xs" placeholder="deepseek-v4-pro">
                             <label class="form-label mt-2">Fallback</label>
-                            <input id="tz-model-capable-fallback" class="form-input font-mono text-xs" placeholder="deepseek/deepseek-r1-0528:free">
+                            <input id="tz-model-capable-fallback" class="form-input font-mono text-xs" placeholder="(optional)">
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                         <div>
                             <label class="form-label">Provider Type</label>
                             <select id="tz-provider-type" class="form-input form-select">
-                                <option value="openai">OpenAI-Compatible (OpenRouter, vLLM, Ollama)</option>
-                                <option value="anthropic">Anthropic</option>
-                                <option value="google_ai_studio_gemini">Google Gemini</option>
-                                <option value="aws_bedrock">AWS Bedrock</option>
-                                <option value="azure">Azure OpenAI</option>
+                                <option value="deepseek">DeepSeek (v4-flash / v4-pro)</option>
                             </select>
                         </div>
                         <div>

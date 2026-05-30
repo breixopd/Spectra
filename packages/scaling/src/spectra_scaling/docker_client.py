@@ -266,6 +266,21 @@ async def restart_service(name: str, detach: bool = True) -> bool:
         return False
 
 
+async def restart_container(name: str, timeout: int = 30) -> bool:
+    """Restart a single container by name (Compose / dev)."""
+    try:
+        client = _get_client()
+        try:
+            container = await _run_sync(client.containers.get, name)
+            await _run_sync(container.restart, timeout=timeout)
+            return True
+        finally:
+            client.close()
+    except (DockerException, APIError) as exc:
+        logger.error("Failed to restart container %s: %s", name, exc)
+        return False
+
+
 async def update_service_image(name: str, image: str, registry_auth: bool = True) -> bool:
     """Update a service to a new image (rolling update)."""
     try:

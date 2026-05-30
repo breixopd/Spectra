@@ -70,6 +70,7 @@ COPY --chown=spectra:spectra scripts/ ./scripts/
 COPY --chown=spectra:spectra db/alembic/ ./alembic/
 COPY --chown=spectra:spectra db/alembic.ini ./alembic.ini
 COPY --chown=spectra:spectra plugins/ ./plugins/
+COPY --chown=spectra:spectra config/tensorzero.toml ./config/tensorzero.toml
 RUN chmod +x /app/scripts/start.sh
 
 ENTRYPOINT ["/app/scripts/start.sh"]
