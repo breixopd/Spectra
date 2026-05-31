@@ -277,6 +277,34 @@ class TestBillingRouter:
 
         assert exc_info.value.status_code == 404
 
+    async def test_stripe_webhook_verification_delegated_to_adapter(self):
+        """Router must not pre-verify Stripe signatures; adapter uses construct_event."""
+        from spectra_api.api.routers.billing import _handle_provider_webhook
+
+        adapter = AsyncMock()
+        adapter.handle_webhook = AsyncMock(
+            return_value={"id": "evt_1", "type": "ping", "data": {"id": "obj_1"}}
+        )
+        request = MagicMock()
+        request.headers = {"stripe-signature": "t=1710000000,v1=not_a_raw_hmac_digest"}
+        request.body = AsyncMock(return_value=b'{"id":"evt_1"}')
+
+        mock_settings = MagicMock()
+        mock_settings.STRIPE_WEBHOOK_SECRET.get_secret_value.return_value = "whsec_test_secret"
+
+        with (
+            patch("spectra_api.api.routers.billing.list_payment_providers", return_value=["stripe"]),
+            patch("spectra_api.api.routers.billing.get_payment_adapter", return_value=adapter),
+            patch("spectra_api.api.routers.billing.get_settings", return_value=mock_settings),
+        ):
+            result = await _handle_provider_webhook(request, "stripe")
+
+        assert result == {"received": True, "provider": "stripe"}
+        adapter.handle_webhook.assert_awaited_once_with(
+            b'{"id":"evt_1"}',
+            "t=1710000000,v1=not_a_raw_hmac_digest",
+        )
+
     async def test_list_available_plans_exposes_provider_agnostic_checkout_signal_for_stripe(self):
         from spectra_api.api.routers.billing import list_available_plans
 

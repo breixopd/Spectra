@@ -1,7 +1,5 @@
 """Self-service billing — provider-aware plan browsing and checkout."""
 
-import hashlib
-import hmac
 import logging
 from datetime import UTC, datetime
 
@@ -185,24 +183,6 @@ def _signature_for_provider(request: Request, provider: str) -> str:
 _STRIPE_WEBHOOK_DEDUP_TTL_SECONDS = 86400 * 30
 
 
-def _verify_stripe_signature(payload: bytes, signature: str) -> bool:
-    settings = get_settings()
-    webhook_secret = settings.STRIPE_WEBHOOK_SECRET.get_secret_value()
-    if not webhook_secret:
-        logger.warning("STRIPE_WEBHOOK_SECRET not configured — skipping webhook verification")
-        return True
-
-    if not signature:
-        return False
-
-    expected = hmac.new(
-        webhook_secret.encode(),
-        payload,
-        hashlib.sha256,
-    ).hexdigest()
-    return hmac.compare_digest(expected, signature)
-
-
 async def _claim_stripe_webhook_event(event_id: str) -> bool:
     """Return True if this process should reconcile the Stripe event (first claimant).
 
@@ -224,10 +204,6 @@ async def _handle_provider_webhook(request: Request, provider: str):
 
     payload = await request.body()
     sig = _signature_for_provider(request, provider_id)
-
-    if provider_id == "stripe" and not _verify_stripe_signature(payload, sig):
-        logger.warning("Stripe webhook signature verification failed")
-        raise HTTPException(400, "Invalid Stripe webhook signature")
 
     adapter = get_payment_adapter(provider_id)
     try:

@@ -14,7 +14,12 @@ import time
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
-from spectra_api.api.dependencies import check_feature_allowed, get_current_active_user, validate_websocket_token
+from spectra_api.api.dependencies import (
+    check_feature_allowed,
+    check_resource_owner,
+    get_current_active_user,
+    validate_websocket_token,
+)
 from spectra_auth.rate_limit import RateLimits, limiter
 from spectra_common.constants import WS_KEEPALIVE_INTERVAL, WS_MAX_MESSAGE_SIZE, WS_MAX_MESSAGES_PER_SECOND
 from spectra_common.tasks import create_safe_task
@@ -228,9 +233,7 @@ async def reconnect_exploit(
             detail="Shell access requires Pro plan or higher. Upgrade at /billing/plans",
         )
 
-    # User isolation: non-superusers can only reconnect to their own findings
-    if not _current_user.is_superuser and finding.user_id and finding.user_id != str(_current_user.id):
-        raise HTTPException(status_code=403, detail="Not authorized to access this finding")
+    check_resource_owner(finding, _current_user, "finding")
 
     logger.info("Exploit reconnect requested: user=%s finding=%s", _current_user.username, finding_id)
     async with async_session_maker() as db:
