@@ -753,7 +753,7 @@ jobs:
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Download Python package artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: python-release-packages
           path: release-dist
