@@ -15,7 +15,7 @@ sqlalchemy[asyncio]==2.0.50
 asyncpg==0.31.0
 
 # AI / LLM
-openai==2.38.0
+openai==2.40.0
 tensorzero==2026.5.2
 fastembed==0.8.0
 
@@ -23,7 +23,7 @@ fastembed==0.8.0
 httpx==0.28.1
 
 # JSON repair (LLM output cleanup)
-json-repair==0.59.10
+json-repair==0.60.0
 
 # Prompt templates
 jinja2==3.1.6
@@ -44,6 +44,6 @@ docker==7.1.0
 defusedxml==0.7.1
 
 # Transitively needed by shared app code imports
-starlette==1.1.0
-python-multipart==0.0.29
+starlette==1.2.1
+python-multipart==0.0.30
 websockets==16.0

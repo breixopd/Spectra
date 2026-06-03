@@ -16,7 +16,7 @@ asyncpg==0.31.0
 alembic==1.18.4
 
 # AI / LLM (API + AI service)
-openai==2.38.0
+openai==2.40.0
 tensorzero==2026.5.2
 httpx==0.28.1
 fastembed==0.8.0
@@ -24,14 +24,14 @@ fastembed==0.8.0
 # Web & Templates (API only)
 jinja2==3.1.6
 nh3==0.3.5
-python-multipart==0.0.29
+python-multipart==0.0.30
 websockets==16.0
-aiohttp==3.13.5
+aiohttp==3.14.0
 aiofiles==25.1.0
 
 # Rate Limiting (API only)
 slowapi==0.1.9
-redis[hiredis]==7.4.0
+redis[hiredis]==8.0.0
 
 # Security (all services)
 bcrypt==5.0.0
@@ -47,7 +47,7 @@ psutil==7.2.2
 asyncssh==2.23.0
 jsonschema==4.26.0
 orjson==3.11.9
-json-repair==0.59.10
+json-repair==0.60.0
 defusedxml==0.7.1
 
 # S3/MinIO (API only)
@@ -61,4 +61,4 @@ xhtml2pdf==0.2.17
 blinker==1.9.0
 
 # Email (API only — SMTP provider)
-aiosmtplib==5.1.0
+aiosmtplib==5.1.1
