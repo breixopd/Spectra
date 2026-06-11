@@ -1,6 +1,6 @@
 # Spectra — Claude Fable 5 Shim
 
-**Read and follow in full first:** [`PERFECT_PROMPT.md`](./PERFECT_PROMPT.md) at the repo root. That file is the master prompt (rules, phases, Definition of Done, quality bar, “do not stop until done,” no legacy, UX standards, etc.).
+**Read and follow in full first:** [`PERFECT_PROMPT.md`](./PERFECT_PROMPT.md) at the repo root — generic master prompt (phases, Definition of Done, principles). This shim adds Spectra-specific context on top.
 
 **This file is additive.** Apply both documents together. If you only received this shim, open `PERFECT_PROMPT.md` before doing anything else.
 
