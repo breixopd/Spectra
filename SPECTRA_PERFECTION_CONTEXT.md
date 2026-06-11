@@ -1,8 +1,8 @@
-# Spectra — Claude Fable 5 Shim
+# Spectra — Perfection Context
 
-**Read and follow in full first:** [`PERFECT_PROMPT.md`](./PERFECT_PROMPT.md) at the repo root — generic master prompt (phases, Definition of Done, principles). This shim adds Spectra-specific context on top.
+**Read and follow in full first:** [`PERFECT_PROMPT.md`](./PERFECT_PROMPT.md) at the repo root — generic master prompt (phases, Definition of Done, principles). This file adds Spectra-specific context on top.
 
-**This file is additive.** Apply both documents together. If you only received this shim, open `PERFECT_PROMPT.md` before doing anything else.
+**This file is additive.** Apply both documents together. If you only received this file, open `PERFECT_PROMPT.md` before doing anything else.
 
 **Audit folder name:** `.audit/YYYY-MM-DD--spectra/`
 
@@ -15,8 +15,7 @@
 | **Path** | `/home/breixopd14/projects/spectra` |
 | **What it is** | Autonomous penetration-testing platform: multi-agent missions, YAML-driven frameworks (PTES/OWASP/NIST), consensus voting on critical decisions, evidence-first findings, plugin tool system, golden worker images, Docker Swarm scaling |
 | **Not public yet** | No external users. **Delete legacy paths; do not keep internal backwards-compat shims or feature flags** for platform-invariant behaviour |
-| **Docs** | `docs/wiki/` — stale docs are bugs |
-| **Design spec** | `docs/superpowers/specs/2026-05-29-spectra-overhaul-design.md` |
+| **Docs** | `docs/wiki/` — must match reality; delete stale or superseded material (including `docs/superpowers/` when outdated) |
 
 ---
 
@@ -198,8 +197,7 @@ Log results to `.audit/.../verification/`.
 4. **Decide autonomously** — pick the option that future-proofs and simplifies; do not ask the user unless irreversible.
 5. **Commit locally as you go; do not push** unless explicitly asked.
 6. **Keep repo neat** — no stray test data in `data/`, `docker/data/`, `logs/`, `memories/`; respect `.gitignore`.
-7. **Do not use subagents** when this shim is active — do the work yourself (including browser testing).
-8. **DeepSeek: v4-flash and v4-pro only** — reject/replace anything else.
+7. **DeepSeek: v4-flash and v4-pro only** — reject/replace anything else.
 
 ---
 

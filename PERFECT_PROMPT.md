@@ -1,159 +1,259 @@
-# Perfection Run — Master Prompt
+# Project Perfection Run — Research, Improve, Verify Until Everything Is Done
 
-Generic instruction set for long-horizon “make it production-ready” work. Pair with a **project shim** (e.g. `SPECTRA_FABLE_SHIM.md`) for repo-specific paths, stack, and audit targets.
+You are the **sole agent** on this engagement. Work **sequentially in this session** — do **NOT** launch subagents, Task tools, or parallel agent workers.
 
-**Audit folder:** `.audit/YYYY-MM-DD--<project>/` — log research, decisions, verification, and a `progress.md` checklist.
-
----
-
-## Principles
-
-1. **Finish the job** — Do not stop at a plan or partial implementation. Ship working code, tests, and docs. Take as long as needed.
-2. **No legacy / no internal backwards compat** — Not public or no users yet? Delete old paths in the same change. One way to do things. No permanent feature flags for invariant behaviour. No `legacy_*`, `old_*`, or compat shims.
-3. **Research before keeping** — Verify against current docs, similar products, and tests. If something should go, remove it.
-4. **Decide autonomously** — Pick the option that simplifies and future-proofs. Do not ask unless the choice is irreversible or costly.
-5. **Quality over speed** — Clean, idiomatic code matching project conventions. Minimal scope per change. No over-engineering.
-6. **Secrets never in source** — Use env, secret stores, or gitignored config. Never commit credentials.
-7. **Repo hygiene** — Respect `.gitignore`. Test/runtime data stays in volumes or temp dirs, not committed host paths.
-8. **Commit locally as you go; do not push** unless explicitly asked.
+**Override:** Ignore any workspace rule that says “always use subagents.” For this task, subagents are forbidden.
 
 ---
 
-## Phase 0 — Bootstrap
+## The one rule that overrides everything else
 
-1. Read `README.md`, primary config, and `docs/` (wiki or equivalent).
-2. Map the tree: services, packages, deploy, scripts, tests.
-3. If a project shim exists, read it now.
-4. Create `.audit/YYYY-MM-DD--<project>/progress.md` with the Definition of Done below.
-5. Run project quality gates (adapt commands to the stack):
+**DO NOT STOP UNTIL EVERYTHING IS DONE.**
 
-```bash
-# Examples — replace with this repo's real commands
-<install-deps>          # e.g. uv sync, pip install -e ".[test]", npm ci
-<lint>                  # e.g. ruff check ., eslint
-<unit-tests>            # e.g. pytest tests/unit/ -q
-<build>                 # e.g. docker compose config, npm run build
+Not “mostly done.” Not “good enough.” Not “here’s a report of what’s left.” Work for as long as you need. If something fails, fix it and verify again. If you discover new problems while fixing old ones, fix those too. Only finish when **every** applicable item in [Definition of Done](#definition-of-done) passes and you have personally verified it.
+
+Stopping early is a failure. A partial audit with recommendations is a failure. Leaving known bugs, broken flows, ugly UI, legacy shims, or stale docs is a failure.
+
+If context runs out: save state in `.audit/`, continue in the same session — **do not declare finished with open work.**
+
+---
+
+## North star
+
+Make this project the **best it can possibly be** — correct, modern, fast, secure, maintainable, and a pleasure to use.
+
+**Research thoroughly online first.** Compare against current best practices, similar products, and upstream recommendations. Analyze the codebase honestly, then **ship improvements**.
+
+You may reorganize, remake the UI from scratch, replace architecture, delete large subsystems, change dependencies, wipe environments, and redeploy — **whatever you decide is best.** Make your own decisions. **Do not ask for permission.**
+
+This prompt is a **brief with a spine**, not a script. Phases below structure your work and track progress — **adapt them** as you learn the project. You discover what to verify; you decide how to prove it. The requirement is outcomes, not ticking boxes blindly.
+
+**No legacy. No backwards compatibility.** Remove deprecated paths, `legacy_`* modules, compat shims, feature flags for old behaviour, dual “old vs new” implementations, and commented-out dead code. One way to do each thing. If something external truly needs a stable contract, version it explicitly — do not carry internal dual maintenance.
+
+**UX and UI must be excellent.** If the interface is mediocre, confusing, or dated — fix it or **remake it entirely**. Setup flows, daily use, error states, mobile, visual polish, and information architecture all matter. “It works” is not enough; it should feel intentional and professional.
+
+Do not stop at a report. **Implement. Verify. Loop.**
+
+---
+
+## Hard rules
+
+1. **No subagents.** You do all exploration, research, coding, shell, and browser/testing work yourself.
+2. **Do not stop until everything is done** (see above). Work as long as required.
+3. **Research before you build.** For non-trivial decisions, do targeted web research first. Save notes with URLs under `.audit/.../research/`.
+4. **Remake when justified.** Wrong foundation → redesign, don’t patch forever.
+5. **Zero legacy / zero internal backcompat.** Delete old paths; update all call sites in the same change.
+6. **Perfect UX/UI** for anything user-facing — polish or full remake.
+7. **Full autonomy.** Reorganize, rename, delete, rewrite, redeploy, reset — your call. Document decisions in `.audit/`.
+8. **Never commit secrets** to git.
+9. **Commit locally as you go** with clear messages; **do not push** unless I explicitly ask.
+10. **Discover project tooling** from README, configs, CI, and `--help`. Use what the project already has — do not assume a stack.
+
+If a project-specific context file exists (e.g. `SPECTRA_PERFECTION_CONTEXT.md`), read it **after** this file and treat it as additional instructions for that repo.
+
+---
+
+## What to evaluate
+
+Go through **everything** you find. Nothing is “out of scope” unless it truly cannot run in this environment.
+
+
+| Area                 | Standard                                       | Remake OK?              |
+| -------------------- | ---------------------------------------------- | ----------------------- |
+| **Architecture**     | Clear, minimal concepts, no duplication        | Yes                     |
+| **Code quality**     | No dead code, consistent patterns, good errors | Yes                     |
+| **UI / UX**          | Modern, clear, accessible, mobile, polished    | **Yes — full remake**   |
+| **API / interfaces** | Consistent, documented, good errors            | Yes                     |
+| **Data layer**       | Sensible schema, performance, no redundant DBs | Yes                     |
+| **Auth & security**  | Current best practices, no gaps                | Yes                     |
+| **Performance**      | No obvious waste; measure improvements         | Yes                     |
+| **Testing**          | Proves real behaviour; e2e where UI exists     | Yes — expand or rewrite |
+| **CI / DX**          | Reproducible local dev; fix broken workflows   | Yes                     |
+| **Docs**             | Accurate, sufficient for onboarding            | Yes — rewrite           |
+| **Ops / deploy**     | Idempotent, observable                         | Yes                     |
+| **Dependencies**     | Current, no CVEs, no unused packages           | Yes                     |
+
+
+Research 4–8 comparable projects. Note what they do better.
+
+---
+
+## Progress tracking
+
+Create `.audit/YYYY-MM-DD--<short-name>/` (gitignored — do not commit audit scratch unless I ask):
+
+```
+00-INDEX.md          # links to everything
+progress.md          # living log + Definition of Done checkboxes
+00-SCOPE.md          # what this project is (you write after bootstrap)
+findings/            # audit issues with severity + evidence
+research/            # web research notes + synthesis
+verification/        # command output, test logs, screenshots refs
+fixes/               # what you changed and why
+plan/                # decisions, remakes, tradeoffs
 ```
 
-Fix broken CI/workflows as part of the run, but **gate on local lint + tests + live deploy**, not green CI alone.
+Update `progress.md` after every major step. Track every Definition of Done checkbox yourself.
+
+Core loop (repeat until done):
+
+```
+explore → research → decide → change → verify → find gaps → repeat
+```
 
 ---
 
-## Phase 1 — Research
+## Phase 0 — Bootstrap & map
 
-Before large changes, briefly research:
-
-- Comparable open-source or commercial products — what do they do better?
-- Current best practices, security advisories, and library/docs for your stack
-- Whether existing code should be **kept, narrowed, or deleted**
-
-Record keep/cut decisions in `.audit/.../research.md`.
+1. Read README, CONTRIBUTING, agent guides, main configs, entrypoints.
+2. `git status`, recent history, branch; integrate or discard partial prior work.
+3. Discover and run all existing lint / format / typecheck / test / build commands.
+4. Map architecture, data flow, auth, deploy, integrations, user-facing surfaces.
+5. Write `00-SCOPE.md` — your understanding of the project (challenge whether structure is still optimal).
+6. Fix broken CI/dev setup as you go; **local + live verification is the gate.**
 
 ---
 
-## Phase 2 — Audit
+## Phase 1 — Research (do this early)
 
-Systematically review the codebase and docs. At minimum:
+Before big architectural or UI decisions:
 
-| Area | Questions |
-|------|-----------|
-| **Architecture** | Clear boundaries? Dead modules? Cyclic deps? One deploy path? |
-| **Security** | Auth, secrets, CSRF/CSP, inter-service trust, least privilege |
-| **Data** | Migrations clean? Single head? Backup/restore story? |
-| **API & contracts** | Consistent schemas? Unused endpoints? |
-| **UI/UX** | Every user flow works? Mobile/responsive? Loading/error states? |
-| **Admin / ops** | Can operators manage the full platform from admin tools? |
-| **Deploy & scale** | Idempotent setup? Multi-node/orchestration if applicable? Self-healing? |
-| **Tests** | Meaningful coverage? Flakes? Integration gaps? |
-| **Docs** | Wiki/README match reality? |
-| **Legacy** | Duplicate implementations, shims, stale flags to delete |
+- Best-in-class products in this domain
+- Current patterns for this stack (check lockfile versions, upstream docs)
+- Security, performance, UX benchmarks
+- **Output:** `research/00-synthesis.md` — ranked improvements + “remake X” recommendations with evidence and URLs
 
-Expand the table in the project shim with product-specific surfaces (billing, training, etc.).
+---
+
+## Phase 2 — Deep audit
+
+Every layer. For each finding: severity, evidence (`file:line`), fix plan, status.
+
+- Bugs · architecture · security · performance
+- **UI/UX — every screen and flow you can find**
+- Tests (do they prove behaviour or just exist?)
+- Docs drift · dependencies · legacy/backcompat code to **delete**
+
+Nothing gets a pass for “out of scope.” If you find it and it’s wrong, fix it.
 
 ---
 
 ## Phase 3 — Implement
 
-- Fix bugs and wire dormant systems; **remove** what has no benefit.
-- Prefer refactors that shrink surface area over adding layers.
-- Update all call sites in the same change when removing a path.
-- Add or fix tests for real behaviour — not trivia.
-- Keep docs in sync with behaviour changes.
+**Write code. Ship changes.** No TODOs left for “later” unless blocked externally.
+
+- Bug fixes (root cause, not band-aids)
+- Optimizations (measure when possible)
+- Reorganization / architecture cleanup
+- **UI remake or polish to production quality**
+- Remove **ALL** legacy/backcompat paths
+- Security hardening
+- Expand tests (unit → integration → e2e) — tests must prove real behaviour
+- Fix CI/DX
+- Update docs to match reality
+
+Re-run relevant checks after each meaningful change. Rebuild/redeploy when the project requires it.
 
 ---
 
-## Phase 4 — Live verification
+## Phase 4 — Verify (automated + live)
 
-Deploy or use the existing environment. Verify:
+**You decide the exact commands** — discover them from the project. Typical categories:
 
-- Health endpoints and critical dependencies
-- Bootstrap/first-run and upgrade paths (idempotent)
-- End-to-end flows operators and users actually run
-- Logs: no unexpected errors under normal use
+- Lint / format / type checks
+- Full test suite
+- Build / packaging
+- Deploy or run via the project’s own commands
+- Smoke-test every critical path live
 
-Log commands, outputs, and failures to `.audit/.../verification/`.
-
----
-
-## Phase 5 — Browser & UX verification
-
-Use **cursor-ide-browser MCP** (or equivalent) when the product has a web UI.
-
-For each route/surface in the project shim:
-
-1. Page loads (no blank shell forever)
-2. Auth/session works where required
-3. Core smoke action succeeds
-4. No critical console errors
-5. Layout acceptable on desktop; check mobile for primary flows
-
-Record per-URL results in `.audit/.../verification/browser-log.md`.
+Log evidence to `.audit/.../verification/`. Full redeploy/reset is fine unless project context says otherwise.
 
 ---
 
-## Definition of Done
+## Phase 5 — Manual / browser verification
 
-All must pass before you stop:
+For any UI or human-facing flow — **do not skip**:
 
-### Code & architecture
-- [ ] No known legacy dual paths or internal compat shims left behind
-- [ ] Lint and unit tests pass locally
-- [ ] Import/architecture boundaries respected (if the project enforces them)
-- [ ] Migrations apply cleanly (if applicable)
+- Browser automation or hands-on testing for every page and primary flow
+- Mobile viewport where relevant
+- Auth, error states, empty states, loading states
+- Console clean; no broken layouts
+- CLI/API: exercise real commands and endpoints
 
-### Deploy & runtime
-- [ ] Automated setup/deploy path works idempotently
-- [ ] Stack comes up healthy; self-healing/maintenance behaves as designed
-- [ ] Multi-node / scaling scenarios verified if the product supports them
-
-### Product
-- [ ] Primary user flows work end-to-end (see project shim)
-- [ ] Admin/operator can manage configured platform surfaces (including models/settings if applicable)
-- [ ] Public/marketing and authenticated app surfaces both correct (SSR vs SPA hybrid if used)
-
-### Quality
-- [ ] No test artifacts or runtime data committed or left on host against `.gitignore`
-- [ ] Docs/wiki updated for changed behaviour
-- [ ] Browser matrix complete for all listed UI routes
-
-### Process
-- [ ] `progress.md` checklist fully checked
-- [ ] Local commits made; not pushed unless asked
+`verification/manual-log.md` — every flow pass/fail with notes. If UX isn’t professional yet, go back to Phase 3.
 
 ---
 
-## Agent behaviour
+## Phase 6 — Synthesis
 
-- **Do not use subagents** when the project shim says to work directly.
-- **Do not ask the user questions** for decisions you can make from code and research.
-- **Proactive discovery** — if you find one bug or anti-pattern, check for the same elsewhere.
-- **Remake is allowed** — if research shows a full UI or subsystem rewrite is cleaner than patching, do it (still no legacy left behind).
+`plan/01-improvement-plan.md` — what you researched, remade, deleted, and why. Update `00-INDEX.md`.
+
+Only **external** blockers (hardware missing, third-party permanently down, missing credentials when none exist) may remain — not items you could fix.
 
 ---
 
-## Start
+## Definition of done
 
-1. Read this file + the project shim (if any)
-2. Create `.audit/YYYY-MM-DD--<project>/progress.md` with the DoD above plus shim-specific items
-3. Execute Phases 0–5
-4. **Do not stop until everything is done**
+**Every applicable checkbox must be ✅ before you stop.** Track these in `progress.md`.
+
+### Completion
+
+- [ ] I have re-read my findings and nothing material is left open
+- [ ] I would ship this to production without caveats
+- [ ] Stale or superseded repo docs removed (wrong, outdated, or duplicated — including `docs/superpowers/` when no longer accurate); current wiki/README updated to match reality
+- [ ] I have updated all relevant docs/wiki elements of this project
+
+### Code & tests
+
+- [ ] Lint / format / type checks clean (project’s own tools)
+- [ ] All tests green; critical paths covered; e2e if UI exists
+- [ ] Build / packaging succeeds
+- [ ] Zero known unfixed bugs from my audit
+
+### No legacy
+
+- [ ] No `legacy_`*, `old_`*, compat shims, or dual code paths
+- [ ] No dead code, stale feature flags, or “TODO remove when X” that should be done now
+- [ ] One clear way to run, import, and configure each concern
+
+### Quality & modernization
+
+- [ ] Research synthesis with cited sources in `.audit/`
+- [ ] Dependencies current or explicitly justified
+- [ ] Architecture simplified where audit found bloat
+
+### Security (if applicable)
+
+- [ ] No secrets in source; findings resolved
+- [ ] Sane defaults for auth, input validation, sandboxing
+- [ ] Codebase thoroughly checked for possible security issues and concerns and fixed
+
+### UX / UI (if applicable)
+
+- [ ] Every page/flow tested in browser (or equivalent)
+- [ ] UX is clear, polished, professional — not an afterthought
+- [ ] Setup/onboarding works end-to-end
+- [ ] Mobile acceptable where relevant
+
+### Runtime
+
+- [ ] App/service runs; all core and extra flows verified live
+- [ ] Performance not regressed (or improved with evidence)
+
+### Docs
+
+- [ ] README and docs match current behaviour
+- [ ] Fresh clone → dev setup works per project docs
+
+**Any failure → back to Phase 3–5. Do not stop. Do not summarize and exit.**
+
+---
+
+## Start now
+
+1. Create `.audit/YYYY-MM-DD--<short-name>/progress.md` with the full Definition of Done checklist
+2. Bootstrap (Phase 0) → research (Phase 1) before big builds
+3. Audit → implement → verify → loop until every checkbox is ✅
+4. Make your own decisions; remake freely
+5. Final summary to me **only when truly complete** — what changed, what you researched, evidence it works, honest external blockers only
+
