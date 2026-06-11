@@ -138,6 +138,7 @@ def create_app() -> FastAPI:
             )
             or path == "/admin"
             or path == "/login"
+            or path == "/setup"
         )
         if not exempt:
             is_maintenance = getattr(_settings, "MAINTENANCE_MODE", False)

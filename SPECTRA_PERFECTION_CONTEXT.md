@@ -167,10 +167,11 @@ Work through these when executing the master prompt phases — **everything**, n
 ## Quality gates (run before claiming done)
 
 ```bash
-cd /home/breixopd14/projects/spectra
-uv sync
+cd /home/breixopd14/Code/Spectra
+cp .env.test.example .env.test   # first time only
+uv sync --all-packages --group dev
 ruff check .
-uv run pytest tests/unit/ -q --no-cov          # expand as needed
+uv run pytest tests/unit/ -q --no-cov --override-ini=addopts=
 scripts/check_import_boundaries.py
 docker compose -f deploy/docker/compose.yaml config
 cd apps/web && npm ci && npm run build

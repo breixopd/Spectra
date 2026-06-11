@@ -40,6 +40,9 @@ def test_spa_serves_index_assets_and_excludes_api(tmp_path, monkeypatch):
     # Favicon route serves the file.
     assert client.get("/favicon.svg").status_code == 200
 
+    # Server-rendered setup wizard (Jinja) — not the React SPA.
+    assert client.get("/setup").status_code == 404
+
     # The SPA owns login now (not the retired Jinja page).
     assert "SPA-ROOT" in client.get("/login").text
 

@@ -19,8 +19,8 @@ Future improvements plan. Items prioritized by impact and complexity.
 - Per-service requirements files (`requirements/ai.txt`, `requirements/scheduler.txt`, `requirements/worker.txt`)
 - Per-service image optimization — scheduler: ~558 MB, AI: ~1.13 GB, API: ~1.34 GB, worker: ~4.13 GB
 - Import boundary enforcement (`scripts/check_import_boundaries.py`) — shared packages cannot import service-specific code
-- `SERVICE_MODE` env var on each image for shared settings (e.g. DB pool hints in `spectra_platform.core.config`) and lifespan branches; **not** six-way router modes on one process
-- Shared package layout: **`packages/common`**, **`packages/domain`**, **`packages/tools-core`**, and **`packages/platform`** (the `spectra_platform` kernel) are workspace members; larger areas inside the platform package migrate incrementally when it reduces coupling.
+- `SERVICE_MODE` env var on each image for shared settings (e.g. DB pool hints in `spectra_common.config`) and lifespan branches; **not** six-way router modes on one process
+- Shared package layout: bounded workspace packages under **`packages/`** (`spectra_common`, `spectra_persistence`, `spectra_mission`, `spectra_tools`, `spectra_ai_core`, `spectra_scaling`, `spectra_infra`, and related libraries); the former **`spectra_platform`** monolith is fully split.
 
 See [Microservices Architecture](microservices-split.md) for full documentation.
 

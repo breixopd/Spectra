@@ -203,7 +203,7 @@ See [Security](security.md) for full security model.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `VPN_CONFIG_DIR` | str | `"/spectra_platform/vpn_configs"` | Directory for VPN configuration files |
+| `VPN_CONFIG_DIR` | str | `"/app/vpn_configs"` | Directory for VPN configuration files |
 | `VPN_ENABLED` | bool | `true` | Enable VPN support |
 | `VPN_AUTO_CONNECT` | str | `""` | Reserved for future use |
 

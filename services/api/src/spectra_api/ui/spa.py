@@ -28,6 +28,7 @@ _SPA_EXCLUDED_PREFIXES = (
     "/mcp",
     "/pricing",
     "/register",
+    "/setup",
     "/forgot-password",
     "/reset-password",
     "/verify-email",

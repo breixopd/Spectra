@@ -6,7 +6,7 @@
 
 ## Current Architecture
 
-Spectra runs as four independently deployable services sharing a PostgreSQL database. Each service has its own Docker build target and per-service requirements file, sharing the same codebase but deployed independently. The `SERVICE_MODE` environment variable is set on **every** image (see Dockerfiles) so shared code in `app.core.config` (for example DB pool sizing) can branch. **Router mounting** for the public Core API is implemented only in `spectra_api.routing.include_routers` and applies only to the **API** container (`spectra_api.main:app`).
+Spectra runs as four independently deployable services sharing a PostgreSQL database. Each service has its own Docker build target and per-service requirements file, sharing the same codebase but deployed independently. The `SERVICE_MODE` environment variable is set on **every** image (see Dockerfiles) so shared code in `spectra_common.config` (for example DB pool sizing) can branch. **Router mounting** for the public Core API is implemented only in `spectra_api.routing.include_routers` and applies only to the **API** container (`spectra_api.main:app`).
 
 ### Core API router policy (`spectra_api` only)
 
@@ -74,7 +74,7 @@ Each service has its own requirements file with only the dependencies it needs:
 
 ### Import Boundary Enforcement
 
-Shared packages (`packages/platform/src/spectra_platform/core/`, `packages/platform/src/spectra_platform/models/`) must not import service-specific code. This is enforced by `scripts/check_import_boundaries.py`:
+Bounded workspace packages (`packages/*/src/`) must not import service-specific code. This is enforced by `scripts/check_import_boundaries.py`:
 
 ```bash
 python3 scripts/check_import_boundaries.py
@@ -124,7 +124,7 @@ Dedicated LLM routing, embedding generation, and RAG queries.
 
 | Attribute | Value |
 |-----------|-------|
-| **Source** | `services/ai/src/spectra_ai/main.py` (implementation still under `spectra_platform/services/ai/`) |
+| **Source** | `services/ai/src/spectra_ai/` + `packages/ai-core/src/spectra_ai_core/` |
 | **Dockerfile** | `deploy/docker/Dockerfile.ai` |
 | **Requirements** | `requirements/ai.txt` |
 | **Port** | 5010 |
@@ -132,7 +132,7 @@ Dedicated LLM routing, embedding generation, and RAG queries.
 | **Dependencies** | PostgreSQL (pgvector for RAG), LLM provider (configurable) |
 | **Resource Limits** | 1 CPU, 1 GB RAM (configurable) |
 
-Uses the `SmartRouter` (`spectra_platform/services/ai/router.py`) with TensorZero for provider-agnostic model routing across tiers.
+Uses the `SmartRouter` (`packages/ai-core/src/spectra_ai_core/router.py`) with TensorZero for provider-agnostic model routing across tiers.
 
 ### Scheduler — `spectra-scheduler`
 
@@ -140,7 +140,7 @@ Headless background task runner.
 
 | Attribute | Value |
 |-----------|-------|
-| **Source** | `services/scheduler/src/spectra_scheduler/main.py` (implementation still under `spectra_platform/services/**`) |
+| **Source** | `services/scheduler/src/spectra_scheduler/` (background loops call into `spectra_infra`, `spectra_mission`, etc.) |
 | **Dockerfile** | `deploy/docker/Dockerfile.scheduler` |
 | **Requirements** | `requirements/scheduler.txt` |
 | **Port** | 5011 (health endpoint only) |
@@ -185,7 +185,7 @@ SERVICE_AUTH_SECRET=<shared-secret>   # Same value on all services
 AI_SERVICE_URL=http://ai-svc:5010    # Core API → AI Service
 ```
 
-The `ServiceAuthMiddleware` (`spectra_platform/core/service_auth.py`) validates the `X-Service-Auth` header on incoming requests.
+The `ServiceAuthMiddleware` (`packages/infrastructure/src/spectra_infra/di/service_auth.py`) validates the `X-Service-Auth` header on incoming requests.
 
 ### 2. PostgreSQL Job Queue
 
@@ -220,7 +220,7 @@ await conn.add_listener("spectra_events", handle_event)
 
 ### Event Types
 
-Events map to the `EventType` enum in `spectra_platform/core/events.py`:
+Events map to the `EventType` enum in `packages/infrastructure/src/spectra_infra/events.py`:
 
 | Event | Publisher | Subscribers |
 |-------|-----------|-------------|
@@ -261,7 +261,7 @@ The codebase uses a gateway pattern for service abstraction. When a service URL 
 | Sandbox Orchestrator | `SANDBOX_ORCHESTRATOR_URL` | In-process `SandboxPool` |
 | AI Service | `AI_SERVICE_URL` | In-process AI handlers |
 
-The `ServiceRegistry` (`spectra_platform/services/gateway/service_registry.py`) manages this routing transparently. The `GatewayClient` base class (`spectra_platform/services/gateway/http_client.py`) provides retry with exponential backoff, connection pooling, and bearer-token auth.
+The `ServiceRegistry` (`packages/ai-core/src/spectra_ai_core/gateway/service_registry.py`) manages this routing transparently. The `GatewayClient` base class (`packages/ai-core/src/spectra_ai_core/gateway/http_client.py`) provides retry with exponential backoff, connection pooling, and bearer-token auth.
 
 ---
 
@@ -325,7 +325,7 @@ No external message broker is required — PostgreSQL handles queueing, pub/sub,
 
 ## Build plane / image registry (roadmap)
 
-Golden-image builds and worker image promotion (`spectra_platform/services/tools/sandbox/golden_image.py`, worker/orchestrator paths) can become **CPU- and disk-heavy** and may need a **dedicated host** or service: isolated build VMs, a private container registry, and signed promotion into the runtime cluster. That is **not** a separate shipped service today; when you split it out, wire it the same way as other gateways (URL env + `GatewayClient`-style client), keep **registry auth** (token or mTLS) distinct from `SERVICE_AUTH_SECRET`, and restrict network paths so only the worker/orchestrator can pull promoted images.
+Golden-image builds and worker image promotion (`packages/tools/src/spectra_tools/sandbox/golden_image.py`, worker/orchestrator paths) can become **CPU- and disk-heavy** and may need a **dedicated host** or service: isolated build VMs, a private container registry, and signed promotion into the runtime cluster. That is **not** a separate shipped service today; when you split it out, wire it the same way as other gateways (URL env + `GatewayClient`-style client), keep **registry auth** (token or mTLS) distinct from `SERVICE_AUTH_SECRET`, and restrict network paths so only the worker/orchestrator can pull promoted images.
 
 ---
 

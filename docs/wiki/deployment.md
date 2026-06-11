@@ -78,7 +78,7 @@ CPU/RAM snapshot: `scripts/runbooks/vps-docker-stats.sh`.
 ### SERVICE_MODE Configuration
 
 Each image sets `SERVICE_MODE` (see Dockerfiles) so **shared** code — especially
-`app.core.config` (DB pool sizing) and **lifespan** branches in the Core API —
+`spectra_common.config` (DB pool sizing) and **lifespan** branches in the Core API —
 can tell which physical role the container plays (`api`, `ai`, `scheduler`,
 `worker`).
 
@@ -368,7 +368,7 @@ Triggered on every push/PR to `main` or `develop`.
 | **integration-test** | Integration pytest suite in Docker (Garage bootstrapped) |
 | **docker-build** | Builds runtime images, Trivy CRITICAL gate on images, validates Compose + Swarm config |
 | **deps** | `pip-audit` dependency audit |
-| **version-check** | Verifies version metadata in `packages/platform/src/spectra_platform/_meta/version.py` |
+| **version-check** | Verifies version metadata in `packages/common/src/spectra_common/_meta/version.py` |
 | **compose-smoke** | Push-only: full compose stack + selected e2e/health/performance smoke tests |
 
 ### `release.yml` — Build, Push & Deploy
@@ -376,7 +376,7 @@ Triggered on every push/PR to `main` or `develop`.
 Triggered by **manual dispatch from `main` only**.
 
 1. Validate the operator-supplied CalVer release version
-2. Run unit and integration tests in Docker, Bandit on `packages/platform/src/spectra_platform` (HIGH gate), and Compose/Swarm config validation (see `.github/workflows/release.yml` — this path does **not** rerun CI Ruff, import boundaries, or Pyright)
+2. Run unit and integration tests in Docker, Bandit on `packages/` and `services/` (HIGH gate), and Compose/Swarm config validation (see `.github/workflows/release.yml` — this path does **not** rerun CI Ruff, import boundaries, or Pyright)
 3. Build & push Docker images to GHCR with `latest` + version tags
 4. SSH deploy only after the host resolves the currently deployed version and captures a pre-deploy PostgreSQL backup; the post-deploy gate now waits for the unauthenticated `/api/health/ready` probe to confirm database, AI service, TensorZero, scheduler, worker, LLM, and embeddings readiness
 5. Publish the git tag and GitHub Release with the generated changelog only after deploy succeeds

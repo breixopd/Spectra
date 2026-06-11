@@ -62,7 +62,7 @@ Login uses the job’s built-in **`GITHUB_TOKEN`** (`packages: write`). That is 
 
 GitHub does **not** offer a PyPI-compatible package registry for Python wheels. The repo therefore publishes Python packages as **GitHub Release assets**:
 
-- The **Release** workflow builds wheels/sdists for `packages/common`, `packages/domain`, `packages/platform`, `packages/tools-core`, and `packages/storage-policy`.
+- The **Release** workflow builds wheels/sdists for workspace packages under `packages/` (for example `spectra_common`, `spectra_domain`, `spectra_persistence`, `spectra_mission`, `spectra_tools_core`, `spectra_storage_policy`, and the other bounded libraries).
 - Those files are attached to the GitHub Release alongside the changelog.
 - CI on `main` also builds the same package files and uploads them as workflow artifacts for verification, but CI does not publish them as a public package registry.
 

@@ -109,24 +109,27 @@ Interactive docs: `/docs` (Swagger), `/redoc`.
 ## Development
 
 ```bash
-pip install -r requirements/app.txt
+uv sync --all-packages --group dev
 cp .env.example .env
-alembic upgrade head
+alembic -c db/alembic.ini upgrade head
 uvicorn spectra_api.main:app --reload --port 5000
 ```
 
 ### Tests
 
 ```bash
-cp .env.test.example .env.test   # optional API keys for live LLM tests
+cp .env.test.example .env.test   # required for host pytest; optional API keys for live LLM tests
+uv sync --all-packages --group dev
 ./scripts/test.sh unit
 ./scripts/test.sh integration    # Docker
 ```
 
+Host pytest auto-loads `.env.test` via `env_files` in `pyproject.toml` (`[tool.pytest.ini_options]`).
+
 See [Testing strategy](docs/wiki/testing-strategy.md) and [CI parity](docs/runbooks/ci-parity-local.md). Pull request CI runs **static-analysis** in Docker (Ruff, import boundaries, Pyright, Bandit).
 
 ```bash
-ruff check packages/platform/src/spectra_platform
+ruff check packages/ services/
 ```
 
 ## Documentation

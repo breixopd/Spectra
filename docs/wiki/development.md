@@ -28,8 +28,7 @@ git clone <repo-url> && cd spectra
 cp .env.example .env
 # Edit .env — at minimum set JWT_SECRET_KEY to a secure random value
 
-cd docker
-docker compose up -d
+docker compose -f deploy/docker/compose.yaml up -d
 ```
 
 - **Dev UI:** <http://localhost:5000>
@@ -84,6 +83,18 @@ If your editor loads MCP servers from a user config file, you can run a stdio MC
 
 ## Testing
 
+### Host pytest (local, without Docker test runner)
+
+```bash
+cp .env.test.example .env.test
+uv sync --all-packages --group dev
+pytest tests/unit/ -q
+```
+
+Pytest auto-loads `.env.test` via `env_files` in `pyproject.toml` (`[tool.pytest.ini_options]`). Add optional API keys in `.env.test` for live LLM tests.
+
+### Docker / CI test commands
+
 The primary CI test command is:
 
 ```bash
@@ -133,7 +144,7 @@ make test-soak
 ## Linting and static analysis
 
 ```bash
-ruff check packages/platform/src/spectra_platform
+ruff check packages/ services/
 ```
 
 CI runs one **`static-analysis`** job (`.github/workflows/ci.yml`): a single `Dockerfile.test` build, then Ruff, the import-boundary script, Pyright, and Bandit (HIGH severity / confidence gate). Ruff and Pyright defaults live in `pyproject.toml`.
@@ -156,44 +167,32 @@ Use `from __future__ import annotations` at the top of new files for modern type
 ## Code Structure
 
 ```text
-packages/platform/src/spectra_platform/
-├── _meta/              # App metadata (version, build info)
-├── core/               # Config, database, security, WebSocket, events, cache, redis
-├── models/             # SQLAlchemy database models
-├── repositories/       # Data access layer (Repository pattern)
-├── services/
-│   ├── ai/             # Agents, memory, knowledge facade, LLM glue (RAG engine is spectra_ai)
-│   │   ├── agents/     # Specialist agents (scope → reporting)
-│   │   ├── context.py  # Context window management (token budgeting)
-│   │   ├── knowledge.py # RAG + methodology helpers (calls spectra_ai.rag)
-│   │   ├── router.py   # TensorZero smart routing
-│   │   ├── memory.py   # Persistent cross-mission learning
-│   │   ├── playbook.py # Deterministic attack playbooks
-│   │   ├── grounding.py # Anti-hallucination framework
-│   │   └── cve_intel.py # CVE correlation database
-│   ├── mission/        # Mission lifecycle, execution, exploitation
-│   │   └── credentials.py # Per-mission credential store
-│   ├── tools/          # Tool registry, adapter, parser, installer
-│   │   └── sandbox/    # Per-mission sandbox pool management
-│   ├── scaling/        # Server pool manager, load balancing
-│   ├── gateway/        # Service registry, remote service adapters
-│   ├── provisioning/   # SSH auto-provisioning for remote servers
-│   └── shell/          # Reverse shell session management
-└── utils/              # Shared utilities
-
 packages/
-├── common/             # spectra_common shared primitives
-├── domain/             # spectra_domain integration contracts
-├── platform/           # spectra_platform domain kernel (workspace: `spectra-platform`)
-└── tools-core/         # spectra_tools_core registry contracts
+├── common/             # spectra_common — config, encryption, constants, version metadata
+├── auth/               # spectra_auth — service auth helpers
+├── persistence/        # spectra_persistence — database, ORM models, repositories
+├── mission/            # spectra_mission — FSM, frameworks, credentials, lifecycle
+├── tools/              # spectra_tools — registry, adapters, sandbox pool, golden image
+├── ai-core/            # spectra_ai_core — agents, memory, router, gateway, RAG facade
+├── scaling/            # spectra_scaling — server pool, auto-scaler, resource manager
+├── billing/            # spectra_billing
+├── system/             # spectra_system — runtime settings, health
+├── infrastructure/     # spectra_infra — queue, events, cache, redis, background tasks
+├── observability/      # spectra_observability
+├── domain/             # spectra_domain — integration contracts and DTOs
+├── contracts/          # spectra_contracts
+├── tools-core/         # spectra_tools_core — tool registry contracts
+└── storage-policy/     # spectra_storage_policy
 
 services/
-├── api/                # `spectra_api` FastAPI bootstrap plus UI static/templates
-├── ai/                 # spectra_ai: RAG, embeddings, LLM client, prompts (`services/ai/src/spectra_ai/`)
-├── scheduler/          # spectra_scheduler background service entry point
-└── worker/             # spectra_worker job queue consumer
+├── api/                # spectra_api — FastAPI bootstrap, routers, UI static/templates
+├── ai/                 # spectra_ai — RAG engine, embeddings, HTTP entry (`services/ai/src/spectra_ai/`)
+├── scheduler/          # spectra_scheduler — background loops
+└── worker/             # spectra_worker — job queue consumer
 
-docker/
+apps/web/               # React SPA
+
+deploy/docker/
 ├── compose.yaml             # Dev / test / targets via `--profile` (`app`, `test`, `targets`, …)
 ├── docker-compose.swarm.yml # Docker Swarm production stack
 ├── Caddyfile.prod           # Production Caddy config
@@ -203,11 +202,12 @@ docker/
 ├── Dockerfile.scheduler     # Scheduler service image
 └── Dockerfile.worker        # Kali worker image
 
-plugins/                     # Tool plugin JSON configs (26 included)
-data/                        # Gitignored on host when used (local keys/cache); containers use /app/data
-tests/                       # Unit, integration, e2e tests
-docs/                        # Documentation
-config/                      # Build configs (tailwind, postcss)
+db/alembic/               # Database migrations
+plugins/                  # Tool plugin JSON configs
+data/                     # Gitignored on host when used (local keys/cache); containers use /app/data
+tests/                    # Unit, integration, e2e tests
+docs/                     # Documentation
+config/                   # Build configs (tailwind, postcss)
 ```
 
 ---
@@ -215,7 +215,7 @@ config/                      # Build configs (tailwind, postcss)
 ## Key Conventions
 
 - **Database**: PostgreSQL + pgvector, async via SQLAlchemy + asyncpg
-- **Migrations**: Alembic — auto-run on startup via `scripts/start.sh`
+- **Migrations**: Alembic (`db/alembic/`) — auto-run on startup via `scripts/start.sh`
 - **Auth**: JWT tokens, HS256
 - **Task queue**: PostgreSQL-backed job queue with LISTEN/NOTIFY
 - **Config**: Pydantic Settings from environment variables + runtime overrides

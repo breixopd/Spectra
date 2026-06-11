@@ -17,6 +17,7 @@ from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.paths import api_assets_root
+from spectra_api.services.system.settings_service import get_current_settings
 from spectra_api.templates import templates
 from spectra_auth.rate_limit import RateLimits, limiter
 from spectra_auth.security import (
@@ -39,6 +40,7 @@ from spectra_persistence.models.mission import Mission
 from spectra_persistence.models.plan import Plan, Subscription
 from spectra_persistence.models.user import User
 from spectra_persistence.repositories.plan import PlanRepository
+from spectra_system.runtime_settings import get_runtime_setting_bool, get_runtime_setting_str
 
 logger = logging.getLogger(__name__)
 
@@ -291,6 +293,47 @@ async def legal_cookies(request: Request):
             "app_name": settings.APP_NAME,
             "content_override": content_override,
             "is_public_page": True,
+        },
+    )
+
+
+@router.get("/setup", response_class=HTMLResponse, include_in_schema=False)
+async def setup_page(request: Request):
+    """First-run Jinja setup wizard (TensorZero, admin account, platform settings).
+
+    Excluded from the React SPA fallback — see ``spectra_api.ui.spa._SPA_EXCLUDED_PREFIXES``.
+    """
+    first_user: User | None = None
+    async with async_session_maker() as session:
+        has_row = await session.execute(select(User.id).limit(1))
+        has_users = has_row.scalar_one_or_none() is not None
+        if has_users:
+            fu = await session.execute(select(User).order_by(User.id).limit(1))
+            first_user = fu.scalar_one_or_none()
+
+    snap = get_current_settings()
+    allow_registration = await get_runtime_setting_bool("ALLOW_REGISTRATION", True)
+    contact_email = await get_runtime_setting_str("CONTACT_EMAIL", "") or ""
+    prefill = {
+        "platform_base_url": (snap.get("platform_base_url") or "") or "",
+        "app_name": settings.APP_NAME or "Spectra",
+        "contact_email": contact_email,
+        "allow_registration": allow_registration,
+        "tensorzero_gateway_url": (snap.get("tensorzero_gateway_url") or settings.TENSORZERO_GATEWAY_URL or ""),
+        "embedding_model": (snap.get("embedding_model") or settings.EMBEDDING_MODEL or ""),
+        "sandbox_orchestrator_url": (snap.get("sandbox_orchestrator_url") or "") or "",
+    }
+
+    return templates.TemplateResponse(
+        request,
+        "setup.html",
+        {
+            "request": request,
+            "title": f"{settings.APP_NAME} | Setup",
+            "has_users": has_users,
+            "prefill": prefill,
+            "admin_username": first_user.username if first_user else "",
+            "admin_email": first_user.email if first_user else "",
         },
     )
 

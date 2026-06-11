@@ -55,8 +55,10 @@ def test_generate_dockerfile_empty():
     with patch("docker.from_env", side_effect=ImportError("no docker")):
         builder = GoldenImageBuilder()
         df = builder.generate_dockerfile([])
-    assert "FROM" in df
-    assert "apt-get" in df
+    assert "FROM spectra-worker:dev" in df
+    assert "plugins/" in df
+    # Empty manifest: no tool install layers; worker base already has runtime.
+    assert "apt-get" not in df
 
 
 def test_generate_dockerfile_with_plugins():

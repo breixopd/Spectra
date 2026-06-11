@@ -17,14 +17,12 @@ from spectra_api.api.dependencies import (
     require_feature,
 )
 from spectra_api.authz import Permission, has_permission
-from spectra_api.services.system.settings_service import get_current_settings
 from spectra_api.templates import templates
 from spectra_billing.entitlements import ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES
 from spectra_common.config import settings
 from spectra_infra.shell.session_manager import shell_manager
 from spectra_persistence.database import async_session_maker, get_async_session
 from spectra_persistence.models.user import User
-from spectra_system.runtime_settings import get_runtime_setting_bool, get_runtime_setting_str
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -98,51 +96,6 @@ async def profile_page(request: Request):
         request,
         "profile.html",
         {"request": request, "title": f"{settings.APP_NAME} | Account"},
-    )
-
-
-@router.get("/setup", response_class=HTMLResponse)
-async def setup_page(request: Request):
-    """Serve the setup page.
-
-    Always reachable so operators can review TensorZero / platform fields on Docker
-    deploys without being bounced to login. When users already exist, the admin
-    password section is optional; saving updates ``/api/settings`` if the browser
-    has an authenticated session with MANAGE_SETTINGS, otherwise the UI explains
-    that you must log in first.
-    """
-    first_user: User | None = None
-    async with async_session_maker() as session:
-        has_row = await session.execute(select(User.id).limit(1))
-        has_users = has_row.scalar_one_or_none() is not None
-        if has_users:
-            fu = await session.execute(select(User).order_by(User.id).limit(1))
-            first_user = fu.scalar_one_or_none()
-
-    snap = get_current_settings()
-    allow_registration = await get_runtime_setting_bool("ALLOW_REGISTRATION", True)
-    contact_email = await get_runtime_setting_str("CONTACT_EMAIL", "") or ""
-    prefill = {
-        "platform_base_url": (snap.get("platform_base_url") or "") or "",
-        "app_name": settings.APP_NAME or "Spectra",
-        "contact_email": contact_email,
-        "allow_registration": allow_registration,
-        "tensorzero_gateway_url": (snap.get("tensorzero_gateway_url") or settings.TENSORZERO_GATEWAY_URL or ""),
-        "embedding_model": (snap.get("embedding_model") or settings.EMBEDDING_MODEL or ""),
-        "sandbox_orchestrator_url": (snap.get("sandbox_orchestrator_url") or "") or "",
-    }
-
-    return templates.TemplateResponse(
-        request,
-        "setup.html",
-        {
-            "request": request,
-            "title": f"{settings.APP_NAME} | Setup",
-            "has_users": has_users,
-            "prefill": prefill,
-            "admin_username": first_user.username if first_user else "",
-            "admin_email": first_user.email if first_user else "",
-        },
     )
 
 

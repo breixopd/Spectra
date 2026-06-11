@@ -1,14 +1,14 @@
 # Readability, modularity, and structure
 
-This document is **Spectra-specific**: it ties general practice to our layout (`packages/platform/src/spectra_platform/`, `services/*/`, `packages/`) and to how we ship (Docker, Ruff, CI). It is not a second style guide — **Ruff + PEP 8** remain authoritative for formatting and many lint rules.
+This document is **Spectra-specific**: it ties general practice to our layout (`packages/*/src/`, `services/*/`, `apps/web/`) and to how we ship (Docker, Ruff, CI). It is not a second style guide — **Ruff + PEP 8** remain authoritative for formatting and many lint rules.
 
 ## Principles (short)
 
 1. **Code is read more than it is written** — prefer boring, explicit names over clever abstractions ([PEP 8](https://peps.python.org/pep-0008/), Zen of Python).
 2. **One obvious place** — a function or module should answer one question. If a file mixes unrelated HTTP concerns or unrelated domain workflows, split when you touch it (see “When to split” below).
 3. **Shallow beats deep** — reduce nesting with early returns and small helpers. Four levels of `if` / `try` / `for` in one block is a smell.
-4. **Interfaces, not glob imports** — import concrete modules (`from app.services.ai.agents.base import AgentContext`), as in [CONTRIBUTING.md](../../CONTRIBUTING.md#python).
-5. **Dependencies flow inward** — shared `spectra_platform` (under `packages/platform/src/`) and `packages/*` must not import service-only code (`spectra_api.api.*`, worker entrypoints, etc.). Run `python scripts/check_import_boundaries.py`.
+4. **Interfaces, not glob imports** — import concrete modules (`from spectra_ai_core.agents.base import AgentContext`), as in [CONTRIBUTING.md](../../CONTRIBUTING.md#python).
+5. **Dependencies flow inward** — bounded `packages/*` must not import service-only code (`spectra_api.api.*`, worker entrypoints, etc.). Run `python scripts/check_import_boundaries.py`.
 
 Modular organisation (independent files, clear boundaries, testable units) is summarised well in [A practical guide to writing modular Python code](https://derekarmstrong.dev/blog/a-practical-guide-to-writing-modular-python-code/) — use it as background reading, not an extra rule layer.
 
@@ -16,12 +16,19 @@ Modular organisation (independent files, clear boundaries, testable units) is su
 
 | Layer | Location | Responsibility |
 | --- | --- | --- |
-| Domain, DB models, shared services | `packages/platform/src/spectra_platform/` (`import spectra_platform`) | Business logic, ORM; workers + API consume this |
+| Config, constants, encryption | `packages/common/src/spectra_common/` | Shared settings, crypto primitives |
+| Database, ORM, repositories | `packages/persistence/src/spectra_persistence/` | SQLAlchemy models and data access |
+| Mission domain | `packages/mission/src/spectra_mission/` | FSM, frameworks, credentials, lifecycle |
+| Tools and sandboxes | `packages/tools/src/spectra_tools/` | Registry, adapters, sandbox pool |
+| AI agents and routing | `packages/ai-core/src/spectra_ai_core/` | Agents, memory, gateway, RAG facade |
+| Scaling and pools | `packages/scaling/src/spectra_scaling/` | Server pool, auto-scaler, resource manager |
+| Queue, cache, events | `packages/infrastructure/src/spectra_infra/` | Job queue, pub/sub, background tasks |
+| Integration contracts | `packages/domain/`, `packages/contracts/`, `packages/tools-core/` | DTOs and cross-package protocols |
 | HTTP API + UI templates/static | `services/api/src/spectra_api/` | FastAPI app, routers, bootstrap, Jinja, JS |
-| Other deployables | `services/{worker,ai,scheduler}/` | Thin service entrypoints; call into `spectra_platform` (Python) from `packages/platform` |
-| Cross-repo primitives | `packages/common`, `packages/domain`, … | No imports from `app.services.*` upward |
+| Other deployables | `services/{worker,ai,scheduler}/` | Thin service entrypoints; call into bounded packages |
+| React SPA | `apps/web/` | Client-side UI (where used alongside or instead of SSR) |
 
-**HTTP routers and API-only schemas** live under `spectra_api`, not under `spectra_platform/api/` (legacy layout is gone). When you add an endpoint, colocate it with the domain it serves; if a router file grows past roughly **600–800 lines** or mixes admin CRUD + infra + unrelated domains, split by **router include** (`APIRouter` per submodule) rather than growing one file.
+**HTTP routers and API-only schemas** live under `spectra_api`, not in domain packages. When you add an endpoint, colocate it with the domain it serves; if a router file grows past roughly **600–800 lines** or mixes admin CRUD + infra + unrelated domains, split by **router include** (`APIRouter` per submodule) rather than growing one file.
 
 ## Async and performance (readability + correctness)
 

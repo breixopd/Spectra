@@ -74,7 +74,7 @@ When scaling the API, ensure Caddy (or your reverse proxy) load-balances across 
 
 ## Server Pool Concept
 
-Spectra includes a `ServerPoolManager` (`spectra_platform/services/scaling/pool_manager.py`) that tracks server nodes across the infrastructure. Each node is stored in the `server_nodes` database table.
+Spectra includes a `ServerPoolManager` (`packages/scaling/src/spectra_scaling/pool_manager.py`) that tracks server nodes across the infrastructure. Each node is stored in the `server_nodes` database table.
 
 ### ServerNode Model
 
@@ -301,7 +301,7 @@ Available via the observability endpoints:
 
 ## Auto-Scaling
 
-Spectra includes a reactive auto-scaling engine (`spectra_platform/services/scaling/auto_scaler.py`) that monitors queue depth and service utilization to automatically adjust replica counts. Auto-scaling works with both Docker Compose and Docker Swarm; **Docker Swarm is the recommended production deployment** because it handles multi-host replica placement automatically.
+Spectra includes a reactive auto-scaling engine (`packages/scaling/src/spectra_scaling/auto_scaler.py`) that monitors queue depth and service utilization to automatically adjust replica counts. Auto-scaling works with both Docker Compose and Docker Swarm; **Docker Swarm is the recommended production deployment** because it handles multi-host replica placement automatically.
 
 ### How It Works
 

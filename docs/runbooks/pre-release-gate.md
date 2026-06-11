@@ -23,7 +23,7 @@ Use this checklist before tagging a release or deploying production images. All 
 
    ```bash
    docker build -f deploy/docker/Dockerfile.test -t spectra-test-ci .
-   docker run --rm spectra-test-ci bandit -r packages/platform/src/spectra_platform -c pyproject.toml --severity-level high --confidence-level high
+   docker run --rm spectra-test-ci bandit -r packages/ services/ -c pyproject.toml --severity-level high --confidence-level high
    ```
 
 4. **Dependency audit** (host Python; matches CI `deps` job intent):

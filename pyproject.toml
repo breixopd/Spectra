@@ -173,6 +173,9 @@ reportMissingModuleSource = "none"
 # pytest configuration (merged from pytest.ini)
 # =============================================================================
 [tool.pytest.ini_options]
+# Host-side pytest loads test secrets/DB URL before app modules import settings.
+env_files = [".env.test"]
+env_override_existing_values = false
 markers = [
     "asyncio: async test requiring asyncio event loop",
     "e2e: end-to-end test",

@@ -8,33 +8,55 @@ Technical deep-dive into Spectra's agent system, execution pipeline, and learnin
 
 ## Repository layout
 
-| Area | Role |
-|------|------|
-| **`packages/platform/src/spectra_platform/`** | Shared domain kernel (workspace package **`spectra-platform`**): ORM models, repositories, mission/tool/AI business logic, infrastructure helpers. Imported in Python as **`spectra_platform`**. |
-| **`services/*/src/`** | Deployable edges: `spectra_api` (HTTP), `spectra_worker`, `spectra_scheduler`, `spectra_ai` with thin wiring into `spectra_platform`. |
-| **`packages/{common,domain,tools-core}/src/`** | Portable libraries (`spectra_common`, `spectra_domain`, `spectra_tools_core`) with strict import boundaries. |
+The former monolith **`packages/platform/src/spectra_platform/`** is **removed**. Domain logic now lives in bounded workspace packages; deployable services are thin entrypoints.
 
-In containers, `WORKDIR` is `/app`; the platform tree is copied to **`/app/spectra_platform/`** (import path unchanged).
+### Workspace packages (`packages/`)
 
-### `packages/platform` vs the smaller `packages/*` libraries
+| Package | Python import | Role |
+|---------|---------------|------|
+| **`packages/common/`** | `spectra_common` | Config, encryption, constants, version metadata |
+| **`packages/auth/`** | `spectra_auth` | Auth primitives and service-auth helpers |
+| **`packages/persistence/`** | `spectra_persistence` | Database session, ORM models, repositories |
+| **`packages/mission/`** | `spectra_mission` | Mission FSM, frameworks, credentials, lifecycle |
+| **`packages/tools/`** | `spectra_tools` | Tool registry, adapters, sandbox pool, golden image |
+| **`packages/ai-core/`** | `spectra_ai_core` | Agents, memory, router, gateway, RAG facade |
+| **`packages/scaling/`** | `spectra_scaling` | Server pool, auto-scaler, resource manager |
+| **`packages/billing/`** | `spectra_billing` | Billing and entitlements |
+| **`packages/system/`** | `spectra_system` | Runtime settings, health probes |
+| **`packages/infrastructure/`** | `spectra_infra` | Job queue, events, cache, redis, background tasks |
+| **`packages/observability/`** | `spectra_observability` | Metrics and telemetry helpers |
+| **`packages/domain/`** | `spectra_domain` | Integration contracts and DTOs |
+| **`packages/contracts/`** | `spectra_contracts` | Shared protocol types |
+| **`packages/tools-core/`** | `spectra_tools_core` | Tool registry contracts |
+| **`packages/storage-policy/`** | `spectra_storage_policy` | Storage policy rules |
 
-**`spectra-common`**, **`spectra-domain`**, and **`spectra-tools-core`** stay small and dependency-light where possible.
+Each package follows the workspace pattern: `packages/<name>/src/<python_package>/` with its own `pyproject.toml`.
 
-**`spectra-platform`** is the large shared kernel (ORM, Alembic targets, multi-service imports). It lives under **`packages/platform/`** so every first-party Python tree is a **workspace member** with a single `pyproject.toml` pattern (`src/<package>/`). Runtime layout in images remains **`/app/spectra_platform/`** for a short, stable `PYTHONPATH`.
+### Deployable services (`services/`)
+
+| Service | Python import | Role |
+|---------|---------------|------|
+| **`services/api/`** | `spectra_api` | HTTP FastAPI app, routers, SSR UI (templates/static) |
+| **`services/ai/`** | `spectra_ai` | AI microservice — RAG engine, embeddings, LLM HTTP API |
+| **`services/worker/`** | `spectra_worker` | Job queue consumer, tool execution in sandboxes |
+| **`services/scheduler/`** | `spectra_scheduler` | Background loops (cleanup, backups, watchdog, metrics) |
 
 ### Other top-level directories
 
 | Path | Role |
 |------|------|
-| **`alembic/`** | Database migrations for platform models. |
-| **`config/`** | Reference or sample configuration (not secrets). |
-| **`data/`** | **Gitignored** on the host when present — optional local bind-mount target (e.g. encryption keys, caches). Prefer **`docker/data/`** or container **`/app/data`** for stack-local state; do not commit secrets or large blobs here. |
-| **`docker/`** | Compose files, Dockerfiles, image build context. |
-| **`docs/`** | Runbooks (`docs/runbooks/`) and wiki (`docs/wiki/`). |
-| **`plugins/`** | Tool/plugin manifest JSON consumed by the platform. |
-| **`requirements/`** | Supplementary requirement sets / pins where used. |
-| **`scripts/`** | Developer and ops shell helpers. |
-| **`tests/`** | Cross-cutting unit, integration, e2e, and load tests. |
+| **`apps/web/`** | React SPA |
+| **`db/alembic/`** | Database migrations (Alembic; config in `db/alembic.ini`) |
+| **`deploy/docker/`** | Compose files, Dockerfiles, Caddyfile, image build context |
+| **`config/`** | Reference or sample configuration (not secrets) |
+| **`data/`** | **Gitignored** on the host when present — optional local bind-mount target (e.g. encryption keys, caches). Containers use **`/app/data`** for stack-local state; do not commit secrets or large blobs here. |
+| **`docs/`** | Runbooks (`docs/runbooks/`) and wiki (`docs/wiki/`) |
+| **`plugins/`** | Tool/plugin manifest JSON consumed by the tool registry |
+| **`requirements/`** | Supplementary requirement sets / pins where used |
+| **`scripts/`** | Developer and ops shell helpers |
+| **`tests/`** | Cross-cutting unit, integration, e2e, and load tests |
+
+In containers, `WORKDIR` is `/app`; workspace packages are installed into the image Python environment (no separate `/app/spectra_platform/` tree).
 
 **Convention:** keep **`services/api/static/`** and **`services/api/templates/`** as the only home for the HTTP UI assets—avoid duplicating `static/` or `templates/` at repo root so there is one canonical place to edit the UI.
 
@@ -76,13 +98,13 @@ Critical decisions pass through quality gates where multiple LLM instances vote:
 
 ### Pentest frameworks (YAML)
 
-Framework specs live under `spectra_platform/services/mission/frameworks/*.yaml` (`ptes`, `owasp`, `nist`). Phase order, milestones, technique categories, and UI timelines are loaded at runtime—no hardcoded `AssessmentPhase` lists in application code.
+Framework specs live under `packages/mission/src/spectra_mission/frameworks/*.yaml` (`ptes`, `owasp`, `nist`). Phase order, milestones, technique categories, and UI timelines are loaded at runtime—no hardcoded `AssessmentPhase` lists in application code.
 
 ---
 
 ## Context Management
 
-The `ContextManager` (`spectra_platform/services/ai/context.py`) prevents prompt explosion by budgeting tokens across context sections with priority-based allocation.
+The `ContextManager` (`packages/ai-core/src/spectra_ai_core/context.py`) prevents prompt explosion by budgeting tokens across context sections with priority-based allocation.
 
 ### Priority Levels
 
@@ -102,7 +124,7 @@ The `ContextManager` (`spectra_platform/services/ai/context.py`) prevents prompt
 
 ## Credential Store
 
-The `CredentialStore` (`spectra_platform/services/mission/credentials.py`) captures discovered credentials during missions for reuse by subsequent tools.
+The `CredentialStore` (`packages/mission/src/spectra_mission/credentials.py`) captures discovered credentials during missions for reuse by subsequent tools.
 
 - **Per-mission, in-memory** — credentials scoped to the mission lifecycle
 - **Auto-extraction** — regex patterns extract credentials from tool output (Hydra, generic login patterns)
@@ -115,7 +137,7 @@ The `CredentialStore` (`spectra_platform/services/mission/credentials.py`) captu
 
 ## RAG (Retrieval-Augmented Generation)
 
-PostgreSQL **pgvector** semantic search lives in the **`spectra_ai`** package (`services/ai/src/spectra_ai/rag.py`). The platform uses **`spectra_platform.services.ai.knowledge`** as the facade (`get_rag_service`, `get_mission_context`, etc.) and **`spectra_platform.services.rag.service`** (`RAGFacade`) for higher-level indexing.
+PostgreSQL **pgvector** semantic search lives in the **`spectra_ai`** package (`services/ai/src/spectra_ai/rag.py`). Shared callers use **`spectra_ai_core.knowledge`** as the facade (`get_rag_service`, `get_mission_context`, etc.) and **`spectra_ai_core.rag_facade.service`** (`RAGFacade`) for higher-level indexing.
 
 ### Components
 
@@ -222,7 +244,7 @@ User enters target + directive
 
 Debrief lessons are auto-saved after every mission by the `DebriefAgent`.
 
-**Exploit intelligence** (Metasploit modules, CISA KEV catalog, Exploit-DB entries, CVE knowledge base) is cached in PostgreSQL via the `CacheEntry` model (`spectra_platform/services/ai/exploit_db.py`). At startup, the database is auto-initialized in the background if cached data is present. First-time setup requires an admin download via **Settings → Data Sources**, or the scheduler's `exploit_db_refresh` task handles it automatically.
+**Exploit intelligence** (Metasploit modules, CISA KEV catalog, Exploit-DB entries, CVE knowledge base) is cached in PostgreSQL via the `CacheEntry` model (`packages/ai-core/src/spectra_ai_core/exploit_db.py`). At startup, the database is auto-initialized in the background if cached data is present. First-time setup requires an admin download via **Settings → Data Sources**, or the scheduler's `exploit_db_refresh` task handles it automatically.
 
 ### Layer 2: Playbook Engine (`playbook.py`)
 
@@ -265,7 +287,7 @@ Anti-hallucination mechanisms:
 
 Spectra runs as four independently deployable microservices. Each image sets
 `SERVICE_MODE` so shared configuration (for example database pool sizing in
-`spectra_platform.core.config`) can adapt. **Only the Core API** (`spectra_api`) uses that
+`spectra_common.config`) can adapt. **Only the Core API** (`spectra_api`) uses that
 value for FastAPI router mounting (`api` / `all` / `""` = full surface; see
 `microservices-split.md`). AI, scheduler, and worker are **separate ASGI apps**
 with their own entrypoints.
@@ -285,27 +307,28 @@ For development or single-node **API** processes, `SERVICE_MODE=all` loads the s
 
 ```text
 spectra/
-├── packages/platform/src/spectra_platform/
-│   ├── _meta/              # App metadata (version, build info)
-│   ├── auth/               # Security — JWT, RBAC, encryption, rate limiting
-│   ├── core/               # Config, database, security, cache, events, redis
-│   ├── di/                 # Dependency injection — container, protocols, service auth
-│   ├── infrastructure/     # Queue, events, background tasks, metrics
-│   ├── mission/            # Mission FSM, enums, helpers
-│   ├── models/             # SQLAlchemy ORM models
-│   ├── repositories/       # Repository pattern data access
-│   ├── services/           # Domain services (ai, mission, tools, billing, …)
-│   ├── telemetry/          # Observability
-│   └── utils/              # Shared utilities
-├── services/api/           # spectra_api: HTTP app, static UI, Jinja templates
-├── services/{ai,scheduler,worker}/
-├── packages/{common,domain,tools-core}/src/
-├── plugins/                # Tool plugin JSON configs
-├── config/                 # Build configs (tailwind, postcss)
-├── docker/                 # Docker Compose files, Dockerfiles, Caddyfile
-├── scripts/                # Ops scripts, test runners
-├── tests/                  # Unit, integration, e2e, load tests
-└── docs/wiki/              # This documentation
+├── packages/
+│   ├── common/src/spectra_common/       # config, encryption, constants
+│   ├── persistence/src/spectra_persistence/  # database, models, repositories
+│   ├── mission/src/spectra_mission/     # FSM, frameworks, credentials
+│   ├── tools/src/spectra_tools/         # registry, sandbox, golden image
+│   ├── ai-core/src/spectra_ai_core/     # agents, gateway, RAG facade
+│   ├── scaling/src/spectra_scaling/     # pool manager, auto-scaler
+│   ├── infrastructure/src/spectra_infra/ # queue, events, cache, background tasks
+│   └── …                                # auth, billing, domain, contracts, …
+├── services/
+│   ├── api/                             # spectra_api: HTTP app, static UI, templates
+│   ├── ai/                              # spectra_ai: RAG engine, embeddings
+│   ├── worker/                          # spectra_worker: job queue consumer
+│   └── scheduler/                       # spectra_scheduler: background loops
+├── apps/web/                            # React SPA
+├── deploy/docker/                       # Compose, Dockerfiles, Caddyfile
+├── db/alembic/                          # Migrations
+├── plugins/                             # Tool plugin JSON configs
+├── config/                              # Build configs (tailwind, postcss)
+├── scripts/                             # Ops scripts, test runners
+├── tests/                               # Unit, integration, e2e, load tests
+└── docs/wiki/                           # This documentation
 ```
 
 ### Communication Patterns
@@ -336,11 +359,11 @@ spectra/
 
 | Layer | Path | Rule |
 |-------|------|------|
-| **Shared** | `spectra_platform/core/`, `spectra_platform/models/`, `spectra_platform/repositories/` | Used by all services. Must NOT import service-specific code. |
+| **Shared** | `packages/*/src/` (e.g. `spectra_common`, `spectra_persistence`, `spectra_mission`, `spectra_infra`) | Used by all services. Must NOT import service-specific code. |
 | **Service: API** | `services/api/src/spectra_api/` (`spectra_api.main:app`) | Routers, schemas, bootstrap, UI templates, API-owned settings/setup services |
-| **Service: AI** | `services/ai/src/spectra_ai/main.py`, `spectra_platform/services/ai/` | LLM clients, agents, RAG |
+| **Service: AI** | `services/ai/src/spectra_ai/` + `packages/ai-core/src/spectra_ai_core/` | LLM HTTP API, RAG engine, agents |
 | **Service: Worker** | `services/worker/src/spectra_worker/` (`spectra_worker.main:app`) | Job queue consumer, tool execution |
-| **Service: Scheduler** | `services/scheduler/src/spectra_scheduler/main.py` | Background task loops |
+| **Service: Scheduler** | `services/scheduler/src/spectra_scheduler/` | Background task loops |
 
 Import boundaries are enforced by `scripts/check_import_boundaries.py` — shared packages cannot have top-level imports of service-specific modules.
 
@@ -354,7 +377,7 @@ Spectra uses a dual-layer caching system: PostgreSQL for persistent application 
 
 ### PostgreSQL CacheService
 
-`CacheService` (`spectra_platform/core/cache.py`) provides the primary application cache backed by the `cache_entries` table:
+`CacheService` (`packages/infrastructure/src/spectra_infra/cache.py`) provides the primary application cache backed by the `cache_entries` table:
 
 - **Persistent** — survives restarts, shared across all service instances
 - **TTL support** — entries expire via `expires_at` column
@@ -364,7 +387,7 @@ Spectra uses a dual-layer caching system: PostgreSQL for persistent application 
 
 ### Redis Cache
 
-`RedisCache` (`spectra_platform/core/redis_client.py`) provides fast, ephemeral caching and distributed rate limiting:
+`RedisCache` (`packages/infrastructure/src/spectra_infra/redis_client.py`) provides fast, ephemeral caching and distributed rate limiting:
 
 - **Connection pooling** — singleton `RedisConnectionPool` with graceful degradation when Redis is unavailable
 - **JSON serialization** — values stored as JSON strings
@@ -386,13 +409,13 @@ When Redis is unavailable, the system degrades gracefully: `RedisCache` methods 
 
 ## Service Architecture (Gateway Pattern)
 
-Spectra uses a **ServiceRegistry** pattern (`spectra_platform/services/gateway/service_registry.py`) to transparently route between in-process and remote implementations. When a gateway URL is configured, the registry instantiates an HTTP client adapter; otherwise it creates the local implementation.
+Spectra uses a **ServiceRegistry** pattern (`packages/ai-core/src/spectra_ai_core/gateway/service_registry.py`) to transparently route between in-process and remote implementations. When a gateway URL is configured, the registry instantiates an HTTP client adapter; otherwise it creates the local implementation.
 
 ### Extractable Services
 
 | Service | Config Setting | Local Implementation | Protocol |
 |---------|---------------|---------------------|----------|
-| Sandbox Orchestrator | `SANDBOX_ORCHESTRATOR_URL` | `SandboxPool` (`spectra_platform/services/tools/sandbox/`) | HTTP `/containers/*` |
+| Sandbox Orchestrator | `SANDBOX_ORCHESTRATOR_URL` | `SandboxPool` (`packages/tools/src/spectra_tools/sandbox/`) | HTTP `/containers/*` |
 
 ### What Stays In-Process
 
@@ -406,7 +429,7 @@ Spectra uses a **ServiceRegistry** pattern (`spectra_platform/services/gateway/s
 ### ServiceRegistry Pattern
 
 ```python
-from spectra_platform.services.gateway import get_service_registry
+from spectra_ai_core.gateway import get_service_registry
 
 registry = get_service_registry()
 pool = await registry.get_sandbox_orchestrator()  # Remote or local Docker
