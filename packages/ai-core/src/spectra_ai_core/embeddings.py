@@ -117,38 +117,29 @@ class EmbeddingService:
 
     @staticmethod
     def _configured_api_key() -> str | None:
-        """Return the configured embedding API key, if any."""
+        """Return the configured embedding API key (EMBEDDING_API_KEY, else OPENAI_API_KEY)."""
         settings = get_ai_settings()
-        if hasattr(settings, "embedding_api_key"):
-            return settings.embedding_api_key()
-        raw = getattr(settings, "EMBEDDING_API_KEY", None) or getattr(settings, "OPENAI_API_KEY", None)
-        if not raw:
-            return None
-        try:
-            return raw.get_secret_value() or None
-        except AttributeError:
-            return str(raw) or None
+        for raw in (getattr(settings, "EMBEDDING_API_KEY", None), getattr(settings, "OPENAI_API_KEY", None)):
+            if raw is None:
+                continue
+            value = raw.get_secret_value() if hasattr(raw, "get_secret_value") else str(raw)
+            if value:
+                return value
+        return None
 
     async def _init_api_backend(self) -> None:
         """Initialize OpenAI-compatible API backend using settings."""
         try:
             from openai import AsyncOpenAI
 
-            settings = get_ai_settings()
-            api_key = None
-            if hasattr(settings, "EMBEDDING_API_KEY") and settings.EMBEDDING_API_KEY:
-                try:
-                    api_key = settings.EMBEDDING_API_KEY.get_secret_value()
-                except AttributeError:
-                    api_key = str(settings.EMBEDDING_API_KEY)
-
-            base_url = getattr(settings, "EMBEDDING_API_BASE_URL", "") or None
-            model = getattr(settings, "EMBEDDING_MODEL", "") or self.model_name or "text-embedding-3-small"
-
-            api_key = api_key or self._configured_api_key()
+            api_key = self._configured_api_key()
             if not api_key:
                 logger.warning("No EMBEDDING_API_KEY or OPENAI_API_KEY — API embeddings disabled")
                 return
+
+            settings = get_ai_settings()
+            base_url = getattr(settings, "EMBEDDING_API_BASE_URL", "") or None
+            model = getattr(settings, "EMBEDDING_MODEL", "") or self.model_name or "text-embedding-3-small"
 
             kwargs: dict = {"api_key": api_key}
             if base_url:

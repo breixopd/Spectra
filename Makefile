@@ -2,7 +2,7 @@
 # All test targets run inside Docker containers.
 # lint/import-boundaries are fast local conveniences; CI-parity validation runs through docker/Dockerfile.test.
 
-.PHONY: test test-unit test-integration test-all test-coverage test-compose \
+.PHONY: test test-unit test-integration test-all test-coverage \
 	test-load test-performance test-soak test-live-smoke test-full-matrix \
        lint format check clean docker-build docker-up docker-down \
        deploy rollback deploy-check help css-build css-build-prod css-watch
@@ -26,9 +26,6 @@ test-all: ## Run all tests (unit + integration) in Docker
 
 test-coverage: ## Run unit tests with coverage report
 	@./scripts/test.sh coverage
-
-test-compose: ## Run full test stack via docker-compose
-	@./scripts/test.sh compose
 
 test-load: ## Run the load/rate-limit harness in Docker
 	@./scripts/test.sh load
@@ -63,14 +60,14 @@ clean: ## Clean caches and build artifacts
 	@echo "Cleaned."
 
 docker-build: ## Build Docker images (auto-sets date-based version)
-	@BUILD_VERSION=$(BUILD_VERSION) docker compose -f docker/compose.yaml build \
+	@BUILD_VERSION=$(BUILD_VERSION) docker compose -f deploy/docker/compose.yaml build \
 		--build-arg BUILD_VERSION=$${BUILD_VERSION:-$$(date +%Y.%m.%d)-dev}
 
 docker-up: ## Start Docker Compose services
-	@docker compose -f docker/compose.yaml up -d
+	@docker compose -f deploy/docker/compose.yaml up -d
 
 docker-down: ## Stop Docker Compose services
-	@docker compose -f docker/compose.yaml down
+	@docker compose -f deploy/docker/compose.yaml down
 
 deploy: ## Deploy to production (usage: make deploy VERSION=2026.03.12)
 	@./scripts/deploy.sh $(VERSION)
@@ -81,7 +78,7 @@ rollback: ## Rollback to previous version (usage: make rollback VERSION=2026.03.
 deploy-check: ## Run pre-deploy checks without deploying
 	@echo "Running pre-deploy checks..."
 	@docker info > /dev/null 2>&1 || { echo "ERROR: Docker not running"; exit 1; }
-	@test -f docker/compose.yaml || { echo "ERROR: Compose file missing"; exit 1; }
+	@test -f deploy/docker/compose.yaml || { echo "ERROR: Compose file missing"; exit 1; }
 	@test -x scripts/deploy.sh || { echo "ERROR: deploy.sh not executable"; exit 1; }
 	@test -x scripts/health_check.sh || { echo "ERROR: health_check.sh not executable"; exit 1; }
 	@echo "All pre-deploy checks passed."

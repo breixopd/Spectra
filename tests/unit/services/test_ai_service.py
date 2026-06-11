@@ -22,7 +22,11 @@ async def test_lifespan_initializes_embeddings_on_startup():
         mp.setitem(
             sys.modules,
             "spectra_ai_core.embeddings",
-            make_module("spectra_ai_core.embeddings", EmbeddingService=lambda: embedding_service),
+            make_module(
+                "spectra_ai_core.embeddings",
+                EmbeddingService=lambda: embedding_service,
+                register_settings_factory=lambda factory: None,
+            ),
         )
 
         async with ai_service.lifespan(ai_service.app):
@@ -41,7 +45,11 @@ async def test_lifespan_tolerates_embedding_init_failure():
         mp.setitem(
             sys.modules,
             "spectra_ai_core.embeddings",
-            make_module("spectra_ai_core.embeddings", EmbeddingService=lambda: embedding_service),
+            make_module(
+                "spectra_ai_core.embeddings",
+                EmbeddingService=lambda: embedding_service,
+                register_settings_factory=lambda factory: None,
+            ),
         )
 
         async with ai_service.lifespan(ai_service.app):

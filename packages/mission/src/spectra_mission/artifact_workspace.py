@@ -10,6 +10,7 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 
 from spectra_common.config import settings
+from spectra_common.errors import StorageError
 from spectra_storage_policy.storage import get_storage_service
 
 _SAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9._-]+")
@@ -71,7 +72,7 @@ class MissionArtifactWorkspace:
                 data.setdefault("artifacts", [])
                 data.setdefault("tokens", [])
                 return data
-        except (FileNotFoundError, json.JSONDecodeError, RuntimeError, OSError, ValueError):
+        except (FileNotFoundError, json.JSONDecodeError, StorageError, RuntimeError, OSError, ValueError):
             pass
         return {"artifacts": [], "tokens": []}
 

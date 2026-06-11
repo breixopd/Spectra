@@ -471,7 +471,8 @@ def test_parse_service_failed_tasks_from_task_state_not_desired_minus_running():
     assert info.failed_tasks == 0
 
 
-def test_parse_service_counts_failed_in_desired_running_task_list():
+def test_parse_service_counts_actively_failed_task():
+    """A failed task Swarm still wants running is an active failure."""
     attrs = {
         "Spec": {
             "Mode": {"Replicated": {"Replicas": 2}},
@@ -483,16 +484,22 @@ def test_parse_service_counts_failed_in_desired_running_task_list():
         if filters == {"desired-state": "running"}:
             return [
                 {"Status": {"State": "running"}, "NodeID": "n1", "Version": {"Index": 3}},
-                {"Status": {"State": "failed"}, "NodeID": "", "Version": {"Index": 2}},
             ]
-        return []
+        return [
+            {"ID": "t1", "Status": {"State": "running"}, "NodeID": "n1", "Version": {"Index": 3}},
+            {"ID": "t2", "DesiredState": "running", "Status": {"State": "failed"}, "Version": {"Index": 2}},
+        ]
 
     svc = SimpleNamespace(name="spectra_app", attrs=attrs, tasks=tasks)
     info = docker_client._parse_service(svc)
     assert info.failed_tasks == 1
 
 
-def test_parse_service_counts_tail_failed_when_running_filter_has_no_failed():
+def test_parse_service_counts_recent_failure_within_window():
+    """A superseded failure inside the active-failure window still counts (crash-loop)."""
+    from datetime import UTC, datetime
+
+    recent = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f000Z")
     attrs = {
         "Spec": {
             "Mode": {"Replicated": {"Replicas": 1}},
@@ -504,14 +511,41 @@ def test_parse_service_counts_tail_failed_when_running_filter_has_no_failed():
         if filters == {"desired-state": "running"}:
             return [{"Status": {"State": "running"}, "NodeID": "n1", "Version": {"Index": 10}}]
         return [
-            {"Status": {"State": "running"}, "NodeID": "n1", "Version": {"Index": 10}},
-            {"Status": {"State": "failed"}, "Version": {"Index": 9}},
-            {"Status": {"State": "shutdown"}, "Version": {"Index": 8}},
+            {"ID": "t1", "Status": {"State": "running"}, "NodeID": "n1", "Version": {"Index": 10}},
+            {"ID": "t2", "DesiredState": "shutdown", "Status": {"State": "failed", "Timestamp": recent}, "Version": {"Index": 9}},
+            {"ID": "t3", "DesiredState": "shutdown", "Status": {"State": "shutdown"}, "Version": {"Index": 8}},
         ]
 
     svc = SimpleNamespace(name="spectra_worker", attrs=attrs, tasks=tasks)
     info = docker_client._parse_service(svc)
     assert info.failed_tasks == 1
+
+
+def test_parse_service_ignores_old_superseded_failures():
+    """Old failures outside the window must NOT count (no perpetual self-heal)."""
+    attrs = {
+        "Spec": {
+            "Mode": {"Replicated": {"Replicas": 1}},
+            "TaskTemplate": {"ContainerSpec": {"Image": "spectra/w:latest"}},
+        }
+    }
+
+    def tasks(filters=None):
+        if filters == {"desired-state": "running"}:
+            return [{"Status": {"State": "running"}, "NodeID": "n1", "Version": {"Index": 10}}]
+        return [
+            {"ID": "t1", "Status": {"State": "running"}, "NodeID": "n1", "Version": {"Index": 10}},
+            {
+                "ID": "t2",
+                "DesiredState": "shutdown",
+                "Status": {"State": "failed", "Timestamp": "2020-01-01T00:00:00.000000000Z"},
+                "Version": {"Index": 9},
+            },
+        ]
+
+    svc = SimpleNamespace(name="spectra_worker", attrs=attrs, tasks=tasks)
+    info = docker_client._parse_service(svc)
+    assert info.failed_tasks == 0
 
 
 def test_parse_mem_units():

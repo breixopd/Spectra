@@ -97,10 +97,11 @@ export interface ToolExecutionRecord {
 }
 
 export interface FrameworkPhaseTimelineEntry {
-  phase: string;
+  id: string;
   label: string;
-  status: string;
-  [key: string]: unknown;
+  description?: string;
+  done: boolean;
+  current: boolean;
 }
 
 export interface AttackSurfaceSummary {

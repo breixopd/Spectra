@@ -240,6 +240,10 @@ class Settings(BaseSettings):
     # empty disables push (local single-node only). The repo path is appended automatically.
     PLATFORM_REGISTRY: str = ""
     GOLDEN_IMAGE_REPO: str = "spectra/tools"  # repository path within the platform registry
+    # Worker image the golden build extends. Empty = auto-detect from a running container
+    # labelled spectra.role=worker, falling back to the dev compose tag (spectra-worker:dev).
+    # Production (Swarm) sets this to the pinned release worker image.
+    GOLDEN_BASE_IMAGE: str = ""
 
     # MAKER OUTPUT_PARSING gate: number of independent voters used to recover structured
     # facts from free-form tool output when deterministic parsing finds nothing. Only fires

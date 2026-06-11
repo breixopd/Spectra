@@ -12,12 +12,11 @@ from starlette.routing import Route
 
 from spectra_api.api.dependencies import (
     _is_admin_user,
-    get_current_active_user,
     get_current_user,
     get_ui_user,
     require_feature,
 )
-from spectra_api.authz import Permission, has_permission, require_permission
+from spectra_api.authz import Permission, has_permission
 from spectra_api.services.system.settings_service import get_current_settings
 from spectra_api.templates import templates
 from spectra_billing.entitlements import ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES

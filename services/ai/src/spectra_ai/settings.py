@@ -38,13 +38,6 @@ class AISettings(BaseSettings):
             raise ValueError("LLM_TIMEOUT must be 5-1200 seconds")
         return v
 
-    def embedding_api_key(self) -> str | None:
-        """Resolved key for hosted embeddings (EMBEDDING_API_KEY, else OPENAI_API_KEY)."""
-        for field in (self.EMBEDDING_API_KEY, self.OPENAI_API_KEY):
-            if field and field.get_secret_value():
-                return field.get_secret_value()
-        return None
-
 
 @lru_cache
 def get_ai_settings() -> AISettings:

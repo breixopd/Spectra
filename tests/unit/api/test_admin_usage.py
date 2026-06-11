@@ -16,7 +16,7 @@ def _build_mock_tracker(mission_id: str, agent_records: list[dict]) -> CostTrack
         tracker.record(
             agent_name=rec["agent"],
             agent_role=rec["role"],
-            model=rec.get("model", "gpt-4o-mini"),
+            model=rec.get("model", "deepseek-v4-flash"),
             usage={
                 "prompt_tokens": rec.get("prompt", 100),
                 "completion_tokens": rec.get("completion", 50),

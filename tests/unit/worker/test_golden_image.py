@@ -61,8 +61,7 @@ class TestGoldenImageBuilder:
         plugins = builder.parse_plugins(str(tmp_path))
         assert len(plugins) == 0
 
-    def test_generate_dockerfile_contains_base_image(self, tmp_path):
-        from spectra_common.constants import SANDBOX_BASE_IMAGE as BASE_IMAGE
+    def test_generate_dockerfile_extends_worker_base_image(self, tmp_path):
         from spectra_tools.sandbox.golden_image import GoldenImageBuilder
 
         plugins = [
@@ -78,9 +77,50 @@ class TestGoldenImageBuilder:
         builder._client = None
         builder._building = False
         builder._lock = MagicMock()
-        dockerfile = builder.generate_dockerfile(plugins)
-        assert f"FROM {BASE_IMAGE}" in dockerfile
+        dockerfile = builder.generate_dockerfile(plugins, base_image="spectra-worker:test")
+        assert "FROM spectra-worker:test" in dockerfile
         assert "nmap" in dockerfile
+        # No application code or legacy requirements are copied into the golden image.
+        assert "requirements/" not in dockerfile
+        assert "COPY app/" not in dockerfile
+        # Drops back to the non-root user from the worker base image.
+        assert dockerfile.rstrip().endswith("USER spectra")
+
+    def test_generate_dockerfile_falls_back_to_default_base(self):
+        from spectra_tools.sandbox.golden_image import (
+            DEFAULT_GOLDEN_BASE_IMAGE,
+            GoldenImageBuilder,
+        )
+
+        builder = GoldenImageBuilder.__new__(GoldenImageBuilder)
+        builder._client = None
+        builder._building = False
+        builder._lock = MagicMock()
+        dockerfile = builder.generate_dockerfile(
+            [
+                {
+                    "id": "nmap",
+                    "name": "Nmap",
+                    "install_method": "apt",
+                    "install_commands": ["apt-get install -y nmap"],
+                    "verification_command": "",
+                }
+            ]
+        )
+        assert f"FROM {DEFAULT_GOLDEN_BASE_IMAGE}" in dockerfile
+
+    def test_resolve_base_image_prefers_setting(self, monkeypatch):
+        from spectra_tools.sandbox.golden_image import GoldenImageBuilder
+
+        builder = GoldenImageBuilder.__new__(GoldenImageBuilder)
+        builder._client = None
+        builder._building = False
+        builder._lock = MagicMock()
+
+        from spectra_common.config import get_settings
+
+        monkeypatch.setattr(get_settings(), "GOLDEN_BASE_IMAGE", "registry.example/worker:1.2.3")
+        assert builder.resolve_base_image() == "registry.example/worker:1.2.3"
 
     def test_generate_dockerfile_handles_pip_tools(self):
         from spectra_tools.sandbox.golden_image import GoldenImageBuilder
@@ -98,9 +138,10 @@ class TestGoldenImageBuilder:
         builder._client = None
         builder._building = False
         builder._lock = MagicMock()
-        dockerfile = builder.generate_dockerfile(plugins)
-        assert "pip install" in dockerfile
-        assert "sqlmap" in dockerfile
+        dockerfile = builder.generate_dockerfile(plugins, base_image="spectra-worker:test")
+        # pip tools install into an isolated venv, not the uv-built app venv.
+        assert "/opt/tools-venv/bin/pip install --no-cache-dir sqlmap" in dockerfile
+        assert "python3-venv" in dockerfile
 
     def test_generate_dockerfile_handles_go_tools(self):
         from spectra_tools.sandbox.golden_image import GoldenImageBuilder
@@ -118,8 +159,10 @@ class TestGoldenImageBuilder:
         builder._client = None
         builder._building = False
         builder._lock = MagicMock()
-        dockerfile = builder.generate_dockerfile(plugins)
+        dockerfile = builder.generate_dockerfile(plugins, base_image="spectra-worker:test")
         assert "go install" in dockerfile
+        assert "golang" in dockerfile
+        assert "GOPATH=/opt/go" in dockerfile
 
     @pytest.mark.asyncio
     async def test_build_returns_error_when_unavailable(self):
@@ -265,6 +308,9 @@ class TestGoldenImageValidation:
         success, failures = await builder.validate_image("test:tag", str(tmp_path))
         assert success is True
         assert failures == []
+
+
+class TestSingletonAccessors:
     """Singleton accessors."""
 
     def test_get_set_image_builder(self):

@@ -1,16 +1,13 @@
+const path = require('path');
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // Paths must be relative to this file (config/), not the repo root — Docker builds from cd config.
   content: [
-    "./services/api/templates/**/*.html",
-    "./services/api/static/js/**/*.js",
+    path.join(__dirname, '../services/api/templates/**/*.html'),
+    path.join(__dirname, '../services/api/static/js/**/*.js'),
   ],
-  safelist: [
-    'md:flex-row', 'md:flex-col', 'lg:flex-row', 'sm:flex-row',
-    'lg:grid-cols-2', 'lg:grid-cols-4', 'lg:grid-cols-6', 'md:grid-cols-2', 'md:grid-cols-4',
-    'md:w-1/3', 'md:w-2/3', 'lg:w-1/2', 'md:w-1/2',
-    'hidden', 'md:hidden', 'lg:hidden', 'sm:hidden', 'lg:flex', 'md:flex', 'sm:flex',
-    'md:overflow-hidden', 'md:min-h-0', 'md:p-6', 'md:px-6', 'md:py-4',
-  ],
+  safelist: [{ pattern: /^animate-/ }],
   theme: {
     extend: {
       colors: {
@@ -30,4 +27,4 @@ module.exports = {
     },
   },
   plugins: [],
-}
+};

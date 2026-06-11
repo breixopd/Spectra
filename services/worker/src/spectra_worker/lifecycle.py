@@ -139,7 +139,7 @@ async def _auto_install_pending() -> None:
     if pending:
         logger.warning(
             "GOLDEN IMAGE INCOMPLETE: %d / %d tools missing (%s). "
-            "Run golden_image_refresh.sh then rollout new workers. "
+            "Rebuild the golden image (admin panel or build_golden_image_job) then rollout new workers. "
             "On-demand install will be used as fallback until then.",
             len(pending),
             len(tools),

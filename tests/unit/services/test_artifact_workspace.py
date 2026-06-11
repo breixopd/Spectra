@@ -61,6 +61,18 @@ async def test_workspace_upload_list_download_and_delete(fake_storage):
 
 
 @pytest.mark.asyncio
+async def test_list_artifacts_treats_storage_errors_as_empty(fake_storage, monkeypatch):
+    from spectra_common.errors import StorageError
+
+    async def fail_download(bucket, key):
+        raise StorageError(f"Failed to download {key}")
+
+    fake_storage.download = fail_download  # type: ignore[method-assign]
+    workspace = MissionArtifactWorkspace("mission-1")
+    assert await workspace.list_artifacts() == []
+
+
+@pytest.mark.asyncio
 async def test_file_drop_token_expires(fake_storage, monkeypatch):
     now = datetime(2026, 1, 1, tzinfo=UTC)
     monkeypatch.setattr(workspace_module, "_now", lambda: now)

@@ -70,11 +70,6 @@ SECLISTS_SUBDOMAINS_TOP5000_URL: str = f"{SECLISTS_BASE_URL}/Discovery/DNS/subdo
 #: ipwho.is free GeoIP API — returns JSON for ``GET /ipwho.is/<ip>``.
 GEOIP_API_URL: str = "https://ipwho.is"
 
-# --- Docker images ---------------------------------------------------------
-
-#: Base image for the golden tools container build (mirrors deploy/docker/Dockerfile.worker).
-SANDBOX_BASE_IMAGE: str = "kalilinux/kali-rolling:latest"
-
 # ===========================================================================
 # Time Conversion
 # ===========================================================================
@@ -280,8 +275,6 @@ PBKDF2_SALT_LENGTH: int = 16
 # ===========================================================================
 # Docker / Sandboxing
 # ===========================================================================
-
-# SANDBOX_BASE_IMAGE is defined under External URLs & APIs above.
 
 # ===========================================================================
 # Wordlists

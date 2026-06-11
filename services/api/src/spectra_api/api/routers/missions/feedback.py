@@ -8,6 +8,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.dependencies import check_resource_owner, get_current_active_user, validate_uuid_param
+from spectra_api.api.routers.missions._resolve import (
+    resolve_mission_progress,
+    resolve_mission_task_tree,
+)
 from spectra_api.api.schemas.mission import ActionApprovalResponse
 from spectra_auth.rate_limit import RateLimits, limiter
 from spectra_mission.manager import mission_manager
@@ -85,31 +89,21 @@ async def steer_mission(
 @router.get("/{mission_id}/task-tree")
 async def get_task_tree(
     mission_id: str,
-    _current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
     """Get the task tree for a mission."""
-    validate_uuid_param(mission_id, "mission_id")
-    mission = await mission_manager.get_mission(mission_id)
-    if not mission:
-        raise HTTPException(status_code=404, detail="Mission not found")
-    check_resource_owner(mission, _current_user, "mission")
-    tree = mission.task_tree.to_dict()
-    tree["tasks"] = mission.task_tree_ui_tasks()
-    return tree
+    return await resolve_mission_task_tree(mission_id, db, current_user)
 
 
 @router.get("/{mission_id}/progress")
 async def get_mission_progress(
     mission_id: str,
-    _current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_active_user),
 ) -> MissionProgress:
     """Get estimated mission progress."""
-    validate_uuid_param(mission_id, "mission_id")
-    mission = await mission_manager.get_mission(mission_id)
-    if not mission:
-        raise HTTPException(status_code=404, detail="Mission not found")
-    check_resource_owner(mission, _current_user, "mission")
-    return mission.get_progress()
+    return await resolve_mission_progress(mission_id, db, current_user)
 
 
 @router.post("/{mission_id}/approve", response_model=ActionApprovalResponse)

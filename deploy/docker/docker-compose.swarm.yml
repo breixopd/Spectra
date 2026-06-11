@@ -392,6 +392,8 @@ services:
       CONNECT_BACK_HOST: ${CALLBACK_RELAY_HOST:?set CALLBACK_RELAY_HOST to worker or callback-relay egress address}
       SHELL_ROUTING_MODE: direct
       SHELL_LISTEN_HOST: 0.0.0.0
+      # Golden tools image extends the pinned release worker image.
+      GOLDEN_BASE_IMAGE: ${REGISTRY:-ghcr.io/breixopd/}spectra-worker:${VERSION:?set VERSION for swarm deploys}
     networks:
       - backend
       - engagement
@@ -617,7 +619,7 @@ services:
 
   # TensorZero gateway
   tensorzero:
-    image: ${TENSORZERO_IMAGE:-tensorzero/gateway:latest}
+    image: ${TENSORZERO_IMAGE:-tensorzero/gateway:2026.6.0}
     entrypoint: ["/bin/sh", "/app/init.sh"]
     deploy:
       replicas: 1

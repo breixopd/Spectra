@@ -1,9 +1,16 @@
 /* admin.css — Admin panel styles extracted from admin.html */
 
 .admin-sidebar { min-width: 220px; }
-.admin-sidebar a { transition: all 0.2s ease; }
-.admin-sidebar a.active { background: rgba(139,92,246,0.15); color: white; border-left: 3px solid #8b5cf6; }
-.admin-sidebar a:hover:not(.active) { background: rgba(255,255,255,0.04); }
+.admin-sidebar a,
+.admin-sidebar button[role="tab"] { transition: all 0.2s ease; }
+.admin-sidebar a.active,
+.admin-sidebar button[role="tab"].active {
+  background: rgba(139,92,246,0.15);
+  color: white;
+  border-left: 3px solid #8b5cf6;
+}
+.admin-sidebar a:hover:not(.active),
+.admin-sidebar button[role="tab"]:hover:not(.active) { background: rgba(255,255,255,0.04); }
 .stat-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
 .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
 .admin-table th { position: sticky; top: 0; z-index: 5; background: rgba(15,23,42,0.95); backdrop-filter: blur(8px); }

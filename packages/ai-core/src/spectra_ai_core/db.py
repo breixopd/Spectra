@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+
 def get_async_session_maker() -> Any:
     """Return the platform's async SQLAlchemy session maker.
 

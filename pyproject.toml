@@ -259,7 +259,6 @@ source = [
 ]
 data_file = "/tmp/spectra-coverage/.coverage"
 omit = [
-    "spectra_platform/*/migrations/*",
     "db/alembic/*",
     "tests/*",
     "scripts/*",

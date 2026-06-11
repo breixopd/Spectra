@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from spectra_api.api.dependencies import get_current_active_user, get_current_user
 from spectra_api.api.schemas.system import SettingsUpdate
 from spectra_api.authz import Permission, has_permission, require_permission
 from spectra_api.services.system.settings_service import (
@@ -16,7 +17,6 @@ from spectra_api.services.system.settings_service import (
     get_ai_status_snapshot,
     get_current_settings,
 )
-from spectra_api.api.dependencies import get_current_active_user, get_current_user
 from spectra_common.config import settings
 from spectra_persistence.database import get_async_session
 from spectra_persistence.models.user import User

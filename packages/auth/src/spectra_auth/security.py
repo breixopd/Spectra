@@ -6,7 +6,6 @@ Follows OWASP security best practices.
 """
 
 import asyncio
-import base64
 import hashlib
 import json
 import logging
@@ -17,11 +16,10 @@ from typing import Any
 import bcrypt
 import jwt
 import pyotp
-from cryptography.fernet import Fernet, InvalidToken
 from jwt.exceptions import InvalidTokenError as JWTError
 
-from spectra_common.constants import JWT_BLACKLIST_MAX_SIZE
 from spectra_common.config import settings
+from spectra_common.constants import JWT_BLACKLIST_MAX_SIZE
 
 __all__ = [
     "JWTError",
@@ -484,9 +482,7 @@ def get_password_hash(password: str) -> str:
 
 # MFA/BYOK field encryption lives in the foundation layer (spectra_common.encryption);
 # re-exported here for callers that import from spectra_auth.security.
-from spectra_common.encryption import (  # noqa: E402
-    _get_encryption_key,
-    _get_fernet,
+from spectra_common.encryption import (
     decrypt_byok_key,
     decrypt_mfa_secret,
     encrypt_byok_key,

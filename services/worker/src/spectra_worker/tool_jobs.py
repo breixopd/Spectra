@@ -3,8 +3,9 @@
 Architecture
 ------------
 Tools are **baked into the golden image** at build time via
-``golden_image_refresh.sh`` (or ``GoldenImageBuilder.build()``).  The
-worker container starts with all 30+ security tools pre-installed.
+``GoldenImageBuilder.build()`` (worker job, admin panel, or
+``python -m spectra_tools.sandbox.golden_image``).  The worker container
+starts with all 30+ security tools pre-installed.
 
 On-demand installation in ``_ensure_available_tool()`` is a **fallback**
 for edge cases:
@@ -56,10 +57,9 @@ async def _ensure_available_tool(registry: Any, tool_id: str, target: str) -> tu
     """Ensure a tool is available, auto-installing only as last resort.
 
     **Primary path** — tools SHOULD be pre-installed in the golden image
-    that this worker container was launched from.  ``golden_image_refresh.sh``
-    (or ``GoldenImageBuilder.build()``) reads every ``plugins/*.json``,
-    generates a Dockerfile that installs all tools, and bakes them into
-    ``spectra-tools:<tag>``.
+    that this worker container was launched from.  ``GoldenImageBuilder.build()``
+    reads every ``plugins/*.json``, generates a Dockerfile that installs all
+    tools on top of the worker image, and bakes them into ``spectra-tools:<tag>``.
 
     **Fallback** — if the binary is not found locally (e.g. the golden image
     is stale, or a user uploaded a new plugin after the last build), the
@@ -83,7 +83,7 @@ async def _ensure_available_tool(registry: Any, tool_id: str, target: str) -> tu
     _missing_from_golden_image.add(tool_id)
     logger.warning(
         "Tool %s not found in golden image — triggering on-demand install. "
-        "Run golden_image_refresh.sh to bake this tool into the next image.",
+        "Rebuild the golden image to bake this tool into the next rollout.",
         tool_id,
     )
     await _sync_tool_status(
@@ -522,7 +522,7 @@ async def verify_golden_image_on_startup() -> dict[str, Any]:
     if missing:
         logger.warning(
             "GOLDEN IMAGE INCOMPLETE: %d / %d tools missing — %s. "
-            "Run golden_image_refresh.sh to rebuild with all plugins.",
+            "Rebuild the golden image to bake in all plugins.",
             len(missing),
             len(tools),
             ", ".join(sorted(missing)),

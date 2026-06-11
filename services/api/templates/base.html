@@ -15,21 +15,21 @@
     <meta property="og:type" content="website">
 
     <!-- Tailwind CSS (compiled) -->
-    <link rel="stylesheet" href="/static/css/output.css?v=20260503">
+    <link rel="stylesheet" href="/static/css/output.css?v=20260530">
 
     <!-- Design tokens (single source of truth) -->
-    <link rel="stylesheet" href="/static/css/tokens.css?v=20260503">
+    <link rel="stylesheet" href="/static/css/tokens.css?v=20260530">
 
     <!-- Fonts (local) -->
-    <link rel="stylesheet" href="/static/vendor/css/fonts.css?v=20260503">
+    <link rel="stylesheet" href="/static/vendor/css/fonts.css?v=20260530">
     
-    <link rel="stylesheet" href="/static/css/base.css?v=20260503">
+    <link rel="stylesheet" href="/static/css/base.css?v=20260530">
     {% block extra_css %}{% endblock %}
     <!-- Centralized API client (must load before confirm bootstrap) -->
-    <script src="/static/js/api.js?v=20260503"></script>
+    <script src="/static/js/api.js?v=20260530"></script>
     <script nonce="{{ request.state.csp_nonce }}">window.escapeHtml=function(s){var d=document.createElement('div');d.textContent=String(s);return d.innerHTML};</script>
-    <script src="/static/js/shared-utils.js?v=20260503"></script>
-    <script src="/static/js/confirm.js?v=20260503" nonce="{{ request.state.csp_nonce }}"></script>
+    <script src="/static/js/shared-utils.js?v=20260530"></script>
+    <script src="/static/js/confirm.js?v=20260530" nonce="{{ request.state.csp_nonce }}"></script>
 </head>
 <body class="bg-[#0a0e1a] text-slate-300 font-sans antialiased min-h-screen md:overflow-hidden selection:bg-violet-500/30 selection:text-violet-200">
     <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-violet-600 focus:text-white">Skip to content</a>
@@ -133,7 +133,7 @@
     </div>
     <!-- Native WebSocket (for real-time updates) -->
     {% if not is_public_page %}
-    <script src="/static/js/reconnecting-ws.js?v=20260503"></script>
+    <script src="/static/js/reconnecting-ws.js?v=20260530"></script>
     <script nonce="{{ request.state.csp_nonce }}">
         function clearSpectraLocalStorage() {
             try {

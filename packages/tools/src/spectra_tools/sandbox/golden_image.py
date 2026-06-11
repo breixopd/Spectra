@@ -1,4 +1,15 @@
-"""Golden image builder — automatically builds the spectra-tools Docker image from plugin definitions."""
+"""Golden image builder — automatically builds the spectra-tools Docker image from plugin definitions.
+
+The golden image layers every plugin tool on top of the **worker control-plane
+image** (``deploy/docker/Dockerfile.worker``), which already ships the uv-built
+virtualenv, Kali base, non-root ``spectra`` user, and worker entrypoint. The
+generated Dockerfile therefore only installs tools and refreshes plugin
+definitions — Python application code is never copied or re-resolved here.
+
+Run ``python -m spectra_tools.sandbox.golden_image`` for the ops CLI
+(build + validate + scan + push), or trigger a build from the admin panel /
+``build_golden_image_job`` worker job.
+"""
 
 from __future__ import annotations
 
@@ -13,9 +24,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from spectra_common.constants import SANDBOX_BASE_IMAGE
-
 logger = logging.getLogger(__name__)
+
+#: Fallback golden base when no override is configured and no running worker
+#: container can be introspected (matches the dev compose worker tag).
+DEFAULT_GOLDEN_BASE_IMAGE = "spectra-worker:dev"
 
 
 class GoldenImageBuilder:
@@ -97,15 +110,40 @@ class GoldenImageBuilder:
         digest = hashlib.sha256(json.dumps(manifest, sort_keys=True).encode("utf-8")).hexdigest()
         return manifest, digest
 
-    def generate_dockerfile(self, plugins: list[dict[str, Any]]) -> str:
+    def resolve_base_image(self) -> str:
+        """Resolve the worker image the golden image extends.
+
+        Priority: explicit ``GOLDEN_BASE_IMAGE`` setting → image of a running
+        container labelled ``spectra.role=worker`` → ``spectra-worker:dev``.
+        """
+        from spectra_common.config import get_settings
+
+        explicit = get_settings().GOLDEN_BASE_IMAGE.strip()
+        if explicit:
+            return explicit
+
+        if self.available:
+            with contextlib.suppress(OSError, RuntimeError):
+                containers = self._client.containers.list(filters={"label": "spectra.role=worker"})
+                for container in containers:
+                    image_ref = (container.attrs.get("Config") or {}).get("Image") or ""
+                    if image_ref:
+                        return image_ref
+
+        return DEFAULT_GOLDEN_BASE_IMAGE
+
+    def generate_dockerfile(self, plugins: list[dict[str, Any]], base_image: str | None = None) -> str:
         """Generate a Dockerfile that installs all plugin tools.
 
-        The generated Dockerfile layers:
-        1. Base Kali image with core system packages
-        2. Python virtualenv + pip dependencies
-        3. Tool installation from plugin definitions
-        4. Go tools setup
-        5. Worker entrypoint
+        The generated Dockerfile layers on top of the worker image:
+        1. apt tool packages (plus pip/venv/go toolchains when needed)
+        2. pip tools in a dedicated ``/opt/tools-venv`` virtualenv
+        3. Go tools under ``/opt/go``
+        4. Custom plugin install scripts
+        5. Refreshed plugin definitions
+
+        Entrypoint, user, and the application virtualenv are inherited from
+        the worker base image.
         """
         # Group install commands by method
         apt_packages: list[str] = []
@@ -159,77 +197,79 @@ class GoldenImageBuilder:
 
         manifest, manifest_sha = self._plugin_manifest(plugins)
         tool_ids = ",".join(item["id"] for item in manifest)
+        base = base_image or self.resolve_base_image()
+
+        # Toolchains needed by plugin install methods (the worker base ships a
+        # minimal runtime without pip/venv/go).
+        toolchain_packages = []
+        if pip_packages:
+            toolchain_packages.extend(["python3-pip", "python3-venv", "python3-dev", "gcc"])
+        if go_packages:
+            toolchain_packages.append("golang")
 
         lines = [
-            f"FROM {SANDBOX_BASE_IMAGE}",
+            f"FROM {base}",
             "",
             'LABEL org.opencontainers.image.title="Spectra Tools (Golden)"',
             'LABEL org.opencontainers.image.description="Auto-built security tools image"',
             f'LABEL io.spectra.golden-image.manifest-sha256="{manifest_sha}"',
             f'LABEL io.spectra.golden-image.plugins="{tool_ids}"',
             "",
+            "USER root",
             "WORKDIR /app",
-            "",
-            "# System packages + tool packages",
-            "RUN apt-get update && \\",
-            "    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \\",
-            "    python3 python3-pip python3-venv python3-dev \\",
-            "    gcc libpq-dev libffi-dev pkg-config libpcap-dev \\",
-            "    curl wget git jq unzip \\",
-            "    iputils-ping iproute2 netcat-openbsd iptables \\",
-            "    wireguard-tools openvpn \\",
-            "    golang \\",
         ]
 
-        if apt_packages:
-            lines.append(f"    {' '.join(sorted(set(apt_packages)))} \\")
-
-        lines.extend(
-            [
-                "    && apt-get clean \\",
-                "    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*",
-                "",
-                "# Go setup",
-                "ENV GOPATH=/root/go",
-                "ENV PATH=$PATH:/root/go/bin:/usr/local/go/bin",
-                "",
-                "# Python virtualenv",
-                "RUN python3 -m venv /opt/venv",
-                'ENV PATH="/opt/venv/bin:/opt/spectra_tools:$PATH"',
-                "",
-                "# Python dependencies",
-                "COPY requirements/worker.txt .",
-                "RUN pip install --no-cache-dir --upgrade pip && \\",
-                "    pip install --no-cache-dir -r worker.txt",
-                "",
-            ]
-        )
+        all_apt = sorted({*apt_packages, *toolchain_packages})
+        if all_apt:
+            lines.extend(
+                [
+                    "",
+                    "# Tool packages",
+                    "RUN apt-get update && \\",
+                    "    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \\",
+                    f"    {' '.join(all_apt)} \\",
+                    "    && apt-get clean \\",
+                    "    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*",
+                ]
+            )
 
         if pip_packages:
-            lines.append(f"RUN pip install --no-cache-dir {' '.join(sorted(set(pip_packages)))}")
-            lines.append("")
+            # Dedicated tools venv: never mutates the uv-built app venv at /opt/venv.
+            lines.extend(
+                [
+                    "",
+                    "# Python tools (isolated venv, appended to PATH after the app venv)",
+                    "RUN python3 -m venv /opt/tools-venv && \\",
+                    f"    /opt/tools-venv/bin/pip install --no-cache-dir {' '.join(sorted(set(pip_packages)))}",
+                    "ENV PATH=$PATH:/opt/tools-venv/bin",
+                ]
+            )
 
         if go_packages:
-            lines.append("# Go tools")
-            for cmd in go_packages:
-                lines.append(f"RUN {cmd}")
-            lines.append("")
+            lines.extend(
+                [
+                    "",
+                    "# Go tools",
+                    "ENV GOPATH=/opt/go",
+                    "ENV PATH=$PATH:/opt/go/bin",
+                ]
+            )
+            lines.extend(f"RUN {cmd}" for cmd in go_packages)
 
         if custom_commands:
-            lines.append("# Custom tool installations")
-            for cmd in custom_commands:
-                lines.append(f"RUN {cmd}")
             lines.append("")
+            lines.append("# Custom tool installations")
+            lines.extend(f"RUN {cmd}" for cmd in custom_commands)
 
         lines.extend(
             [
-                "# Worker code",
-                "COPY packages/tools-core/src/spectra_tools_core/ ./spectra_tools_core/",
-                "COPY app/ ./app/",
-                "COPY plugins/ ./plugins/",
                 "",
-                "# Entrypoint",
-                'CMD ["python", "-m", "spectra_worker"]',
+                "# Refresh plugin definitions",
+                "COPY plugins/ ./plugins/",
+                "RUN chown -R spectra:spectra /app/plugins",
+                "",
+                "# Entrypoint, CMD, and app venv inherited from the worker base image",
+                "USER spectra",
             ]
         )
 
@@ -360,7 +400,8 @@ class GoldenImageBuilder:
                 return {"status": "error", "message": "No plugins found"}
 
             manifest, manifest_sha = self._plugin_manifest(plugins)
-            dockerfile_content = self.generate_dockerfile(plugins)
+            base_image = self.resolve_base_image()
+            dockerfile_content = self.generate_dockerfile(plugins, base_image=base_image)
             result["plugins_count"] = len(plugins)
             result["plugin_manifest_sha256"] = manifest_sha
             result["plugin_manifest"] = manifest
@@ -369,13 +410,13 @@ class GoldenImageBuilder:
                 "builder": "spectra-golden-image",
                 "source": str(Path(plugins_dir).resolve()),
                 "target_tag": target_tag,
-                "base_image": SANDBOX_BASE_IMAGE,
+                "base_image": base_image,
             }
 
-            logger.info("Building golden image %s from %d plugins...", temp_tag, len(plugins))
+            logger.info("Building golden image %s from %d plugins (base %s)...", temp_tag, len(plugins), base_image)
 
-            # Write Dockerfile to temp dir and build
-            # The build context needs to include requirements/worker.txt, app/, and plugins/
+            # Write Dockerfile to temp dir and build.
+            # The build context only needs plugins/ (everything else comes from the base image).
             project_root = Path(plugins_dir).resolve().parent
 
             def _do_build() -> tuple[Any, list[str]]:
@@ -544,3 +585,49 @@ class GoldenImageBuilder:
                 return None
         except (OSError, RuntimeError):
             return None
+
+
+def _cli() -> int:
+    """Ops CLI: build, validate, scan, and (when configured) push the golden image.
+
+    Usage:
+        python -m spectra_tools.sandbox.golden_image [--plugins-dir plugins]
+            [--tag spectra-tools:latest] [--print-dockerfile]
+    """
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(description="Build the Spectra golden tools image from plugins/*.json")
+    parser.add_argument("--plugins-dir", default="plugins", help="Directory of plugin JSON definitions")
+    parser.add_argument("--tag", default=None, help="Target tag (default: settings.SANDBOX_IMAGE)")
+    parser.add_argument(
+        "--print-dockerfile",
+        action="store_true",
+        help="Print the generated Dockerfile and exit without building",
+    )
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    builder = GoldenImageBuilder()
+
+    if args.print_dockerfile:
+        plugins = builder.parse_plugins(args.plugins_dir)
+        if not plugins:
+            print("No plugins found", file=sys.stderr)
+            return 1
+        print(builder.generate_dockerfile(plugins))
+        return 0
+
+    from spectra_common.config import get_settings
+
+    target_tag = args.tag or get_settings().SANDBOX_IMAGE
+    if ":" not in target_tag:
+        target_tag = f"{target_tag}:latest"
+
+    result = asyncio.run(builder.build(plugins_dir=args.plugins_dir, target_tag=target_tag))
+    print(json.dumps(result, indent=2, default=str))
+    return 0 if result.get("status") == "success" else 1
+
+
+if __name__ == "__main__":  # pragma: no cover — ops entrypoint
+    raise SystemExit(_cli())

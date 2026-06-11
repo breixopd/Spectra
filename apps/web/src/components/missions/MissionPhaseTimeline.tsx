@@ -15,11 +15,12 @@ export function MissionPhaseTimeline({ phases, currentPhase }: MissionPhaseTimel
   return (
     <ol className="relative space-y-0 border-l border-border/60 pl-4">
       {phases.map((phase, index) => {
-        const isCurrent = phase.phase === currentPhase || phase.status === "active" || phase.status === "running";
-        const isComplete = phase.status === "completed" || phase.status === "done";
+        const isCurrent = phase.current || phase.id === currentPhase;
+        const isComplete = phase.done && !isCurrent;
+        const status = isCurrent ? "running" : isComplete ? "completed" : "pending";
 
         return (
-          <li key={`${phase.phase}-${index}`} className="relative pb-6 last:pb-0">
+          <li key={`${phase.id}-${index}`} className="relative pb-6 last:pb-0">
             <span
               className={cn(
                 "absolute -left-[calc(0.5rem+1px)] top-1.5 h-2.5 w-2.5 rounded-full border-2 bg-background",
@@ -29,9 +30,12 @@ export function MissionPhaseTimeline({ phases, currentPhase }: MissionPhaseTimel
               )}
             />
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-medium">{phase.label || phase.phase}</span>
-              <StatusBadge status={String(phase.status)} />
+              <span className="text-sm font-medium">{phase.label || phase.id}</span>
+              <StatusBadge status={status} />
             </div>
+            {phase.description ? (
+              <p className="mt-1 text-xs text-muted-foreground">{phase.description}</p>
+            ) : null}
           </li>
         );
       })}

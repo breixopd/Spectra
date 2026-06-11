@@ -7,7 +7,6 @@ the path. Until then, recording is a no-op.
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
 
 async def record_llm_call(
     *,

@@ -252,7 +252,7 @@ services:
     logging: *default-logging
 
   tensorzero:
-    image: ${TENSORZERO_IMAGE:-tensorzero/gateway:2026.4.1}
+    image: ${TENSORZERO_IMAGE:-tensorzero/gateway:2026.6.0}
     container_name: spectra-tensorzero
     labels:
       spectra.managed: "true"
@@ -709,7 +709,6 @@ services:
       - ../../services:/app/services:ro
       - ../../tests:/app/tests:ro
       - ../../plugins:/app/plugins
-      - ../../requirements:/app/requirements:ro
       # Live plugin e2e exercises the golden-image Docker build path.
       - /var/run/docker.sock:/var/run/docker.sock
     extra_hosts:
@@ -770,7 +769,7 @@ services:
       - ../../services:/app/services:ro
       - ../../tests:/app/tests:ro
       - ../../pyproject.toml:/app/pyproject.toml:ro
-      - ../docker:/app/docker:ro
+      - ../docker:/app/deploy/docker:ro
       - ../../db/alembic:/app/alembic:ro
       - ../../db/alembic.ini:/app/alembic.ini:ro
       - ../../plugins:/app/plugins:ro
@@ -828,7 +827,7 @@ services:
       - ../../services:/app/services:ro
       - ../../tests:/app/tests:ro
       - ../../pyproject.toml:/app/pyproject.toml:ro
-      - ../docker:/app/docker:ro
+      - ../docker:/app/deploy/docker:ro
       - ../../db/alembic:/app/alembic:ro
       - ../../db/alembic.ini:/app/alembic.ini:ro
       - ../../plugins:/app/plugins:ro
@@ -869,7 +868,7 @@ services:
       - ../../services:/app/services:ro
       - ../../tests:/app/tests:ro
       - ../../pyproject.toml:/app/pyproject.toml:ro
-      - ../docker:/app/docker:ro
+      - ../docker:/app/deploy/docker:ro
       - ../../db/alembic:/app/alembic:ro
       - ../../db/alembic.ini:/app/alembic.ini:ro
       - ../../plugins:/app/plugins:ro

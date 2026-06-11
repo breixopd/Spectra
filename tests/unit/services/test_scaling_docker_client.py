@@ -113,7 +113,7 @@ class _FakeSwarmService:
         self.name = "fake_svc"
         self._tasks = tasks
 
-    def tasks(self, filters=None):  # noqa: ARG002 - mirrors docker-py signature
+    def tasks(self, filters=None):
         return self._tasks
 
 
