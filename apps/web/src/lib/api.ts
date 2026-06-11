@@ -207,6 +207,23 @@ export async function login(username: string, password: string): Promise<ApiResu
   });
 }
 
+export async function verifyMfa(mfaToken: string, code: string): Promise<ApiResult<LoginResponse>> {
+  return apiRequest<LoginResponse>("/api/v1/auth/mfa/verify", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${mfaToken}` },
+    body: { code },
+    skipCsrfBootstrap: true,
+  });
+}
+
+export async function cancelMfa(mfaToken: string): Promise<void> {
+  await apiRequest("/api/v1/auth/mfa/cancel", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${mfaToken}` },
+    skipCsrfBootstrap: true,
+  });
+}
+
 export async function logout(): Promise<ApiResult<{ detail: string }>> {
   return api.post<{ detail: string }>("/api/v1/auth/logout");
 }

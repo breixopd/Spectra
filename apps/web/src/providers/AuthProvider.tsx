@@ -1,7 +1,20 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, fetchCurrentUser, login as loginRequest, logout as logoutRequest, type AuthProfile } from "@/lib/api";
+import {
+  ApiError,
+  cancelMfa as cancelMfaRequest,
+  fetchCurrentUser,
+  login as loginRequest,
+  logout as logoutRequest,
+  verifyMfa as verifyMfaRequest,
+  type AuthProfile,
+} from "@/lib/api";
 import { router } from "@/router";
+
+export type LoginResult =
+  | { ok: true }
+  | { ok: false; message: string }
+  | { ok: "mfa"; mfaToken: string };
 
 interface AuthContextValue {
   user: AuthProfile | null;
@@ -9,7 +22,9 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isLoggingOut: boolean;
   error: ApiError | null;
-  login: (username: string, password: string) => Promise<{ ok: true } | { ok: false; message: string }>;
+  login: (username: string, password: string) => Promise<LoginResult>;
+  verifyMfa: (mfaToken: string, code: string) => Promise<{ ok: true } | { ok: false; message: string }>;
+  cancelMfa: (mfaToken: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
 }
@@ -36,17 +51,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const login = useCallback(
-    async (username: string, password: string) => {
+    async (username: string, password: string): Promise<LoginResult> => {
       const result = await loginRequest(username, password);
       if (result.error) {
         const message =
           typeof result.error.detail === "string"
             ? result.error.detail
             : result.error.message || "Login failed";
-        return { ok: false as const, message };
+        return { ok: false, message };
       }
       if (result.data?.mfa_required) {
-        return { ok: false as const, message: "Multi-factor authentication is required for this account." };
+        if (!result.data.mfa_token && !result.data.access_token) {
+          return { ok: false, message: "MFA challenge could not be started. Try again." };
+        }
+        return { ok: "mfa", mfaToken: result.data.mfa_token ?? result.data.access_token };
+      }
+      await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+      await router.navigate({ to: "/dashboard" });
+      return { ok: true };
+    },
+    [queryClient],
+  );
+
+  const verifyMfa = useCallback(
+    async (mfaToken: string, code: string) => {
+      const result = await verifyMfaRequest(mfaToken, code);
+      if (result.error) {
+        const message =
+          typeof result.error.detail === "string"
+            ? result.error.detail
+            : result.error.message || "Verification failed";
+        return { ok: false as const, message };
       }
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
       await router.navigate({ to: "/dashboard" });
@@ -54,6 +89,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     [queryClient],
   );
+
+  const cancelMfa = useCallback(async (mfaToken: string) => {
+    await cancelMfaRequest(mfaToken);
+  }, []);
 
   const logout = useCallback(async () => {
     await logoutRequest();
@@ -73,10 +112,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoggingOut: false,
       error: sessionQuery.error instanceof ApiError ? sessionQuery.error : null,
       login,
+      verifyMfa,
+      cancelMfa,
       logout,
       refreshSession,
     }),
-    [login, logout, refreshSession, sessionQuery.data, sessionQuery.error, sessionQuery.isLoading],
+    [cancelMfa, login, logout, refreshSession, sessionQuery.data, sessionQuery.error, sessionQuery.isLoading, verifyMfa],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

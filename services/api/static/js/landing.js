@@ -1,50 +1,58 @@
-/* ====== LANDING PAGE SCRIPTS ====== */
+/* Landing page behavior: nav state, mobile menu, scroll reveals.
+   No scroll listeners; IntersectionObserver only. */
 
-// Navbar scroll effect
-const nav = document.getElementById('nav');
-window.addEventListener('scroll', () => {
-    nav.classList.toggle('scrolled', window.scrollY > 40);
-}, { passive: true });
+(function () {
+  "use strict";
 
-// Mobile menu toggle
-document.getElementById('mobileToggle').addEventListener('click', () => {
-    document.getElementById('navLinks').classList.toggle('open');
-});
+  var nav = document.getElementById("nav");
+  var toggle = document.getElementById("navToggle");
+  var links = document.getElementById("navLinks");
 
-// Close mobile menu on link click
-document.querySelectorAll('.nav-links a').forEach(a => {
-    a.addEventListener('click', () => {
-        document.getElementById('navLinks').classList.remove('open');
-    });
-});
+  // Nav background once the hero top leaves the viewport (sentinel-based).
+  var sentinel = document.createElement("div");
+  sentinel.style.cssText = "position:absolute;top:0;left:0;height:48px;width:1px;pointer-events:none;";
+  document.body.prepend(sentinel);
+  new IntersectionObserver(
+    function (entries) {
+      nav.classList.toggle("scrolled", !entries[0].isIntersecting);
+    },
+    { threshold: 0 },
+  ).observe(sentinel);
 
-// Scroll reveal with stagger
-const reveals = document.querySelectorAll('.reveal');
-const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry, i) => {
-        if (entry.isIntersecting) {
-            setTimeout(() => entry.target.classList.add('visible'), i * 60);
-            observer.unobserve(entry.target);
-        }
-    });
-}, { threshold: 0.1, rootMargin: '0px 0px -20px 0px' });
-reveals.forEach(el => observer.observe(el));
+  toggle.addEventListener("click", function () {
+    var open = links.classList.toggle("open");
+    toggle.setAttribute("aria-expanded", String(open));
+  });
 
-// Trigger reveals for elements already in viewport on load
-reveals.forEach(el => {
-    const rect = el.getBoundingClientRect();
-    if (rect.top < window.innerHeight && rect.bottom > 0) {
-        el.classList.add('visible');
-        observer.unobserve(el);
+  links.addEventListener("click", function (event) {
+    if (event.target.closest("a")) {
+      links.classList.remove("open");
+      toggle.setAttribute("aria-expanded", "false");
     }
-});
+  });
 
-// FAQ toggle — using event delegation (CSP-safe, no inline onclick)
-document.querySelectorAll('.faq-question').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const item = btn.parentElement;
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        item.classList.toggle('open');
+  // Scroll reveals, disabled under reduced motion (CSS also neutralizes).
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var reveals = document.querySelectorAll(".reveal");
+  if (reduceMotion) {
+    reveals.forEach(function (el) {
+      el.classList.add("visible");
     });
-});
+    return;
+  }
+
+  var revealObserver = new IntersectionObserver(
+    function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.12, rootMargin: "0px 0px -24px 0px" },
+  );
+  reveals.forEach(function (el) {
+    revealObserver.observe(el);
+  });
+})();

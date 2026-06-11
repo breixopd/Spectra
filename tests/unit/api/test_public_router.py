@@ -105,12 +105,8 @@ class TestLandingPage:
             plans=[],
             version="1.0.0",
             app_name="Spectra",
-            stats={
-                "total_findings": "0",
-                "total_missions": "0",
-                "uptime": "99.9%",
-                "total_tools": "0",
-            },
+            tools_count=32,
+            contact_email="",
             reviews=[],
         )
 

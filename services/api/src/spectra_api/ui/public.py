@@ -13,7 +13,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.paths import api_assets_root
@@ -33,10 +33,7 @@ from spectra_billing.entitlements import sync_user_plan_mirror
 from spectra_common._meta.version import __version__
 from spectra_common.config import settings
 from spectra_common.utils.html_sanitization import sanitize_legal_html
-from spectra_domain.enums import MissionStatus
 from spectra_persistence.database import async_session_maker
-from spectra_persistence.models.finding import Finding
-from spectra_persistence.models.mission import Mission
 from spectra_persistence.models.plan import Plan, Subscription
 from spectra_persistence.models.user import User
 from spectra_persistence.repositories.plan import PlanRepository
@@ -101,35 +98,7 @@ async def landing_page(request: Request):
         result = await session.execute(select(Plan).where(Plan.is_active.is_(True)).order_by(Plan.sort_order))
         plans = result.scalars().all()
 
-        # Query real stats for landing page
-        try:
-            findings_result = await session.execute(select(func.count()).select_from(Finding))
-            total_findings = findings_result.scalar() or 0
-            missions_result = await session.execute(
-                select(func.count()).select_from(Mission).where(Mission.status == MissionStatus.COMPLETED.value)
-            )
-            total_missions = missions_result.scalar() or 0
-            users_result = await session.execute(
-                select(func.count()).select_from(User).where(User.is_active.is_(True))
-            )
-            total_users = users_result.scalar() or 0
-        except (OSError, RuntimeError, ValueError):
-            logger.debug("Failed to load landing stats", exc_info=True)
-            total_findings = 0
-            total_missions = 0
-            total_users = 0
-
-        plugin_dir = _plugins_dir()
-        total_tools = len(list(plugin_dir.glob("*.json"))) if plugin_dir.exists() else 0
-
-        stats = {
-            "total_findings": f"{total_findings:,}",
-            "total_missions": f"{total_missions:,}",
-            "total_users": f"{total_users:,}",
-            "total_tools": str(total_tools),
-        }
-
-        # Query admin-managed reviews
+        # Admin-managed reviews (rendered only when present — no fake social proof)
         try:
             reviews_result = await session.execute(
                 text(
@@ -141,6 +110,9 @@ async def landing_page(request: Request):
             logger.debug("Failed to load reviews", exc_info=True)
             reviews = []
 
+    plugin_dir = _plugins_dir()
+    tools_count = len(list(plugin_dir.glob("*.json"))) if plugin_dir.exists() else 0
+
     return templates.TemplateResponse(
         request,
         "landing.html",
@@ -149,7 +121,8 @@ async def landing_page(request: Request):
             "plans": plans,
             "version": __version__,
             "app_name": settings.APP_NAME,
-            "stats": stats,
+            "tools_count": tools_count,
+            "contact_email": settings.CONTACT_EMAIL,
             "reviews": reviews,
         },
     )
