@@ -26,7 +26,7 @@ jobs:
       # Fine-grained PAT: Repository → Spectra → Contents read/write (see github-actions-secrets.md).
       SPECTRA_WIKI_TOKEN: ${{ secrets.SPECTRA_WIKI_TOKEN || secrets.SPECTRA_ACTIONS_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Push to GitHub Wiki
         uses: Andrew-Chen-Wang/github-wiki-action@v5
