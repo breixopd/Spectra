@@ -5,49 +5,49 @@
 # For lighter per-service deps, see: ai.txt, scheduler.txt, worker.txt.
 
 # Core Framework (all services)
-fastapi==0.136.3
-uvicorn[standard]==0.48.0
+fastapi==0.138.2
+uvicorn[standard]==0.49.0
 pydantic[email]==2.13.4
-pydantic-settings==2.14.1
+pydantic-settings==2.14.2
 
 # Database (all services)
-sqlalchemy[asyncio]==2.0.50
+sqlalchemy[asyncio]==2.0.51
 asyncpg==0.31.0
-alembic==1.18.4
+alembic==1.18.5
 
 # AI / LLM (API + AI service)
-openai==2.38.0
-tensorzero==2026.5.2
+openai==2.44.0
+tensorzero==2026.6.0
 httpx==0.28.1
 fastembed==0.8.0
 
 # Web & Templates (API only)
 jinja2==3.1.6
-nh3==0.3.5
-python-multipart==0.0.29
+nh3==0.3.6
+python-multipart==0.0.32
 websockets==16.0
-aiohttp==3.13.5
+aiohttp==3.14.1
 aiofiles==25.1.0
 
 # Rate Limiting (API only)
-slowapi==0.1.9
-redis[hiredis]==7.4.0
+slowapi==0.1.10
+redis[hiredis]==8.0.1
 
 # Security (all services)
 bcrypt==5.0.0
 PyJWT[crypto]==2.13.0
-cryptography==48.0.0
+cryptography==49.0.0
 
 # TOTP / MFA (API only)
-pyotp==2.9.0
+pyotp==2.10.0
 
 # Utilities (all services)
 python-dotenv==1.2.2
 psutil==7.2.2
-asyncssh==2.23.0
+asyncssh==2.24.0
 jsonschema==4.26.0
 orjson==3.11.9
-json-repair==0.59.10
+json-repair==0.61.1
 defusedxml==0.7.1
 
 # S3/MinIO (API only)
@@ -61,4 +61,4 @@ xhtml2pdf==0.2.17
 blinker==1.9.0
 
 # Email (API only — SMTP provider)
-aiosmtplib==5.1.0
+aiosmtplib==5.1.2
