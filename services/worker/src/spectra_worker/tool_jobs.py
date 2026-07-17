@@ -222,6 +222,8 @@ async def execute_tool_job(
     tool, error_result = await _ensure_available_tool(registry, tool_id, target)
     if error_result is not None:
         return error_result
+    if tool is None:
+        return _error_result(tool_id, target, "Tool is unavailable")
 
     output_dir = _resolve_output_dir(tool_id, output_dir)
     await asyncio.to_thread(Path(output_dir).mkdir, parents=True, exist_ok=True)

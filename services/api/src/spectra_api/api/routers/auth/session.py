@@ -164,6 +164,7 @@ async def export_user_data(
     )
     missions = []
     for m in result.scalars().all():
+        completed_at = getattr(m, "completed_at", None)
         missions.append(
             {
                 "id": str(m.id),
@@ -171,7 +172,7 @@ async def export_user_data(
                 "status": m.status,
                 "directive": m.directive,
                 "created_at": m.created_at.isoformat() if m.created_at else None,
-                "completed_at": m.completed_at.isoformat() if hasattr(m, "completed_at") and m.completed_at else None,
+                "completed_at": completed_at.isoformat() if completed_at else None,
             }
         )
 

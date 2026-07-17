@@ -154,9 +154,10 @@ class ServiceHealer:
 
         # Check Redis
         try:
-            from spectra_infra.redis_client import get_redis
-            redis = await get_redis()
-            await redis.ping()
+            from spectra_infra.redis_client import RedisCache
+
+            if not await RedisCache().ping():
+                raise RuntimeError("Redis is unavailable")
             checks.append({"name": "redis", "result": "healthy", "detail": "PING OK"})
         except Exception as exc:
             checks.append({"name": "redis", "result": "unhealthy", "detail": str(exc)})

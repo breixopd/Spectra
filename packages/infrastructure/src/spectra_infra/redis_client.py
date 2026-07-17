@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+from inspect import isawaitable
 from typing import Any
 
 from redis.asyncio import Redis
@@ -66,6 +67,19 @@ class RedisCache:
         except Exception as exc:
             logger.warning("Redis get error for %s: %s", key, exc)
             return None
+
+    async def ping(self) -> bool:
+        """Return whether the optional Redis backend is reachable."""
+        if not self._client:
+            return False
+        try:
+            result = self._client.ping()
+            if isawaitable(result):
+                result = await result
+            return bool(result)
+        except Exception as exc:
+            logger.warning("Redis ping failed: %s", exc)
+            return False
 
     async def set(self, key: str, value: Any, ttl: int | None = None) -> bool:
         """Serialize and store a value with an optional TTL in seconds."""

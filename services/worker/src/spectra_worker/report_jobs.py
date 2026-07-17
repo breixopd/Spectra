@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import cast
 
 from sqlalchemy import select
 
@@ -19,7 +20,7 @@ async def generate_mission_report(mission_id: str, report_format: str = "pdf") -
     Returns the path/URL where the report was saved.
     """
     from spectra_ai_core.agents.base import AgentContext
-    from spectra_ai_core.agents.reporter import ReporterAgent, ReporterInput
+    from spectra_ai_core.agents.reporter import ReporterAgent, ReporterInput, ReportOutput
     from spectra_ai_core.llm import get_global_llm_client
     from spectra_persistence.database import async_session_maker
 
@@ -47,7 +48,8 @@ async def generate_mission_report(mission_id: str, report_format: str = "pdf") -
     if not result.success:
         raise RuntimeError(f"Report generation failed: {result.error}")
 
-    report_path = result.action.report_path if result.action else ""
+    report = cast(ReportOutput | None, result.action)
+    report_path = report.report_path if report else ""
     logger.info("Generated %s report for mission %s: %s", report_format, mission_id, report_path)
     return report_path or ""
 
@@ -55,7 +57,7 @@ async def generate_mission_report(mission_id: str, report_format: str = "pdf") -
 async def generate_executive_summary(mission_id: str) -> str:
     """Generate an executive summary for a mission."""
     from spectra_ai_core.agents.base import AgentContext
-    from spectra_ai_core.agents.reporter import ReporterAgent, ReporterInput
+    from spectra_ai_core.agents.reporter import ReporterAgent, ReporterInput, ReportOutput
     from spectra_ai_core.llm import get_global_llm_client
     from spectra_persistence.database import async_session_maker
 
@@ -83,6 +85,7 @@ async def generate_executive_summary(mission_id: str) -> str:
     if not result.success:
         raise RuntimeError(f"Executive summary failed: {result.error}")
 
-    summary = result.action.executive_summary if result.action else ""
+    report = cast(ReportOutput | None, result.action)
+    summary = report.executive_summary if report else ""
     logger.info("Generated executive summary for mission %s", mission_id)
     return summary

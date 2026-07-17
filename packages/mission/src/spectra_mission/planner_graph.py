@@ -211,7 +211,7 @@ class PlannerGraph:
             "phases_completed": completed_phases,
             "milestones_total": len(milestones),
             "milestones_completed": completed_milestones,
-            "active_phase": self.get_active_node().id if self.get_active_node() else None,
+            "active_phase": active.id if (active := self.get_active_node()) else None,
             "facts_count": len(self._facts),
         }
 

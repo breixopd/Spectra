@@ -187,6 +187,6 @@ async def export_data(
     rows = result.scalars().all()
 
     if format == "csv":
-        return _build_export_response(entity_type, format, _render_csv_content(rows, columns))
+        return _build_export_response(entity_type, format, _render_csv_content(list(rows), columns))
 
-    return _build_export_response(entity_type, format, _render_json_content(rows, columns))
+    return _build_export_response(entity_type, format, _render_json_content(list(rows), columns))

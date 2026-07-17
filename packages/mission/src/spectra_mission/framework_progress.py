@@ -113,7 +113,7 @@ def framework_milestone_list(pentest_framework: str | None = None) -> list[dict[
     ]
 
 
-def advance_milestone(
+async def advance_milestone(
     mission: Any,
     milestone_id: str,
     status: str = "completed",
@@ -131,7 +131,7 @@ def advance_milestone(
     """
     from sqlalchemy import select
 
-    from spectra_persistence.database import get_sync_session
+    from spectra_persistence.database import async_session_maker
     from spectra_persistence.models.mission import Mission
 
     fid = pentest_framework or getattr(mission, "pentest_framework", None)
@@ -161,15 +161,12 @@ def advance_milestone(
     mission.milestones = list(stored_map.values())
 
     if hasattr(mission, "id") and mission.id:
-        session = get_sync_session()
-        try:
-            result = session.execute(select(Mission).where(Mission.id == mission.id))
+        async with async_session_maker() as session:
+            result = await session.execute(select(Mission).where(Mission.id == mission.id))
             db_mission = result.scalar_one_or_none()
             if db_mission:
                 db_mission.milestones = mission.milestones
-                session.commit()
-        finally:
-            session.close()
+                await session.commit()
 
 
 # ── Backward compatibility wrappers ────────────────────────────────────

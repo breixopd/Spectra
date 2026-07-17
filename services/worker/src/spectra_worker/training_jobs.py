@@ -25,12 +25,15 @@ async def run_fine_tuning_job(job_id: str) -> dict[str, Any]:
         job.started_at = datetime.now(UTC)
         await session.commit()
 
+        sample_types = job.sample_types if isinstance(job.sample_types, list) and all(isinstance(value, str) for value in job.sample_types) else None
         samples = await export_dataset(
             session,
-            sample_types=job.sample_types,
+            sample_types=sample_types,
             min_quality=float((job.config or {}).get("min_quality", 0.0)),
             approved_only=True,
         )
+        if not job.provider:
+            raise ValueError("Fine-tuning job has no provider configured")
         backend = get_training_backend(job.provider)
         job.sample_count = len(samples)
 

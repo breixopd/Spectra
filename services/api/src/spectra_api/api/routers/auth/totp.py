@@ -72,7 +72,10 @@ async def mfa_verify_setup(
     if not user.mfa_secret:
         raise HTTPException(status_code=400, detail="MFA setup not initiated. Call /mfa/setup first.")
 
-    secret = decrypt_mfa_secret(user.mfa_secret)
+    encrypted_secret = user.mfa_secret
+    if not isinstance(encrypted_secret, str) or not encrypted_secret:
+        raise HTTPException(status_code=400, detail="MFA secret is not configured")
+    secret = decrypt_mfa_secret(encrypted_secret)
     if not verify_totp(secret, body.code):
         raise HTTPException(status_code=400, detail="Invalid TOTP code")
     if not await _consume_totp_code_async(str(user.id), body.code):
@@ -111,7 +114,7 @@ async def mfa_verify_login(
         raise HTTPException(status_code=400, detail="Token is not an MFA pending token")
 
     username = payload.get("sub")
-    if not username:
+    if not isinstance(username, str) or not username:
         raise HTTPException(status_code=401, detail="Invalid token")
 
     user = await _get_user_by_username(session, username)
@@ -121,7 +124,10 @@ async def mfa_verify_login(
 
     await _check_lockout(user)
 
-    secret = decrypt_mfa_secret(user.mfa_secret)
+    encrypted_secret = user.mfa_secret
+    if not isinstance(encrypted_secret, str) or not encrypted_secret:
+        raise HTTPException(status_code=400, detail="MFA secret is not configured")
+    secret = decrypt_mfa_secret(encrypted_secret)
     if not verify_totp(secret, body.code):
         await _record_failure(user, session)
         await audit_log_event(
@@ -184,7 +190,10 @@ async def mfa_disable(
     if not verify_password(body.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
 
-    secret = decrypt_mfa_secret(user.mfa_secret)
+    encrypted_secret = user.mfa_secret
+    if not isinstance(encrypted_secret, str) or not encrypted_secret:
+        raise HTTPException(status_code=400, detail="MFA secret is not configured")
+    secret = decrypt_mfa_secret(encrypted_secret)
     if not verify_totp(secret, body.code):
         raise HTTPException(status_code=400, detail="Invalid TOTP code")
     if not await _consume_totp_code_async(str(user.id), body.code):

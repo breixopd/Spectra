@@ -51,7 +51,7 @@ PHASE_TRANSITION_RULES: dict[str, dict[str, Any]] = {
 from spectra_common.constants import MAX_CHAIN_DEPTH
 
 if TYPE_CHECKING:
-    from spectra_ai_core.agents.base import BaseAgent
+    from spectra_ai_core.agents.base import Agent
     from spectra_ai_core.consensus import VotingSystem
     from spectra_mission.exploitation import ExploitationManager
     from spectra_mission.mission import Mission
@@ -95,7 +95,7 @@ class TaskDispatcher:
         tool_service: ToolExecutionService,
         exploitation_manager: ExploitationManager,
         consensus: VotingSystem,
-        agents: dict[str, BaseAgent],
+        agents: dict[str, Agent[Any, Any]],
     ):
         self.tool_service = tool_service
         self.exploitation_manager = exploitation_manager
@@ -260,8 +260,8 @@ class TaskDispatcher:
             current_phase=task.phase.value,
             target=mission.target,
             target_type=target_type,
-            known_services=known_services,
-            known_vulns=known_vulns,
+            known_services=[dict(service) for service in known_services],
+            known_vulns=[dict(vuln) for vuln in known_vulns],
             tools_already_run=mission.tools_run.copy(),
             user_preference=tool_hint,
             required_capability=task.parameters.get("required_capability"),
@@ -343,6 +343,8 @@ class TaskDispatcher:
 
             mission.log(f"  Attempting alternative: {alt_name} ({alt_tool_info.get('name', '')}) ...")
             alt_action = ToolAction(
+                confidence=action.confidence,
+                reasoning=action.reasoning,
                 tool_name=alt_name,
                 target=action.target,
                 tool_args=action.tool_args,
@@ -688,7 +690,9 @@ class TaskDispatcher:
             return_exceptions=True,
         )
         for r in results:
-            if isinstance(r, Exception):
+            if isinstance(r, asyncio.CancelledError):
+                raise r
+            if isinstance(r, BaseException):
                 logger.error("Parallel tool failed: %s", r)
             else:
                 completed.append(r)

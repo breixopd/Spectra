@@ -346,8 +346,14 @@ async def _collect_nodes(db: AsyncSession, *, live_probe: bool) -> dict[str, lis
         node = row.to_dict()
         nodes.append(node)
         if live_probe:
-            metadata = node.get("metadata") if isinstance(node.get("metadata"), dict) else {}
-            path = metadata.get("health_path") or "/health"
+            raw_metadata = node.get("metadata")
+            metadata: dict[str, Any] = (
+                {str(key): value for key, value in raw_metadata.items()}
+                if isinstance(raw_metadata, dict)
+                else {}
+            )
+            path_value = metadata.get("health_path")
+            path = path_value if isinstance(path_value, str) and path_value else "/health"
             if _is_control_plane_health_url(str(node.get("url", "")), str(node.get("service_type", "")), metadata):
                 probes.append(probe_http_health(node["url"], path=path, timeout=5.0, critical=False))
             else:
@@ -358,7 +364,7 @@ async def _collect_nodes(db: AsyncSession, *, live_probe: bool) -> dict[str, lis
     probe_results = await asyncio.gather(*probes)
     for node, live in zip(nodes, probe_results, strict=False):
         service_type = node.get("service_type", "unknown")
-        metadata = node.get("metadata") if isinstance(node.get("metadata"), dict) else {}
+        metadata = dict(node.get("metadata")) if isinstance(node.get("metadata"), dict) else {}
         item: HealthMap = {
             "id": node.get("id"),
             "name": node.get("name"),

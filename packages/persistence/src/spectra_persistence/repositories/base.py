@@ -6,7 +6,6 @@ All entity-specific repositories should inherit from this.
 """
 
 from collections.abc import Sequence
-from inspect import isawaitable
 from typing import Any, Generic, TypeVar
 from uuid import UUID
 
@@ -62,9 +61,7 @@ class BaseRepository(Generic[ModelType]):
             The created entity.
         """
         instance = self.model(**kwargs)
-        add_result = self.session.add(instance)
-        if isawaitable(add_result):
-            await add_result
+        self.session.add(instance)
         await self.session.flush()
         await self.session.refresh(instance)
         return instance

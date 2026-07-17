@@ -196,8 +196,14 @@ class ServerPoolManager:
         import httpx
 
         url = node["url"]
-        metadata = node.get("metadata") if isinstance(node.get("metadata"), dict) else {}
-        health_path = metadata.get("health_path") or "/health"
+        raw_metadata = node.get("metadata")
+        metadata: dict[str, object] = (
+            {str(key): value for key, value in raw_metadata.items()}
+            if isinstance(raw_metadata, dict)
+            else {}
+        )
+        health_path_value = metadata.get("health_path")
+        health_path = health_path_value if isinstance(health_path_value, str) and health_path_value else "/health"
         start = time.monotonic()
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:

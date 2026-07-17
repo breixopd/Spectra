@@ -217,7 +217,7 @@ async def logout(request: Request, response: Response, session: AsyncSession = D
 
     # Invalidate all tokens issued before now (covers refresh tokens too)
     username = payload.get("sub")
-    if username:
+    if isinstance(username, str) and username:
         user = await _get_user_by_username(session, username)
         if user:
             user.invalidated_before = datetime.now(UTC)

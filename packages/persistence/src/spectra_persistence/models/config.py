@@ -55,16 +55,16 @@ class SystemConfig(Base):
         return self._value
 
     @value.inplace.setter
-    def _value_setter(self, val: str | None) -> None:
+    def _value_setter(self, value: str | None) -> None:
         """Store the value, encrypting automatically for secrets."""
-        if val is None:
+        if value is None:
             self._value = None
             return
-        if getattr(self, "is_secret", False) and not val.startswith(_FERNET_TOKEN_PREFIX):
+        if getattr(self, "is_secret", False) and not value.startswith(_FERNET_TOKEN_PREFIX):
             try:
                 from spectra_common.encryption import _get_default_secret, encrypt_field
 
-                self._value = encrypt_field(val, _get_default_secret())
+                self._value = encrypt_field(value, _get_default_secret())
                 return
             except (UnicodeEncodeError, ValueError, TypeError) as exc:
                 logger.warning(
@@ -73,7 +73,7 @@ class SystemConfig(Base):
                     exc,
                 )
                 raise ValueError(f"Could not encrypt secret value for key {self.key!r}") from exc
-        self._value = val
+        self._value = value
 
     @value.inplace.expression
     @classmethod

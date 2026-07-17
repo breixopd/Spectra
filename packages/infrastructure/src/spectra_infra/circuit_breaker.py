@@ -10,11 +10,11 @@ import asyncio
 import json
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 from functools import wraps
-from typing import Any, ParamSpec, TypeVar
+from typing import Any, ParamSpec, TypeVar, cast
 
 from spectra_common.errors import CircuitBreakerOpenError
 from spectra_infra.events import EventType, events
@@ -241,7 +241,7 @@ class CircuitBreaker:
         """Determine if a request should be allowed."""
         return self._state.state != CircuitState.OPEN
 
-    async def call(self, func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    async def call(self, func: Callable[P, T | Awaitable[T]], *args: P.args, **kwargs: P.kwargs) -> T:
         """
         Execute a function through the circuit breaker.
 
@@ -267,10 +267,10 @@ class CircuitBreaker:
 
         try:
             result = func(*args, **kwargs)
-            if asyncio.iscoroutine(result):
+            if isinstance(result, Awaitable):
                 result = await result
             await self._record_success()
-            return result
+            return cast(T, result)
         except self.config.excluded_exceptions:  # pylint: disable=catching-non-exception
             # Don't count excluded exceptions (validated at init)
             raise
@@ -279,7 +279,7 @@ class CircuitBreaker:
             await self._record_failure(e)
             raise
 
-    def __call__(self, func: Callable[P, T]) -> Callable[P, T]:
+    def __call__(self, func: Callable[P, T | Awaitable[T]]) -> Callable[P, Awaitable[T]]:
         """Decorator to wrap a function with circuit breaker."""
 
         @wraps(func)

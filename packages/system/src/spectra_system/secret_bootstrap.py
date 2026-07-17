@@ -11,7 +11,6 @@ from __future__ import annotations
 import logging
 import os
 import secrets as _secrets
-from inspect import isawaitable
 
 from pydantic import SecretStr
 from sqlalchemy import select, text
@@ -97,14 +96,12 @@ async def ensure_persistent_secrets(session: AsyncSession) -> None:
                 existing.is_secret = True
                 existing.value = value_to_persist
             else:
-                add_result = session.add(SystemConfig(
+                session.add(SystemConfig(
                     key=db_key,
                     _value=value_to_persist,  # will be encrypted by before_insert event
                     is_secret=True,
                     description=f"Auto-managed secret: {db_key}",
                 ))
-                if isawaitable(add_result):
-                    await add_result
             _apply_secret(attr_name, value_to_persist)
             changes += 1
             logger.info("Secret '%s' persisted to DB (first boot or new secret)", db_key)
@@ -148,7 +145,7 @@ async def _ensure_jwt_keypair(session: AsyncSession) -> int:
             row.is_secret = True
             row.value = value
         else:
-            add_result = session.add(
+            session.add(
                 SystemConfig(
                     key=key,
                     _value=value,
@@ -156,8 +153,6 @@ async def _ensure_jwt_keypair(session: AsyncSession) -> int:
                     description=f"Auto-managed secret: {key}",
                 )
             )
-            if isawaitable(add_result):
-                await add_result
 
     env_priv, env_pub = _env("JWT_PRIVATE_KEY"), _env("JWT_PUBLIC_KEY")
     priv_row, pub_row = await _db_row("JWT_PRIVATE_KEY"), await _db_row("JWT_PUBLIC_KEY")

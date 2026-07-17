@@ -128,6 +128,8 @@ async def execute_script_job(
         cmd, error_result = await _build_script_command(content, language, target, work_dir)
         if error_result is not None:
             return error_result
+        if cmd is None:
+            return _error_job_result("Script command could not be constructed")
 
         if args:
             cmd.extend([str(arg) for arg in args])

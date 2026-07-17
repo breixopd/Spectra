@@ -197,7 +197,7 @@ async def download_preset(
     request: Request,
     preset_id: str,
     _current_user: User = Depends(get_current_active_user),
-) -> dict[str, str]:
+) -> dict[str, str | int]:
     """Download a preset wordlist from SecLists."""
     _ = request
     if preset_id not in PRESET_WORDLISTS:

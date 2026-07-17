@@ -110,12 +110,16 @@ class Orchestrator:
 
         # Pre-pass: scope check all tasks against current phase
         phase = tasks[0].phase if tasks else "discovery"
-        self._scope_check_all(tasks, phase)
+        blocked_reasons = self._scope_check_all(tasks, phase)
 
         # Build dependency graph
         records: dict[str, TaskExecRecord] = {t.id: TaskExecRecord(task=t) for t in tasks}
         completed_ids: set[str] = set()
         failed_ids: set[str] = set()
+        for task_id, reason in blocked_reasons.items():
+            records[task_id].status = TaskExecStatus.BLOCKED
+            records[task_id].blocked_reason = reason
+            failed_ids.add(task_id)
 
         # Execute layer by layer (tasks with no pending dependencies)
         while len(completed_ids) + len(failed_ids) < len(tasks):
@@ -252,14 +256,12 @@ class Orchestrator:
 
     # ── Scope validation ──────────────────────────────────────────────
 
-    def _scope_check_all(self, tasks: list[MicroTask], phase: str) -> None:
+    def _scope_check_all(self, tasks: list[MicroTask], phase: str) -> dict[str, str]:
         """Pre-validate all tasks against scope/framework constraints."""
+        blocked: dict[str, str] = {}
         for task in tasks:
-            verdict = self.scope_enforcer.validate(
-                action=f"{task.tool_name} {task.tool_args}",
-                technique_category=task.technique_category,
-                phase=phase,
-            )
+            verdict = self.scope_enforcer.validate(f"{task.tool_name} {task.tool_args}", task.technique_category, phase)
             if not verdict.allowed:
-                task.blocked_reason = verdict.blocked_by
+                blocked[task.id] = verdict.blocked_by
                 logger.warning("Task %s blocked: %s", task.id, verdict.blocked_by)
+        return blocked

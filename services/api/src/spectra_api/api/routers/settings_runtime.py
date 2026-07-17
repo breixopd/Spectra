@@ -37,7 +37,7 @@ async def _require_manage_settings_or_prebootstrap(
     user = await get_current_user(request=request, session=session)
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    if user.is_superuser or has_permission(user, Permission.MANAGE_SETTINGS):
+    if user.is_superuser or has_permission(user.role, Permission.MANAGE_SETTINGS):
         return
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
 

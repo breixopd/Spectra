@@ -2,6 +2,7 @@
 
 import logging
 from collections.abc import Callable
+from typing import Any, cast
 
 import nh3
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -54,7 +55,7 @@ def _sanitize_html_fragment(html: str) -> str:
         url_schemes={"http", "https", "mailto"},
         link_rel="noopener noreferrer nofollow",
     )
-def _sanitize_content_value(value, sanitizer: Callable[[str], str] = _sanitize_html_fragment):
+def _sanitize_content_value(value: object, sanitizer: Callable[[str], str] = _sanitize_html_fragment) -> object:
     if isinstance(value, dict):
         return {key: _sanitize_content_value(item, sanitizer) for key, item in value.items()}
     if isinstance(value, list):
@@ -62,9 +63,9 @@ def _sanitize_content_value(value, sanitizer: Callable[[str], str] = _sanitize_h
     if isinstance(value, str):
         return sanitizer(value)
     return value
-def _sanitize_managed_content(content_type: str, value):
+def _sanitize_managed_content(content_type: str, value: dict[str, Any]) -> dict[str, Any]:
     sanitizer = sanitize_legal_html if is_legal_content_type(content_type) else _sanitize_html_fragment
-    return _sanitize_content_value(value, sanitizer)
+    return cast(dict[str, Any], _sanitize_content_value(value, sanitizer))
 class ContentCreate(BaseModel):
     content_type: str
     title: str | None = None

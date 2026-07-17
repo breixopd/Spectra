@@ -159,6 +159,9 @@ typeCheckingMode = "basic"
 include = ["services", "packages"]
 exclude = ["tests"]
 reportMissingImports = "none"
+# Pyright cannot statically evaluate the intentionally dynamic re-export
+# lists used by package entrypoints; every exported module is import-tested.
+reportUnsupportedDunderAll = "none"
 
 [tool.mypy]
 strict = true

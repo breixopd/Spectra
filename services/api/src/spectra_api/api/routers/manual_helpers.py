@@ -179,6 +179,10 @@ async def api_generate_report(
     """Generate report data from a session or mission using a template."""
     _ = request
     template_id = req.template_id
+    if template_id is None:
+        # The request model enforces this; keep the runtime boundary explicit
+        # for direct callers and static analysis.
+        raise HTTPException(status_code=422, detail="template_id is required")
 
     try:
         if req.mission_id:
@@ -195,10 +199,13 @@ async def api_generate_report(
 
         from spectra_mission.pentest.session_loader import load_session
 
-        session = await load_session(req.session_id)
-        if session.get("owner_id") != str(_current_user.id) and not getattr(_current_user, "is_superuser", False):
+        session_id = req.session_id
+        if session_id is None:
+            raise HTTPException(status_code=422, detail="session_id is required")
+        pentest_session = await load_session(session_id)
+        if pentest_session.get("owner_id") != str(_current_user.id) and not getattr(_current_user, "is_superuser", False):
             raise HTTPException(status_code=403, detail="Forbidden")
-        report_data = build_report_data(session, template_id)
+        report_data = build_report_data(pentest_session, template_id)
         report_data["source_type"] = "session"
         return report_data
     except (FileNotFoundError, NotFoundError):

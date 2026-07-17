@@ -46,7 +46,7 @@ def get_mission_findings(mission_or_summary: Any) -> list[dict[str, Any]]:
 
 def get_mission_finding_counts(mission_or_summary: Any) -> dict[str, int]:
     """Count mission findings by normalized severity."""
-    counts = dict.fromkeys(_SEVERITY_KEYS, 0)
+    counts: dict[str, int] = dict.fromkeys(_SEVERITY_KEYS, 0)
     counts["total"] = 0
 
     for finding in get_mission_findings(mission_or_summary):

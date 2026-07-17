@@ -85,7 +85,7 @@ def _consume_totp_code(user_id: str, code: str) -> bool:
             return False
         # Evict oldest entries if at capacity
         if len(_used_totp_codes) >= _TOTP_MAX_ENTRIES:
-            sorted_keys = sorted(_used_totp_codes, key=_used_totp_codes.get)
+            sorted_keys = sorted(_used_totp_codes, key=lambda key: _used_totp_codes[key])
             for k in sorted_keys[: len(_used_totp_codes) - _TOTP_MAX_ENTRIES + 1]:
                 _used_totp_codes.pop(k, None)
         _used_totp_codes[code_hash] = now + _TOTP_REPLAY_WINDOW_SECONDS
@@ -275,7 +275,7 @@ def _raise_if_token_invalidated(user: User, payload: dict[str, object]) -> None:
         return
 
     token_iat = payload.get("iat")
-    if token_iat and datetime.fromtimestamp(token_iat, tz=UTC) < user.invalidated_before:
+    if isinstance(token_iat, (int, float)) and datetime.fromtimestamp(token_iat, tz=UTC) < user.invalidated_before:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session invalidated",

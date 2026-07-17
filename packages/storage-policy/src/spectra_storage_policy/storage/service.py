@@ -68,7 +68,7 @@ class StorageService:
             )
 
         _aioboto3, self._boto_config_cls, self._client_error = _import_s3_deps()
-        self._session = _aioboto3.Session()
+        self._session: Any = _aioboto3.Session()
         self._buckets_ensured: set[str] = set()
         self._client_ctx: Any = None
         self._s3: Any = None

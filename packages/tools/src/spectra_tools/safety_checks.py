@@ -7,13 +7,12 @@ from typing import TYPE_CHECKING, Any
 
 from spectra_ai_core.agents.base import AgentContext
 from spectra_ai_core.agents.safety import SafetyAction, SafetyInput
-from spectra_tools_core.models import ToolExecutionRequest
 from spectra_tools.interfaces import ToolExecutionMission
+from spectra_tools_core.models import ToolExecutionRequest
 
 if TYPE_CHECKING:
     from spectra_ai_core.agents.safety import SafetySupervisorAgent
     from spectra_ai_core.llm import LLMClient
-    from spectra_mission.mission import Mission
     from spectra_tools.adapter import CommandToolAdapter
 
 logger = logging.getLogger(__name__)

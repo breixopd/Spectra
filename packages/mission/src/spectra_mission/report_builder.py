@@ -39,7 +39,7 @@ def build_report(
     severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
     sorted_findings = sorted(findings, key=lambda f: severity_order.get(f.get("severity", "info"), 99))
 
-    report = {
+    report: dict[str, Any] = {
         "metadata": {
             "framework": spec.metadata.name,
             "framework_version": spec.metadata.version,
@@ -70,7 +70,7 @@ def _build_section(
     findings: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """Build a single report section."""
-    section = {"label": label}
+    section: dict[str, Any] = {"label": label}
 
     if section_id == "executive_summary":
         critical = sum(1 for f in findings if f.get("severity") == "critical")

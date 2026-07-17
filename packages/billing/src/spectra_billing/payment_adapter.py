@@ -6,6 +6,7 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import select
 
@@ -122,7 +123,10 @@ class StripePaymentAdapter(PaymentAdapter):
         from spectra_common.config import get_settings
 
         _settings = get_settings()
-        self._stripe = _stripe
+        # stripe-python's generated resource annotations vary across releases;
+        # keep the SDK boundary dynamic and validate values before returning
+        # them to the rest of the application.
+        self._stripe: Any = _stripe
         self._stripe.api_key = _settings.STRIPE_SECRET_KEY.get_secret_value() if _settings.STRIPE_SECRET_KEY else ""
         self._webhook_secret = (
             _settings.STRIPE_WEBHOOK_SECRET.get_secret_value() if _settings.STRIPE_WEBHOOK_SECRET else ""
@@ -175,7 +179,10 @@ class StripePaymentAdapter(PaymentAdapter):
                 metadata={"plan_id": plan_id, "user_id": user_id},
             ),
         )
-        return checkout.url
+        checkout_url = checkout.url
+        if not isinstance(checkout_url, str) or not checkout_url:
+            raise RuntimeError("Stripe did not return a checkout URL")
+        return checkout_url
 
     async def handle_webhook(self, payload: bytes, signature: str) -> dict:
         """Verify and parse a Stripe webhook event."""
@@ -215,7 +222,10 @@ class StripePaymentAdapter(PaymentAdapter):
                 return_url=f"{base_url}/profile?section=plan",
             ),
         )
-        return portal.url
+        portal_url = portal.url
+        if not isinstance(portal_url, str) or not portal_url:
+            raise RuntimeError("Stripe did not return a billing portal URL")
+        return portal_url
 
 
 class CryptoPaymentAdapter(PaymentAdapter):

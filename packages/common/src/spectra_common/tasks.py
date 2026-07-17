@@ -2,27 +2,23 @@
 
 import asyncio
 import logging
-from inspect import isawaitable
+from collections.abc import Coroutine
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
+T = TypeVar("T")
 
 
 def create_safe_task(
-    coro,
+    coro: Coroutine[Any, Any, T],
     *,
     name: str | None = None,
     logger_: logging.Logger | None = None,
-) -> asyncio.Task:
+) -> asyncio.Task[T]:
     """Create an asyncio task that logs exceptions instead of swallowing them."""
     task = asyncio.create_task(coro, name=name)
-    if not hasattr(task, "add_done_callback"):
-        if isawaitable(task):
-            task.close()
-        if isawaitable(coro):
-            coro.close()
-        return task
 
-    def _done_callback(t: asyncio.Task) -> None:
+    def _done_callback(t: asyncio.Task[T]) -> None:
         if t.cancelled():
             return
         exc = t.exception()
@@ -30,9 +26,5 @@ def create_safe_task(
             log = logger_ or logger
             log.error("Background task %s failed: %s", t.get_name(), exc, exc_info=exc)
 
-    callback_result = task.add_done_callback(_done_callback)
-    if isawaitable(callback_result):
-        callback_result.close()
-    if not isinstance(task, asyncio.Task) and isawaitable(coro):
-        coro.close()
+    task.add_done_callback(_done_callback)
     return task

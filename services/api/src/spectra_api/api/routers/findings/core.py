@@ -212,7 +212,9 @@ async def _update_finding_status_response(
         request=request,
     )
     reloaded = await repo.get_by_id(finding_id, options=[selectinload(Finding.target)])
-    return finding_to_response(reloaded or updated)
+    if reloaded is None:
+        raise HTTPException(status_code=500, detail="Updated finding could not be reloaded")
+    return finding_to_response(reloaded)
 
 
 # --- Endpoints ---

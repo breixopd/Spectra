@@ -55,6 +55,12 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+def _affected_rows(result: Any) -> int:
+    """Return a safe affected-row count for DML results."""
+    rowcount = getattr(result, "rowcount", 0)
+    return int(rowcount or 0)
+
+
 class CacheConfig:
     """Cache configuration constants."""
 
@@ -200,7 +206,7 @@ class CacheService:
                 stmt = delete(CacheEntry).where(CacheEntry.key == key)
                 result = await session.execute(stmt)
                 await session.commit()
-                deleted = result.rowcount > 0
+                deleted = _affected_rows(result) > 0
                 if deleted:
                     self._stats["deletes"] += 1
                 return deleted
@@ -225,7 +231,7 @@ class CacheService:
                 stmt = delete(CacheEntry).where(CacheEntry.key.like(sql_pattern))
                 result = await session.execute(stmt)
                 await session.commit()
-                count = result.rowcount
+                count = _affected_rows(result)
                 self._stats["deletes"] += count
                 return count
         except (OSError, ConnectionError, TimeoutError) as e:
@@ -388,7 +394,7 @@ class CacheService:
                 )
                 result = await session.execute(stmt)
                 await session.commit()
-                count = result.rowcount
+                count = _affected_rows(result)
                 if count:
                     logger.info("Purged %d expired cache entries", count)
                 return count

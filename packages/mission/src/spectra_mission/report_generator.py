@@ -309,8 +309,11 @@ def generate_pdf_report(mission_data: dict) -> bytes:
 
     pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
 
-    if pisa_status.err:
-        raise RuntimeError(f"PDF generation failed: {pisa_status.err} errors")
+    error_count = getattr(pisa_status, "err", 0)
+    if not isinstance(error_count, int):
+        error_count = 0
+    if error_count:
+        raise RuntimeError(f"PDF generation failed: {error_count} errors")
 
     return pdf_buffer.getvalue()
 

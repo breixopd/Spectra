@@ -81,7 +81,7 @@ async def index_to_rag(mission: Mission) -> None:
         # Index findings via facade (max 20)
         for finding in mission.findings[:20]:
             finding_with_host = {**finding, "host": finding.get("host", mission.target)}
-            if await facade.index_finding(finding_with_host, mission_id=mission_id, user_id=uid):
+            if await facade.index_finding(finding_with_host, mission_id=mission_id):
                 indexed += 1
 
         # Index tool outputs via facade (max 10 tools)
@@ -91,7 +91,6 @@ async def index_to_rag(mission: Mission) -> None:
                 tool_name=tool_name,
                 output=f"Tool {tool_name} executed against {mission.target}",
                 target=mission.target,
-                user_id=uid,
             )
             indexed += 1
 

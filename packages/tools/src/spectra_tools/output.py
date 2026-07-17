@@ -78,7 +78,7 @@ async def persist_output_directory(mission_id: str, output_dir: str | Path) -> i
         total_bytes += file_path.stat().st_size
         rel_path = file_path.relative_to(root)
         key = f"{mission_id}/scans/{root.name}/{rel_path.as_posix()}"
-        await storage.upload_file(settings.S3_BUCKET_MISSIONS, key, file_path)
+        await storage.upload_file(settings.S3_BUCKET_MISSIONS, key, str(file_path))
 
     return total_bytes
 

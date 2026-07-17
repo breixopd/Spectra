@@ -121,7 +121,7 @@ class ToolResultCache:
         return len(self._cache)
 
     @property
-    def stats(self) -> dict[str, int]:
+    def stats(self) -> dict[str, int | float]:
         return {
             "size": self.size,
             "hits": self._hits,

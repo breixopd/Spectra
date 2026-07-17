@@ -772,7 +772,7 @@ name, a confidence between 0 and 1, and a one-sentence justification.
         agreed_facts: list[dict[str, Any]] = []
         for key, count in counts.items():
             if count >= threshold:
-                fact = dict(representative[key])
+                fact: dict[str, Any] = dict(representative[key])
                 fact["agreement"] = count
                 fact["source"] = "consensus_parsing"
                 agreed_facts.append(fact)
@@ -852,4 +852,3 @@ observed value, and optional detail.
             return {"flagged": True, "reason": flags[0]["reason"], "severity": "warn", "flags": flags}
 
         return {"flagged": False, "reason": "", "severity": "none", "flags": flags}
-

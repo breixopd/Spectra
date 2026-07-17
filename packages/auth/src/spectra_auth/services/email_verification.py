@@ -16,7 +16,9 @@ def build_email_verification_url(request: Request | None, user_id: str) -> str |
     from spectra_auth.security import create_email_verification_token
 
     token = create_email_verification_token(user_id)
-    base_url = settings.PLATFORM_BASE_URL or str(request.base_url).rstrip("/")
+    base_url = settings.PLATFORM_BASE_URL or str(request.base_url).rstrip("/") if request else None
+    if not base_url:
+        return None
     return f"{base_url}/verify-email?token={token}"
 
 
