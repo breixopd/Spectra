@@ -187,3 +187,11 @@ class EmbeddingService:
         """Generate embedding for a single text."""
         results = await self.embed([text])
         return results[0] if results else []
+
+    def unload(self) -> None:
+        """Release model/client references during process shutdown or model replacement."""
+        self._local_embedder = None
+        self._openai_client = None
+        self._api_ready = False
+        self._use_local = False
+        self._embedding_dim = None

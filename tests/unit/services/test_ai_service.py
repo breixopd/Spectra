@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -12,11 +12,26 @@ from fastapi import HTTPException
 from tests.helpers import make_module
 
 
+@pytest.fixture(autouse=True)
+def reset_embedding_service_singleton():
+    import spectra_ai.main as ai_service
+
+    ai_service._embedding_service = None
+    yield
+    ai_service._embedding_service = None
+
+
 @pytest.mark.asyncio
 async def test_lifespan_initializes_embeddings_on_startup():
     import spectra_ai.main as ai_service
 
-    embedding_service = SimpleNamespace(_load_model=AsyncMock())
+    embedding_service = SimpleNamespace(
+        model_name="test-embed",
+        _load_model=AsyncMock(),
+        embed=AsyncMock(return_value=[[0.1, 0.2]]),
+        unload=MagicMock(),
+    )
+    factory = MagicMock(return_value=embedding_service)
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
@@ -24,15 +39,19 @@ async def test_lifespan_initializes_embeddings_on_startup():
             "spectra_ai_core.embeddings",
             make_module(
                 "spectra_ai_core.embeddings",
-                EmbeddingService=lambda: embedding_service,
+                EmbeddingService=factory,
                 register_settings_factory=lambda factory: None,
             ),
         )
 
         async with ai_service.lifespan(ai_service.app):
-            pass
+            response = await ai_service.generate_embeddings(ai_service.EmbeddingRequest(texts=["hello"]))
 
-    embedding_service._load_model.assert_awaited_once()
+    assert embedding_service._load_model.await_count >= 1
+    embedding_service.embed.assert_awaited_once_with(["hello"])
+    embedding_service.unload.assert_called_once_with()
+    assert response.embeddings == [[0.1, 0.2]]
+    factory.assert_called_once_with()
 
 
 @pytest.mark.asyncio
@@ -144,7 +163,7 @@ async def test_generate_embeddings_returns_vectors_and_dimensions():
     embedding_service = SimpleNamespace(
         model_name="mini-embed",
         _load_model=AsyncMock(),
-        embed_batch=AsyncMock(return_value=[[0.1, 0.2], [0.3, 0.4]]),
+        embed=AsyncMock(return_value=[[0.1, 0.2], [0.3, 0.4]]),
     )
 
     with pytest.MonkeyPatch.context() as mp:
@@ -161,7 +180,7 @@ async def test_generate_embeddings_returns_vectors_and_dimensions():
     assert response.model == "mini-embed"
     assert response.dimensions == 2
     embedding_service._load_model.assert_awaited_once()
-    embedding_service.embed_batch.assert_awaited_once_with(["alpha", "beta"])
+    embedding_service.embed.assert_awaited_once_with(["alpha", "beta"])
 
 
 @pytest.mark.asyncio

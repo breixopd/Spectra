@@ -12,7 +12,8 @@ def rag_service():
     with patch("spectra_ai_core.rag.EmbeddingService") as MockEmbed:
         mock_embed = MockEmbed.return_value
         mock_embed.is_functional = False
-        mock_embed.embed = AsyncMock(return_value=[0.1] * 384)
+        mock_embed.embed_one = AsyncMock(return_value=[0.1] * 384)
+        mock_embed.embed = AsyncMock(return_value=[[0.1] * 384])
         svc = RAGService()
         yield svc
 
@@ -22,7 +23,8 @@ def functional_rag():
     with patch("spectra_ai_core.rag.EmbeddingService") as MockEmbed:
         mock_embed = MockEmbed.return_value
         mock_embed.is_functional = True
-        mock_embed.embed = AsyncMock(return_value=[0.5] * 384)
+        mock_embed.embed_one = AsyncMock(return_value=[0.5] * 384)
+        mock_embed.embed = AsyncMock(return_value=[[0.5] * 384])
         svc = RAGService()
         yield svc
 
@@ -79,7 +81,7 @@ class TestRAGDocument:
 
 class TestRAGIndexDocument:
     @pytest.mark.asyncio
-    async def test_index_document_calls_embed(self, rag_service, sample_doc):
+    async def test_index_document_calls_embed(self, functional_rag, sample_doc):
         mock_session = AsyncMock()
         mock_session.execute = AsyncMock()
         mock_session.commit = AsyncMock()
@@ -87,11 +89,11 @@ class TestRAGIndexDocument:
         mock_session_maker.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session_maker.__aexit__ = AsyncMock(return_value=False)
 
-        rag_service._table_ready = True
+        functional_rag._table_ready = True
 
         with patch("spectra_ai_core.rag.get_async_session_maker", return_value=lambda: mock_session_maker):
-            await rag_service.index_document(sample_doc)
-            rag_service.embeddings.embed.assert_awaited_once()
+            await functional_rag.index_document(sample_doc)
+            functional_rag.embeddings.embed_one.assert_awaited_once_with(sample_doc.content)
 
     @pytest.mark.asyncio
     async def test_index_initializes_if_not_ready(self, rag_service, sample_doc):
@@ -110,9 +112,9 @@ class TestRAGIndexDocument:
             rag_service.initialize.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_index_document_handles_error(self, rag_service, sample_doc):
-        rag_service._table_ready = True
-        rag_service.embeddings.embed = AsyncMock(side_effect=RuntimeError("embed fail"))
+    async def test_index_document_handles_error(self, functional_rag, sample_doc):
+        functional_rag._table_ready = True
+        functional_rag.embeddings.embed_one = AsyncMock(side_effect=RuntimeError("embed fail"))
 
         mock_session = AsyncMock()
         mock_session.execute = AsyncMock(return_value=AsyncMock(scalar=MagicMock(return_value=None)))
@@ -121,7 +123,7 @@ class TestRAGIndexDocument:
         mock_cm.__aexit__ = AsyncMock(return_value=False)
 
         with patch("spectra_ai_core.rag.get_async_session_maker", return_value=lambda: mock_cm):
-            result = await rag_service.index_document(sample_doc)
+            result = await functional_rag.index_document(sample_doc)
         assert result is False
 
 
@@ -139,7 +141,7 @@ class TestRAGBatchIndex:
             Document(id="d2", content="test2", doc_type="finding"),
         ]
         rag_service._table_ready = True
-        rag_service.embeddings.embed_batch = AsyncMock(side_effect=RuntimeError("batch fail"))
+        rag_service.embeddings.embed = AsyncMock(side_effect=RuntimeError("batch fail"))
         rag_service.index_document = AsyncMock(return_value=True)
 
         mock_session = AsyncMock()

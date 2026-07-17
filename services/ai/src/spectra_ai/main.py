@@ -21,12 +21,27 @@ _last_deep_health_time: float = 0.0
 logger = logging.getLogger(__name__)
 
 _ai_embedded_task = None
+_embedding_service: Any | None = None
+
+
+def _get_embedding_service(model_name: str = ""):
+    """Return the process-wide embedding model, replacing it only for an explicit model change."""
+    global _embedding_service
+    from spectra_ai_core.embeddings import EmbeddingService
+
+    if _embedding_service is None or (model_name and getattr(_embedding_service, "model_name", "") != model_name):
+        if _embedding_service is not None:
+            unload = getattr(_embedding_service, "unload", None)
+            if callable(unload):
+                unload()
+        _embedding_service = EmbeddingService(model_name=model_name) if model_name else EmbeddingService()
+    return _embedding_service
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """AI service startup/shutdown."""
-    global _ai_embedded_task
+    global _ai_embedded_task, _embedding_service
     logger.info("AI Service starting...")
     _ai_embedded_task = None
 
@@ -35,12 +50,12 @@ async def lifespan(app: FastAPI):
     _ai_embedded_task = spawn_embedded_ops_task("ai-svc")
 
     from spectra_ai.settings import get_ai_settings
-    from spectra_ai_core.embeddings import EmbeddingService, register_settings_factory
+    from spectra_ai_core.embeddings import register_settings_factory
 
     register_settings_factory(get_ai_settings)
 
     try:
-        svc = EmbeddingService()
+        svc = _get_embedding_service()
         await svc._load_model()
         logger.info("Embedding service initialized")
     except Exception as e:
@@ -66,11 +81,11 @@ async def lifespan(app: FastAPI):
 
     # Unload embedding model
     try:
-        from spectra_ai_core.embeddings import EmbeddingService
-
-        svc = EmbeddingService()
-        if hasattr(svc, "unload"):
-            svc.unload()
+        if _embedding_service is not None:
+            unload = getattr(_embedding_service, "unload", None)
+            if callable(unload):
+                unload()
+        _embedding_service = None
     except Exception:
         logger.debug("Embedding cleanup skipped", exc_info=True)
 
@@ -157,9 +172,7 @@ async def health_ready(response: Response):
     overall = overall and checks["tensorzero"]
 
     try:
-        from spectra_ai_core.embeddings import EmbeddingService
-
-        svc = EmbeddingService()
+        svc = _get_embedding_service()
         await svc._load_model()
         checks["embeddings"] = svc.is_functional
     except Exception:
@@ -269,11 +282,9 @@ async def ai_chat(req: ChatRequest):
 async def generate_embeddings(req: EmbeddingRequest):
     """Generate embeddings for a list of texts."""
     try:
-        from spectra_ai_core.embeddings import EmbeddingService
-
-        svc = EmbeddingService(model_name=req.model or "")
+        svc = _get_embedding_service(req.model or "")
         await svc._load_model()
-        embeddings = await svc.embed_batch(req.texts)
+        embeddings = await svc.embed(req.texts)
         return EmbeddingResponse(
             embeddings=embeddings,
             model=svc.model_name or "unknown",

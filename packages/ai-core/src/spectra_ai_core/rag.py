@@ -198,7 +198,7 @@ class RAGService:
                 if existing_hash == content_hash:
                     return True  # Content unchanged, skip re-embedding
 
-            embedding = await self.embeddings.embed(doc.content)
+            embedding = await self.embeddings.embed_one(doc.content)
             embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
             async with get_async_session_maker()() as session:
                 await session.execute(
@@ -277,7 +277,7 @@ class RAGService:
                 doc.content[: self.MAX_DOCUMENT_SIZE] if len(doc.content) > self.MAX_DOCUMENT_SIZE else doc.content
                 for doc in docs_to_index
             ]
-            embeddings = await self.embeddings.embed_batch(contents)
+            embeddings = await self.embeddings.embed(contents)
         except (OSError, RuntimeError, ValueError) as e:
             logger.error("Batch embedding failed, falling back to sequential: %s", e)
             success = 0
@@ -354,7 +354,7 @@ class RAGService:
         sql_limit = max(want * 6, 48) if self.config.min_score > 0 else want
 
         try:
-            query_embedding = await self.embeddings.embed(query)
+            query_embedding = await self.embeddings.embed_one(query)
 
             # Build SQL with pre-filtering to avoid fetching ALL documents
             where_clauses: list[str] = []

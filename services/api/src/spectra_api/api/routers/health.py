@@ -224,7 +224,7 @@ async def deep_health_check(
 
         svc = EmbeddingService()
         await svc._load_model()
-        embedding = await svc.embed("health probe")
+        embedding = await svc.embed_one("health probe")
         dim = len(embedding)
         if dim > 0:
             results["embeddings"] = {"status": "healthy", "latency_ms": _latency_ms(start), "dimensions": dim}
