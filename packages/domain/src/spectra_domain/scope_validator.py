@@ -11,8 +11,10 @@ import asyncio
 import ipaddress
 import logging
 import re
+import shlex
 import socket
 import time
+from urllib.parse import urlsplit
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +22,7 @@ logger = logging.getLogger(__name__)
 _IP_PATTERN = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 _CIDR_PATTERN = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}/\d{1,2}\b")
 _DOMAIN_PATTERN = re.compile(r"\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}\b")
+_TOKEN_TRIM_CHARS = "'\"`(),;"
 
 
 def parse_scope(scope_targets: list[str]) -> tuple[list[ipaddress.IPv4Network | ipaddress.IPv6Network], list[str]]:
@@ -35,6 +38,14 @@ def parse_scope(scope_targets: list[str]) -> tuple[list[ipaddress.IPv4Network | 
         target = target.strip()
         if not target:
             continue
+        # Handle exact IPv4, IPv6, and CIDR entries before applying the
+        # legacy text-extraction fallbacks.  Regex-only parsing silently
+        # treated IPv6 scope declarations as domain names.
+        try:
+            networks.append(ipaddress.ip_network(target.strip("[]"), strict=False))
+            continue
+        except ValueError:
+            pass
         # Try CIDR
         cidr_match = _CIDR_PATTERN.search(target)
         if cidr_match:
@@ -60,6 +71,55 @@ def parse_scope(scope_targets: list[str]) -> tuple[list[ipaddress.IPv4Network | 
         domains.append(target.lower())
 
     return networks, domains
+
+
+def _integer_ipv4(token: str) -> str | None:
+    """Normalize a decimal IPv4 representation when it cannot be a port."""
+    if not token.isdecimal():
+        return None
+    value = int(token)
+    # Values below 2**24 are overwhelmingly command arguments (ports, retry
+    # counts, timeouts) rather than an IPv4 integer representation.
+    if not (1 << 24) <= value <= 0xFFFFFFFF:
+        return None
+    return str(ipaddress.IPv4Address(value))
+
+
+def _extract_command_targets(command: str) -> list[str]:
+    """Extract address-like operands without treating unknown commands as targets."""
+    found: list[str] = [*_IP_PATTERN.findall(command), *_DOMAIN_PATTERN.findall(command)]
+
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        # A malformed shell command is handled elsewhere; preserve the
+        # deterministic regex findings rather than failing open here.
+        tokens = command.split()
+
+    for token in tokens:
+        candidate = token.strip().strip(_TOKEN_TRIM_CHARS)
+        if not candidate:
+            continue
+
+        if "://" in candidate:
+            parsed = urlsplit(candidate)
+            if parsed.hostname:
+                found.append(parsed.hostname)
+                continue
+
+        candidate = candidate.strip("[]")
+        try:
+            found.append(str(ipaddress.ip_address(candidate)))
+            continue
+        except ValueError:
+            pass
+
+        integer_ip = _integer_ipv4(candidate)
+        if integer_ip is not None:
+            found.append(integer_ip)
+
+    # Preserve command order while avoiding duplicate DNS checks.
+    return list(dict.fromkeys(found))
 
 
 async def is_target_in_scope(
@@ -147,9 +207,7 @@ async def validate_command_target(
     if not scope_networks and not scope_domains:
         return False, "No scope targets defined"
 
-    # Extract IPs from command
-    found_ips = _IP_PATTERN.findall(command)
-    found_domains = _DOMAIN_PATTERN.findall(command)
+    targets_to_check = _extract_command_targets(command)
 
     # Filter out file-like matches (e.g., common.txt, output.json, nmap_output.xml)
     _FILE_EXTENSIONS = frozenset(
@@ -187,17 +245,16 @@ async def validate_command_target(
             "jpg",
         }
     )
-    found_domains = [d for d in found_domains if d.rsplit(".", 1)[-1].lower() not in _FILE_EXTENSIONS and "/" not in d]
-
-    targets_to_check = found_ips + found_domains
+    targets_to_check = [
+        target
+        for target in targets_to_check
+        if target.rsplit(".", 1)[-1].lower() not in _FILE_EXTENSIONS and "/" not in target
+    ]
     if not targets_to_check:
         # No extractable targets in command — allow (could be a local command)
         return True, "No targets extracted from command"
 
     for target in targets_to_check:
-        # Skip common non-target IPs
-        if target in ("127.0.0.1", "0.0.0.0", "255.255.255.255"):
-            continue
         if not await is_target_in_scope(target, scope_networks, scope_domains):
             return False, f"Target {target} is outside declared scope"
 

@@ -32,6 +32,11 @@ class TestParseScope:
         assert len(networks) == 2
         assert len(domains) == 1
 
+    def test_parse_ipv6(self):
+        networks, domains = parse_scope(["2001:db8::/32"])
+        assert domains == []
+        assert ipaddress.ip_address("2001:db8::1") in networks[0]
+
 
 class TestIsTargetInScope:
     @pytest.mark.asyncio
@@ -84,7 +89,25 @@ class TestValidateCommandTarget:
 
     @pytest.mark.asyncio
     async def test_localhost_allowed(self):
-        ok, _reason = await validate_command_target("curl http://127.0.0.1", ["10.0.0.0/24"])
+        ok, reason = await validate_command_target("curl http://127.0.0.1", ["10.0.0.0/24"])
+        assert ok is False
+        assert "127.0.0.1" in reason
+
+    @pytest.mark.asyncio
+    async def test_integer_encoded_ipv4_is_not_treated_as_targetless(self):
+        ok, reason = await validate_command_target("nmap 2130706433", ["10.0.0.0/24"])
+        assert ok is False
+        assert "127.0.0.1" in reason
+
+    @pytest.mark.asyncio
+    async def test_ipv6_loopback_is_not_treated_as_targetless(self):
+        ok, reason = await validate_command_target("curl http://[::1]", ["10.0.0.0/24"])
+        assert ok is False
+        assert "::1" in reason
+
+    @pytest.mark.asyncio
+    async def test_ipv6_target_in_scope(self):
+        ok, _reason = await validate_command_target("nmap -6 2001:db8::1", ["2001:db8::/32"])
         assert ok is True
 
     @pytest.mark.asyncio
