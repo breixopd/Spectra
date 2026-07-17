@@ -125,11 +125,18 @@ class TestMissionLoop:
         execution_manager._generate_html_report = AsyncMock()
         execution_manager._broadcast_state = MagicMock()
         execution_manager._llm_provider_healthy = AsyncMock(return_value=True)
+        execution_manager._send_completion_notifications = AsyncMock()
+        execution_manager._cleanup_mission = AsyncMock()
 
-        with patch("spectra_mission.manager.execution.shell_manager"):
-            with patch("spectra_system.notifications.notify_mission_started", new_callable=AsyncMock, create=True):
-                with patch("spectra_mission.manager.execution.index_to_rag", new_callable=AsyncMock):
-                    await execution_manager.run_mission_loop(mission)
+        with (
+            patch("spectra_mission.manager.execution.shell_manager"),
+            patch("spectra_system.notifications.notify_mission_started", new_callable=AsyncMock, create=True),
+            patch("spectra_mission.manager.execution.index_to_rag", new_callable=AsyncMock),
+            patch("spectra_mission.manager.execution.record_mission_lessons"),
+            patch("spectra_mission.manager.execution.run_debrief", new_callable=AsyncMock),
+            patch("spectra_mission.manager.execution.generate_html_report", new_callable=AsyncMock),
+        ):
+            await execution_manager.run_mission_loop(mission)
 
         mission.set_status.assert_called_with("completed")
 
