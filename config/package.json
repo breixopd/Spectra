@@ -1,6 +1,6 @@
 {
   "devDependencies": {
-    "tailwindcss": "^3.4.19",
+    "tailwindcss": "^4.3.3",
     "autoprefixer": "^10.4.21",
     "cssnano": "^7.0.7",
     "postcss-cli": "^11.0.1"
