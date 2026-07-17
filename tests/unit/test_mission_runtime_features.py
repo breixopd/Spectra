@@ -74,6 +74,7 @@ class TestMissionCheckpoint:
         mission.logs.append("checkpoint log")
         mission.report_path = "reports/mission.html"
         mission.blackboard.write("recon", "host_os", "linux")
+        mission.completed_task_ids.update({"discover-1", "enumerate-2"})
 
         checkpoint = mission.save_checkpoint()
         restored = Mission.from_checkpoint(checkpoint)
@@ -99,6 +100,7 @@ class TestMissionCheckpoint:
         assert restored.logs == ["checkpoint log"]
         assert restored.report_path == "reports/mission.html"
         assert restored.blackboard.read("host_os") == "linux"
+        assert restored.completed_task_ids == {"discover-1", "enumerate-2"}
 
     def test_checkpoint_with_empty_mission(self):
         mission = Mission("example.com", "Recon", user_id="owner-1")

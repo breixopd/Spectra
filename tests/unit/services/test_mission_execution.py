@@ -134,6 +134,40 @@ class TestMissionLoop:
         mission.set_status.assert_called_with("completed")
 
     @pytest.mark.asyncio
+    async def test_resumed_loop_reuses_the_checkpoint_plan_without_replanning(self, execution_manager):
+        context = MagicMock()
+        execution_manager.lifecycle.initialize_mission = AsyncMock(return_value=context)
+        execution_manager._create_sandbox = AsyncMock()
+        execution_manager._llm_provider_healthy = AsyncMock(return_value=True)
+        execution_manager._run_scope_phase = AsyncMock()
+        execution_manager._run_planning_phase = AsyncMock()
+        execution_manager._execute_mission_tasks = AsyncMock()
+        execution_manager._broadcast_state = MagicMock()
+        execution_manager._send_completion_notifications = AsyncMock()
+        execution_manager._cleanup_mission = AsyncMock()
+
+        mission = MagicMock()
+        mission.record_demo = False
+        mission.id = "m1"
+        mission.target = "10.0.0.1"
+        mission.directive = "test"
+        mission.findings = []
+        mission.plan = MagicMock()
+        mission.user_id = "owner-1"
+
+        with (
+            patch("spectra_mission.manager.execution.index_to_rag", new_callable=AsyncMock),
+            patch("spectra_mission.manager.execution.record_mission_lessons"),
+            patch("spectra_mission.manager.execution.run_debrief", new_callable=AsyncMock),
+            patch("spectra_mission.manager.execution.generate_html_report", new_callable=AsyncMock),
+        ):
+            await execution_manager.run_mission_loop(mission, resume=True)
+
+        execution_manager._run_scope_phase.assert_not_awaited()
+        execution_manager._run_planning_phase.assert_not_awaited()
+        execution_manager._execute_mission_tasks.assert_awaited_once()
+
+    @pytest.mark.asyncio
     async def test_loop_no_plan_fails(self, execution_manager):
         context = MagicMock()
         execution_manager.lifecycle.initialize_mission = AsyncMock(return_value=context)
@@ -309,6 +343,56 @@ class TestTaskExecutionHelpers:
         executor.execute_task.assert_not_awaited()
         mission.set_status.assert_called_once_with("timed_out")
         assert any("[TIMEOUT] Mission timed out after" in call.args[0] for call in mission.log.call_args_list)
+
+    @pytest.mark.asyncio
+    async def test_execute_mission_tasks_skips_checkpointed_tasks(self):
+        completed_task = Task(
+            task_id="t1",
+            description="already completed",
+            agent_type="agent1",
+            phase=AssessmentPhase.DISCOVERY,
+        )
+        remaining_task = Task(
+            task_id="t2",
+            description="still required",
+            agent_type="agent1",
+            phase=AssessmentPhase.DISCOVERY,
+        )
+        mission = MagicMock()
+        mission.plan = MissionPlan(tasks=[completed_task, remaining_task])
+        mission.findings = []
+        mission.skipped_phases = set()
+        mission.completed_task_ids = {"t1"}
+        mission.is_stopped.return_value = False
+        mission.wait_if_paused = AsyncMock()
+        mission.log = MagicMock()
+        mission._start_wall_time = time.time()
+
+        context = AgentContext(
+            mission_id="mission-1",
+            session_id="session-1",
+            target="10.0.0.1",
+            mission="test",
+        )
+        executor = MagicMock()
+        executor.execute_task = AsyncMock()
+        lifecycle = MagicMock()
+        lifecycle.update_db_status = AsyncMock()
+        lifecycle.save_checkpoint = AsyncMock()
+
+        await execute_mission_tasks(
+            mission,
+            context,
+            executor,
+            None,
+            None,
+            MagicMock(),
+            lifecycle,
+        )
+
+        executor.execute_task.assert_awaited_once()
+        assert executor.execute_task.await_args.args[1] is remaining_task
+        assert mission.completed_task_ids == {"t1", "t2"}
 
     @pytest.mark.asyncio
     async def test_execute_task_copies_context_for_parallel_tasks(self):

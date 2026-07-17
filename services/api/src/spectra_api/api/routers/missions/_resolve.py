@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +16,8 @@ from spectra_mission.task_tree import PentestTaskTree
 from spectra_mission.types import MissionProgress
 from spectra_persistence.models.user import User
 from spectra_persistence.repositories.mission import MissionRepository
+
+logger = logging.getLogger(__name__)
 
 
 async def _load_db_mission(mission_id: str, session: AsyncSession, user: User):
@@ -40,7 +44,10 @@ async def resolve_runtime_mission(
     db_mission = await _load_db_mission(mission_id, session, user)
     checkpoint = db_mission.checkpoint_data
     if isinstance(checkpoint, dict) and checkpoint:
-        return Mission.from_checkpoint(checkpoint)
+        try:
+            return Mission.from_checkpoint(checkpoint)
+        except ValueError:
+            logger.warning("Mission %s has an invalid durable checkpoint", mission_id)
     return None
 
 

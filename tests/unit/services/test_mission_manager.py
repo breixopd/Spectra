@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -10,6 +11,11 @@ def _safe_create_task(coro, **kwargs):
     if asyncio.iscoroutine(coro):
         coro.close()
     return MagicMock()
+
+
+@asynccontextmanager
+async def _acquired_mission_execution_lock(*args, **kwargs):
+    yield MagicMock()
 
 
 @pytest.fixture(autouse=True)
@@ -91,6 +97,7 @@ def mock_manager_context():
         mock_repo_instance = MockRepo.return_value
         mock_repo_instance.create = AsyncMock()
         mock_repo_instance.update = AsyncMock()
+        mock_repo_instance.get_by_id = AsyncMock(return_value=None)
 
         # Setup Agents
         mock_executor_instance = MockExecutor.return_value
@@ -330,7 +337,72 @@ async def test_pause_resume_mission(mock_manager_context):
     assert mission.status == "running"
 
     assert await manager.pause_mission("invalid") is False
+    manager.resume_mission_from_checkpoint = AsyncMock(return_value=None)
     assert await manager.resume_mission("invalid") is False
+
+
+@pytest.mark.asyncio
+async def test_resume_inactive_mission_loads_the_durable_checkpoint(mock_manager_context):
+    manager = mock_manager_context["manager"]
+    manager.lifecycle.resume_mission = AsyncMock(return_value=False)
+    manager.resume_mission_from_checkpoint = AsyncMock(return_value="checkpoint-mission")
+
+    assert await manager.resume_mission("checkpoint-mission") is True
+    manager.resume_mission_from_checkpoint.assert_awaited_once_with("checkpoint-mission")
+
+
+@pytest.mark.asyncio
+async def test_resume_from_checkpoint_claims_the_persisted_mission(mock_manager_context):
+    manager = mock_manager_context["manager"]
+    session = mock_manager_context["session"]
+    mission = Mission("10.0.0.1", "assessment", user_id="owner-1", requires_approval=True)
+    mission.status = "paused"
+    db_mission = MagicMock(
+        id=mission.id,
+        user_id="owner-1",
+        target=mission.target,
+        directive=mission.directive,
+        requires_approval=True,
+        status="paused",
+        checkpoint_data=mission.save_checkpoint(),
+    )
+    session.get = AsyncMock(return_value=db_mission)
+
+    with patch(
+        "spectra_mission.manager.lifecycle.advisory_lock_owner",
+        _acquired_mission_execution_lock,
+    ):
+        restored = await manager.lifecycle.resume_mission_from_db(mission.id)
+
+    assert restored.id == mission.id
+    assert manager.active_missions[mission.id] is restored
+    assert db_mission.status == "resuming"
+
+
+@pytest.mark.asyncio
+async def test_resume_from_checkpoint_rejects_an_unpaused_mission(mock_manager_context):
+    manager = mock_manager_context["manager"]
+    session = mock_manager_context["session"]
+    mission = Mission("10.0.0.1", "assessment", user_id="owner-1")
+    db_mission = MagicMock(
+        id=mission.id,
+        user_id="owner-1",
+        target=mission.target,
+        directive=mission.directive,
+        requires_approval=False,
+        status="running",
+        checkpoint_data=mission.save_checkpoint(),
+    )
+    session.get = AsyncMock(return_value=db_mission)
+
+    with (
+        patch(
+            "spectra_mission.manager.lifecycle.advisory_lock_owner",
+            _acquired_mission_execution_lock,
+        ),
+        pytest.raises(ValueError, match="not available"),
+    ):
+        await manager.lifecycle.resume_mission_from_db(mission.id)
 
 
 @pytest.mark.asyncio

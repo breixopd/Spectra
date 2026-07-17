@@ -46,7 +46,7 @@ _SCAN_MODE_AUTOMATION: dict[str, str] = {
     "guided": "semi_auto",
     "manual": "manual",
 }
-_CHECKPOINT_VERSION = 2
+_CHECKPOINT_VERSION = 3
 _CHECKPOINT_REQUIRED_FIELDS = frozenset(
     {
         "id",
@@ -59,6 +59,7 @@ _CHECKPOINT_REQUIRED_FIELDS = frozenset(
         "scan_mode",
         "training_opt_in",
         "training_discount_pct",
+        "completed_task_ids",
     }
 )
 
@@ -112,6 +113,10 @@ class Mission:
         self.start_time = datetime.now(UTC)
         self.plan: MissionPlan | None = None
         self.current_task_index = 0
+        # Task identifiers are the durable resume cursor.  An integer index is
+        # insufficient because plans can be adapted and independent tasks run
+        # concurrently within a phase.
+        self.completed_task_ids: set[str] = set()
         self.findings: list[dict[str, Any]] = []
         self.logs: list[str] = []
         self._state_lock = threading.RLock()
@@ -548,6 +553,7 @@ class Mission:
             "pentest_framework": getattr(self, "pentest_framework", "ptes"),
             "start_time": self.start_time.isoformat(),
             "current_task_index": self.current_task_index,
+            "completed_task_ids": sorted(self.completed_task_ids),
             "findings": self.findings,
             "findings_ids": [f.get("id") or f.get("template-id", "") for f in self.findings],
             "tools_run": self.tools_run,
@@ -606,6 +612,12 @@ class Mission:
             except (TypeError, ValueError) as exc:
                 raise ValueError("Checkpoint has invalid start_time") from exc
         mission.current_task_index = data.get("current_task_index", 0)
+        completed_task_ids = data["completed_task_ids"]
+        if not isinstance(completed_task_ids, list) or any(
+            not isinstance(task_id, str) or not task_id for task_id in completed_task_ids
+        ):
+            raise ValueError("Checkpoint has invalid completed_task_ids")
+        mission.completed_task_ids = set(completed_task_ids)
         mission.findings = data.get("findings", [])
         mission.tools_run = data.get("tools_run", [])
         mission.tool_executions = data.get("tool_executions", [])

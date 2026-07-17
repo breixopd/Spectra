@@ -410,6 +410,7 @@ async def _handle_task_execution_result(
         return last_findings_count, last_adaptation_index
 
     completed_task_ids.add(task.task_id)
+    mission.completed_task_ids.add(task.task_id)
     return await _handle_successful_task(
         mission,
         context,
@@ -442,10 +443,11 @@ async def execute_mission_tasks(
     last_findings_count = len(mission.findings)
     last_adaptation_index = -1
     phase_groups = _group_tasks_by_phase(mission.plan.tasks)
+    completed_task_ids = set(getattr(mission, "completed_task_ids", set()))
 
     global_task_counter = 0
 
-    for phase, indexed_tasks in phase_groups.items():
+    for phase, all_indexed_tasks in phase_groups.items():
         if _mission_stop_requested(mission):
             break
 
@@ -455,12 +457,20 @@ async def execute_mission_tasks(
         await mission.wait_if_paused()
 
         if phase in mission.skipped_phases:
-            for _, task in indexed_tasks:
+            for _, task in all_indexed_tasks:
                 mission.log(f"Skipping task '{task.description}' (phase skipped)")
-            global_task_counter += len(indexed_tasks)
+            global_task_counter += len(all_indexed_tasks)
             continue
 
-        completed_task_ids: set[str] = set()
+        indexed_tasks = [
+            (index, task)
+            for index, task in all_indexed_tasks
+            if task.task_id not in completed_task_ids
+        ]
+        if not indexed_tasks:
+            global_task_counter += len(all_indexed_tasks)
+            continue
+
         independent, dependent = _partition_phase_tasks(
             indexed_tasks,
             completed_task_ids,
@@ -541,4 +551,4 @@ async def execute_mission_tasks(
                 effective_idx,
             )
 
-        global_task_counter += len(indexed_tasks)
+        global_task_counter += len(all_indexed_tasks)

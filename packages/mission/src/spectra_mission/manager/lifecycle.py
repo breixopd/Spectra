@@ -19,14 +19,28 @@ from spectra_infra.events import EventType, events
 from spectra_mission.framework_progress import normalize_pentest_framework
 from spectra_mission.mission import Mission
 from spectra_mission.state_store import MissionStateStore
-from spectra_persistence.advisory_locks import stable_lock_id
-from spectra_persistence.database import async_session_maker
+from spectra_persistence.advisory_locks import advisory_lock_owner, stable_lock_id
+from spectra_persistence.database import advisory_lock_connection, async_session_maker
 from spectra_persistence.models.mission import Mission as MissionModel
 from spectra_persistence.models.user import User
 from spectra_persistence.repositories.mission import MissionRepository
 from spectra_tools.output import cleanup_mission_workspace
 
 logger = logging.getLogger(__name__)
+
+_INTERRUPTED_MISSION_STATUSES = frozenset(
+    {
+        "created",
+        "initializing",
+        "scoping",
+        "planning",
+        "running",
+        "scanning",
+        "analyzing",
+        "exploiting",
+        "resuming",
+    }
+)
 
 
 def _directive_with_playbook(playbook_id: str | None, directive: str) -> str:
@@ -219,8 +233,10 @@ class MissionLifecycleManager:
     async def pause_mission(self, mission_id: str) -> bool:
         """Pause a running mission."""
         if mission_id in self.active_missions:
-            self.active_missions[mission_id].pause()
-            await self.update_db_status(self.active_missions[mission_id])
+            mission = self.active_missions[mission_id]
+            mission.pause()
+            await self.update_db_status(mission)
+            await self.save_checkpoint(mission)
             return True
         return False
 
@@ -294,31 +310,129 @@ class MissionLifecycleManager:
                     resume=True,
                 )
             logger.info("Checkpoint saved for mission %s", mission.id)
-        except (OSError, RuntimeError) as e:
+        except (OSError, RuntimeError, SQLAlchemyError) as e:
             logger.error("Failed to save checkpoint for mission %s: %s", mission.id, e)
 
     async def resume_mission_from_db(self, mission_id: str) -> Mission:
-        """Reconstruct a mission from checkpoint data stored in DB.
+        """Claim and reconstruct a paused mission from its durable checkpoint.
 
         Raises:
             ValueError: If no checkpoint data exists for the mission.
             RuntimeError: If checkpoint deserialization fails.
         """
         try:
-            async with async_session_maker() as session, session.begin():
-                repo = MissionRepository(session)
-                db_mission = await repo.get_by_id(mission_id)
-                if not db_mission or not db_mission.checkpoint_data:
-                    raise ValueError(f"No checkpoint data for mission {mission_id}")
+            lock_id = stable_lock_id(f"spectra_mission_execution:{mission_id}")
+            async with advisory_lock_owner(
+                lock_id,
+                connection_factory=advisory_lock_connection,
+            ) as lock_connection:
+                if lock_connection is None:
+                    raise ValueError(f"Mission {mission_id} is still owned by a live process")
+                async with async_session_maker() as session, session.begin():
+                    db_mission = await session.get(MissionModel, mission_id, with_for_update=True)
+                    if not db_mission or not db_mission.checkpoint_data:
+                        raise ValueError(f"No checkpoint data for mission {mission_id}")
+                    if db_mission.status != "paused":
+                        raise ValueError(f"Mission {mission_id} is not available for durable resume")
 
-                mission = Mission.from_checkpoint(db_mission.checkpoint_data)
-                self.active_missions[mission.id] = mission
-                mission.log("[RESUME] Mission resumed from checkpoint")
-                return mission
+                    mission = Mission.from_checkpoint(db_mission.checkpoint_data)
+                    if (
+                        mission.id != str(db_mission.id)
+                        or mission.user_id != str(db_mission.user_id)
+                        or mission.target != db_mission.target
+                        or mission.directive != db_mission.directive
+                        or mission.requires_approval != db_mission.requires_approval
+                    ):
+                        raise ValueError(f"Checkpoint identity does not match mission {mission_id}")
+
+                    # This transaction is the cross-replica execution claim.  A
+                    # second request observes ``resuming`` and cannot schedule a
+                    # duplicate runner before the first task acquires its long-lived
+                    # PostgreSQL advisory lock.
+                    db_mission.status = "resuming"
+                    self.active_missions[mission.id] = mission
+                    mission.log("[RESUME] Mission resumed from checkpoint")
+                    return mission
         except ValueError:
             raise
-        except (OSError, RuntimeError) as e:
+        except (OSError, RuntimeError, SQLAlchemyError) as e:
             raise RuntimeError(f"Failed to resume mission {mission_id}: {e}") from e
+
+    async def execution_claim_is_current(self, mission_id: str, *, resume: bool) -> bool:
+        """Check that a scheduled runner still owns its DB state transition.
+
+        This closes the small race between scheduling a task and acquiring the
+        long-lived advisory lock: recovery can park a task first, and the stale
+        runner must then exit instead of executing it anyway.
+        """
+        expected_statuses = {"resuming"} if resume else {"created", "initializing"}
+        try:
+            async with async_session_maker() as session:
+                db_mission = await session.get(MissionModel, mission_id)
+                return bool(db_mission and db_mission.status in expected_statuses)
+        except (OSError, RuntimeError, SQLAlchemyError) as exc:
+            logger.error("Cannot verify execution claim for mission %s: %s", mission_id, exc)
+            return False
+
+    async def recover_interrupted_missions(self) -> dict[str, int]:
+        """Safely park orphaned mission rows after a process restart.
+
+        Security assessments are never resumed automatically.  A mission only
+        becomes resumable after its durable checkpoint is validated and the
+        owner explicitly resumes it through the normal authorization path.
+        """
+        recovered = 0
+        failed = 0
+        try:
+            async with async_session_maker() as session, session.begin():
+                result = await session.execute(
+                    select(MissionModel)
+                    .where(MissionModel.status.in_(_INTERRUPTED_MISSION_STATUSES))
+                    .with_for_update(skip_locked=True)
+                )
+                missions = result.scalars().all()
+                for db_mission in missions:
+                    lock_id = stable_lock_id(f"spectra_mission_execution:{db_mission.id}")
+                    async with advisory_lock_owner(
+                        lock_id,
+                        connection_factory=advisory_lock_connection,
+                    ) as lock_connection:
+                        if lock_connection is None:
+                            logger.info(
+                                "Mission %s is still owned by a live replica; skipping restart recovery",
+                                db_mission.id,
+                            )
+                            continue
+
+                        logs = list(db_mission.logs or [])
+                        checkpoint = db_mission.checkpoint_data
+                        try:
+                            if not isinstance(checkpoint, dict) or not checkpoint:
+                                raise ValueError("no durable checkpoint exists")
+                            mission = Mission.from_checkpoint(checkpoint)
+                            if mission.id != str(db_mission.id) or mission.user_id != str(db_mission.user_id):
+                                raise ValueError("checkpoint identity does not match persisted mission")
+                        except (TypeError, ValueError) as exc:
+                            db_mission.status = "failed"
+                            db_mission.resume = False
+                            logs.append(f"[RECOVERY] Mission could not be recovered safely: {exc}")
+                            db_mission.logs = logs
+                            failed += 1
+                            continue
+
+                        db_mission.status = "paused"
+                        db_mission.resume = True
+                        logs.append(
+                            "[RECOVERY] Service restart detected. Mission is paused and requires explicit owner resume."
+                        )
+                        db_mission.logs = logs
+                        recovered += 1
+        except (OSError, RuntimeError, SQLAlchemyError) as exc:
+            logger.error("Failed to recover interrupted missions: %s", exc)
+            return {"recovered": 0, "failed": 0}
+
+        logger.info("Mission recovery parked %d checkpointed mission(s), failed %d unsafe mission(s)", recovered, failed)
+        return {"recovered": recovered, "failed": failed}
 
     async def initialize_mission(self, mission: Mission) -> AgentContext | None:
         """Initialize mission and return context."""

@@ -101,9 +101,19 @@ async def run_startup_checks() -> None:
 
 
 async def run_startup_tasks() -> None:
-    """Run background tasks on startup."""
+    """Run background tasks on startup without auto-executing prior assessments."""
     try:
         logger.info("Running startup tasks...")
+
+        from spectra_mission.manager import mission_manager
+
+        recovery = await mission_manager.lifecycle.recover_interrupted_missions()
+        if recovery["recovered"] or recovery["failed"]:
+            logger.warning(
+                "Mission restart recovery: %d paused for explicit owner resume, %d failed safely",
+                recovery["recovered"],
+                recovery["failed"],
+            )
 
         await set_system_status("ready", "System ready")
         logger.info("Startup tasks completed")

@@ -60,8 +60,8 @@ class MissionExecutionManager:
         self.executor = MissionExecutor(current_llm)
         self.consensus = VotingSystem(current_llm)
 
-    async def run_mission_loop(self, mission: Mission) -> None:
-        """Main execution loop for a mission."""
+    async def run_mission_loop(self, mission: Mission, *, resume: bool = False) -> None:
+        """Main execution loop for a mission or a validated durable resume."""
         recorder = self._init_demo_recorder(mission)
         mission._demo_recorder = recorder
 
@@ -77,7 +77,7 @@ class MissionExecutionManager:
 
         try:
             self._bind_mission_to_consensus_agents(mission)
-            await self._run_mission_phases(mission, context, cost_tracker, recorder)
+            await self._run_mission_phases(mission, context, cost_tracker, recorder, resume=resume)
         except asyncio.CancelledError:
             mission.set_status("cancelled")
             mission.log("Mission cancelled")
@@ -233,12 +233,21 @@ class MissionExecutionManager:
         context: AgentContext,
         cost_tracker: CostTracker,
         recorder: Any,
+        *,
+        resume: bool = False,
     ) -> None:
         """Execute all mission phases: scope, plan, execute, debrief, report."""
-        await self._run_scope_phase(mission, context)
-        await self.lifecycle.update_db_status(mission)
-        await self._run_planning_phase(mission, context)
-        await self.lifecycle.update_db_status(mission)
+        if resume:
+            if mission.plan is None:
+                raise RuntimeError("Cannot resume a mission without a checkpointed plan")
+            mission.log(
+                "[RESUME] Continuing validated checkpoint plan; completed tasks will not be replayed"
+            )
+        else:
+            await self._run_scope_phase(mission, context)
+            await self.lifecycle.update_db_status(mission)
+            await self._run_planning_phase(mission, context)
+            await self.lifecycle.update_db_status(mission)
 
         if mission.plan is None:
             raise RuntimeError("No plan created")

@@ -7,8 +7,12 @@ import logging
 from collections.abc import Coroutine
 from typing import Any
 
+from sqlalchemy.exc import SQLAlchemyError
+
 from spectra_common.constants import MAX_CONCURRENT_MISSIONS
 from spectra_mission.mission import Mission
+from spectra_persistence.advisory_locks import advisory_lock_owner, stable_lock_id
+from spectra_persistence.database import advisory_lock_connection
 
 from . import execution, lifecycle, steering
 from .execution import MissionExecutionManager
@@ -59,11 +63,26 @@ class MissionManager:
             await self.execution.ensure_agents()
             self._agents_initialized = True
 
-    async def _run_mission_with_limit(self, mission: Mission) -> None:
-        """Run mission loop within global concurrency semaphore."""
-        async with self._global_semaphore:
-            await self.execution.run_mission_loop(mission)
-        self._mission_llm_semaphores.pop(mission.id, None)
+    async def _run_mission_with_limit(self, mission: Mission, *, resume: bool = False) -> None:
+        """Run one mission under process and PostgreSQL execution limits."""
+        lock_id = stable_lock_id(f"spectra_mission_execution:{mission.id}")
+        try:
+            async with advisory_lock_owner(lock_id, connection_factory=advisory_lock_connection) as connection:
+                if connection is None:
+                    logger.warning("Mission %s execution is already owned by another replica", mission.id)
+                    self.active_missions.pop(mission.id, None)
+                    return
+                if not await self.lifecycle.execution_claim_is_current(mission.id, resume=resume):
+                    logger.warning("Mission %s execution claim is stale; refusing to run it", mission.id)
+                    self.active_missions.pop(mission.id, None)
+                    return
+                async with self._global_semaphore:
+                    await self.execution.run_mission_loop(mission, resume=resume)
+        except (OSError, RuntimeError, SQLAlchemyError) as exc:
+            logger.error("Mission %s could not acquire its execution lease: %s", mission.id, exc)
+            self.active_missions.pop(mission.id, None)
+        finally:
+            self._mission_llm_semaphores.pop(mission.id, None)
 
     # --- Public API ---
 
@@ -126,8 +145,10 @@ class MissionManager:
         return await self.lifecycle.pause_mission(mission_id)
 
     async def resume_mission(self, mission_id: str) -> bool:
-        """Resume a paused mission."""
-        return await self.lifecycle.resume_mission(mission_id)
+        """Resume an in-memory mission or a validated durable checkpoint."""
+        if await self.lifecycle.resume_mission(mission_id):
+            return True
+        return await self.resume_mission_from_checkpoint(mission_id) is not None
 
     async def resume_mission_from_checkpoint(self, mission_id: str) -> str | None:
         """Resume a mission from its DB checkpoint.
@@ -140,7 +161,8 @@ class MissionManager:
         except ValueError:
             return None
 
-        self._schedule_mission_task(self.execution.run_mission_loop(mission))
+        self._set_mission_llm_semaphore(mission.id)
+        self._schedule_mission_task(self._run_mission_with_limit(mission, resume=True))
         return mission.id
 
     async def get_mission(self, mission_id: str) -> Mission | None:
