@@ -6,12 +6,23 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, or_, select, update
 
 from spectra_persistence.database import async_session_maker
 from spectra_persistence.models.infrastructure import JobQueue
 
 logger = logging.getLogger(__name__)
+
+
+def _claimable_job_predicate():
+    """Return the queued-or-retry-ready predicate used by workers."""
+    return or_(
+        JobQueue.status == "queued",
+        and_(
+            JobQueue.status == "pending",
+            JobQueue.next_retry_at <= datetime.now(UTC),
+        ),
+    )
 
 
 class PostgresJobQueue:
@@ -55,11 +66,12 @@ class PostgresJobQueue:
                 conn = await session.connection()
                 raw_conn = await conn.get_raw_connection()
                 # Use driver_connection for asyncpg
-                if hasattr(raw_conn, "driver_connection"):
+                driver_connection = getattr(raw_conn, "driver_connection", None)
+                if driver_connection is not None:
                     # The queue_name is validated in __init__ against
                     # ^[a-z][a-z0-9_]{0,62}$ which prevents SQL injection.
                     assert re.match(r"^[a-z][a-z0-9_]{0,62}$", self.queue_name), "Invalid queue_name"
-                    await raw_conn.driver_connection.execute(f"NOTIFY spectra_jobs, '{self.queue_name}'")
+                    await driver_connection.execute(f"NOTIFY spectra_jobs, '{self.queue_name}'")
             except (OSError, RuntimeError) as e:
                 logger.warning("NOTIFY failed: %s", e)
 
@@ -224,7 +236,7 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
 
     # Set up LISTEN for instant wake-up
     notify_event: asyncio.Event = asyncio.Event()
-    _pg_listener_conn = None
+    _pg_listener_conn: Any | None = None
 
     async def _start_listener():
         nonlocal _pg_listener_conn
@@ -234,8 +246,9 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
             from spectra_common.config import settings as _cfg
 
             dsn = _cfg.DATABASE_URL.get_secret_value().replace("postgresql+asyncpg://", "postgresql://")
-            _pg_listener_conn = await asyncpg.connect(dsn)
-            await _pg_listener_conn.add_listener("spectra_jobs", lambda *_args: notify_event.set())
+            listener_conn = await asyncpg.connect(dsn)
+            await listener_conn.add_listener("spectra_jobs", lambda *_args: notify_event.set())
+            _pg_listener_conn = listener_conn
             logger.info("Worker LISTEN on spectra_jobs channel active")
         except Exception as exc:
             logger.warning("LISTEN setup failed, falling back to polling: %s", exc)
@@ -256,13 +269,7 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
                         select(JobQueue)
                         .where(
                             JobQueue.queue_name == queue_name,
-                            (
-                                JobQueue.status == "queued"
-                                | and_(
-                                    JobQueue.status == "pending",
-                                    JobQueue.next_retry_at <= datetime.now(UTC),
-                                )
-                            ),
+                            _claimable_job_predicate(),
                         )
                         .order_by(JobQueue.priority.asc(), JobQueue.enqueued_at.asc())
                         .with_for_update(skip_locked=True)
@@ -368,6 +375,7 @@ async def queue_metrics(queue_name: str = "default") -> dict:
             {"queue_name": queue_name},
         )
         row = result.first()
+        assert row is not None, "queue aggregate query must return one row"
         return {
             "queue_name": queue_name,
             "depth": row.depth or 0,
