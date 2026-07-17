@@ -1,29 +1,31 @@
-# Playwright UI tests against the Docker test stack (app reachable at http://app:5000 from ui-test-runner).
-# This is slower than unit/integration; it runs on path-scoped PRs, main/develop pushes, and manual dispatch.
+# Playwright UI tests against the Docker test stack (browser-safe app alias: http://spectra-app:5000).
+# This is slower than unit/integration; it runs on path-scoped PRs, main/dev pushes, and manual dispatch.
 name: UI E2E
 
 on:
   workflow_dispatch:
   push:
-    branches: [main, develop]
+    branches: [main, dev]
     paths:
       - "services/api/templates/**"
       - "services/api/static/**"
       - "tests/e2e/**"
       - "tests/run_ui_tests.sh"
-      - "docker/Dockerfile.playwright"
-      - "docker/Dockerfile.api"
-      - "docker/compose.yaml"
+      - "deploy/docker/Dockerfile.playwright"
+      - "deploy/docker/Dockerfile.api"
+      - "deploy/docker/compose.yaml"
+      - "apps/web/**"
   pull_request:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - "services/api/templates/**"
       - "services/api/static/**"
       - "tests/e2e/**"
       - "tests/run_ui_tests.sh"
-      - "docker/Dockerfile.playwright"
-      - "docker/Dockerfile.api"
-      - "docker/compose.yaml"
+      - "deploy/docker/Dockerfile.playwright"
+      - "deploy/docker/Dockerfile.api"
+      - "deploy/docker/compose.yaml"
+      - "apps/web/**"
 
 concurrency:
   group: ui-e2e-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -43,7 +45,9 @@ jobs:
     env:
       ENCRYPTION_KEY: test-encryption-key
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.0
+        with:
+          persist-credentials: false
       - name: Ensure .env.test for Docker Compose
         run: test -f .env.test || cp .env.test.example .env.test
       - name: Run UI E2E harness

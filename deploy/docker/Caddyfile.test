@@ -43,7 +43,7 @@ import Caddyfile.snippets
 
 		reverse_proxy app:5000 app-replica:5000 {
 			lb_policy round_robin
-			health_uri /api/health
+			health_uri /api/healthz
 			health_interval 10s
 			health_timeout 5s
 

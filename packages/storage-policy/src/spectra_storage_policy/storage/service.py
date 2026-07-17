@@ -145,7 +145,10 @@ class StorageService:
                     logger.debug("Garage admin API not ready (status %s, attempt %d/3)", resp.status_code, attempt)
                     await asyncio.sleep(1.0)
                 if resp is None or resp.status_code != 200:
-                    logger.debug("Garage admin API not reachable after retries (status %s), skipping bootstrap", resp.status_code if resp else "no response")
+                    logger.debug(
+                        "Garage admin API not reachable after retries (status %s), skipping bootstrap",
+                        resp.status_code if resp else "no response",
+                    )
                     return
                 status_data = resp.json()
                 layout_version = status_data.get("layoutVersion", 0)
@@ -213,7 +216,9 @@ class StorageService:
                                     bucket_id = b.get("id", "")
                                     break
                     else:
-                        logger.warning("Garage bootstrap: bucket %s creation failed (%s)", bucket_name, b_resp.status_code)
+                        logger.warning(
+                            "Garage bootstrap: bucket %s creation failed (%s)", bucket_name, b_resp.status_code
+                        )
                         continue
 
                     if bucket_id and access_key_id:
@@ -454,7 +459,12 @@ class StorageService:
             return {"status": "healthy", "mode": "s3", "endpoint": settings.S3_ENDPOINT_URL}
         except Exception as e:
             logger.warning("Storage health check failed: %s", e)
-            return {"status": "unhealthy", "mode": "s3", "endpoint": settings.S3_ENDPOINT_URL, "error": "Storage health check failed"}
+            return {
+                "status": "unhealthy",
+                "mode": "s3",
+                "endpoint": settings.S3_ENDPOINT_URL,
+                "error": "Storage health check failed",
+            }
 
     async def close(self) -> None:
         """Clean up resources."""

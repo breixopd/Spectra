@@ -1,4 +1,5 @@
 """Admin email management endpoints."""
+
 import csv
 import io
 import logging
@@ -196,6 +197,7 @@ async def export_email_list(
 
 
 # --- Public unsubscribe endpoint (no auth required) ---
+
 
 @router.get("/api/email/unsubscribe/{token}", response_class=HTMLResponse)
 async def unsubscribe(

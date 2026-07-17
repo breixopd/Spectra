@@ -8,8 +8,9 @@ Covers:
 - spectra_error_handler in main.py
 """
 
+import pytest
 from fastapi import Request
-from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 
 from spectra_common.errors import (
     AuthenticationError,
@@ -106,12 +107,13 @@ class TestGetStatusCodeForException:
 
 
 # ---------------------------------------------------------------------------
-# spectra_error_handler (integration via TestClient)
+# spectra_error_handler (integration through the async ASGI transport)
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.asyncio
 class TestSpectraErrorHandler:
-    def test_handler_returns_json_with_correct_status(self):
+    async def test_handler_returns_json_with_correct_status(self):
         """The app's exception handler converts SpectraError → JSONResponse."""
         from fastapi import FastAPI
 
@@ -128,14 +130,17 @@ class TestSpectraErrorHandler:
         async def raise_err():
             raise NotFoundError("Widget", "w-42")
 
-        client = TestClient(test_app, raise_server_exceptions=False)
-        resp = client.get("/err")
+        async with AsyncClient(
+            transport=ASGITransport(app=test_app, raise_app_exceptions=False),
+            base_url="http://test",
+        ) as client:
+            resp = await client.get("/err")
         assert resp.status_code == 404
         body = resp.json()
         assert body["error"] == "NOT_FOUND"
         assert "Widget" in body["message"]
 
-    def test_handler_for_validation_error(self):
+    async def test_handler_for_validation_error(self):
         from fastapi import FastAPI
         from fastapi.responses import JSONResponse
 
@@ -149,7 +154,10 @@ class TestSpectraErrorHandler:
         async def raise_val():
             raise ValidationError("bad field", field="email")
 
-        client = TestClient(test_app, raise_server_exceptions=False)
-        resp = client.get("/val")
+        async with AsyncClient(
+            transport=ASGITransport(app=test_app, raise_app_exceptions=False),
+            base_url="http://test",
+        ) as client:
+            resp = await client.get("/val")
         assert resp.status_code == 422
         assert resp.json()["details"]["field"] == "email"

@@ -622,9 +622,7 @@ class TestOutputParsingGate:
         }
         llm = MockLLMClient(structured_responses={"ParsedFactsResponse": facts})
         vs = VotingSystem(llm)
-        result = await vs.vote_on_output_parsing(
-            "PORT 443/tcp open https\nServer: nginx/1.25.3", num_voters=3
-        )
+        result = await vs.vote_on_output_parsing("PORT 443/tcp open https\nServer: nginx/1.25.3", num_voters=3)
         assert result["voters"] == 3
         assert result["agreed"] == 2
         names = {f["name"] for f in result["facts"]}

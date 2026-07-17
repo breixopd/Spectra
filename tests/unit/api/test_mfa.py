@@ -34,9 +34,6 @@ def test_verify_totp_invalid_code():
     assert verify_totp(secret, "000000") is False
 
 
-# --- Endpoint tests using TestClient pattern ---
-
-
 def _make_user(**overrides):
     """Create a mock User object."""
     user = MagicMock()
@@ -76,21 +73,11 @@ def _make_request(
 @pytest.fixture
 def mock_session():
     session = AsyncMock()
+    # SQLAlchemy's AsyncSession keeps add() synchronous. A bare AsyncMock
+    # silently turns it into an un-awaited coroutine and masks test mistakes.
+    session.add = MagicMock()
     session.commit = AsyncMock()
     return session
-
-
-@pytest.fixture
-def app_client():
-    """Create a test client with mocked dependencies."""
-    from fastapi import FastAPI
-    from fastapi.testclient import TestClient
-
-    from spectra_api.api.routers.auth import router
-
-    app = FastAPI()
-    app.include_router(router, prefix="/auth")
-    return TestClient(app)
 
 
 @pytest.mark.asyncio

@@ -109,8 +109,12 @@ def _artifact_refs_from_evidence(evidence: dict[str, Any]) -> list[EvidenceArtif
                     EvidenceArtifactRef(
                         s3_key=str(item["s3_key"]),
                         sha256=str(item["sha256"]) if item.get("sha256") else None,
-                        mime=str(item.get("mime") or item.get("mime_type")) if item.get("mime") or item.get("mime_type") else None,
-                        role=str(item.get("role") or item.get("kind")) if item.get("role") or item.get("kind") else None,
+                        mime=str(item.get("mime") or item.get("mime_type"))
+                        if item.get("mime") or item.get("mime_type")
+                        else None,
+                        role=str(item.get("role") or item.get("kind"))
+                        if item.get("role") or item.get("kind")
+                        else None,
                     )
                 )
         if refs:
@@ -121,8 +125,12 @@ def _artifact_refs_from_evidence(evidence: dict[str, Any]) -> list[EvidenceArtif
             EvidenceArtifactRef(
                 s3_key=str(evidence["s3_key"]),
                 sha256=str(evidence["sha256"]) if evidence.get("sha256") else None,
-                mime=str(evidence.get("mime") or evidence.get("mime_type")) if evidence.get("mime") or evidence.get("mime_type") else None,
-                role=str(evidence.get("role") or evidence.get("kind")) if evidence.get("role") or evidence.get("kind") else None,
+                mime=str(evidence.get("mime") or evidence.get("mime_type"))
+                if evidence.get("mime") or evidence.get("mime_type")
+                else None,
+                role=str(evidence.get("role") or evidence.get("kind"))
+                if evidence.get("role") or evidence.get("kind")
+                else None,
             )
         )
     return refs

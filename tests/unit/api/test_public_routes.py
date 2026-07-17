@@ -11,13 +11,13 @@ Covers:
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi.routing import APIRoute
 
 
-def _registered_paths():
+def _openapi_paths() -> set[str]:
+    """Use FastAPI's generated contract instead of its internal router tree."""
     from spectra_api.main import app
 
-    return {route.path for route in app.routes if isinstance(route, APIRoute)}
+    return set(app.openapi()["paths"])
 
 
 # ---------------------------------------------------------------------------
@@ -34,7 +34,9 @@ class TestPublicStatusApi:
 
         from spectra_api.api.routers.system.health import get_public_system_status
 
-        with patch("spectra_api.api.routers.system.health.collect_platform_health", new_callable=AsyncMock) as mock_health:
+        with patch(
+            "spectra_api.api.routers.system.health.collect_platform_health", new_callable=AsyncMock
+        ) as mock_health:
             mock_health.return_value = {
                 "status": "healthy",
                 "version": "1.0.0",
@@ -63,13 +65,15 @@ class TestPublicStatusApi:
 
     def test_public_status_route_has_no_auth_dependency(self):
         """The public-status route must not require get_current_active_user."""
-        from spectra_api.api.dependencies import get_current_active_user
-        from spectra_api.main import app
+        import inspect
 
-        routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path == "/api/v1/system/public-status"]
-        assert routes, "Route not found"
-        route = routes[0]
-        dep_callables = [d.call for d in route.dependant.dependencies]
+        from spectra_api.api.dependencies import get_current_active_user
+        from spectra_api.api.routers.system.health import get_public_system_status
+
+        dep_callables = [
+            getattr(parameter.default, "dependency", None)
+            for parameter in inspect.signature(get_public_system_status).parameters.values()
+        ]
         assert get_current_active_user not in dep_callables
 
 
@@ -82,13 +86,13 @@ class TestDeletedPublicApiEndpoints:
     """Former /api/public/* password-reset API endpoints are not registered."""
 
     def test_api_public_forgot_password_not_registered(self):
-        all_paths = _registered_paths()
+        all_paths = _openapi_paths()
         assert "/api/public/forgot-password" not in all_paths, (
             "/api/public/forgot-password should not be registered as an API endpoint"
         )
 
     def test_api_public_reset_password_not_registered(self):
-        all_paths = _registered_paths()
+        all_paths = _openapi_paths()
         assert "/api/public/reset-password" not in all_paths, (
             "/api/public/reset-password should not be registered as an API endpoint"
         )
@@ -103,13 +107,19 @@ class TestPublicPageRoutes:
     """HTML pages /status, /security, and /changelog are registered."""
 
     def test_status_page_route_registered(self):
-        assert "/status" in _registered_paths()
+        from spectra_api.main import app
+
+        assert str(app.url_path_for("status_page")) == "/status"
 
     def test_security_page_route_registered(self):
-        assert "/security" in _registered_paths()
+        from spectra_api.main import app
+
+        assert str(app.url_path_for("security_page")) == "/security"
 
     def test_changelog_page_route_registered(self):
-        assert "/changelog" in _registered_paths()
+        from spectra_api.main import app
+
+        assert str(app.url_path_for("changelog_page")) == "/changelog"
 
     @pytest.mark.asyncio
     async def test_status_page_renders_without_auth(self):

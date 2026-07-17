@@ -156,7 +156,8 @@ class TaskDispatcher:
         handler = handlers.get(agent_type)
         if not handler and (
             agent_type.endswith("_agent")
-            or agent_type in [
+            or agent_type
+            in [
                 "discovery",
                 "enumeration",
                 "vulnerability",

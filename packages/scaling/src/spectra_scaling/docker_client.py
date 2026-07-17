@@ -4,6 +4,7 @@ Provides async-safe access to the Docker Engine API via the docker-py SDK.
 Replaces all subprocess.run(['docker', ...]) calls.
 No Docker CLI binary required.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -347,7 +348,11 @@ async def get_service_logs(name: str, tail: int = 50) -> str:
         try:
             svc = await _run_sync(client.services.get, name)
             log_bytes = await _run_sync(
-                svc.logs, stdout=True, stderr=True, tail=tail, timestamps=True,
+                svc.logs,
+                stdout=True,
+                stderr=True,
+                tail=tail,
+                timestamps=True,
             )
             if isinstance(log_bytes, bytes):
                 return log_bytes.decode("utf-8", errors="replace")
@@ -391,14 +396,16 @@ async def get_container_stats() -> list[ContainerStats]:
                     mem_usage = mem_stats.get("usage", 0)
                     mem_limit = mem_stats.get("limit", 0)
 
-                    results.append(ContainerStats(
-                        container_id=container.short_id,
-                        name=container.name,
-                        cpu_percent=_calc_cpu_percent(stats),
-                        memory_mb=mem_usage / (1024 * 1024),
-                        memory_limit_mb=mem_limit / (1024 * 1024),
-                        labels=dict(container.labels or {}),
-                    ))
+                    results.append(
+                        ContainerStats(
+                            container_id=container.short_id,
+                            name=container.name,
+                            cpu_percent=_calc_cpu_percent(stats),
+                            memory_mb=mem_usage / (1024 * 1024),
+                            memory_limit_mb=mem_limit / (1024 * 1024),
+                            labels=dict(container.labels or {}),
+                        )
+                    )
                 except Exception as exc:
                     logger.debug("Stats failed for container %s: %s", container.name, exc)
         finally:
@@ -416,14 +423,16 @@ async def list_running_containers() -> list[ContainerStats]:
         try:
             containers = await _run_sync(client.containers.list)
             for container in containers:
-                results.append(ContainerStats(
-                    container_id=container.short_id,
-                    name=container.name,
-                    cpu_percent=0.0,
-                    memory_mb=0.0,
-                    memory_limit_mb=0.0,
-                    labels=dict(container.labels or {}),
-                ))
+                results.append(
+                    ContainerStats(
+                        container_id=container.short_id,
+                        name=container.name,
+                        cpu_percent=0.0,
+                        memory_mb=0.0,
+                        memory_limit_mb=0.0,
+                        labels=dict(container.labels or {}),
+                    )
+                )
         finally:
             client.close()
     except (DockerException, APIError) as exc:
@@ -491,14 +500,16 @@ async def list_nodes() -> list[NodeInfo]:
                 spec = attrs.get("Spec", {})
                 desc = attrs.get("Description", {})
                 status = attrs.get("Status", {})
-                result.append(NodeInfo(
-                    id=attrs.get("ID", ""),
-                    hostname=desc.get("Hostname", ""),
-                    role=spec.get("Role", "worker"),
-                    status=status.get("State", "unknown"),
-                    availability=spec.get("Availability", "active"),
-                    labels=spec.get("Labels", {}),
-                ))
+                result.append(
+                    NodeInfo(
+                        id=attrs.get("ID", ""),
+                        hostname=desc.get("Hostname", ""),
+                        role=spec.get("Role", "worker"),
+                        status=status.get("State", "unknown"),
+                        availability=spec.get("Availability", "active"),
+                        labels=spec.get("Labels", {}),
+                    )
+                )
             return result
         finally:
             client.close()
@@ -508,7 +519,9 @@ async def list_nodes() -> list[NodeInfo]:
 
 
 async def update_node_labels(
-    node_id: str, labels: dict[str, str], remove_labels: list[str] | None = None,
+    node_id: str,
+    labels: dict[str, str],
+    remove_labels: list[str] | None = None,
 ) -> bool:
     """Update labels on a Swarm node."""
     try:
@@ -649,7 +662,7 @@ async def _get_registry_digest_v2(image_ref: str) -> str | None:
                     url,
                     headers={
                         "Accept": "application/vnd.docker.distribution.manifest.v2+json, "
-                                  "application/vnd.oci.image.manifest.v1+json"
+                        "application/vnd.oci.image.manifest.v1+json"
                     },
                 )
                 if resp.status_code == 200:

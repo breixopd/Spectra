@@ -191,6 +191,7 @@ class MissionMemory:
         if filename in _ENCRYPTED_FILES:
             try:
                 from spectra_common.encryption import decrypt_file
+
                 return decrypt_file(path).decode("utf-8")
             except Exception:
                 # Fall back to plaintext (pre-encryption data or missing key)
@@ -301,6 +302,7 @@ class MissionMemory:
             if filename in _ENCRYPTED_FILES:
                 try:
                     from spectra_common.encryption import encrypt_file
+
                     encrypt_file(tmp)
                 except Exception as e:
                     logger.warning("Failed to encrypt %s (saving plaintext): %s", filename, e)

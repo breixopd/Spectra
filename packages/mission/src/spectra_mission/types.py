@@ -61,6 +61,7 @@ from spectra_persistence.models.attack_surface import AttackSurfaceSummary as At
 class FindingDict(TypedDict, total=False):
     """Structure of a finding recorded by ``Mission.add_finding()``."""
 
+    id: str
     title: str
     description: str
     severity: str
@@ -76,6 +77,9 @@ class FindingDict(TypedDict, total=False):
     location: str
     recommendation: str
     count: int
+    created_at: str
+    evidence: dict[str, object]
+    evidence_bundle: dict[str, object]
 
 
 class MissionListItem(TypedDict):

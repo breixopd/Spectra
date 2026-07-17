@@ -20,10 +20,9 @@ pytestmark = [
 ]
 
 
-
 # Targets from deploy/docker/compose.yaml (profiles app + targets) when stack is running
-TARGET_SERVER = os.getenv("TARGET_SERVER", "172.21.0.50")  # Metasploitable
-TARGET_WEB = os.getenv("TARGET_WEB", "172.21.0.51")  # DVWA
+TARGET_SERVER = os.getenv("TARGET_SERVER", os.getenv("SPECTRA_METASPLOITABLE_IP", "10.254.0.50"))
+TARGET_WEB = os.getenv("TARGET_WEB", os.getenv("SPECTRA_DVWA_IP", "10.254.0.51"))
 
 
 class TestLiveCampaign:
@@ -41,6 +40,7 @@ class TestLiveCampaign:
     async def setup_campaign(self):
         await engine.dispose()
         import spectra_tools_core.registry as registry_module
+
         registry_module._registry = None
         registry = get_registry()
         await registry.load_plugins()

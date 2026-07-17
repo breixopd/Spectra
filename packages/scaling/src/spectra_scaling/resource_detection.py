@@ -212,8 +212,7 @@ def derive_operational_limits(
     cpu = resources.cpu_count
     mem = resources.memory_mb
     if service_profile == "worker_dense":
-        overhead = (SERVICE_RAM_MB["worker"] + SERVICE_RAM_MB["db"] +
-                    SERVICE_RAM_MB["redis"] + SERVICE_RAM_MB["garage"])
+        overhead = SERVICE_RAM_MB["worker"] + SERVICE_RAM_MB["db"] + SERVICE_RAM_MB["redis"] + SERVICE_RAM_MB["garage"]
     else:
         overhead = sum(SERVICE_RAM_MB.values())
     available_ram = max(0, mem - overhead - HOST_SERVICE_OVERHEAD_MB)
@@ -226,8 +225,13 @@ def derive_operational_limits(
     redis_pool_size = max(5, min(10, int(cpu * 1.5)))
     logger.info(
         "Derived limits (profile=%s): sandboxes=%d tools=%d workers=%d api=%d ai=%d db=%d",
-        service_profile, max_sandboxes, max_concurrent_tools, max_workers,
-        max_api_replicas, max_ai_replicas, db_pool_size,
+        service_profile,
+        max_sandboxes,
+        max_concurrent_tools,
+        max_workers,
+        max_api_replicas,
+        max_ai_replicas,
+        db_pool_size,
     )
     return DerivedLimits(
         max_sandboxes=max_sandboxes,

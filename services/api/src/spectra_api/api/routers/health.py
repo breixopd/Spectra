@@ -275,10 +275,18 @@ async def deep_health_check(
             if image_ok:
                 results["sandbox"] = {"status": "healthy", "latency_ms": _latency_ms(start), "image": image_name}
             else:
-                results["sandbox"] = {"status": "degraded", "latency_ms": _latency_ms(start), "error": f"image {image_name} not found"}
+                results["sandbox"] = {
+                    "status": "degraded",
+                    "latency_ms": _latency_ms(start),
+                    "error": f"image {image_name} not found",
+                }
                 overall = "degraded"
         else:
-            results["sandbox"] = {"status": "not_configured", "latency_ms": _latency_ms(start), "error": "Docker unavailable"}
+            results["sandbox"] = {
+                "status": "not_configured",
+                "latency_ms": _latency_ms(start),
+                "error": "Docker unavailable",
+            }
     except Exception as exc:
         results["sandbox"] = {"status": "unhealthy", "latency_ms": _latency_ms(start), "error": type(exc).__name__}
         overall = "degraded"

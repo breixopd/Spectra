@@ -22,6 +22,7 @@ def get_ai_settings():
         return _settings_factory()
     import os
     from types import SimpleNamespace
+
     return SimpleNamespace(
         TENSORZERO_GATEWAY_URL=os.environ.get("TENSORZERO_GATEWAY_URL", ""),
         LLM_TIMEOUT=float(os.environ.get("LLM_TIMEOUT", "600")),
@@ -249,8 +250,7 @@ def get_llm_client(provider: str = "tensorzero", **kwargs: Any) -> LLMClient:
     """Create a new LLM client via the registered factory."""
     if _llm_factory is None:
         raise RuntimeError(
-            "No LLM factory registered. services/ai must call "
-            "spectra_ai_core.llm.register_llm_factory() at startup."
+            "No LLM factory registered. services/ai must call spectra_ai_core.llm.register_llm_factory() at startup."
         )
     return _llm_factory(provider=provider, **kwargs)
 

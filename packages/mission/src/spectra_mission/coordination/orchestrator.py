@@ -169,7 +169,11 @@ class Orchestrator:
 
         logger.info(
             "Orchestration complete: %d tasks (%d ok, %d failed, %d blocked) in %.2fs",
-            len(tasks), result.completed, result.failed, result.blocked, duration,
+            len(tasks),
+            result.completed,
+            result.failed,
+            result.blocked,
+            duration,
         )
         return result
 
@@ -208,10 +212,14 @@ class Orchestrator:
                     record.retries = attempt + 1
 
                     if attempt < task.max_retries:
-                        delay = self.retry_base_delay * (2 ** attempt)
+                        delay = self.retry_base_delay * (2**attempt)
                         logger.warning(
                             "Task %s failed (attempt %d/%d), retrying in %.1fs: %s",
-                            task.id, attempt + 1, task.max_retries, delay, exc,
+                            task.id,
+                            attempt + 1,
+                            task.max_retries,
+                            delay,
+                            exc,
                         )
                         await asyncio.sleep(delay)
                     else:
@@ -244,9 +252,7 @@ class Orchestrator:
             if records[task.id].status == TaskExecStatus.BLOCKED:
                 continue
 
-            deps_satisfied = all(
-                dep_id in completed for dep_id in task.depends_on
-            )
+            deps_satisfied = all(dep_id in completed for dep_id in task.depends_on)
             if deps_satisfied:
                 ready.append(task)
 

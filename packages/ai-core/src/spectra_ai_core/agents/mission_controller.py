@@ -321,7 +321,9 @@ IMPORTANT OPERATIONAL GUIDELINES:
         if any(marker in constraints for marker in safe_markers):
             blocked_phases = {AssessmentPhase.EXPLOITATION, AssessmentPhase.POST_EXPLOITATION}
             allowed_task_ids = {
-                task.task_id for task in plan.tasks if task.phase not in blocked_phases and task.agent_type != "exploit_crafter"
+                task.task_id
+                for task in plan.tasks
+                if task.phase not in blocked_phases and task.agent_type != "exploit_crafter"
             }
             plan.tasks = [
                 task.model_copy(update={"dependencies": [dep for dep in task.dependencies if dep in allowed_task_ids]})

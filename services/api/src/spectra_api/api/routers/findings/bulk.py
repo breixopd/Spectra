@@ -238,10 +238,7 @@ async def bulk_update_findings(
 
     update_data["updated_at"] = func.now()
 
-    stmt = (
-        update(Finding)
-        .where(Finding.id.in_(request.finding_ids))
-    )
+    stmt = update(Finding).where(Finding.id.in_(request.finding_ids))
     # Non-superusers may only update their own findings
     if not _current_user.is_superuser:
         stmt = stmt.where(Finding.user_id == str(_current_user.id))

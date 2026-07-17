@@ -224,7 +224,9 @@ class TestUpdateUserRole:
         with (
             patch("spectra_api.api.routers.admin.users.audit_log_event", new_callable=AsyncMock) as audit_mock,
             patch("spectra_api.api.routers.admin.users.create_snapshot", new_callable=AsyncMock) as snapshot_mock,
-            patch("spectra_api.api.routers.admin.users._sync_user_subscription_assignment", new_callable=AsyncMock) as sync_mock,
+            patch(
+                "spectra_api.api.routers.admin.users._sync_user_subscription_assignment", new_callable=AsyncMock
+            ) as sync_mock,
         ):
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
                 resp = await ac.put(
@@ -282,7 +284,8 @@ class TestCreateUser:
             patch("spectra_api.api.routers.admin.users.audit_log_event", new_callable=AsyncMock),
             patch.object(type(users_module.settings), "smtp_configured", new_callable=PropertyMock, return_value=True),
             patch(
-                "spectra_auth.services.email_verification.send_registration_verification_email", new=AsyncMock(return_value=False)
+                "spectra_auth.services.email_verification.send_registration_verification_email",
+                new=AsyncMock(return_value=False),
             ) as send_mock,
             patch(
                 "spectra_auth.services.email_verification.build_email_verification_url",
@@ -362,7 +365,9 @@ class TestSubscriptionBackedAssignments:
         with (
             patch("spectra_api.api.routers.admin.users.audit_log_event", new_callable=AsyncMock),
             patch("spectra_api.api.routers.admin.users.create_snapshot", new_callable=AsyncMock) as snapshot_mock,
-            patch("spectra_api.api.routers.admin.users._sync_user_subscription_assignment", new_callable=AsyncMock) as sync_mock,
+            patch(
+                "spectra_api.api.routers.admin.users._sync_user_subscription_assignment", new_callable=AsyncMock
+            ) as sync_mock,
         ):
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
                 resp = await ac.put(
@@ -492,7 +497,10 @@ class TestSubscriptionBackedAssignments:
         mock_sess.execute = AsyncMock(return_value=sub_lookup)
 
         with (
-            patch("spectra_api.api.routers.admin.users.PaymentService.cancel_external_subscription", new=AsyncMock(return_value=True)) as cancel_mock,
+            patch(
+                "spectra_api.api.routers.admin.users.PaymentService.cancel_external_subscription",
+                new=AsyncMock(return_value=True),
+            ) as cancel_mock,
             patch("spectra_api.api.routers.admin.users.sync_user_plan_mirror", new=AsyncMock()) as mirror_mock,
         ):
             await _sync_user_subscription_assignment(mock_sess, user, None)
@@ -528,7 +536,10 @@ class TestSubscriptionBackedAssignments:
         mock_sess.execute = AsyncMock(side_effect=[plan_lookup, sub_lookup])
 
         with (
-            patch("spectra_api.api.routers.admin.users.PaymentService.cancel_external_subscription", new=AsyncMock(return_value=True)) as cancel_mock,
+            patch(
+                "spectra_api.api.routers.admin.users.PaymentService.cancel_external_subscription",
+                new=AsyncMock(return_value=True),
+            ) as cancel_mock,
             patch("spectra_api.api.routers.admin.users.sync_user_plan_mirror", new=AsyncMock()) as mirror_mock,
         ):
             await _sync_user_subscription_assignment(mock_sess, user, "plan-new")
@@ -562,7 +573,10 @@ class TestSubscriptionBackedAssignments:
         mock_sess.execute = AsyncMock(return_value=sub_lookup)
 
         with (
-            patch("spectra_api.api.routers.admin.users.PaymentService.cancel_external_subscription", new=AsyncMock(return_value=False)),
+            patch(
+                "spectra_api.api.routers.admin.users.PaymentService.cancel_external_subscription",
+                new=AsyncMock(return_value=False),
+            ),
             patch("spectra_api.api.routers.admin.users.sync_user_plan_mirror", new=AsyncMock()) as mirror_mock,
         ):
             with pytest.raises(HTTPException) as exc_info:
@@ -643,7 +657,9 @@ class TestSubscriptionBackedAssignments:
         with (
             patch("spectra_api.api.routers.admin.users.audit_log_event", new_callable=AsyncMock),
             patch("spectra_api.api.routers.admin.users.create_snapshot", new_callable=AsyncMock) as snapshot_mock,
-            patch("spectra_api.api.routers.admin.users._sync_user_subscription_assignment", new_callable=AsyncMock) as sync_mock,
+            patch(
+                "spectra_api.api.routers.admin.users._sync_user_subscription_assignment", new_callable=AsyncMock
+            ) as sync_mock,
         ):
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
                 resp = await ac.put(

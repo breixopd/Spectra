@@ -279,7 +279,8 @@ See [API Reference](api-reference.md) for request/response schemas.
 |----------|-------------|
 | `GET /system/services/health` | Health check all registered services (local + remote) |
 | `GET /system/services/topology` | Current topology — which services are local vs remote |
-| `GET /api/health` | Basic app health (used by Caddy and deploy scripts) |
+| `GET /api/healthz` | Process liveness used by Caddy and container probes |
+| `GET /api/health` | Dependency-aware platform diagnostic for operators |
 
 ### Automatic Health Checks
 

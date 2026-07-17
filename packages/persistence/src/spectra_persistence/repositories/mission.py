@@ -47,7 +47,10 @@ class MissionRepository(BaseRepository[Mission]):
         return await self.find_many_by(**kwargs)
 
     async def get_active_missions(
-        self, user_id: str | None = None, *, limit: int = 500,
+        self,
+        user_id: str | None = None,
+        *,
+        limit: int = 500,
     ) -> Sequence[Mission]:
         """
         Find missions that are currently running.

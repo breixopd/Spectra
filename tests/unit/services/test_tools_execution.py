@@ -25,15 +25,17 @@ async def test_execute_via_worker_success():
     mock_queue.enqueue_job = AsyncMock(return_value="job-1")
 
     mock_job = MagicMock()
-    mock_job.result = AsyncMock(return_value={
-        "tool_id": "nmap",
-        "target": "1.2.3.4",
-        "success": True,
-        "stdout": "<script>alert(1)</script>",
-        "stderr": "",
-        "exit_code": 0,
-        "duration_seconds": 1.0,
-    })
+    mock_job.result = AsyncMock(
+        return_value={
+            "tool_id": "nmap",
+            "target": "1.2.3.4",
+            "success": True,
+            "stdout": "<script>alert(1)</script>",
+            "stderr": "",
+            "exit_code": 0,
+            "duration_seconds": 1.0,
+        }
+    )
 
     with patch("spectra_mission.core.optimizations.tool_cache") as mock_cache:
         mock_cache.get.return_value = None
@@ -70,24 +72,30 @@ async def test_execute_via_worker_oom_escalation():
     mock_queue.enqueue_job = AsyncMock(return_value="job-1")
 
     mock_job = MagicMock()
-    mock_job.result = AsyncMock(side_effect=[
-        {"oom": True},
-        {
-            "tool_id": "nmap",
-            "target": "1.2.3.4",
-            "success": True,
-            "stdout": "ok",
-            "stderr": "",
-            "exit_code": 0,
-            "duration_seconds": 1.0,
-        },
-    ])
+    mock_job.result = AsyncMock(
+        side_effect=[
+            {"oom": True},
+            {
+                "tool_id": "nmap",
+                "target": "1.2.3.4",
+                "success": True,
+                "stdout": "ok",
+                "stderr": "",
+                "exit_code": 0,
+                "duration_seconds": 1.0,
+            },
+        ]
+    )
 
     with patch("spectra_mission.core.optimizations.tool_cache") as mock_cache:
         mock_cache.get.return_value = None
         with patch("spectra_infra.queue.PostgresJobQueue", return_value=mock_queue):
             with patch("spectra_infra.queue.Job", return_value=mock_job):
-                with patch("spectra_tools.sandbox.escalation.attempt_oom_escalation", new_callable=AsyncMock, return_value=(True, "escalated")):
+                with patch(
+                    "spectra_tools.sandbox.escalation.attempt_oom_escalation",
+                    new_callable=AsyncMock,
+                    return_value=(True, "escalated"),
+                ):
                     result = await execute_via_worker("nmap", "1.2.3.4", {}, 60, "/tmp", "m1", "tools", 300, 30)
 
     assert result.success is True
@@ -105,7 +113,11 @@ async def test_execute_via_worker_oom_escalation_fails():
         mock_cache.get.return_value = None
         with patch("spectra_infra.queue.PostgresJobQueue", return_value=mock_queue):
             with patch("spectra_infra.queue.Job", return_value=mock_job):
-                with patch("spectra_tools.sandbox.escalation.attempt_oom_escalation", new_callable=AsyncMock, return_value=(False, "max tier")):
+                with patch(
+                    "spectra_tools.sandbox.escalation.attempt_oom_escalation",
+                    new_callable=AsyncMock,
+                    return_value=(False, "max tier"),
+                ):
                     result = await execute_via_worker("nmap", "1.2.3.4", {}, 60, "/tmp", "m1", "tools", 300, 30)
 
     assert result.success is False

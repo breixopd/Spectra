@@ -175,13 +175,7 @@ class AutoScalerConfig:
             policies=policies,
             heal_enabled=_as_bool(getattr(settings, "AUTO_HEAL_ENABLED", True)),
             heal_cooldown_secs=int(getattr(settings, "AUTO_HEAL_COOLDOWN_SECS", 300)),
-            system_memory_alert_threshold=float(
-                getattr(settings, "SYSTEM_MEMORY_ALERT_THRESHOLD", 90)
-            ),
-            system_disk_alert_threshold=float(
-                getattr(settings, "SYSTEM_DISK_ALERT_THRESHOLD", 85)
-            ),
-            system_load_alert_multiplier=float(
-                getattr(settings, "SYSTEM_LOAD_ALERT_MULTIPLIER", 2.0)
-            ),
+            system_memory_alert_threshold=float(getattr(settings, "SYSTEM_MEMORY_ALERT_THRESHOLD", 90)),
+            system_disk_alert_threshold=float(getattr(settings, "SYSTEM_DISK_ALERT_THRESHOLD", 85)),
+            system_load_alert_multiplier=float(getattr(settings, "SYSTEM_LOAD_ALERT_MULTIPLIER", 2.0)),
         )

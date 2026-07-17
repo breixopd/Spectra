@@ -119,7 +119,9 @@ class TestPOCServiceGenerate:
         ):
             mock_relay.start_listener = AsyncMock(return_value=4444)
             mock_workspace.return_value.put_artifact = AsyncMock(
-                return_value=MagicMock(id="artifact-1", key="m-test/workspace/artifacts/a/poc.py", sha256="abc", kind="custom_poc")
+                return_value=MagicMock(
+                    id="artifact-1", key="m-test/workspace/artifacts/a/poc.py", sha256="abc", kind="custom_poc"
+                )
             )
             result = await poc_service.generate_and_execute_poc(agent_context, poc_request)
 

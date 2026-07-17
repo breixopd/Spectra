@@ -175,8 +175,7 @@ def _get_encryption_key() -> bytes:
     key = settings.ENCRYPTION_KEY
     if not key:
         raise RuntimeError(
-            "ENCRYPTION_KEY is required for MFA and data encryption. "
-            "Set it in your environment or .env file."
+            "ENCRYPTION_KEY is required for MFA and data encryption. Set it in your environment or .env file."
         )
     derived = hashlib.sha256(key.encode("utf-8")).digest()
     return base64.urlsafe_b64encode(derived)

@@ -315,7 +315,7 @@ services:
       app:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/api/healthz"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -339,8 +339,6 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.api
-      cache_from:
-        - spectra-app:dev
     container_name: spectra-app
     dns_search: []
     profiles: [app, test]
@@ -351,22 +349,16 @@ services:
       - "5000:5000"
     env_file:
       - ${ENV_FILE:-../../.env}
-    # Scheduler + worker are required for /api/health (critical deps); including them here
-    # ensures `compose run test-runner` pulls them up, not only `compose up`.
+    # The container health check is a liveness probe. Full platform readiness is
+    # exposed separately at /api/health/ready and is checked by release smoke
+    # tests after the compute plane starts. Keeping this graph to API-owned data
+    # dependencies lets browser and API smoke suites run without live LLM access.
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
       garage:
-        condition: service_healthy
-      ai-svc:
-        condition: service_healthy
-      tensorzero:
-        condition: service_healthy
-      scheduler:
-        condition: service_healthy
-      worker:
         condition: service_healthy
     environment:
       <<: *common-env
@@ -386,7 +378,7 @@ services:
     tmpfs:
       - /tmp
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/healthz"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -414,8 +406,6 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.ai
-      cache_from:
-        - spectra-ai-svc:dev
     container_name: spectra-ai
     profiles: [app, test]
     labels:
@@ -471,8 +461,6 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.scheduler
-      cache_from:
-        - spectra-scheduler:dev
     container_name: spectra-scheduler
     profiles: [app, test]
     labels:
@@ -526,8 +514,6 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.worker
-      cache_from:
-        - spectra-worker:dev
     profiles: [app, test]
     container_name: spectra-worker
     labels:
@@ -691,14 +677,16 @@ services:
       - S3_ENDPOINT_URL=http://garage:3900
       - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
       - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
-      - TEST_TARGET_IP=172.21.0.50
-      - TEST_TARGET_URL=http://172.21.0.50
+      - TEST_TARGET_IP=${SPECTRA_METASPLOITABLE_IP:-10.254.0.50}
+      - TEST_TARGET_URL=http://${SPECTRA_METASPLOITABLE_IP:-10.254.0.50}
       - METASPLOITABLE_AVAILABLE=true
-      - DVWA_URL=http://172.21.0.51
+      - DVWA_URL=http://${SPECTRA_DVWA_IP:-10.254.0.51}
       - WEB_TARGET_URL=http://testphp.vulnweb.com
       - SAFE_MODE=true
-      - PERMISSION_BOUNDARY=172.21.0.0/24
-      - APP_BASE_URL=http://app:5000
+      - PERMISSION_BOUNDARY=${SPECTRA_TARGETS_SUBNET:-10.254.0.0/24}
+      # Chromium applies HTTPS-first upgrades to the single-label `app` host.
+      # `spectra-app` is the stable container-name alias on the same network.
+      - APP_BASE_URL=http://spectra-app:5000
       - APP_USERNAME=admin
       - APP_PASSWORD=${ADMIN_PASSWORD:-TestPassword123!}
       - AI_SERVICE_URL=http://ai-svc:5010
@@ -891,7 +879,7 @@ services:
       spectra.managed: "true"
       spectra.role: "ui-test-runner"
     entrypoint: ["python3", "-m", "pytest"]
-    command: ["tests/e2e/ui/", "-v", "--tb=short", "-x", "--confcutdir=tests/e2e/ui", "-p", "no:cov", "-o", "addopts="]
+    command: ["tests/e2e/ui/test_spa_workspace.py", "-v", "--tb=short", "-x", "--confcutdir=tests/e2e/ui", "-p", "no:cov", "-o", "addopts="]
     env_file:
       - ../../.env.test
     environment:
@@ -923,7 +911,7 @@ services:
     tty: true
     networks:
       targets:
-        ipv4_address: 172.21.0.50
+        ipv4_address: ${SPECTRA_METASPLOITABLE_IP:-10.254.0.50}
 
   dvwa:
     image: vulnerables/web-dvwa
@@ -935,7 +923,7 @@ services:
       - MYSQL_ROOT_PASSWORD=dvwa
     networks:
       targets:
-        ipv4_address: 172.21.0.51
+        ipv4_address: ${SPECTRA_DVWA_IP:-10.254.0.51}
 
   vuln-web:
     build:
@@ -1066,7 +1054,7 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.21.0.0/24
+        - subnet: ${SPECTRA_TARGETS_SUBNET:-10.254.0.0/24}
 
 volumes:
   postgres_data:

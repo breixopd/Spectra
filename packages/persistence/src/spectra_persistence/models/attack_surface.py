@@ -322,10 +322,10 @@ class AttackSurface(BaseModel):
         """Boost priority of vectors targeting specific refs."""
         for vector in self.vectors:
             if vector.status == VectorStatus.PENDING and any(ref in vector.target_ref for ref in target_refs):
-                    # Boost priority
-                    if vector.priority == VectorPriority.LOW:
-                        vector.priority = VectorPriority.MEDIUM
-                    elif vector.priority == VectorPriority.MEDIUM:
-                        vector.priority = VectorPriority.HIGH
-                    elif vector.priority == VectorPriority.HIGH:
-                        vector.priority = VectorPriority.CRITICAL
+                # Boost priority
+                if vector.priority == VectorPriority.LOW:
+                    vector.priority = VectorPriority.MEDIUM
+                elif vector.priority == VectorPriority.MEDIUM:
+                    vector.priority = VectorPriority.HIGH
+                elif vector.priority == VectorPriority.HIGH:
+                    vector.priority = VectorPriority.CRITICAL

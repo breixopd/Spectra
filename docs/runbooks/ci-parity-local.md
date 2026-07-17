@@ -24,7 +24,7 @@ Modes:
 | `./scripts/runbooks/ci-parity.sh static` | Full CI **static-analysis** job (build once → ruff, boundaries, pyright, bandit) |
 | `./scripts/runbooks/ci-parity.sh lint` | Ruff + import boundaries only (builds test image) |
 | `./scripts/runbooks/ci-parity.sh type` | Pyright only (builds test image) |
-| `./scripts/runbooks/ci-parity.sh unit` | CI TensorZero parse + unit + coverage ≥70% |
+| `./scripts/runbooks/ci-parity.sh unit` | CI TensorZero parse + unit + coverage ≥67% |
 | `./scripts/runbooks/ci-parity.sh settings` | CI settings-test-runner |
 | `./scripts/runbooks/ci-parity.sh integration` | CI `integration-test` job |
 | `./scripts/runbooks/ci-parity.sh ci` | static analysis + unit + settings |
@@ -62,7 +62,7 @@ docker compose -f deploy/docker/compose.yaml --profile test build unit-test-runn
 docker compose -f deploy/docker/compose.yaml --profile test run --rm --no-deps unit-test-runner \
   "python -c \"import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')\""
 docker compose -f deploy/docker/compose.yaml --profile test run --rm unit-test-runner \
-  "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov=spectra_ai_core --cov=spectra_billing --cov=spectra_common --cov=spectra_mission --cov=spectra_persistence --cov=spectra_scaling --cov=spectra_storage_policy --cov=spectra_tools_core --cov-report=term-missing --cov-fail-under=70"
+  "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov=spectra_ai_core --cov=spectra_billing --cov=spectra_common --cov=spectra_mission --cov=spectra_persistence --cov=spectra_scaling --cov=spectra_storage_policy --cov=spectra_tools_core --cov-report=term-missing --cov-fail-under=67"
 docker compose -f deploy/docker/compose.yaml --profile test run --rm settings-test-runner
 ```
 

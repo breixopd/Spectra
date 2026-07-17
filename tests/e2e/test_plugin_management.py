@@ -125,7 +125,9 @@ class TestPluginLifecycle:
         from spectra_worker import _WORKER_FUNCTIONS
 
         pool = PostgresJobQueue(PLUGIN_TEST_QUEUE)
-        job_id = await pool.enqueue_job(WorkerJobName.INSTALL_TOOL, tool_id="test-plugin", plugins_dir=str(PLUGIN_TEST_DIR))
+        job_id = await pool.enqueue_job(
+            WorkerJobName.INSTALL_TOOL, tool_id="test-plugin", plugins_dir=str(PLUGIN_TEST_DIR)
+        )
         assert job_id is not None, "Failed to enqueue installation"
 
         # Run worker to process the job
@@ -153,7 +155,9 @@ class TestPluginLifecycle:
         from spectra_worker import _WORKER_FUNCTIONS
 
         pool = PostgresJobQueue(PLUGIN_TEST_QUEUE)
-        job_id = await pool.enqueue_job(WorkerJobName.INSTALL_TOOL, tool_id="broken-plugin", plugins_dir=str(PLUGIN_TEST_DIR))
+        job_id = await pool.enqueue_job(
+            WorkerJobName.INSTALL_TOOL, tool_id="broken-plugin", plugins_dir=str(PLUGIN_TEST_DIR)
+        )
         assert job_id is not None, "Failed to enqueue installation"
 
         # Run worker to process the job

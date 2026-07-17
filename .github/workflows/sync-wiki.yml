@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: sync-wiki
@@ -23,13 +23,20 @@ jobs:
     name: Publish docs/wiki to GitHub Wiki
     runs-on: ubuntu-latest
     env:
-      # Fine-grained PAT: Repository → Spectra → Contents read/write (see github-actions-secrets.md).
-      SPECTRA_WIKI_TOKEN: ${{ secrets.SPECTRA_WIKI_TOKEN || secrets.SPECTRA_ACTIONS_TOKEN }}
+      # Fine-grained PAT with contents read/write on this repository's wiki.
+      SPECTRA_WIKI_TOKEN: ${{ secrets.SPECTRA_WIKI_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.0
+        with:
+          persist-credentials: false
 
       - name: Push to GitHub Wiki
-        uses: Andrew-Chen-Wang/github-wiki-action@v5
+        if: ${{ env.SPECTRA_WIKI_TOKEN != '' }}
+        uses: Andrew-Chen-Wang/github-wiki-action@1bbb4280446f9630e8e21a18012cbacf3b0f992e # v5.0.0
         with:
           path: docs/wiki
           token: ${{ env.SPECTRA_WIKI_TOKEN }}
+
+      - name: Report intentionally skipped wiki sync
+        if: ${{ env.SPECTRA_WIKI_TOKEN == '' }}
+        run: echo 'SPECTRA_WIKI_TOKEN is not configured; wiki synchronization was skipped.'

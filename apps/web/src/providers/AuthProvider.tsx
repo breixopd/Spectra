@@ -9,7 +9,6 @@ import {
   verifyMfa as verifyMfaRequest,
   type AuthProfile,
 } from "@/lib/api";
-import { router } from "@/router";
 
 export type LoginResult =
   | { ok: true }
@@ -31,21 +30,23 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+async function loadAuthenticatedProfile(): Promise<AuthProfile | null> {
+  const result = await fetchCurrentUser();
+  if (result.error) {
+    if (result.error.status === 401 || result.error.status === 403) {
+      return null;
+    }
+    throw result.error;
+  }
+  return result.data;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
   const sessionQuery = useQuery({
     queryKey: ["auth", "me"],
-    queryFn: async () => {
-      const result = await fetchCurrentUser();
-      if (result.error) {
-        if (result.error.status === 401 || result.error.status === 403) {
-          return null;
-        }
-        throw result.error;
-      }
-      return result.data;
-    },
+    queryFn: loadAuthenticatedProfile,
     retry: false,
     staleTime: 60_000,
   });
@@ -66,8 +67,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return { ok: "mfa", mfaToken: result.data.mfa_token ?? result.data.access_token };
       }
-      await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-      await router.navigate({ to: "/dashboard" });
+      try {
+        const profile = await loadAuthenticatedProfile();
+        if (!profile) {
+          return { ok: false, message: "Signed in, but the session could not be restored. Try again." };
+        }
+        queryClient.setQueryData(["auth", "me"], profile);
+      } catch (cause) {
+        return {
+          ok: false,
+          message: cause instanceof Error ? cause.message : "Signed in, but the session could not be restored. Try again.",
+        };
+      }
       return { ok: true };
     },
     [queryClient],
@@ -83,8 +94,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             : result.error.message || "Verification failed";
         return { ok: false as const, message };
       }
-      await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-      await router.navigate({ to: "/dashboard" });
+      try {
+        const profile = await loadAuthenticatedProfile();
+        if (!profile) {
+          return { ok: false as const, message: "Verification succeeded, but the session could not be restored. Try again." };
+        }
+        queryClient.setQueryData(["auth", "me"], profile);
+      } catch (cause) {
+        return {
+          ok: false as const,
+          message:
+            cause instanceof Error ? cause.message : "Verification succeeded, but the session could not be restored. Try again.",
+        };
+      }
       return { ok: true as const };
     },
     [queryClient],
@@ -95,9 +117,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await logoutRequest();
-    queryClient.setQueryData(["auth", "me"], null);
-    await router.navigate({ to: "/login" });
+    try {
+      await logoutRequest();
+    } finally {
+      // A failed network request must not leave sensitive operator data visible
+      // after the user explicitly signs out. The server invalidates the cookie
+      // when available; the client always clears its local session boundary.
+      queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== "auth" });
+      queryClient.setQueryData(["auth", "me"], null);
+    }
   }, [queryClient]);
 
   const refreshSession = useCallback(async () => {

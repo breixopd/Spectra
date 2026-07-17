@@ -7,6 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from spectra_mission.types import AttackSurfaceSummary, ToolExecutionRecord
+from spectra_persistence.finding_evidence import EvidenceBundle
 from spectra_persistence.models.target import TargetStatus
 
 
@@ -168,11 +169,13 @@ class MissionFindingSummary(BaseModel):
 
     id: str
     title: str
-    severity: str
-    status: str
+    severity: Literal["critical", "high", "medium", "low", "info"]
+    status: Literal["potential", "verified", "exploited", "false_positive", "dismissed", "retest_pending"]
     description: str
     tool_source: str
     created_at: str
+    proof_status: Literal["candidate", "needs_verification", "verified", "not_reproducible"] = "candidate"
+    evidence_bundle: EvidenceBundle = Field(default_factory=EvidenceBundle)
 
 
 class ActionApprovalResponse(BaseModel):

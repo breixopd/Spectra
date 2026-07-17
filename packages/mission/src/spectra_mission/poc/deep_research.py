@@ -91,8 +91,10 @@ class DeepResearcher:
 
         logger.info(
             "Deep research on %s %s: %d CVEs, %d github leads, %.1f%% confidence",
-            software_name, software_version,
-            len(result.cve_ids), len(result.github_leads),
+            software_name,
+            software_version,
+            len(result.cve_ids),
+            len(result.github_leads),
             result.confidence * 100,
         )
 
@@ -133,16 +135,20 @@ class DeepResearcher:
     def _search_github_leads(self, name: str, version: str) -> list[dict[str, str]]:
         """Search for GitHub issues/commits related to security fixes."""
         leads: list[dict[str, str]] = []
-        leads.append({
-            "source": "github_commits",
-            "query": f"{name} security fix after {version}",
-            "hint": "Look for commits with 'security', 'fix CVE', 'patch vulnerability' in messages after this version was released",
-        })
-        leads.append({
-            "source": "github_issues",
-            "query": f"{name} vulnerability",
-            "hint": "Check closed issues mentioning security vulnerabilities that were fixed silently",
-        })
+        leads.append(
+            {
+                "source": "github_commits",
+                "query": f"{name} security fix after {version}",
+                "hint": "Look for commits with 'security', 'fix CVE', 'patch vulnerability' in messages after this version was released",
+            }
+        )
+        leads.append(
+            {
+                "source": "github_issues",
+                "query": f"{name} vulnerability",
+                "hint": "Check closed issues mentioning security vulnerabilities that were fixed silently",
+            }
+        )
         return leads
 
     def _analyze_dependencies(self, name: str) -> list[dict[str, str]]:
@@ -159,10 +165,12 @@ class DeepResearcher:
         for key, dep_list in dep_map.items():
             if key in name.lower():
                 for dep in dep_list:
-                    deps.append({
-                        "dependency": dep,
-                        "hint": f"Check if {dep} version used by {name} has known vulnerabilities",
-                    })
+                    deps.append(
+                        {
+                            "dependency": dep,
+                            "hint": f"Check if {dep} version used by {name} has known vulnerabilities",
+                        }
+                    )
         return deps
 
     def _find_similar_cves(self, name: str, version: str) -> list[dict[str, str]]:
@@ -179,10 +187,12 @@ class DeepResearcher:
         for key, family in product_families.items():
             if key in name.lower():
                 for related in family:
-                    similar.append({
-                        "related_product": related,
-                        "hint": f"CVEs in {related} often have analogous exploits in {name}. Check for similar attack patterns.",
-                    })
+                    similar.append(
+                        {
+                            "related_product": related,
+                            "hint": f"CVEs in {related} often have analogous exploits in {name}. Check for similar attack patterns.",
+                        }
+                    )
                 break
 
         return similar

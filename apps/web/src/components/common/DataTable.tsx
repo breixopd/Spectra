@@ -33,6 +33,7 @@ export interface DataTableProps<TData, TValue> {
   emptyMessage?: string;
   /** Server-side pagination — pass total row count from API. */
   manualPagination?: boolean;
+  totalRows?: number;
   pageCount?: number;
   pagination?: PaginationState;
   onPaginationChange?: OnChangeFn<PaginationState>;
@@ -52,6 +53,7 @@ export function DataTable<TData, TValue>({
   isLoading = false,
   emptyMessage = "No results.",
   manualPagination = false,
+  totalRows,
   pageCount,
   pagination: controlledPagination,
   onPaginationChange,
@@ -162,7 +164,7 @@ export function DataTable<TData, TValue>({
       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>
           {manualPagination
-            ? `${data.length} on page · ${pageCount ? pageCount * pagination.pageSize : "—"} total pages`
+            ? `${data.length} on page · ${totalRows ?? "—"} total row${totalRows === 1 ? "" : "s"}`
             : `${table.getFilteredRowModel().rows.length} row(s)`}
         </span>
         <div className="flex items-center gap-1">

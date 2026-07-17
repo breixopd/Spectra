@@ -252,9 +252,7 @@ class MissionExecutionManager:
         if resume:
             if mission.plan is None:
                 raise RuntimeError("Cannot resume a mission without a checkpointed plan")
-            mission.log(
-                "[RESUME] Continuing validated checkpoint plan; completed tasks will not be replayed"
-            )
+            mission.log("[RESUME] Continuing validated checkpoint plan; completed tasks will not be replayed")
         else:
             await self._run_scope_phase(mission, context)
             await self.lifecycle.update_db_status(mission)

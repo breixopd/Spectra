@@ -147,7 +147,9 @@ class TestTracesEndpoints:
         collector.end_span(span)
 
         with patch("spectra_api.api.routers.observability.telemetry", collector):
-            result = await get_traces(request=_make_mock_request(), limit=10, status=None, _current_user=_make_admin_user())
+            result = await get_traces(
+                request=_make_mock_request(), limit=10, status=None, _current_user=_make_admin_user()
+            )
 
         assert len(result) == 1
         assert result[0]["name"] == "op1"
@@ -163,8 +165,12 @@ class TestTracesEndpoints:
         collector.end_span(err_span, "error", "fail")
 
         with patch("spectra_api.api.routers.observability.telemetry", collector):
-            errors = await get_traces(request=_make_mock_request(), limit=10, status="error", _current_user=_make_admin_user())
-            oks = await get_traces(request=_make_mock_request(), limit=10, status="ok", _current_user=_make_admin_user())
+            errors = await get_traces(
+                request=_make_mock_request(), limit=10, status="error", _current_user=_make_admin_user()
+            )
+            oks = await get_traces(
+                request=_make_mock_request(), limit=10, status="ok", _current_user=_make_admin_user()
+            )
 
         assert len(errors) == 1
         assert errors[0]["name"] == "err_op"
@@ -186,7 +192,9 @@ class TestTracesEndpoints:
         collector.end_span(other)
 
         with patch("spectra_api.api.routers.observability.telemetry", collector):
-            result = await get_trace_by_id(request=_make_mock_request(), trace_id=trace_id, _current_user=_make_admin_user())
+            result = await get_trace_by_id(
+                request=_make_mock_request(), trace_id=trace_id, _current_user=_make_admin_user()
+            )
 
         assert len(result) == 2
         assert all(r["trace_id"] == trace_id for r in result)
@@ -226,7 +234,9 @@ class TestErrorAndSlowEndpoints:
         collector._traces.append(span)
 
         with patch("spectra_api.api.routers.observability.telemetry", collector):
-            result = await get_slow_operations(request=_make_mock_request(), threshold_ms=1000, limit=5, _current_user=_make_admin_user())
+            result = await get_slow_operations(
+                request=_make_mock_request(), threshold_ms=1000, limit=5, _current_user=_make_admin_user()
+            )
 
         assert len(result) == 1
         assert result[0]["name"] == "slow_op"

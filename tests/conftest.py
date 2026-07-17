@@ -8,12 +8,14 @@ The mocking fixtures here only apply to unit tests.
 """
 
 import asyncio
+import contextlib
 import os
 import tempfile
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Pin runtime-writable paths to an ephemeral temp dir BEFORE any app module (and its
 # settings singleton) is imported, so a bind-mounted source tree never accumulates
@@ -120,8 +122,11 @@ def mock_websocket_for_unit_tests(request):
             "_initialize_services.<locals>.load_embeddings_with_status",
             "_initialize_services.<locals>._init_exploit_db",
             "_init_exploit_db",
+            "_config_change_listener",
+            "_blacklist_change_listener",
             "_keepalive",
             "AsyncMockMixin._execute_mock_call",
+            "embedded_ops_loop",
             "sandbox_watchdog_loop",
             "warm_pool_maintain_loop",
             "run_startup_tasks",
@@ -133,15 +138,21 @@ def mock_websocket_for_unit_tests(request):
         if asyncio.iscoroutine(coro):
             name = getattr(coro, "__qualname__", "") or ""
             if any(bg in name for bg in _BACKGROUND_CORO_NAMES):
-                # Use throw(GeneratorExit) instead of close() to suppress
-                # Python 3.12 "coroutine never awaited" warnings.
+                # Closing an AsyncMock-created coroutine is the only reliable
+                # disposal path under Python 3.12+; injecting GeneratorExit
+                # leaves its internal awaitable warning at interpreter teardown.
+                with contextlib.suppress(RuntimeError):
+                    coro.close()
+                # Lifespans retain these task handles and await them during
+                # shutdown. Return a completed Future, not a bare mock, so
+                # tests preserve the production task contract while keeping
+                # long-running maintenance loops out of unit tests.
                 try:
-                    coro.throw(GeneratorExit)
-                except (GeneratorExit, StopIteration):
-                    pass
-                except Exception:
-                    pass
-                return MagicMock()
+                    completed = asyncio.get_running_loop().create_future()
+                except RuntimeError:
+                    return MagicMock()
+                completed.set_result(None)
+                return completed
         try:
             asyncio.get_running_loop()
             return original_create_task(coro, **kwargs)
@@ -155,16 +166,12 @@ def mock_websocket_for_unit_tests(request):
     mock_emit_sync = MagicMock()
     mock_cache_loop = AsyncMock(return_value=None)
     mock_periodic_loop = AsyncMock(return_value=None)
-    mock_lifespan_create_task = MagicMock(return_value=None)
-
     with (
         patch("spectra_mission.core.websocket.manager.broadcast", mock_broadcast),
         patch("spectra_mission.core.websocket.manager.broadcast_event", mock_broadcast_event),
         patch("spectra_infra.events.EventBus.emit_sync", mock_emit_sync),
         patch("spectra_infra.background_tasks.cache_cleanup_loop", mock_cache_loop),
         patch("spectra_infra.background_tasks.periodic_cleanup_loop", mock_periodic_loop),
-        patch("spectra_api.bootstrap.lifespan.asyncio.create_task", mock_lifespan_create_task),
-        patch("spectra_api.api.routers.shell.asyncio.create_task", mock_lifespan_create_task),
         patch("asyncio.create_task", safe_create_task),
     ):
         yield
@@ -225,14 +232,23 @@ def mock_database_for_unit_tests(request):
         yield
         return
 
-    mock_session = AsyncMock()
+    mock_session = MagicMock(spec=AsyncSession)
     mock_session.commit = AsyncMock()
     mock_session.rollback = AsyncMock()
     mock_session.close = AsyncMock()
     mock_session.flush = AsyncMock()
     mock_session.refresh = AsyncMock()
-    mock_session.execute = AsyncMock()
     mock_session.add = MagicMock()  # sync method
+
+    # AsyncSession.execute() returns a synchronous Result object. Returning a
+    # bare AsyncMock here turns ``(await execute()).mappings().all()`` into an
+    # un-awaited coroutine, hiding integration mistakes in authentication and
+    # repository tests.
+    mock_result = MagicMock()
+    mock_result.mappings.return_value.all.return_value = []
+    mock_result.scalars.return_value.all.return_value = []
+    mock_result.scalar_one_or_none.return_value = None
+    mock_session.execute = AsyncMock(return_value=mock_result)
 
     # Create an async context manager
     class MockSessionMaker:
@@ -247,6 +263,31 @@ def mock_database_for_unit_tests(request):
 
     with patch("spectra_persistence.database.async_session_maker", MockSessionMaker()):
         yield mock_session
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def reset_token_blacklist_for_unit_tests(request, mock_database_for_unit_tests):
+    """Give each unit test loop-local, empty JWT revocation state.
+
+    The production cache deliberately lives for the process lifetime. Pytest
+    uses a new asyncio loop per test, so retaining its Lock/Event instances
+    makes otherwise unrelated token tests order-dependent and can bind the
+    next test to a closed loop. The persistence mock supplies the authoritative
+    empty state for each test, preserving the fail-closed production path.
+    """
+    if _is_live_test(request.node):
+        yield
+        return
+
+    import spectra_auth.security as security
+
+    security._blacklisted_tokens.clear()
+    security._user_token_blacklist.clear()
+    security._blacklist_lock = asyncio.Lock()
+    security._blacklist_ready = asyncio.Event()
+    security._blacklist_load_started = False
+    security._cleanup_counter = 0
+    yield
 
 
 @pytest_asyncio.fixture

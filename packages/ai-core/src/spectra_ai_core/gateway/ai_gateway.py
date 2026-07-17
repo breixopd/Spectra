@@ -90,7 +90,10 @@ class AIGateway:
             try:
                 resp = await self.client.get("/health")
                 # AI service /health includes tensorzero — treat reachable as healthy
-                return {"functional": resp.get("status") in ("healthy", "degraded"), "status": resp.get("status", "unknown")}
+                return {
+                    "functional": resp.get("status") in ("healthy", "degraded"),
+                    "status": resp.get("status", "unknown"),
+                }
             except Exception as exc:
                 return {"functional": False, "status": f"unreachable: {type(exc).__name__}"}
         # Monolith fallback

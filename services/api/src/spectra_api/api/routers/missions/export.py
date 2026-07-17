@@ -31,10 +31,31 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _selected_mission_findings(mission: Any, finding_ids: list[str] | None) -> list[dict[str, Any]]:
+    """Return all mission findings or the explicitly selected durable IDs.
+
+    IDs are checked against the mission's normalized output so a stale report-builder
+    tab cannot silently produce a report different from the selection the operator saw.
+    """
+    findings = get_mission_output_findings(mission)
+    if finding_ids is None:
+        return findings
+    if len(finding_ids) > 500:
+        raise HTTPException(status_code=422, detail="A report can include at most 500 findings")
+
+    selected = set(finding_ids)
+    available = {str(finding["id"]) for finding in findings}
+    unknown_ids = selected - available
+    if unknown_ids:
+        raise HTTPException(status_code=422, detail="One or more selected findings no longer belong to this mission")
+    return [finding for finding in findings if str(finding["id"]) in selected]
+
+
 @router.get("/{mission_id}/report/pdf")
 async def download_pdf_report(
     request: Request,
     mission_id: str,
+    finding_id: list[str] | None = Query(default=None, description="Durable mission finding IDs to include"),
     session: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ) -> Response:
@@ -63,7 +84,7 @@ async def download_pdf_report(
         "id": mission.id,
         "target": mission.target,
         "status": mission.status,
-        "findings": get_mission_output_findings(mission),
+        "findings": _selected_mission_findings(mission, finding_id),
         "logs": mission.logs or [],
         "tools_run": summary.get("tools_run", []),
         "attack_surface": mission.attack_surface or {},
@@ -81,7 +102,12 @@ async def download_pdf_report(
         session,
         AuditEventType.DATA_EXPORTED,
         user_id=str(_current_user.id),
-        details={"action": "mission_exported", "mission_id": str(mission_id), "format": "pdf"},
+        details={
+            "action": "mission_exported",
+            "mission_id": str(mission_id),
+            "format": "pdf",
+            "selected_finding_count": len(finding_id) if finding_id is not None else None,
+        },
         request=request,
     )
 
@@ -97,6 +123,7 @@ async def export_mission_json(
     request: Request,
     mission_id: str,
     encrypted: bool = Query(False),
+    finding_id: list[str] | None = Query(default=None, description="Durable mission finding IDs to include"),
     password: str | None = Header(None, alias="X-Export-Password"),
     session: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
@@ -128,7 +155,7 @@ async def export_mission_json(
             "directive": mission.directive,
             "created_at": mission.created_at.isoformat() if mission.created_at else None,
         },
-        "findings": get_mission_output_findings(mission),
+        "findings": _selected_mission_findings(mission, finding_id),
         "tools_used": summary.get("tools_run", []),
         "timeline": summary.get("timeline", []),
         "attack_surface": mission.attack_surface or {},
@@ -138,7 +165,12 @@ async def export_mission_json(
         session,
         AuditEventType.DATA_EXPORTED,
         user_id=str(_current_user.id),
-        details={"action": "mission_exported", "mission_id": str(mission_id), "format": "json"},
+        details={
+            "action": "mission_exported",
+            "mission_id": str(mission_id),
+            "format": "json",
+            "selected_finding_count": len(finding_id) if finding_id is not None else None,
+        },
         request=request,
     )
 

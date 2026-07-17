@@ -100,7 +100,18 @@ class TestShellSession:
         session.websocket = AsyncMock()
         mock_loop = MagicMock()
         session._loop = mock_loop
-        session.broadcast_output(b"hello")
+
+        def close_scheduled_coroutine(coro, _loop):
+            coro.close()
+            return MagicMock()
+
+        with patch(
+            "spectra_infra.shell.session_manager.asyncio.run_coroutine_threadsafe",
+            side_effect=close_scheduled_coroutine,
+        ) as schedule:
+            session.broadcast_output(b"hello")
+
+        schedule.assert_called_once()
         assert session.buffer == b""
 
     def test_missions_survived_default(self):

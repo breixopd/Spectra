@@ -234,7 +234,11 @@ async def health_deep(response: Response):
         return result_data
     except Exception as exc:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        result_data = {"status": "degraded", "service": "ai", "llm": {"status": "unhealthy", "error": type(exc).__name__}}
+        result_data = {
+            "status": "degraded",
+            "service": "ai",
+            "llm": {"status": "unhealthy", "error": type(exc).__name__},
+        }
         _last_deep_health = result_data
         _last_deep_health_time = time.time()
         return result_data

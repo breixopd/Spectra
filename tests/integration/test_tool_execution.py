@@ -562,11 +562,15 @@ class TestPluginLoading:
                 result = subprocess.run(args, capture_output=True, text=True, timeout=10, check=False)
 
                 success = result.returncode == 0
-                if not success and tool.config.installation.verification_regex and re.search(
+                if (
+                    not success
+                    and tool.config.installation.verification_regex
+                    and re.search(
                         tool.config.installation.verification_regex,
                         result.stdout + result.stderr,
-                    ):
-                        success = True
+                    )
+                ):
+                    success = True
 
                 if not success:
                     # Try to install if verification fails
@@ -577,10 +581,14 @@ class TestPluginLoading:
                         result = subprocess.run(args, capture_output=True, text=True, timeout=10, check=False)
 
                         success = result.returncode == 0
-                        if not success and tool.config.installation.verification_regex and re.search(
+                        if (
+                            not success
+                            and tool.config.installation.verification_regex
+                            and re.search(
                                 tool.config.installation.verification_regex,
                                 result.stdout + result.stderr,
-                            ):
+                            )
+                        ):
                             success = True
 
                         if not success:

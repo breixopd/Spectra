@@ -1,11 +1,16 @@
-import { Link } from "@tanstack/react-router";
 import { FileText, ImageIcon } from "lucide-react";
 
 import { RelativeTime } from "@/components/common/DisplayPrimitives";
 import { ProofBadge } from "@/components/common/ProofBadge";
 import { SeverityBadge } from "@/components/common/SeverityBadge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { resolveProofStatus, type ArtifactRef, type EvidenceBundle, type FindingDetail } from "@/lib/types";
+import {
+  resolveProofStatus,
+  type ArtifactRef,
+  type EvidenceBundle,
+  type FindingDetail,
+  type FindingEvidenceSummary,
+} from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export function TextEvidenceBlock({
@@ -226,7 +231,7 @@ export function FindingTreeRow({
   selected,
   onSelect,
 }: {
-  finding: Pick<FindingDetail, "id" | "title" | "proof_status" | "severity" | "status">;
+  finding: FindingEvidenceSummary;
   sectionCount: number;
   selected: boolean;
   onSelect: () => void;
@@ -251,14 +256,6 @@ export function FindingTreeRow({
           </span>
         </div>
       </div>
-      <Link
-        to="/findings/$id"
-        params={{ id: finding.id }}
-        className="shrink-0 text-2xs text-primary hover:underline"
-        onClick={(event) => event.stopPropagation()}
-      >
-        Open
-      </Link>
     </button>
   );
 }

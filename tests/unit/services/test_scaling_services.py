@@ -512,7 +512,12 @@ def test_parse_service_counts_recent_failure_within_window():
             return [{"Status": {"State": "running"}, "NodeID": "n1", "Version": {"Index": 10}}]
         return [
             {"ID": "t1", "Status": {"State": "running"}, "NodeID": "n1", "Version": {"Index": 10}},
-            {"ID": "t2", "DesiredState": "shutdown", "Status": {"State": "failed", "Timestamp": recent}, "Version": {"Index": 9}},
+            {
+                "ID": "t2",
+                "DesiredState": "shutdown",
+                "Status": {"State": "failed", "Timestamp": recent},
+                "Version": {"Index": 9},
+            },
             {"ID": "t3", "DesiredState": "shutdown", "Status": {"State": "shutdown"}, "Version": {"Index": 8}},
         ]
 

@@ -462,11 +462,7 @@ async def execute_mission_tasks(
             global_task_counter += len(all_indexed_tasks)
             continue
 
-        indexed_tasks = [
-            (index, task)
-            for index, task in all_indexed_tasks
-            if task.task_id not in completed_task_ids
-        ]
+        indexed_tasks = [(index, task) for index, task in all_indexed_tasks if task.task_id not in completed_task_ids]
         if not indexed_tasks:
             global_task_counter += len(all_indexed_tasks)
             continue

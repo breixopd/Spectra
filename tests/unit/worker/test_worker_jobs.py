@@ -96,7 +96,9 @@ async def test_worker_shutdown_disposes_database_engine():
     engine = SimpleNamespace(dispose=AsyncMock())
 
     with pytest.MonkeyPatch.context() as mp:
-        mp.setitem(sys.modules, "spectra_persistence.database", make_module("spectra_persistence.database", engine=engine))
+        mp.setitem(
+            sys.modules, "spectra_persistence.database", make_module("spectra_persistence.database", engine=engine)
+        )
         await lifecycle.shutdown()
 
     engine.dispose.assert_awaited_once()
@@ -109,7 +111,9 @@ async def test_worker_shutdown_ignores_dispose_errors():
     engine = SimpleNamespace(dispose=AsyncMock(side_effect=OSError("db busy")))
 
     with pytest.MonkeyPatch.context() as mp:
-        mp.setitem(sys.modules, "spectra_persistence.database", make_module("spectra_persistence.database", engine=engine))
+        mp.setitem(
+            sys.modules, "spectra_persistence.database", make_module("spectra_persistence.database", engine=engine)
+        )
         await lifecycle.shutdown()
 
     engine.dispose.assert_awaited_once()

@@ -28,6 +28,7 @@ async def _use_or_create_session(existing: AsyncSession | None = None):
         async with async_session_maker() as session:
             yield session
 
+
 logger = logging.getLogger(__name__)
 
 _MISSION_QUOTA_LOCK_NAME = "spectra_mission_quota"
@@ -72,7 +73,11 @@ class QuotaEnforcer:
             return await get_user_entitlement_plan(db, user_id)
 
     async def check_mission_quota(
-        self, user_id: str, plan: Plan | None = None, *, session: AsyncSession | None = None,
+        self,
+        user_id: str,
+        plan: Plan | None = None,
+        *,
+        session: AsyncSession | None = None,
     ) -> tuple[bool, str]:
         """Check if user can start a new mission.
 

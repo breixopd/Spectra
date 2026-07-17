@@ -160,14 +160,16 @@ class SchedulerInfraMonitorMixin:
                             usage.free // (1024 * 1024),
                         )
                         if StorageMonitor.should_alert("disk_space_critical"):
-                            await self._send_capacity_alert({
-                                "event": "disk_space_critical",
-                                "free_pct": round(free_pct, 1),
-                                "free_mb": usage.free // (1024 * 1024),
-                                "utilization_pct": round(100 - free_pct, 1),
-                                "total_used": (usage.total - usage.free) // (1024 * 1024),
-                                "total_capacity": usage.total // (1024 * 1024),
-                            })
+                            await self._send_capacity_alert(
+                                {
+                                    "event": "disk_space_critical",
+                                    "free_pct": round(free_pct, 1),
+                                    "free_mb": usage.free // (1024 * 1024),
+                                    "utilization_pct": round(100 - free_pct, 1),
+                                    "total_used": (usage.total - usage.free) // (1024 * 1024),
+                                    "total_capacity": usage.total // (1024 * 1024),
+                                }
+                            )
                     elif used_pct >= warning_threshold:
                         logger.warning("Disk space low: %.1f%% free, %.1f%% used", free_pct, used_pct)
             except Exception as e:

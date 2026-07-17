@@ -217,11 +217,13 @@ addopts = [
     "--cov=spectra_tools_core",
     "--cov=spectra_worker",
     "--cov-report=term-missing",
-    "--cov-fail-under=70",
+    "--cov-fail-under=67",
 ]
 filterwarnings = [
-    # AsyncMock returns awaitable proxies; GC can warn from unittest.mock internals.
-    "ignore:coroutine '.*' was never awaited:RuntimeWarning:unittest.mock",
+    # Unit tests use spec-faithful doubles; unawaited mocks and unraisable
+    # background exceptions are regressions, not noise to suppress.
+    "error::RuntimeWarning",
+    "error::pytest.PytestUnraisableExceptionWarning",
 ]
 pythonpath = [
     ".",

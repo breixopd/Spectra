@@ -37,7 +37,12 @@ async def test_attempt_oom_escalation_no_sandbox():
     mock_session.execute = AsyncMock(return_value=mock_result)
 
     with patch("spectra_tools.sandbox.escalation.get_settings", return_value=settings):
-        with patch("spectra_tools.sandbox.escalation.async_session_maker", return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False))):
+        with patch(
+            "spectra_tools.sandbox.escalation.async_session_maker",
+            return_value=MagicMock(
+                __aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False)
+            ),
+        ):
             success, message = await attempt_oom_escalation("mission-1")
 
     assert success is False
@@ -60,7 +65,12 @@ async def test_attempt_oom_escalation_already_escalated():
     mock_session.execute = AsyncMock(return_value=mock_result)
 
     with patch("spectra_tools.sandbox.escalation.get_settings", return_value=settings):
-        with patch("spectra_tools.sandbox.escalation.async_session_maker", return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False))):
+        with patch(
+            "spectra_tools.sandbox.escalation.async_session_maker",
+            return_value=MagicMock(
+                __aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False)
+            ),
+        ):
             success, message = await attempt_oom_escalation("mission-1")
 
     assert success is False
@@ -84,7 +94,12 @@ async def test_attempt_oom_escalation_max_tier():
     mock_session.execute = AsyncMock(return_value=mock_result)
 
     with patch("spectra_tools.sandbox.escalation.get_settings", return_value=settings):
-        with patch("spectra_tools.sandbox.escalation.async_session_maker", return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False))):
+        with patch(
+            "spectra_tools.sandbox.escalation.async_session_maker",
+            return_value=MagicMock(
+                __aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False)
+            ),
+        ):
             success, message = await attempt_oom_escalation("mission-1")
 
     assert success is False
@@ -113,7 +128,12 @@ async def test_attempt_oom_escalation_success():
     mock_pool.create = AsyncMock()
 
     with patch("spectra_tools.sandbox.escalation.get_settings", return_value=settings):
-        with patch("spectra_tools.sandbox.escalation.async_session_maker", return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False))):
+        with patch(
+            "spectra_tools.sandbox.escalation.async_session_maker",
+            return_value=MagicMock(
+                __aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False)
+            ),
+        ):
             with patch("spectra_tools.sandbox.get_sandbox_pool", return_value=mock_pool):
                 success, message = await attempt_oom_escalation("mission-1")
 
@@ -141,7 +161,12 @@ async def test_attempt_oom_escalation_pool_unavailable():
     mock_session.execute = AsyncMock(return_value=mock_result)
 
     with patch("spectra_tools.sandbox.escalation.get_settings", return_value=settings):
-        with patch("spectra_tools.sandbox.escalation.async_session_maker", return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False))):
+        with patch(
+            "spectra_tools.sandbox.escalation.async_session_maker",
+            return_value=MagicMock(
+                __aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False)
+            ),
+        ):
             with patch("spectra_tools.sandbox.get_sandbox_pool", return_value=None):
                 success, message = await attempt_oom_escalation("mission-1")
 

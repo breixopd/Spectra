@@ -137,7 +137,9 @@ def test_update_attack_surface_port():
 
     finding = {"port": 80, "service": "http", "product": "nginx", "version": "1.18", "ip": "1.2.3.4"}
     update_attack_surface_from_finding(mission, finding)
-    mission.add_service.assert_called_once_with(host="1.2.3.4", port=80, service="http", product="nginx", version="1.18")
+    mission.add_service.assert_called_once_with(
+        host="1.2.3.4", port=80, service="http", product="nginx", version="1.18"
+    )
 
 
 def test_update_attack_surface_vuln():

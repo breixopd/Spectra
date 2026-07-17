@@ -7,7 +7,7 @@ prohibited actions, scan intensity limits, and data exfiltration controls.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, String, Text, func
@@ -18,7 +18,7 @@ from spectra_persistence.orm.base import Base
 
 
 def _utc_now() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(UTC)
 
 
 class RulesOfEngagement(Base):
@@ -44,9 +44,7 @@ class RulesOfEngagement(Base):
     """
 
     __tablename__ = "rules_of_engagement"
-    __table_args__ = (
-        Index("ix_roe_mission_id", "mission_id"),
-    )
+    __table_args__ = (Index("ix_roe_mission_id", "mission_id"),)
 
     id: Mapped[str] = mapped_column(
         UUID(as_uuid=False),
@@ -60,39 +58,17 @@ class RulesOfEngagement(Base):
         nullable=False,
     )
     # Structured constraints
-    authorized_targets: Mapped[list | None] = mapped_column(
-        JSON, nullable=True, default=list
-    )
-    excluded_targets: Mapped[list | None] = mapped_column(
-        JSON, nullable=True, default=list
-    )
-    authorized_actions: Mapped[list | None] = mapped_column(
-        JSON, nullable=True, default=list
-    )
-    prohibited_actions: Mapped[list | None] = mapped_column(
-        JSON, nullable=True, default=list
-    )
-    max_scan_intensity: Mapped[str] = mapped_column(
-        String(20), default="normal", nullable=False
-    )
-    data_exfiltration_allowed: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False
-    )
-    max_exfiltration_bytes: Mapped[int | None] = mapped_column(
-        nullable=True
-    )
-    allow_persistence: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False
-    )
-    notification_email: Mapped[str | None] = mapped_column(
-        String(255), nullable=True
-    )
-    operator_signoff_required: Mapped[bool] = mapped_column(
-        Boolean, default=True, nullable=False
-    )
-    additional_constraints: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )
+    authorized_targets: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
+    excluded_targets: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
+    authorized_actions: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
+    prohibited_actions: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
+    max_scan_intensity: Mapped[str] = mapped_column(String(20), default="normal", nullable=False)
+    data_exfiltration_allowed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    max_exfiltration_bytes: Mapped[int | None] = mapped_column(nullable=True)
+    allow_persistence: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    notification_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    operator_signoff_required: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    additional_constraints: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

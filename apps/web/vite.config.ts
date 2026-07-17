@@ -7,7 +7,9 @@ export default defineConfig({
   base: "/",
   build: {
     outDir: "dist",
-    sourcemap: true,
+    // Source maps are useful locally but add several megabytes of implementation
+    // detail to the same-origin production image. CI still typechecks the source.
+    sourcemap: false,
   },
   resolve: {
     alias: {

@@ -49,15 +49,17 @@ def _record_scaling_event(
     reason: str,
     success: bool,
 ) -> None:
-    _scaling_history.append({
-        "service": service,
-        "action": action,
-        "from_replicas": from_replicas,
-        "to_replicas": to_replicas,
-        "reason": reason,
-        "timestamp": datetime.now(UTC).isoformat(),
-        "success": success,
-    })
+    _scaling_history.append(
+        {
+            "service": service,
+            "action": action,
+            "from_replicas": from_replicas,
+            "to_replicas": to_replicas,
+            "reason": reason,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "success": success,
+        }
+    )
 
 
 @dataclass
@@ -100,6 +102,7 @@ class AutoScaler:
         """Lazy-create the ServiceHealer instance."""
         if self._healer is None:
             from spectra_scaling.healer import ServiceHealer
+
             self._healer = ServiceHealer(self.backend, self.notifier, self.config)
         return self._healer
 
@@ -175,7 +178,9 @@ class AutoScaler:
     # ------------------------------------------------------------------
 
     async def evaluate(
-        self, metrics: dict, cluster: ClusterMetrics | None = None,
+        self,
+        metrics: dict,
+        cluster: ClusterMetrics | None = None,
     ) -> list[ScalingDecision]:
         """Evaluate all policies and return scaling decisions."""
         decisions: list[ScalingDecision] = []
@@ -195,22 +200,14 @@ class AutoScaler:
             cluster_disk_min_gb = min(disk_values) if disk_values else float("inf")
 
             if cluster_mem_max > self.config.memory_critical_percent:
-                cluster_alerts.append(
-                    f"EMERGENCY: Node memory at {cluster_mem_max:.1f}%"
-                )
+                cluster_alerts.append(f"EMERGENCY: Node memory at {cluster_mem_max:.1f}%")
             elif cluster_mem_max > self.config.memory_warning_percent:
-                cluster_alerts.append(
-                    f"WARNING: Node memory at {cluster_mem_max:.1f}%"
-                )
+                cluster_alerts.append(f"WARNING: Node memory at {cluster_mem_max:.1f}%")
 
             if cluster_disk_min_gb < self.config.disk_critical_gb:
-                cluster_alerts.append(
-                    f"CRITICAL: Disk free {cluster_disk_min_gb:.1f}GB on a node"
-                )
+                cluster_alerts.append(f"CRITICAL: Disk free {cluster_disk_min_gb:.1f}GB on a node")
             elif cluster_disk_min_gb < self.config.disk_warning_gb:
-                cluster_alerts.append(
-                    f"WARNING: Disk free {cluster_disk_min_gb:.1f}GB on a node"
-                )
+                cluster_alerts.append(f"WARNING: Disk free {cluster_disk_min_gb:.1f}GB on a node")
 
         for alert in cluster_alerts:
             logger.warning("Cluster resource alert: %s", alert)
@@ -227,7 +224,10 @@ class AutoScaler:
 
             effective_max = dynamic_max.get(role, policy.max_replicas)
             decision = self._evaluate_policy(
-                role, policy, metrics, now,
+                role,
+                policy,
+                metrics,
+                now,
                 cluster_cpu_avg=cluster_cpu_avg,
                 cluster_mem_max=cluster_mem_max,
                 effective_max_replicas=effective_max,
@@ -252,22 +252,17 @@ class AutoScaler:
         utilization = metrics.get(f"{role}_utilization", 0.0)
         queue_depth = metrics.get("queue_depth", 0)
         queue_idle_since = self._queue_idle_since.get(role, 0.0)
-        max_reps = (
-            effective_max_replicas
-            if effective_max_replicas is not None
-            else policy.max_replicas
-        )
+        max_reps = effective_max_replicas if effective_max_replicas is not None else policy.max_replicas
 
         svc = policy.service_name
 
         # --- Emergency: cluster memory pressure (>95%) ---
-        if (
-            cluster_mem_max > self.config.memory_critical_percent
-            and role == "worker"
-            and current > policy.min_replicas
-        ):
+        if cluster_mem_max > self.config.memory_critical_percent and role == "worker" and current > policy.min_replicas:
             return ScalingDecision(
-                svc, "none", current, current,
+                svc,
+                "none",
+                current,
+                current,
                 f"Memory emergency ({cluster_mem_max:.0f}%) \u2014 holding replicas",
             )
 
@@ -276,30 +271,33 @@ class AutoScaler:
             cluster_util = cluster_cpu_avg / 100.0
             if cluster_util > policy.scale_up_threshold and current < max_reps:
                 return ScalingDecision(
-                    svc, "scale_up", current,
+                    svc,
+                    "scale_up",
+                    current,
                     min(current + 1, max_reps),
                     f"Cluster CPU avg {cluster_cpu_avg:.1f}% > {policy.scale_up_threshold:.0%}",
                 )
 
         # --- Scale UP on queue depth ---
-        if (
-            role == "worker"
-            and queue_depth > policy.scale_up_queue_depth
-            and current < max_reps
-        ):
+        if role == "worker" and queue_depth > policy.scale_up_queue_depth and current < max_reps:
             desired = min(
                 current + max(1, queue_depth // policy.scale_up_queue_depth),
                 max_reps,
             )
             return ScalingDecision(
-                svc, "scale_up", current, desired,
+                svc,
+                "scale_up",
+                current,
+                desired,
                 f"Queue depth {queue_depth} > threshold {policy.scale_up_queue_depth}",
             )
 
         # --- Scale UP on utilization ---
         if utilization > policy.scale_up_threshold and current < max_reps:
             return ScalingDecision(
-                svc, "scale_up", current,
+                svc,
+                "scale_up",
+                current,
                 min(current + 1, max_reps),
                 f"Utilization {utilization:.0%} > {policy.scale_up_threshold:.0%}",
             )
@@ -308,12 +306,11 @@ class AutoScaler:
         if role == "worker" and queue_depth == 0:
             if queue_idle_since == 0:
                 self._queue_idle_since[role] = now
-            elif (
-                now - queue_idle_since > policy.idle_timeout_secs
-                and current > policy.min_replicas
-            ):
+            elif now - queue_idle_since > policy.idle_timeout_secs and current > policy.min_replicas:
                 return ScalingDecision(
-                    svc, "scale_down", current,
+                    svc,
+                    "scale_down",
+                    current,
                     max(current - 1, policy.min_replicas),
                     f"Queue idle for {int(now - queue_idle_since)}s",
                 )
@@ -325,7 +322,9 @@ class AutoScaler:
                 self._queue_idle_since[role] = now
             elif now - queue_idle_since > policy.idle_timeout_secs:
                 return ScalingDecision(
-                    svc, "scale_down", current,
+                    svc,
+                    "scale_down",
+                    current,
                     max(current - 1, policy.min_replicas),
                     f"Utilization {utilization:.0%} < {policy.scale_down_threshold:.0%}",
                 )
@@ -407,17 +406,14 @@ class AutoScaler:
             for name, fail_count in list(self._heal_fail_counts.items()):
                 if fail_count >= self.config.heal_max_retries:
                     diag = await self.healer.diagnose_and_heal(
-                        name, issue="repeated_heal_failure",
+                        name,
+                        issue="repeated_heal_failure",
                     )
                     if diag.resolved:
                         self._heal_fail_counts[name] = 0
-                        heal_actions.append(
-                            f"Healer resolved {name}: {diag.summary}"
-                        )
+                        heal_actions.append(f"Healer resolved {name}: {diag.summary}")
                     else:
-                        heal_actions.append(
-                            f"Healer could not resolve {name}: {diag.summary}"
-                        )
+                        heal_actions.append(f"Healer could not resolve {name}: {diag.summary}")
 
         # --- System resource alerts ---
         system_alerts: list[str] = []
@@ -428,7 +424,9 @@ class AutoScaler:
         for alert_msg in all_alerts:
             logger.warning("Infrastructure alert: %s", alert_msg)
             await self.notifier.notify(
-                "Infrastructure Alert", alert_msg, level="warning",
+                "Infrastructure Alert",
+                alert_msg,
+                level="warning",
             )
 
         for action_msg in heal_actions:
@@ -471,8 +469,12 @@ class AutoScaler:
                     actions.append(msg)
                     logger.info("Auto-healed %s: %s", name, reason)
                     _record_scaling_event(
-                        name, "heal_restart",
-                        svc.running_tasks, svc.desired_replicas, reason, True,
+                        name,
+                        "heal_restart",
+                        svc.running_tasks,
+                        svc.desired_replicas,
+                        reason,
+                        True,
                     )
                     self._heal_fail_counts[name] = 0
                 else:
@@ -481,24 +483,28 @@ class AutoScaler:
                     msg = f"Failed to restart {name}"
                     actions.append(msg)
                     logger.error(
-                        "Auto-heal failed for %s (attempt %d)", name, fail_count,
+                        "Auto-heal failed for %s (attempt %d)",
+                        name,
+                        fail_count,
                     )
                     _record_scaling_event(
-                        name, "heal_restart",
-                        svc.running_tasks, svc.desired_replicas, reason, False,
+                        name,
+                        "heal_restart",
+                        svc.running_tasks,
+                        svc.desired_replicas,
+                        reason,
+                        False,
                     )
 
                     if fail_count >= self.config.heal_max_retries:
                         logger.critical(
                             "Auto-heal ALERT: %s failed %d consecutive restarts",
-                            name, fail_count,
+                            name,
+                            fail_count,
                         )
                         await self.notifier.notify(
                             f"Auto-Heal Failed: {name}",
-                            (
-                                f"Service {name} has failed {fail_count} "
-                                f"consecutive restart attempts. Reason: {reason}."
-                            ),
+                            (f"Service {name} has failed {fail_count} consecutive restart attempts. Reason: {reason}."),
                             level="critical",
                         )
             except Exception as exc:
@@ -508,11 +514,17 @@ class AutoScaler:
                 actions.append(msg)
                 logger.error(
                     "Auto-heal exception for %s (attempt %d): %s",
-                    name, fail_count, exc,
+                    name,
+                    fail_count,
+                    exc,
                 )
                 _record_scaling_event(
-                    name, "heal_restart",
-                    svc.running_tasks, svc.desired_replicas, reason, False,
+                    name,
+                    "heal_restart",
+                    svc.running_tasks,
+                    svc.desired_replicas,
+                    reason,
+                    False,
                 )
 
             self._heal_timestamps[name] = now
@@ -528,16 +540,10 @@ class AutoScaler:
         sys = metrics.system
 
         if sys.memory_percent > self.config.system_memory_alert_threshold:
-            alerts.append(
-                f"System memory at {sys.memory_percent:.1f}% "
-                f"({sys.memory_available_mb:.0f} MB available)"
-            )
+            alerts.append(f"System memory at {sys.memory_percent:.1f}% ({sys.memory_available_mb:.0f} MB available)")
 
         if sys.disk_percent > self.config.system_disk_alert_threshold:
-            alerts.append(
-                f"Disk usage at {sys.disk_percent:.1f}% "
-                f"({sys.disk_free_gb:.1f} GB free)"
-            )
+            alerts.append(f"Disk usage at {sys.disk_percent:.1f}% ({sys.disk_free_gb:.1f} GB free)")
 
         cpu_count = os.cpu_count() or 1
         load_threshold = cpu_count * self.config.system_load_alert_multiplier

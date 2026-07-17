@@ -179,7 +179,7 @@ Output: `apps/web/dist/index.html` and `apps/web/dist/assets/*`.
 
 The API Docker image builds this automatically in `deploy/docker/Dockerfile.api`.
 
-## Routes (foundation placeholders)
+## Supported routes
 
 | Path | Screen |
 | --- | --- |
@@ -198,7 +198,6 @@ The API Docker image builds this automatically in `deploy/docker/Dockerfile.api`
 ## Legacy Jinja retirement
 
 The legacy authenticated Jinja dashboard router (`spectra_api.ui.pages`) is **no longer mounted** —
-the SPA owns the entire authenticated app. The module file remains only because a few unit tests
-still exercise its handlers directly; it and those tests are slated for deletion once the SPA's API
-documentation surface confirms parity. Server-rendered public/marketing/legal/admin pages
+the SPA owns the entire authenticated app. The module file remains only for its explicitly tested
+compatibility handlers; server-rendered public/marketing/legal/admin pages
 (`spectra_api.ui.public`) are kept on purpose: they are SEO-sensitive and correctly server-rendered.

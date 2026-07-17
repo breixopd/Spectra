@@ -1,9 +1,9 @@
 {
   "id": "graphql-fuzzer",
   "name": "graphql-fuzzer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "category": "exploitation",
-  "description": "GraphQL introspection and query fuzzing tool for security testing. Enumerates GraphQL schemas, detects authorization flaws, and fuzzes queries for injection vulnerabilities.",
+  "description": "First-party GraphQL schema introspection and bounded zero-argument access-exposure probe for authorized security testing.",
   "metadata": {
     "ai_description": "graphql-fuzzer is a specialized security testing tool for GraphQL APIs. Use it when you encounter GraphQL endpoints during web application assessments. It performs schema introspection (querying __schema), tests for authorization bypass in queries and mutations, fuzzes query parameters for injection vulnerabilities, and detects batching/DoS attack surfaces. Supports custom query templates and wordlist-based field fuzzing.",
     "capabilities": [
@@ -44,15 +44,11 @@
     "prerequisites": []
   },
   "installation": {
-    "method": "pipx",
-    "commands": [
-      "pipx install graphql-core aiodns"
-    ],
-    "verification_command": "python3 -c 'import graphql; print(graphql.__version__)'",
-    "verification_regex": "\\d+\\.\\d+",
-    "uninstall_commands": [
-      "pipx uninstall graphql-core aiodns"
-    ]
+    "method": "none",
+    "commands": [],
+    "verification_command": "graphql-fuzzer --version",
+    "verification_regex": "graphql-fuzzer 1\\.1\\.0",
+    "uninstall_commands": []
   },
   "execution": {
     "command": "graphql-fuzzer",
@@ -69,7 +65,7 @@
         "type": "info"
       },
       {
-        "pattern": "\\[!\\]\\s+Unauthorized\\s+access\\s+to\\s+(?P<field>.+)",
+        "pattern": "\\[!\\]\\s+Possible\\s+authorization\\s+exposure\\s+for\\s+(?P<field>.+)",
         "type": "vuln"
       },
       {

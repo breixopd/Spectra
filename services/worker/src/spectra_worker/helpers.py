@@ -199,7 +199,7 @@ async def _find_alternative_tools(tool_id: str, max_results: int = 3) -> list[An
         if t.config.category != category:
             continue
         # Only consider tools that are either installed or can be installed
-        if not _is_tool_installed(t) and getattr(t.status, 'value', str(t.status)) not in ("ready", "installing"):
+        if not _is_tool_installed(t) and getattr(t.status, "value", str(t.status)) not in ("ready", "installing"):
             continue
         t_caps = set(t.config.metadata.capabilities)
         if capabilities & t_caps:  # Share at least one capability

@@ -181,7 +181,12 @@ async def _resolve_hostname(hostname: str) -> tuple[str, ...]:
     try:
         loop = asyncio.get_running_loop()
         results = await loop.run_in_executor(
-            None, socket.getaddrinfo, hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM,
+            None,
+            socket.getaddrinfo,
+            hostname,
+            None,
+            socket.AF_UNSPEC,
+            socket.SOCK_STREAM,
         )
         ips = tuple({str(r[4][0]) for r in results})
     except (OSError, socket.gaierror):

@@ -71,7 +71,9 @@ async def test_server_deployer_fails_when_service_deploy_step_fails():
     deployer = ServerDeployer()
 
     with (
-        patch.object(deployer, "_ensure_known_host", new_callable=AsyncMock, return_value=Path("/tmp/deployer_known_hosts")),
+        patch.object(
+            deployer, "_ensure_known_host", new_callable=AsyncMock, return_value=Path("/tmp/deployer_known_hosts")
+        ),
         patch.object(deployer, "_run_ssh", new_callable=AsyncMock, return_value=0),
         patch.object(deployer, "_install_docker", new_callable=AsyncMock, return_value=0),
         patch.object(deployer, "_deploy_services", new_callable=AsyncMock, return_value=1) as mock_deploy,
@@ -99,7 +101,9 @@ async def test_server_deployer_passes_requested_services_to_verification():
     requested_services = ["app", "scheduler"]
 
     with (
-        patch.object(deployer, "_ensure_known_host", new_callable=AsyncMock, return_value=Path("/tmp/deployer_known_hosts")),
+        patch.object(
+            deployer, "_ensure_known_host", new_callable=AsyncMock, return_value=Path("/tmp/deployer_known_hosts")
+        ),
         patch.object(deployer, "_run_ssh", new_callable=AsyncMock, return_value=0),
         patch.object(deployer, "_install_docker", new_callable=AsyncMock, return_value=0),
         patch.object(deployer, "_deploy_services", new_callable=AsyncMock, return_value=0),
@@ -193,8 +197,7 @@ async def test_server_deployer_uses_pinned_known_host_entry_without_duplicates(t
 
     assert result == known_hosts_path
     assert known_hosts_path.read_text(encoding="utf-8") == (
-        "other.example ssh-ed25519 AAAAOTHER\n"
-        "[example.com]:2222 ssh-ed25519 AAAANEW\n"
+        "other.example ssh-ed25519 AAAAOTHER\n[example.com]:2222 ssh-ed25519 AAAANEW\n"
     )
     mock_exec.assert_not_called()
 

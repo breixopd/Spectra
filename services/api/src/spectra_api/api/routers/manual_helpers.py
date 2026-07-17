@@ -34,6 +34,7 @@ from spectra_system.report_templates import (
 
 logger = logging.getLogger(__name__)
 
+
 async def require_manual_mode(
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
@@ -203,7 +204,9 @@ async def api_generate_report(
         if session_id is None:
             raise HTTPException(status_code=422, detail="session_id is required")
         pentest_session = await load_session(session_id)
-        if pentest_session.get("owner_id") != str(_current_user.id) and not getattr(_current_user, "is_superuser", False):
+        if pentest_session.get("owner_id") != str(_current_user.id) and not getattr(
+            _current_user, "is_superuser", False
+        ):
             raise HTTPException(status_code=403, detail="Forbidden")
         report_data = build_report_data(pentest_session, template_id)
         report_data["source_type"] = "session"

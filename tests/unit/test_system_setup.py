@@ -139,6 +139,3 @@ async def test_check_directories(service):
         mock_exists.return_value = True
         result = await service.check_directories()
         assert result is True
-
-
-

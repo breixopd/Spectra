@@ -25,17 +25,13 @@ def upgrade() -> None:
     conn = op.get_bind()
     rag = conn.execute(
         sa.text(
-            "SELECT 1 FROM information_schema.tables "
-            "WHERE table_schema = 'public' AND table_name = 'rag_documents'"
+            "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'rag_documents'"
         )
     ).first()
     if not rag:
         return
     missions = conn.execute(
-        sa.text(
-            "SELECT 1 FROM information_schema.tables "
-            "WHERE table_schema = 'public' AND table_name = 'missions'"
-        )
+        sa.text("SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'missions'")
     ).first()
     if not missions:
         return

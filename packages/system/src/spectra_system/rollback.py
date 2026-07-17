@@ -93,7 +93,9 @@ async def _restore_user_subscription_state(session: AsyncSession, user: User, be
             _parse_snapshot_datetime(snapshot_subscription.get("current_period_start"))
             or current_subscription.current_period_start
         )
-        current_subscription.current_period_end = _parse_snapshot_datetime(snapshot_subscription.get("current_period_end"))
+        current_subscription.current_period_end = _parse_snapshot_datetime(
+            snapshot_subscription.get("current_period_end")
+        )
         current_subscription.external_subscription_id = snapshot_subscription.get("external_subscription_id")
         current_subscription.external_customer_id = snapshot_subscription.get("external_customer_id")
         current_subscription.payment_provider = snapshot_subscription.get("payment_provider")

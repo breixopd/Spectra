@@ -197,6 +197,7 @@ async def _initialize_database(app: FastAPI) -> None:
     # Bootstrap persistent secrets (first boot generates + persists to DB)
     try:
         from spectra_system.secret_bootstrap import ensure_persistent_secrets
+
         async with async_session_maker() as session:
             await ensure_persistent_secrets(session)
         logger.info("[OK] Persistent secrets bootstrapped")
@@ -211,6 +212,7 @@ async def _initialize_database(app: FastAPI) -> None:
 
     # Storage init AFTER hydration (S3 credentials may come from DB)
     from spectra_storage_policy.storage import get_storage_service
+
     storage = get_storage_service()
     await storage.start()
     logger.info("[OK] Storage service initialized (mode: s3)")
@@ -610,9 +612,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     _validate_stripe_webhook_secret()
 
     if settings.PAYMENT_PROVIDER and not settings.PLATFORM_BASE_URL:
-        logger.warning(
-            "PLATFORM_BASE_URL is not set — payment callbacks and emails will use localhost fallback"
-        )
+        logger.warning("PLATFORM_BASE_URL is not set — payment callbacks and emails will use localhost fallback")
 
     try:
         await _initialize_database(app)
@@ -621,9 +621,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("[READY] Spectra is ready!")
         _event_bridge = await _start_event_bridge()
         _config_listener_task = create_safe_task(_config_change_listener(), name="config_listener")
-        _blacklist_listener_task = create_safe_task(
-            _blacklist_change_listener(), name="blacklist_listener"
-        )
+        _blacklist_listener_task = create_safe_task(_blacklist_change_listener(), name="blacklist_listener")
         if settings.SERVICE_MODE in ("api", "all", ""):
             from spectra_scaling.runtime.embedded_daemon import spawn_embedded_ops_task
 

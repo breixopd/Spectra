@@ -202,7 +202,6 @@ async def export_user_data(
             }
         )
 
-
     result = await session.execute(
         select(AuditLog).where(AuditLog.user_id == user_id).order_by(AuditLog.created_at.desc()).limit(1000)
     )

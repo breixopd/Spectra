@@ -123,6 +123,7 @@ async def test_execute_tool_job_auto_installs_and_succeeds(tmp_path):
         is_available=False,
         status=ToolStatus.PENDING,
     )
+
     # install_tool returns True and sets status to READY
     async def _do_install(tool_id):
         tool.is_available = True
@@ -153,7 +154,9 @@ async def test_execute_tool_job_auto_installs_and_succeeds(tmp_path):
         pytest.MonkeyPatch.context() as mp,
         patch.object(tool_jobs, "_run_command", run_command),
         patch.object(tool_jobs, "_track_tool_stats", AsyncMock()),
-        patch.object(tool_jobs, "_is_tool_installed", side_effect=[False, True]),  # first False, then True after install
+        patch.object(
+            tool_jobs, "_is_tool_installed", side_effect=[False, True]
+        ),  # first False, then True after install
     ):
         mp.setitem(
             sys.modules,

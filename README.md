@@ -9,7 +9,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.136+-green.svg)](https://fastapi.tiangolo.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue.svg)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://docs.docker.com/compose/)
-[![License: Private](https://img.shields.io/badge/License-Private-red.svg)]()
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [Wiki](docs/wiki/home.md) · [Quick Start](#quick-start) · [API Reference](docs/wiki/api-reference.md) · [Contributing](CONTRIBUTING.md)
 
@@ -67,7 +67,7 @@ cp .env.example .env  # Edit with your settings
 ### 2. Start services
 
 ```bash
-docker compose -f deploy/docker/compose.yaml up -d
+docker compose -f deploy/docker/compose.yaml --profile app up -d
 ```
 
 ### 3. Access the dashboard
@@ -94,7 +94,8 @@ Key environment variables (full list: [Configuration](docs/wiki/configuration.md
 
 ## API Overview
 
-Versioned REST API under `/api/v1/`. Health probe: `/api/health`.
+Versioned REST API under `/api/v1/`. Use `/api/healthz` for container liveness and
+`/api/health/ready` for full dependency readiness.
 
 | Group | Path | Description |
 | ----- | ---- | ----------- |
@@ -157,4 +158,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-Private — All rights reserved.
+[MIT](LICENSE) © 2026 Spectra contributors.

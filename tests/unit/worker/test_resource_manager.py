@@ -7,9 +7,7 @@ from spectra_scaling.resource_manager import ResourceManager
 
 class TestResourceManager:
     def test_worker_capacity_calculation(self):
-        result = ResourceManager.calculate_node_capacity(
-            total_memory_mb=4096, total_cpu_cores=4, service_type="worker"
-        )
+        result = ResourceManager.calculate_node_capacity(total_memory_mb=4096, total_cpu_cores=4, service_type="worker")
         assert result["max_containers"] > 0
         assert result["warm_pool_size"] >= 1
         assert result["recommended_replicas"] >= 1
@@ -31,7 +29,9 @@ class TestResourceManager:
 
     def test_reserved_resources(self):
         result = ResourceManager.calculate_node_capacity(
-            total_memory_mb=1000, total_cpu_cores=1, service_type="worker",
+            total_memory_mb=1000,
+            total_cpu_cores=1,
+            service_type="worker",
             reserved_memory_pct=0.5,
         )
         assert result["available_memory_mb"] == 500

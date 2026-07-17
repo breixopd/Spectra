@@ -359,7 +359,7 @@ docker node rm <node-id>
 
 ### `ci.yml` — Continuous Integration
 
-Triggered on every push/PR to `main` or `develop`.
+Triggered on every push/PR to `main` or `dev`.
 
 | Job | Purpose |
 |-----|---------|

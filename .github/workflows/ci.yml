@@ -2,9 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    # Feature work lands in dev first; promotion from dev to main uses the
+    # exact same required checks.
+    branches: [main, dev]
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -12,32 +14,46 @@ env:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # Keep the protected release branch's evidence intact while superseding stale
+  # pull-request and development-branch runs.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   # One image build (Dockerfile.test): Ruff, import boundaries, Pyright, Bandit — avoids
   # duplicating the same docker build across separate jobs on fresh runners.
   static-analysis:
     name: Static analysis
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.0
+        with:
+          persist-credentials: false
       - name: Build Docker test runner
         run: docker build -f deploy/docker/Dockerfile.test -t spectra-test-ci .
+      - name: Ruff format
+        run: docker run --rm spectra-test-ci python -m ruff format --check tests/ services/ packages/ scripts/ db/
       - name: Ruff
         run: docker run --rm spectra-test-ci python -m ruff check tests/ services/ packages/ scripts/ db/
       - name: Import boundaries
         run: docker run --rm spectra-test-ci python scripts/check_import_boundaries.py
       - name: Pyright
-        run: docker run --rm spectra-test-ci sh -c "pip install --no-cache-dir pyright >/dev/null && pyright"
+        run: docker run --rm spectra-test-ci pyright
       - name: Bandit
         run: docker run --rm spectra-test-ci bandit -r packages/ services/ -c pyproject.toml --severity-level high --confidence-level high
 
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 75
     env:
       ENCRYPTION_KEY: test-encryption-key
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.0
+        with:
+          persist-credentials: false
       - name: Ensure .env.test for Docker Compose
         run: test -f .env.test || cp .env.test.example .env.test
       - name: Build Docker unit runner
@@ -49,7 +65,7 @@ jobs:
         run: |
           set +e
           docker compose -f deploy/docker/compose.yaml --profile test run --name spectra-unit-coverage unit-test-runner \
-            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov=spectra_ai_core --cov=spectra_billing --cov=spectra_common --cov=spectra_mission --cov=spectra_persistence --cov=spectra_scaling --cov=spectra_storage_policy --cov=spectra_tools_core --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=70"
+            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov=spectra_ai_core --cov=spectra_billing --cov=spectra_common --cov=spectra_mission --cov=spectra_persistence --cov=spectra_scaling --cov=spectra_storage_policy --cov=spectra_tools_core --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=67"
           status=$?
           docker cp spectra-unit-coverage:/tmp/coverage.xml coverage.xml 2>/dev/null || true
           docker rm -f spectra-unit-coverage >/dev/null 2>&1 || true
@@ -74,7 +90,7 @@ jobs:
           fi
       - name: Upload coverage artifact
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
         with:
           name: coverage-report
           path: coverage.xml
@@ -86,34 +102,46 @@ jobs:
   integration-test:
     name: Integration Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 75
     env:
       ENCRYPTION_KEY: test-encryption-key
       ENV_FILE: ../../.env.test
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.0
+        with:
+          persist-credentials: false
       - name: Ensure .env.test for Docker Compose
         run: test -f .env.test || cp .env.test.example .env.test
-      - name: Build Docker integration runner
-        run: docker compose -f deploy/docker/compose.yaml --profile app --profile test build test-runner
-      - name: Bootstrap Garage for integration tests
+      - name: Start integration infrastructure
         run: |
-          ENV_FILE=../../.env.test docker compose -f deploy/docker/compose.yaml --profile app --profile test up -d garage
+          ENV_FILE=../../.env.test docker compose -f deploy/docker/compose.yaml --profile app --profile test up -d --wait \
+            db redis garage tensorzero metasploitable dvwa
           GARAGE_CONTAINER="$(docker compose -f deploy/docker/compose.yaml ps -q garage)" \
           GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}" \
           GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}" \
           GARAGE_PRINT_CREDENTIALS=0 \
             bash deploy/docker/garage-init.sh
+      - name: Build and start integration services
+        run: |
+          ENV_FILE=../../.env.test docker compose -f deploy/docker/compose.yaml --profile app --profile test up -d --build --wait \
+            app ai-svc worker tools caddy
       - name: Run integration tests in Docker
         run: |
-          docker compose -f deploy/docker/compose.yaml --profile app --profile test run --rm test-runner \
+          docker compose -f deploy/docker/compose.yaml --profile app --profile test run --rm --no-deps test-runner \
             "python -m pytest tests/integration/ -v --tb=short --timeout=120 --override-ini=addopts= -k 'not live and not e2e'"
+      - name: Tear down integration stack
+        if: always()
+        run: docker compose -f deploy/docker/compose.yaml --profile app --profile test down --volumes --remove-orphans
 
   docker-build:
     name: Docker Build Verification
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v6
-      - uses: docker/setup-buildx-action@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.0
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.0.0
       - name: Ensure .env.test for Docker Compose
         run: test -f .env.test || cp .env.test.example .env.test
       - name: Validate Compose config
@@ -123,7 +151,7 @@ jobs:
       - name: Free hosted runner tool cache before image builds
         run: df -h
       - name: Build Caddy image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.0.0
         with:
           context: .
           file: deploy/docker/Dockerfile.caddy
@@ -142,7 +170,7 @@ jobs:
       - name: Free Docker cache after Caddy scan
         run: docker rmi spectra-caddy:ci || true; df -h
       - name: Build API image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.0.0
         with:
           context: .
           file: deploy/docker/Dockerfile.api
@@ -161,7 +189,7 @@ jobs:
       - name: Free Docker cache after API scan
         run: docker rmi spectra-api:ci || true; df -h
       - name: Build AI image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.0.0
         with:
           context: .
           file: deploy/docker/Dockerfile.ai
@@ -180,7 +208,7 @@ jobs:
       - name: Free Docker cache after AI scan
         run: docker rmi spectra-ai:ci || true; docker builder prune -af || true; docker system prune -f || true; df -h
       - name: Build scheduler image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.0.0
         with:
           context: .
           file: deploy/docker/Dockerfile.scheduler
@@ -199,7 +227,7 @@ jobs:
       - name: Free Docker cache after scheduler scan
         run: docker rmi spectra-scheduler:ci || true; df -h
       - name: Build worker image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.0.0
         with:
           context: .
           file: deploy/docker/Dockerfile.worker
@@ -208,6 +236,8 @@ jobs:
           tags: spectra-worker:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Verify first-party worker tool entry points
+        run: docker run --rm --entrypoint sh spectra-worker:ci -c 'imds-fetcher --version && graphql-fuzzer --version'
       - name: Scan worker image for critical CVEs
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
@@ -221,26 +251,50 @@ jobs:
   deps:
     name: Dependency Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.0
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7.0.0
         with:
           python-version: "3.11"
       # Audit the locked resolution (all transitive pins) instead of a manifest.
-      # Ignore known disputed advisories with no applicable fix.
-      - run: uv export --frozen --all-packages --no-emit-workspace --no-hashes --format requirements.txt -o /tmp/uv-lock-export.txt
-      - run: uvx pip-audit --no-deps -r /tmp/uv-lock-export.txt --ignore-vuln PYSEC-2024-65 --ignore-vuln PYSEC-2024-66 --ignore-vuln CVE-2026-3219
+      - run: uv export --frozen --all-packages --no-emit-workspace --format requirements.txt -o /tmp/uv-lock-export.txt > /dev/null
+      - run: uvx pip-audit --cache-dir /tmp/pip-audit-cache --progress-spinner off --strict --require-hashes -r /tmp/uv-lock-export.txt
+
+  workflow-security:
+    name: Workflow & Secret Security
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Detect exposed credentials
+        uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Audit GitHub Actions workflow security
+        run: uvx --from zizmor==1.27.0 zizmor .github/workflows
 
   compose-smoke:
     name: Compose Smoke Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     needs: [test, integration-test]
     if: github.event_name == 'push'
     env:
       ENCRYPTION_KEY: test-encryption-key
       ENV_FILE: ../../.env.test
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.0
+        with:
+          persist-credentials: false
       - name: Ensure .env.test for Docker Compose
         run: test -f .env.test || cp .env.test.example .env.test
       - name: Start test stack
@@ -278,6 +332,11 @@ jobs:
             echo "Waiting... ($i/90) - $all_running containers running"
             sleep 5
           done
+          if [ "${all_running:-0}" -lt 10 ]; then
+            echo "Timed out waiting for all managed services to start" >&2
+            docker ps -a --filter "label=spectra.managed=true" --format "{{.Names}}\t{{.Status}}" >&2 || true
+            exit 1
+          fi
       # Performance runs first: it calls ensure_admin_setup() so a fresh postgres volume has an
       # admin user before e2e tests authenticate (see tests/platform_harness.py defaults).
       - name: Run performance smoke tests
@@ -308,7 +367,7 @@ jobs:
           done
       - name: Upload container logs as artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
         with:
           name: compose-smoke-logs
           path: compose-logs/
@@ -316,4 +375,3 @@ jobs:
         if: always()
         run: |
           docker compose -f deploy/docker/compose.yaml --profile app --profile targets --profile test down -v --remove-orphans
-

@@ -503,9 +503,7 @@ async def test_image_update_check_success_notifies(monkeypatch):
         success=True,
         error="",
     )
-    check_and_update = AsyncMock(
-        side_effect=lambda **kwargs: setattr(service, "running", False) or [result_ok]
-    )
+    check_and_update = AsyncMock(side_effect=lambda **kwargs: setattr(service, "running", False) or [result_ok])
 
     @asynccontextmanager
     async def fake_lock_owner(lock_id, *, connection_factory):
@@ -550,9 +548,7 @@ async def test_image_update_check_failure_notifies(monkeypatch):
         success=False,
         error="pull denied",
     )
-    check_and_update = AsyncMock(
-        side_effect=lambda **kwargs: setattr(service, "running", False) or [result_bad]
-    )
+    check_and_update = AsyncMock(side_effect=lambda **kwargs: setattr(service, "running", False) or [result_bad])
 
     @asynccontextmanager
     async def fake_lock_owner(lock_id, *, connection_factory):

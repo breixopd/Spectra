@@ -59,19 +59,21 @@ class JsonPerceptor:
             info = item.get("info", item)
             severity = info.get("severity", item.get("severity", "")).lower()
 
-            facts.append(DiscoveredVulnerability(
-                host_ip=item.get("host", item.get("ip", "")),
-                port=item.get("port", 0),
-                vuln_id=item.get("template-id", item.get("template_id", "")),
-                name=info.get("name", item.get("name", "")),
-                description=info.get("description", ""),
-                severity=severity,
-                matched_at=item.get("matched-at", item.get("matched_at", "")),
-                evidence=item.get("extracted-results", ""),
-                remediation=info.get("remediation", ""),
-                source_tool=source_tool or "nuclei",
-                tags=info.get("tags", []),
-            ))
+            facts.append(
+                DiscoveredVulnerability(
+                    host_ip=item.get("host", item.get("ip", "")),
+                    port=item.get("port", 0),
+                    vuln_id=item.get("template-id", item.get("template_id", "")),
+                    name=info.get("name", item.get("name", "")),
+                    description=info.get("description", ""),
+                    severity=severity,
+                    matched_at=item.get("matched-at", item.get("matched_at", "")),
+                    evidence=item.get("extracted-results", ""),
+                    remediation=info.get("remediation", ""),
+                    source_tool=source_tool or "nuclei",
+                    tags=info.get("tags", []),
+                )
+            )
             return facts
 
         # ── Service discovery ─────────────────────────────────────────
@@ -99,7 +101,7 @@ class JsonPerceptor:
             end = text.rfind(end_char)
             if start >= 0 and end > start:
                 try:
-                    return _json.loads(text[start:end + 1])
+                    return _json.loads(text[start : end + 1])
                 except (_json.JSONDecodeError, TypeError):
                     continue
         return None

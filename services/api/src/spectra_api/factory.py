@@ -96,7 +96,6 @@ def create_app() -> FastAPI:
         openapi_url="/api/openapi.json" if settings.DEBUG else None,
     )
 
-
     app.state.limiter = limiter
     app.state.limiter._rate_limit_exceeded_handler = _safe_rate_limit_handler  # type: ignore[attr-defined]
     # type: ignore[arg-type] - FastAPI expects Exception handler, but rate_limit_exceeded_handler_sync takes RateLimitExceeded

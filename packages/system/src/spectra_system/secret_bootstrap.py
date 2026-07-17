@@ -57,14 +57,13 @@ async def ensure_persistent_secrets(session: AsyncSession) -> None:
             if file_path:
                 try:
                     from pathlib import Path
+
                     env_value = Path(file_path).read_text().strip()
                 except OSError:
                     env_value = ""
 
         # Check DB for existing value
-        result = await session.execute(
-            select(SystemConfig).where(SystemConfig.key == db_key)
-        )
+        result = await session.execute(select(SystemConfig).where(SystemConfig.key == db_key))
         existing = result.scalar_one_or_none()
 
         if existing and existing.value:
@@ -96,12 +95,14 @@ async def ensure_persistent_secrets(session: AsyncSession) -> None:
                 existing.is_secret = True
                 existing.value = value_to_persist
             else:
-                session.add(SystemConfig(
-                    key=db_key,
-                    _value=value_to_persist,  # will be encrypted by before_insert event
-                    is_secret=True,
-                    description=f"Auto-managed secret: {db_key}",
-                ))
+                session.add(
+                    SystemConfig(
+                        key=db_key,
+                        _value=value_to_persist,  # will be encrypted by before_insert event
+                        is_secret=True,
+                        description=f"Auto-managed secret: {db_key}",
+                    )
+                )
             _apply_secret(attr_name, value_to_persist)
             changes += 1
             logger.info("Secret '%s' persisted to DB (first boot or new secret)", db_key)

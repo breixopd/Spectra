@@ -93,10 +93,13 @@ async def test_execute_timeout(adapter):
     """Test execution timeout handling."""
     request = ToolExecutionRequest(tool_id="test-tool", target="127.0.0.1", timeout=1)
 
-    # Use built-in TimeoutError for side effect
+    async def timeout_after_closing(coro, **_kwargs):
+        coro.close()
+        raise TimeoutError
+
     with (
         patch("asyncio.create_subprocess_exec") as mock_subprocess,
-        patch("asyncio.wait_for", side_effect=TimeoutError),
+        patch("asyncio.wait_for", new=timeout_after_closing),
         patch("os.killpg") as mock_kill,
         patch("os.getpgid"),
     ):

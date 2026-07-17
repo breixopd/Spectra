@@ -27,6 +27,7 @@ async def _use_or_create_session(existing: AsyncSession | None = None):
         async with async_session_maker() as session:
             yield session
 
+
 # Maps metric names to (UsageRecord column, Plan limit column, period_type)
 _METRIC_MAP: dict[str, tuple[str, str, str]] = {
     "api_requests": ("api_requests", "max_api_requests_per_hour", "hourly"),
@@ -158,9 +159,7 @@ class UsageTracker:
             await session.execute(stmt)
             await session.commit()
 
-        telemetry.increment_counter(
-            "billing.usage.storage_mb", size_mb, {"user_id": user_id}
-        )
+        telemetry.increment_counter("billing.usage.storage_mb", size_mb, {"user_id": user_id})
 
     # ---- core ----
 

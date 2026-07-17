@@ -2,8 +2,9 @@
 
 from pathlib import Path
 
+import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 
 
 def _make_dist(tmp_path: Path) -> Path:
@@ -14,7 +15,8 @@ def _make_dist(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def test_spa_serves_index_assets_and_excludes_api(tmp_path, monkeypatch):
+@pytest.mark.asyncio
+async def test_spa_serves_index_assets_and_excludes_api(tmp_path, monkeypatch):
     from spectra_api.ui import spa
 
     dist = _make_dist(tmp_path)
@@ -22,41 +24,45 @@ def test_spa_serves_index_assets_and_excludes_api(tmp_path, monkeypatch):
 
     app = FastAPI()
     spa.register_spa(app)
-    client = TestClient(app)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        # Deep client-side route falls back to the SPA shell.
+        r = await client.get("/missions/123")
+        assert r.status_code == 200
+        assert "SPA-ROOT" in r.text
 
-    # Deep client-side route falls back to the SPA shell.
-    r = client.get("/missions/123")
-    assert r.status_code == 200
-    assert "SPA-ROOT" in r.text
+        # Root falls back to the shell too.
+        assert "SPA-ROOT" in (await client.get("/")).text
 
-    # Root falls back to the shell too.
-    assert "SPA-ROOT" in client.get("/").text
+        # Built asset is served from the mount.
+        r = await client.get("/assets/app.js")
+        assert r.status_code == 200
+        assert "console.log" in r.text
 
-    # Built asset is served from the mount.
-    r = client.get("/assets/app.js")
-    assert r.status_code == 200
-    assert "console.log" in r.text
+        # Favicon route serves the file.
+        assert (await client.get("/favicon.svg")).status_code == 200
 
-    # Favicon route serves the file.
-    assert client.get("/favicon.svg").status_code == 200
+        # Server-rendered setup wizard (Jinja) — not the React SPA.
+        assert (await client.get("/setup")).status_code == 404
 
-    # Server-rendered setup wizard (Jinja) — not the React SPA.
-    assert client.get("/setup").status_code == 404
+        # The SPA owns login now (not the retired Jinja page).
+        assert "SPA-ROOT" in (await client.get("/login")).text
 
-    # The SPA owns login now (not the retired Jinja page).
-    assert "SPA-ROOT" in client.get("/login").text
+        # API and the server-rendered marketing/SEO surface are never swallowed by the SPA.
+        assert (await client.get("/api/v1/anything")).status_code == 404
+        assert (await client.get("/legal/privacy")).status_code == 404
+        assert (await client.get("/pricing")).status_code == 404
 
-    # API and the server-rendered marketing/SEO surface are never swallowed by the SPA.
-    assert client.get("/api/v1/anything").status_code == 404
-    assert client.get("/legal/privacy").status_code == 404
-    assert client.get("/pricing").status_code == 404
+        # Unknown URLs remain real 404s instead of returning a misleading SPA shell.
+        assert (await client.get("/nonexistent-url-that-does-not-exist")).status_code == 404
 
 
-def test_register_spa_is_noop_without_build(monkeypatch):
+@pytest.mark.asyncio
+async def test_register_spa_is_noop_without_build(monkeypatch):
     from spectra_api.ui import spa
 
     monkeypatch.setattr(spa, "spa_dist_directory", lambda: None)
     app = FastAPI()
     spa.register_spa(app)
     # No catch-all route registered, so an unknown path is a plain 404.
-    assert TestClient(app).get("/missions").status_code == 404
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        assert (await client.get("/missions")).status_code == 404

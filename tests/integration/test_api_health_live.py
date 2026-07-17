@@ -3,6 +3,7 @@
 This test asserts that /api/health returns 200 with real dependencies
 when run against a live Spectra instance (e.g. inside the compose stack).
 """
+
 import os
 
 import httpx

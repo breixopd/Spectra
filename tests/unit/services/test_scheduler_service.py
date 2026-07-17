@@ -579,7 +579,9 @@ async def test_image_update_check_skips_registry_when_auto_update_disabled():
         mp.setitem(
             sys.modules,
             "spectra_scaling.image_updater",
-            make_module("spectra_scaling.image_updater", check_and_update_services=image_updater.check_and_update_services),
+            make_module(
+                "spectra_scaling.image_updater", check_and_update_services=image_updater.check_and_update_services
+            ),
         )
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock(side_effect=stop_after_sleep))
@@ -612,7 +614,9 @@ async def test_image_update_check_runs_when_auto_update_enabled():
         mp.setitem(
             sys.modules,
             "spectra_scaling.image_updater",
-            make_module("spectra_scaling.image_updater", check_and_update_services=image_updater.check_and_update_services),
+            make_module(
+                "spectra_scaling.image_updater", check_and_update_services=image_updater.check_and_update_services
+            ),
         )
         mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
@@ -693,8 +697,7 @@ def test_service_health_reports_task_states_when_healthy():
     service = scheduler_service.SchedulerService()
     service.running = True
     service._named_tasks = {
-        task_name: _HealthTask(done=False)
-        for task_name, _method_name in scheduler_service._SCHEDULER_TASK_SPECS
+        task_name: _HealthTask(done=False) for task_name, _method_name in scheduler_service._SCHEDULER_TASK_SPECS
     }
 
     result = service.health()
@@ -710,8 +713,7 @@ def test_service_health_degrades_when_any_task_is_dead_or_missing():
     service = scheduler_service.SchedulerService()
     service.running = True
     service._named_tasks = {
-        task_name: _HealthTask(done=False)
-        for task_name, _method_name in scheduler_service._SCHEDULER_TASK_SPECS
+        task_name: _HealthTask(done=False) for task_name, _method_name in scheduler_service._SCHEDULER_TASK_SPECS
     }
     service._named_tasks["quota_reset"] = _HealthTask(done=True)
     service._named_tasks.pop("disk_monitor")

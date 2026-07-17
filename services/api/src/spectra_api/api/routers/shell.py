@@ -189,7 +189,9 @@ async def stop_listener(
     if not _current_user.is_superuser:
         mission_id = listener.get("mission_id")
         async with async_session_maker() as db:
-            result = await db.execute(select(Mission.id).where(Mission.id == mission_id, Mission.user_id == str(_current_user.id)))
+            result = await db.execute(
+                select(Mission.id).where(Mission.id == mission_id, Mission.user_id == str(_current_user.id))
+            )
             if result.scalar_one_or_none() is None:
                 raise HTTPException(status_code=403, detail="Not authorized to stop this listener")
     if not await shell_relay_client.stop_listener(session_id):

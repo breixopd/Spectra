@@ -130,6 +130,4 @@ async def async_is_duplicate_finding(findings: list[dict[str, Any]], finding: di
     the event loop.  This runs the check in the default executor.
     """
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(
-        None, functools.partial(is_duplicate_finding, findings, finding)
-    )
+    return await loop.run_in_executor(None, functools.partial(is_duplicate_finding, findings, finding))

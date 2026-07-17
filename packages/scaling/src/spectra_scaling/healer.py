@@ -51,11 +51,13 @@ class ServiceHealer:
 
         # Step 1: Collect diagnostics
         log_output = await self._collect_service_logs(service)
-        result.checks_performed.append({
-            "name": "service_logs",
-            "result": "collected" if log_output else "unavailable",
-            "detail": log_output[:500] if log_output else "No logs available",
-        })
+        result.checks_performed.append(
+            {
+                "name": "service_logs",
+                "result": "collected" if log_output else "unavailable",
+                "detail": log_output[:500] if log_output else "No logs available",
+            }
+        )
 
         dep_checks = await self._check_dependencies()
         result.checks_performed.extend(dep_checks)
@@ -68,11 +70,13 @@ class ServiceHealer:
         try:
             restart_result = await self.backend.restart(service)
             success = restart_result.success
-            result.recovery_attempted.append({
-                "action": "force_restart",
-                "success": success,
-                "detail": f"Restart {'succeeded' if success else 'failed'}",
-            })
+            result.recovery_attempted.append(
+                {
+                    "action": "force_restart",
+                    "success": success,
+                    "detail": f"Restart {'succeeded' if success else 'failed'}",
+                }
+            )
             if success:
                 result.resolved = True
                 result.summary = "Resolved by force-restart"
@@ -80,44 +84,46 @@ class ServiceHealer:
                 self._heal_history.append(result)
                 return result
         except Exception as exc:
-            result.recovery_attempted.append({
-                "action": "force_restart",
-                "success": False,
-                "detail": str(exc),
-            })
+            result.recovery_attempted.append(
+                {
+                    "action": "force_restart",
+                    "success": False,
+                    "detail": str(exc),
+                }
+            )
 
         # Step 2b: Check if resources are exhausted
-        resource_exhausted = any(
-            c.get("result") == "critical"
-            for c in resource_checks
+        resource_exhausted = any(c.get("result") == "critical" for c in resource_checks)
+        result.recovery_attempted.append(
+            {
+                "action": "resource_check",
+                "success": not resource_exhausted,
+                "detail": "Resources exhausted" if resource_exhausted else "Resources OK",
+            }
         )
-        result.recovery_attempted.append({
-            "action": "resource_check",
-            "success": not resource_exhausted,
-            "detail": "Resources exhausted" if resource_exhausted else "Resources OK",
-        })
 
         # Step 2c: Check dependencies (DB, Redis)
-        deps_healthy = all(
-            c.get("result") == "healthy"
-            for c in dep_checks
+        deps_healthy = all(c.get("result") == "healthy" for c in dep_checks)
+        result.recovery_attempted.append(
+            {
+                "action": "dependency_check",
+                "success": deps_healthy,
+                "detail": "All dependencies healthy" if deps_healthy else "Dependency issues detected",
+            }
         )
-        result.recovery_attempted.append({
-            "action": "dependency_check",
-            "success": deps_healthy,
-            "detail": "All dependencies healthy" if deps_healthy else "Dependency issues detected",
-        })
 
         # Step 2d: If all else fails — collect diagnostic bundle and notify admin
         self._consecutive_failures[service] = self._consecutive_failures.get(service, 0) + 1
         failures = self._consecutive_failures[service]
 
         diag_bundle = self._build_diagnostic_summary(result)
-        result.recovery_attempted.append({
-            "action": "admin_notification",
-            "success": True,
-            "detail": f"Diagnostic bundle sent after {failures} consecutive failures",
-        })
+        result.recovery_attempted.append(
+            {
+                "action": "admin_notification",
+                "success": True,
+                "detail": f"Diagnostic bundle sent after {failures} consecutive failures",
+            }
+        )
 
         result.resolved = False
         result.summary = (
@@ -147,6 +153,7 @@ class ServiceHealer:
             else:
                 async with engine.connect() as conn:
                     from sqlalchemy import text
+
                     await conn.execute(text("SELECT 1"))
                 checks.append({"name": "postgresql", "result": "healthy", "detail": "Connection OK"})
         except Exception as exc:
@@ -180,7 +187,7 @@ class ServiceHealer:
                 checks.append({"name": "memory", "result": "ok", "detail": f"{mem.percent:.1f}% used"})
 
             disk = psutil.disk_usage("/")
-            free_gb = disk.free / (1024 ** 3)
+            free_gb = disk.free / (1024**3)
             if free_gb < 5:
                 checks.append({"name": "disk", "result": "critical", "detail": f"{free_gb:.1f}GB free"})
             elif free_gb < 10:
@@ -196,6 +203,7 @@ class ServiceHealer:
         """Get recent logs from a service for diagnostics."""
         try:
             from spectra_scaling.docker_client import get_service_logs
+
             return await get_service_logs(service, tail=lines)
         except Exception as exc:
             logger.debug("Failed to collect logs for %s: %s", service, exc)

@@ -134,7 +134,8 @@ class MissionLifecycleManager:
                         {"lock_id": lock_id},
                     )
                     allowed, reason = await self.quota_enforcer.check_mission_quota(
-                        user_id, session=session,
+                        user_id,
+                        session=session,
                     )
                     if not allowed:
                         raise MissionQuotaExceeded(reason)
@@ -431,7 +432,9 @@ class MissionLifecycleManager:
             logger.error("Failed to recover interrupted missions: %s", exc)
             return {"recovered": 0, "failed": 0}
 
-        logger.info("Mission recovery parked %d checkpointed mission(s), failed %d unsafe mission(s)", recovered, failed)
+        logger.info(
+            "Mission recovery parked %d checkpointed mission(s), failed %d unsafe mission(s)", recovered, failed
+        )
         return {"recovered": recovered, "failed": failed}
 
     async def initialize_mission(self, mission: Mission) -> AgentContext | None:

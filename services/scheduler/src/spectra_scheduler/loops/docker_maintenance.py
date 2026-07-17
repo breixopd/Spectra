@@ -47,11 +47,13 @@ class SchedulerDockerMaintenanceMixin:
                     if settings.DOCKER_PRUNE_VOLUMES:
                         await prune_volumes(filters={"label": ["spectra.managed=true"]})
                     # Prune only old exited Swarm task containers.
-                    await prune_containers(filters={
-                        "label": ["com.docker.swarm.task"],
-                        "status": ["exited"],
-                        "until": ["168h"],
-                    })
+                    await prune_containers(
+                        filters={
+                            "label": ["com.docker.swarm.task"],
+                            "status": ["exited"],
+                            "until": ["168h"],
+                        }
+                    )
                     logger.info("Docker cleanup completed: pruned safe containers and dangling images")
             except Exception as e:
                 logger.warning("Docker cleanup failed: %s", e)

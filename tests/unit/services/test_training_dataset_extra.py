@@ -24,9 +24,14 @@ async def test_create_training_sample():
     mock_session.flush = AsyncMock()
 
     sample = await create_training_sample(
-        mock_session, "m1", "u1", "tool_output",
-        "input with 192.168.1.1", "output with password=secret",
-        quality_score=0.9, metadata={"tool": "nmap"}
+        mock_session,
+        "m1",
+        "u1",
+        "tool_output",
+        "input with 192.168.1.1",
+        "output with password=secret",
+        quality_score=0.9,
+        metadata={"tool": "nmap"},
     )
 
     assert sample.mission_id == "m1"

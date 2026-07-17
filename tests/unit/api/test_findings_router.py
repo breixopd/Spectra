@@ -9,6 +9,7 @@ import pytest
 import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.routers.findings import router
 from spectra_domain.enums import Severity
@@ -66,6 +67,16 @@ def _fake_finding(**overrides):
     return obj
 
 
+def _make_async_session() -> MagicMock:
+    """Model the sync/async split of SQLAlchemy's AsyncSession faithfully."""
+    session = MagicMock(spec=AsyncSession)
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = None
+    result.scalars.return_value.all.return_value = []
+    session.execute = AsyncMock(return_value=result)
+    return session
+
+
 def _make_app() -> FastAPI:
     from spectra_auth.rate_limit import limiter
 
@@ -85,9 +96,7 @@ async def client():
     user = _fake_user()
     app.dependency_overrides[get_current_active_user] = lambda: user
 
-    mock_session = AsyncMock()
-    mock_session.add = MagicMock()  # sync method
-    mock_session.commit = AsyncMock()
+    mock_session = _make_async_session()
 
     async def _get_session():
         yield mock_session
@@ -105,8 +114,7 @@ async def unauth_client():
     app = _make_app()
     from spectra_persistence.database import get_async_session
 
-    mock_session = AsyncMock()
-    mock_session.add = MagicMock()  # sync method
+    mock_session = _make_async_session()
 
     async def _get_session():
         yield mock_session
@@ -477,9 +485,7 @@ class TestFindingExportsAndStatusPaths:
         user = _fake_user()
         app.dependency_overrides[get_current_active_user] = lambda: user
 
-        mock_session = AsyncMock()
-        mock_session.add = MagicMock()
-        mock_session.commit = AsyncMock()
+        mock_session = _make_async_session()
 
         async def _get_session():
             yield mock_session

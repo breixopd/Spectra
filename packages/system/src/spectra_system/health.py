@@ -348,16 +348,16 @@ async def _collect_nodes(db: AsyncSession, *, live_probe: bool) -> dict[str, lis
         if live_probe:
             raw_metadata = node.get("metadata")
             metadata: dict[str, Any] = (
-                {str(key): value for key, value in raw_metadata.items()}
-                if isinstance(raw_metadata, dict)
-                else {}
+                {str(key): value for key, value in raw_metadata.items()} if isinstance(raw_metadata, dict) else {}
             )
             path_value = metadata.get("health_path")
             path = path_value if isinstance(path_value, str) and path_value else "/health"
             if _is_control_plane_health_url(str(node.get("url", "")), str(node.get("service_type", "")), metadata):
                 probes.append(probe_http_health(node["url"], path=path, timeout=5.0, critical=False))
             else:
-                probes.append(asyncio.sleep(0, result=_result("not_configured", critical=False, error="live_probe_not_allowed")))
+                probes.append(
+                    asyncio.sleep(0, result=_result("not_configured", critical=False, error="live_probe_not_allowed"))
+                )
         else:
             probes.append(asyncio.sleep(0, result=None))
 
@@ -403,9 +403,13 @@ def _overall_status(groups: Iterable[dict[str, HealthMap] | HealthMap]) -> str:
     return "degraded" if saw_degraded else "healthy"
 
 
-def _summary(components: dict[str, HealthMap], services: dict[str, HealthMap], nodes: dict[str, list[HealthMap]]) -> dict:
+def _summary(
+    components: dict[str, HealthMap], services: dict[str, HealthMap], nodes: dict[str, list[HealthMap]]
+) -> dict:
     total_nodes = sum(len(items) for items in nodes.values())
-    healthy_nodes = sum(1 for items in nodes.values() for item in items if _normalize_status(item.get("status")) == "healthy")
+    healthy_nodes = sum(
+        1 for items in nodes.values() for item in items if _normalize_status(item.get("status")) == "healthy"
+    )
     return {
         "components": {
             "total": len(components),

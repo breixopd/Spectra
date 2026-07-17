@@ -27,6 +27,7 @@ from spectra_persistence.models.user import User
 
 logger = logging.getLogger(__name__)
 
+
 def _tensorzero_config_path() -> Path:
     """Resolve tensorzero.toml in container (/app/config) or repo checkout."""
     container_path = Path("/app/config/tensorzero.toml")

@@ -70,6 +70,7 @@ class Settings(BaseSettings):
             logger.warning("PLATFORM_EXPOSED=true — forcing DEBUG=False for production security")
             self.DEBUG = False
         return self
+
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "text"  # "json" for structured logs in production, "text" for dev
 
@@ -292,6 +293,7 @@ class Settings(BaseSettings):
         if not v:
             raise ValueError("SANDBOX_NETWORK_ISOLATION must remain enabled")
         return v
+
     SANDBOX_IDLE_TIMEOUT: int = 600  # seconds — destroy sandbox if no heartbeat for this long
     SANDBOX_HEARTBEAT_INTERVAL: int = 30  # seconds — how often worker sends heartbeat
     SANDBOX_PER_USER_LIMIT: int = 3  # Max concurrent sandboxes per user
@@ -451,15 +453,21 @@ class Settings(BaseSettings):
     DB_MAINTENANCE_INTERVAL: int = Field(default=604800, description="DB VACUUM ANALYZE interval in seconds (7 days)")
     STALE_JOB_RECOVERY_INTERVAL: int = Field(default=300, description="Stale job recovery interval in seconds")
     EXPLOIT_DB_REFRESH_HOURS: int = Field(default=168, description="Exploit DB refresh interval in hours (7 days)")
-    DOCKER_CLEANUP_INTERVAL: int = Field(default=604800, description="Docker resource pruning interval in seconds (7 days)")
+    DOCKER_CLEANUP_INTERVAL: int = Field(
+        default=604800, description="Docker resource pruning interval in seconds (7 days)"
+    )
     DOCKER_PRUNE_VOLUMES: bool = Field(
         default=False,
         description="Allow cleanup to prune only unused volumes labelled spectra.managed=true",
     )
 
     # --- Image Auto-Update ---
-    IMAGE_AUTO_UPDATE: bool = Field(default=False, description="Enable automatic registry polling and rollout when new image digests are found")
-    IMAGE_CHECK_INTERVAL: int = Field(default=60, description="Seconds between automatic image update checks when enabled")
+    IMAGE_AUTO_UPDATE: bool = Field(
+        default=False, description="Enable automatic registry polling and rollout when new image digests are found"
+    )
+    IMAGE_CHECK_INTERVAL: int = Field(
+        default=60, description="Seconds between automatic image update checks when enabled"
+    )
 
     @field_validator("IMAGE_CHECK_INTERVAL")
     @classmethod
@@ -524,8 +532,7 @@ def get_settings() -> Settings:
     if not has_keypair and (not jwt_val or jwt_val.startswith("change-me")):
         if production_like:
             raise ValueError(
-                "Configure a JWT signing keypair (JWT_PRIVATE_KEY/JWT_PUBLIC_KEY) "
-                "or JWT_SECRET_KEY in production"
+                "Configure a JWT signing keypair (JWT_PRIVATE_KEY/JWT_PUBLIC_KEY) or JWT_SECRET_KEY in production"
             )
         settings_instance.JWT_SECRET_KEY = SecretStr(_secrets.token_urlsafe(32))
 

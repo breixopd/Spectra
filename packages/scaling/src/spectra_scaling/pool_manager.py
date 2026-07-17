@@ -6,7 +6,7 @@ import asyncio
 import logging
 import secrets
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -70,9 +70,12 @@ class ServerPoolManager:
         try:
             from spectra_system.runtime_settings import upsert_system_config_values
 
-            await upsert_system_config_values(session, {
-                "AUTOSCALE_ENABLED": ("true", False),
-            })
+            await upsert_system_config_values(
+                session,
+                {
+                    "AUTOSCALE_ENABLED": ("true", False),
+                },
+            )
             config.settings.AUTOSCALE_ENABLED = True
             logger.info("Auto-scaling enabled — new compute host detected")
         except Exception:
@@ -198,9 +201,7 @@ class ServerPoolManager:
         url = node["url"]
         raw_metadata = node.get("metadata")
         metadata: dict[str, object] = (
-            {str(key): value for key, value in raw_metadata.items()}
-            if isinstance(raw_metadata, dict)
-            else {}
+            {str(key): value for key, value in raw_metadata.items()} if isinstance(raw_metadata, dict) else {}
         )
         health_path_value = metadata.get("health_path")
         health_path = health_path_value if isinstance(health_path_value, str) and health_path_value else "/health"
@@ -211,7 +212,11 @@ class ServerPoolManager:
                 latency_ms = round((time.monotonic() - start) * 1000, 1)
                 if resp.status_code == 200:
                     return {"health_status": "healthy", "last_error": None, "latency_ms": latency_ms}
-                return {"health_status": "unhealthy", "last_error": f"HTTP {resp.status_code}", "latency_ms": latency_ms}
+                return {
+                    "health_status": "unhealthy",
+                    "last_error": f"HTTP {resp.status_code}",
+                    "latency_ms": latency_ms,
+                }
         except (OSError, RuntimeError, ConnectionError, TimeoutError) as e:
             latency_ms = round((time.monotonic() - start) * 1000, 1)
             return {"health_status": "unhealthy", "last_error": str(e), "latency_ms": latency_ms}
@@ -250,7 +255,7 @@ class ServerPoolManager:
                 check = await self.health_check_node(node.to_dict())
                 node.health_status = check["health_status"]
                 node.last_error = check.get("last_error")
-                node.last_health_check = datetime.utcnow()
+                node.last_health_check = datetime.now(UTC)
 
                 # Collect node metrics and store in metadata
                 if check["health_status"] == "healthy":
@@ -293,9 +298,7 @@ class ServerPoolManager:
 
         async with async_session_maker() as session:
             # Check if already registered
-            result = await session.execute(
-                select(ServerNode).where(ServerNode.name == hostname)
-            )
+            result = await session.execute(select(ServerNode).where(ServerNode.name == hostname))
             existing = result.scalar_one_or_none()
             if existing:
                 logger.debug("Local node %s already registered (id=%s)", hostname, existing.id)
@@ -339,7 +342,10 @@ class ServerPoolManager:
             await session.refresh(node)
             logger.info(
                 "Auto-registered local node %s (role=%s, cpu=%s, mem=%sMB)",
-                hostname, role, cpu_count, total_mem,
+                hostname,
+                role,
+                cpu_count,
+                total_mem,
             )
             return node.to_dict()
 
@@ -355,6 +361,7 @@ class ServerPoolManager:
                 await asyncio.sleep(self._health_interval)
 
         from spectra_common.tasks import create_safe_task
+
         self._health_task = create_safe_task(_loop(), name="pool_health_check")
         logger.info("Health check loop started (interval=%ds)", self._health_interval)
 

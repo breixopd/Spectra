@@ -330,7 +330,9 @@ class ShellSessionManager:
 
         container = self._get_sandbox_container(mission_id)
         if container is None:
-            raise RuntimeError(f"No sandbox container found for mission {mission_id[:8]}; refusing direct listener fallback")
+            raise RuntimeError(
+                f"No sandbox container found for mission {mission_id[:8]}; refusing direct listener fallback"
+            )
 
         self._ensure_loop()
         self.listeners[port] = None

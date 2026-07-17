@@ -5,6 +5,7 @@ Thank you for your interest in contributing to Spectra! This guide covers everyt
 ## Table of Contents
 
 - [Development Setup](#development-setup)
+- [Branches and worktrees](#branches-and-worktrees)
 - [Architecture Overview](#architecture-overview)
 - [Code Style](#code-style)
 - [Testing](#testing)
@@ -109,6 +110,25 @@ alembic -c db/alembic.ini upgrade head
 # Start the dev server
 uvicorn spectra_api.main:app --reload --port 5000
 ```
+
+## Branches and worktrees
+
+`main` is the protected, release-ready branch. Do not develop directly on it.
+Keep the shared development line on `dev`, and create one worktree per focused
+change so tests, generated assets, and local experiments do not collide.
+
+```bash
+git fetch origin
+git worktree add ../Spectra-dev dev
+git -C ../Spectra-dev pull --ff-only origin dev
+
+# Start an isolated change from the current development line.
+git worktree add ../Spectra-findings -b feat/findings-export dev
+```
+
+Open pull requests from a short-lived branch into `dev`; promote `dev` to
+`main` only after the complete CI and release gate pass. Keep worktrees clean
+before removing them with `git worktree remove`.
 
 ## Architecture Overview
 

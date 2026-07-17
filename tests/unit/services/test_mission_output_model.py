@@ -1,6 +1,7 @@
 """Tests for the mission summary output-model helpers."""
 
 from unittest.mock import MagicMock
+from uuid import UUID
 
 from spectra_mission.output_model import (
     get_mission_finding_counts,
@@ -28,6 +29,31 @@ def test_get_mission_findings_prefers_explicit_empty_top_level_list_over_summary
     }
 
     assert get_mission_findings(mission) == []
+
+
+def test_get_mission_findings_assigns_stable_ids_to_legacy_summary_records():
+    """Legacy mission summaries receive deterministic IDs without mutating stored JSON."""
+    mission = MagicMock()
+    mission.id = "00000000-0000-4000-a000-000000000001"
+    mission.summary = {
+        "findings": [
+            {
+                "title": "Exposed admin endpoint",
+                "description": "The administrative endpoint is reachable without network restrictions.",
+                "severity": "high",
+                "host": "example.test",
+                "port": 443,
+                "tool_source": "nuclei",
+            }
+        ]
+    }
+
+    first = get_mission_findings(mission)
+    second = get_mission_findings(mission)
+
+    assert first[0]["id"] == second[0]["id"]
+    assert UUID(first[0]["id"]).version == 5
+    assert "id" not in mission.summary["findings"][0]
 
 
 def test_get_mission_finding_counts_aggregates_normalized_severities():

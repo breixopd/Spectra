@@ -518,7 +518,9 @@ class TestStripeReconciliation:
         svc = PaymentService(NoopPaymentAdapter())
         with (
             patch("spectra_billing.payment_adapter.async_session_maker", return_value=mock_session),
-            patch.object(svc, "_set_local_subscription_state", new=AsyncMock(return_value=(MagicMock(), False))) as set_state,
+            patch.object(
+                svc, "_set_local_subscription_state", new=AsyncMock(return_value=(MagicMock(), False))
+            ) as set_state,
         ):
             handled = await svc.reconcile_stripe_event(
                 "customer.subscription.updated",
@@ -558,7 +560,9 @@ class TestStripeReconciliation:
         svc = PaymentService(NoopPaymentAdapter())
         with (
             patch("spectra_billing.payment_adapter.async_session_maker", return_value=mock_session),
-            patch.object(svc, "_set_local_subscription_state", new=AsyncMock(return_value=(MagicMock(), False))) as set_state,
+            patch.object(
+                svc, "_set_local_subscription_state", new=AsyncMock(return_value=(MagicMock(), False))
+            ) as set_state,
         ):
             handled = await svc.reconcile_stripe_event(
                 "invoice.payment_failed",
@@ -616,7 +620,9 @@ class TestStripeReconciliation:
         svc = PaymentService(NoopPaymentAdapter())
         with (
             patch("spectra_billing.payment_adapter.async_session_maker", return_value=mock_session),
-            patch.object(svc, "_set_local_subscription_state", new=AsyncMock(return_value=(MagicMock(), False))) as set_state,
+            patch.object(
+                svc, "_set_local_subscription_state", new=AsyncMock(return_value=(MagicMock(), False))
+            ) as set_state,
         ):
             handled = await svc.reconcile_stripe_event(
                 "charge.refunded",
@@ -646,7 +652,9 @@ class TestStripeReconciliation:
         svc = PaymentService(NoopPaymentAdapter())
         with (
             patch("spectra_billing.payment_adapter.async_session_maker", return_value=mock_session),
-            patch.object(svc, "_set_local_subscription_state", new=AsyncMock(return_value=(MagicMock(), False))) as set_state,
+            patch.object(
+                svc, "_set_local_subscription_state", new=AsyncMock(return_value=(MagicMock(), False))
+            ) as set_state,
         ):
             handled = await svc.reconcile_stripe_event(
                 "charge.refunded",

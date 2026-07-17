@@ -41,8 +41,7 @@ def _validate_base_cmd(base_cmd: str) -> None:
             raise ValueError(f"Path traversal not allowed in base_cmd: {stripped!r}")
         if not any(stripped.startswith(prefix) for prefix in _ALLOWED_CMD_PREFIXES):
             raise ValueError(
-                f"base_cmd must be a bare name or an absolute path under "
-                f"one of {_ALLOWED_CMD_PREFIXES}: {stripped!r}"
+                f"base_cmd must be a bare name or an absolute path under one of {_ALLOWED_CMD_PREFIXES}: {stripped!r}"
             )
     else:
         # Bare command name — must look like a normal binary name

@@ -66,9 +66,7 @@ def upgrade() -> None:
     except Exception as exc:
         import logging
 
-        logging.getLogger("alembic").warning(
-            "BYOK key encryption skipped during migration: %s", type(exc).__name__
-        )
+        logging.getLogger("alembic").warning("BYOK key encryption skipped during migration: %s", type(exc).__name__)
 
 
 def downgrade() -> None:

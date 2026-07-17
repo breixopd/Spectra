@@ -48,7 +48,7 @@ import Caddyfile.snippets
 		reverse_proxy {$APP_UPSTREAM:spectra-app:5000} {
 			lb_policy cookie
 			lb_try_duration 5s
-			health_uri /api/health
+			health_uri /api/healthz
 			health_interval 10s
 			health_timeout 5s
 

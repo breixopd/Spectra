@@ -51,9 +51,7 @@ def build_report(
     }
 
     for section in sections:
-        report["sections"][section.id] = _build_section(
-            section.id, section.label, spec, mission, sorted_findings
-        )
+        report["sections"][section.id] = _build_section(section.id, section.label, spec, mission, sorted_findings)
 
     if format == "markdown":
         return _to_markdown(report, spec, sorted_findings)

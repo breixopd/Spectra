@@ -76,13 +76,15 @@ class XmlPerceptor:
             hostname = hn.get("name", "")
             break
 
-        facts.append(DiscoveredHost(
-            ip=ip,
-            hostname=hostname,
-            os=os_name,
-            os_confidence=os_confidence,
-            source_tool=source_tool,
-        ))
+        facts.append(
+            DiscoveredHost(
+                ip=ip,
+                hostname=hostname,
+                os=os_name,
+                os_confidence=os_confidence,
+                source_tool=source_tool,
+            )
+        )
 
         # Ports and services
         for port_elem in host_elem.findall("ports/port"):

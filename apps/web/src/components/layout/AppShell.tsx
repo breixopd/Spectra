@@ -1,4 +1,4 @@
-import { Link, Outlet } from "@tanstack/react-router";
+import { Link, Navigate, Outlet } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { CommandPalette, useCommandPalette } from "@/components/layout/CommandPalette";
@@ -9,11 +9,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { primaryNav } from "@/config/navigation";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/providers/AuthProvider";
 
 export function AppShell() {
+  const { isAuthenticated } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { open, setOpen } = useCommandPalette();
+
+  // Router beforeLoad guards protect initial navigation. This reactive boundary
+  // also protects the already-rendered shell when a user signs out or expires.
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <div className="relative flex min-h-screen flex-col bg-background">

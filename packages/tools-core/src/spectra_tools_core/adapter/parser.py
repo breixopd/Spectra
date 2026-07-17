@@ -305,6 +305,7 @@ class UniversalParser:
             return []
 
         try:
+
             class ExtractedFinding(BaseModel):
                 """A single extracted finding."""
 

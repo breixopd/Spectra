@@ -217,7 +217,10 @@ class CircuitBreaker:
             self._state.total_successes += 1
             self._state.last_success_time = time.time()
 
-            if self._state.state == CircuitState.HALF_OPEN and self._state.success_count >= self.config.success_threshold:
+            if (
+                self._state.state == CircuitState.HALF_OPEN
+                and self._state.success_count >= self.config.success_threshold
+            ):
                 self._transition_to_closed()
 
             await self._save_persisted_state()
@@ -232,7 +235,9 @@ class CircuitBreaker:
             if self._state.state == CircuitState.HALF_OPEN:
                 # Any failure in half-open immediately opens
                 self._transition_to_open()
-            elif self._state.state == CircuitState.CLOSED and self._state.failure_count >= self.config.failure_threshold:
+            elif (
+                self._state.state == CircuitState.CLOSED and self._state.failure_count >= self.config.failure_threshold
+            ):
                 self._transition_to_open()
 
             await self._save_persisted_state()
@@ -311,7 +316,9 @@ class CircuitBreaker:
         """Async context manager exit."""
         if exc_type is None:
             await self._record_success()
-        elif issubclass(exc_type, self.config.expected_exceptions) and not issubclass(exc_type, self.config.excluded_exceptions):
+        elif issubclass(exc_type, self.config.expected_exceptions) and not issubclass(
+            exc_type, self.config.excluded_exceptions
+        ):
             await self._record_failure(exc_val)
         return False  # Don't suppress exceptions
 

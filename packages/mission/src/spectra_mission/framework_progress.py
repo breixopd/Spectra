@@ -51,10 +51,7 @@ def framework_phase_timeline(
     """
     spec = get_framework(pentest_framework)
     # Exclude terminal "complete" phase from operational timeline display
-    ordered_phases = [
-        p for p in sorted(spec.phases, key=lambda p: p.order)
-        if p.id != "complete"
-    ]
+    ordered_phases = [p for p in sorted(spec.phases, key=lambda p: p.order) if p.id != "complete"]
 
     status = (mission_status or "").lower()
     terminal_ok = status in (
@@ -170,6 +167,7 @@ async def advance_milestone(
 
 
 # ── Backward compatibility wrappers ────────────────────────────────────
+
 
 def _phase_flow_for_fallback() -> list[str]:
     """Return PTES phase IDs as fallback for code still using AssessmentPhase."""

@@ -353,14 +353,17 @@ class TestTaskFailureHandling:
                 final_decision=True,
             )
 
-        with patch.object(
-            mission_manager.execution.mission_controller,
-            "execute",
-            side_effect=mock_execute,
-        ), patch.object(
-            mission_manager.execution.consensus,
-            "validate_at_gate",
-            side_effect=mock_consensus,
+        with (
+            patch.object(
+                mission_manager.execution.mission_controller,
+                "execute",
+                side_effect=mock_execute,
+            ),
+            patch.object(
+                mission_manager.execution.consensus,
+                "validate_at_gate",
+                side_effect=mock_consensus,
+            ),
         ):
             with patch("spectra_infra.events.events.emit_sync"):
                 # Create a mission manually without going through start_mission
@@ -405,96 +408,96 @@ class TestTaskFailureHandling:
     async def test_failure_logged(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that failures are properly logged."""
         with patch("spectra_infra.events.events.emit_sync"):
-                mission_id = await mission_manager.start_mission(
-                    target=test_target_ip,
-                    directive="Logging test",
+            mission_id = await mission_manager.start_mission(
+                target=test_target_ip,
+                directive="Logging test",
+            )
+
+            mission = await mission_manager.get_mission(mission_id)
+            if mission:
+                from spectra_ai_core.agents.mission_controller import (
+                    AssessmentPhase,
+                    Task,
                 )
 
-                mission = await mission_manager.get_mission(mission_id)
-                if mission:
-                    from spectra_ai_core.agents.mission_controller import (
-                        AssessmentPhase,
-                        Task,
-                    )
+                task = Task(
+                    task_id="log-test-task",
+                    description="Task for log testing",
+                    agent_type="tool_selector",
+                    phase=AssessmentPhase.DISCOVERY,
+                    priority=1,
+                )
 
+                context = AgentContext(
+                    mission_id=mission_id,
+                    session_id=mission_id,
+                    target=test_target_ip,
+                    mission="Test",
+                    phase="discovery",
+                    stealth_mode=False,
+                    max_concurrency=1,
+                )
+
+                await mission_manager.execution._handle_task_failure(
+                    mission,
+                    task,
+                    "Test error message",
+                    context,
+                )
+
+                # Check logs
+                logs = mission.logs
+                assert any("[ADAPT]" in log for log in logs), "Adaptation not logged"
+
+    async def test_multiple_failures_handled(self, mission_manager: MissionManager, test_target_ip: str):
+        """Test handling multiple consecutive failures."""
+        with patch("spectra_infra.events.events.emit_sync"):
+            mission_id = await mission_manager.start_mission(
+                target=test_target_ip,
+                directive="Multiple failures test",
+            )
+
+            mission = await mission_manager.get_mission(mission_id)
+            if mission:
+                from spectra_ai_core.agents.mission_controller import (
+                    AssessmentPhase,
+                    Task,
+                )
+
+                context = AgentContext(
+                    mission_id=mission_id,
+                    session_id=mission_id,
+                    target=test_target_ip,
+                    mission="Test",
+                    phase="discovery",
+                    stealth_mode=False,
+                    max_concurrency=1,
+                )
+
+                # Handle multiple failures
+                for i in range(3):
                     task = Task(
-                        task_id="log-test-task",
-                        description="Task for log testing",
+                        task_id=f"fail-task-{i}",
+                        description=f"Failing task {i}",
                         agent_type="tool_selector",
                         phase=AssessmentPhase.DISCOVERY,
                         priority=1,
                     )
 
-                    context = AgentContext(
-                        mission_id=mission_id,
-                        session_id=mission_id,
-                        target=test_target_ip,
-                        mission="Test",
-                        phase="discovery",
-                        stealth_mode=False,
-                        max_concurrency=1,
-                    )
-
                     await mission_manager.execution._handle_task_failure(
                         mission,
                         task,
-                        "Test error message",
+                        f"Error {i}",
                         context,
                     )
 
-                    # Check logs
-                    logs = mission.logs
-                    assert any("[ADAPT]" in log for log in logs), "Adaptation not logged"
-
-    async def test_multiple_failures_handled(self, mission_manager: MissionManager, test_target_ip: str):
-        """Test handling multiple consecutive failures."""
-        with patch("spectra_infra.events.events.emit_sync"):
-                mission_id = await mission_manager.start_mission(
-                    target=test_target_ip,
-                    directive="Multiple failures test",
-                )
-
-                mission = await mission_manager.get_mission(mission_id)
-                if mission:
-                    from spectra_ai_core.agents.mission_controller import (
-                        AssessmentPhase,
-                        Task,
-                    )
-
-                    context = AgentContext(
-                        mission_id=mission_id,
-                        session_id=mission_id,
-                        target=test_target_ip,
-                        mission="Test",
-                        phase="discovery",
-                        stealth_mode=False,
-                        max_concurrency=1,
-                    )
-
-                    # Handle multiple failures
-                    for i in range(3):
-                        task = Task(
-                            task_id=f"fail-task-{i}",
-                            description=f"Failing task {i}",
-                            agent_type="tool_selector",
-                            phase=AssessmentPhase.DISCOVERY,
-                            priority=1,
-                        )
-
-                        await mission_manager.execution._handle_task_failure(
-                            mission,
-                            task,
-                            f"Error {i}",
-                            context,
-                        )
-
-                    # All failures should be logged
-                    logs = mission.logs
-                    [log for log in logs if "[ADAPT]" in log]
-                    # We expect > 3 because there are multiple logs per adapt cycle ("Replanning...", "Unexpected action" or "Continuing")
-                    # At minimum 3 "Replanning..." logs
-                    replan_start_logs = [log for log in logs if "Replanning..." in log]
-                    assert len(replan_start_logs) >= 3
+                # All failures should be logged
+                logs = mission.logs
+                [log for log in logs if "[ADAPT]" in log]
+                # We expect > 3 because there are multiple logs per adapt cycle ("Replanning...", "Unexpected action" or "Continuing")
+                # At minimum 3 "Replanning..." logs
+                replan_start_logs = [log for log in logs if "Replanning..." in log]
+                assert len(replan_start_logs) >= 3
 
 
 class TestIntegratedSafety:

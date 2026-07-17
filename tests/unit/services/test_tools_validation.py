@@ -55,7 +55,9 @@ async def test_validate_and_resolve_tool_not_installed():
 
     assert tool == mock_tool
     assert error is None
-    mission.log.assert_called_with("Tool nmap readiness is pending; worker will verify the installed binary before execution")
+    mission.log.assert_called_with(
+        "Tool nmap readiness is pending; worker will verify the installed binary before execution"
+    )
 
 
 @pytest.mark.asyncio

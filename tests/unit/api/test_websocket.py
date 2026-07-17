@@ -300,13 +300,18 @@ class TestShellKeepalive:
         mock_task = MagicMock()
         mock_task.cancel = MagicMock()
 
+        def fake_create_safe_task(coro, *, name=None, logger_=None):
+            """Keep the test synchronous without leaking the keepalive coroutine."""
+            coro.close()
+            return mock_task
+
         with (
             patch("spectra_api.api.routers.shell.validate_websocket_token", return_value=mock_user),
             patch("spectra_api.api.routers.shell.check_feature_allowed", new_callable=AsyncMock),
             patch("spectra_api.api.routers.shell.shell_manager") as mock_mgr,
             patch("spectra_api.api.routers.shell.audit_log_event", new_callable=AsyncMock),
             patch("spectra_api.api.routers.shell.async_session_maker") as mock_session_maker,
-            patch("spectra_api.api.routers.shell.asyncio.create_task", return_value=mock_task) as mock_ct,
+            patch("spectra_api.api.routers.shell.create_safe_task", side_effect=fake_create_safe_task) as mock_ct,
         ):
             mock_mgr.get_session = AsyncMock(return_value=mock_session)
             mock_db = AsyncMock()

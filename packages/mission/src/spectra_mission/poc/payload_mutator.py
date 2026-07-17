@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MutationResult:
     """Result of payload mutation."""
+
     original: str
     mutated: str
     technique: str
@@ -68,14 +69,20 @@ class PayloadMutator:
         Returns:
             List of MutationResult objects with mutated payloads
         """
-        strategies = self.TECHNIQUE_STRATEGIES.get(technique, self.TECHNIQUE_STRATEGIES.get("generic", ["url_encode", "base64_encode"]))
+        strategies = self.TECHNIQUE_STRATEGIES.get(
+            technique, self.TECHNIQUE_STRATEGIES.get("generic", ["url_encode", "base64_encode"])
+        )
         results: list[MutationResult] = []
 
         if include_original:
-            results.append(MutationResult(
-                original=payload, mutated=payload,
-                technique="original", description="Unmodified original payload",
-            ))
+            results.append(
+                MutationResult(
+                    original=payload,
+                    mutated=payload,
+                    technique="original",
+                    description="Unmodified original payload",
+                )
+            )
 
         for strategy in strategies:
             method = getattr(self, f"_mutate_{strategy}", None)
@@ -85,11 +92,14 @@ class PayloadMutator:
             try:
                 mutated = method(payload)
                 if mutated and mutated != payload:
-                    results.append(MutationResult(
-                        original=payload, mutated=mutated,
-                        technique=strategy,
-                        description=f"Applied {strategy} transformation",
-                    ))
+                    results.append(
+                        MutationResult(
+                            original=payload,
+                            mutated=mutated,
+                            technique=strategy,
+                            description=f"Applied {strategy} transformation",
+                        )
+                    )
             except Exception as exc:
                 logger.debug("Mutation %s failed for payload: %s", strategy, exc)
 
@@ -131,6 +141,7 @@ class PayloadMutator:
     def _mutate_case_variation(self, payload: str) -> str:
         """Random case variation (useful for bypassing case-sensitive filters)."""
         import random
+
         random.seed(hash(payload) % 10000)
         return "".join(c.upper() if random.random() > 0.5 else c.lower() for c in payload)
 

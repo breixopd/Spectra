@@ -188,10 +188,16 @@ class ReporterAgent(Agent[ReporterInput, ReportOutput]):
             [
                 ContextSection("task", base_prompt, Priority.CRITICAL),
                 ContextSection(
-                    "mission_summary", f"Mission Summary: {sanitize_for_prompt(input_data.mission_summary, field_name='mission_summary')}", Priority.HIGH, max_tokens=800
+                    "mission_summary",
+                    f"Mission Summary: {sanitize_for_prompt(input_data.mission_summary, field_name='mission_summary')}",
+                    Priority.HIGH,
+                    max_tokens=800,
                 ),
                 ContextSection(
-                    "findings_summary", f"Findings Summary:\n{sanitize_for_prompt(findings_summary, field_name='findings_summary')}", Priority.HIGH, max_tokens=600
+                    "findings_summary",
+                    f"Findings Summary:\n{sanitize_for_prompt(findings_summary, field_name='findings_summary')}",
+                    Priority.HIGH,
+                    max_tokens=600,
                 ),
             ]
         )

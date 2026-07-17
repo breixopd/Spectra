@@ -39,7 +39,9 @@ async def test_valid_token_passes():
 @pytest.mark.asyncio
 async def test_invalid_token_rejected():
     app = _make_app("my-secret")
-    async with AsyncClient(transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test"
+    ) as client:
         resp = await client.get("/internal", headers={"X-Service-Auth": "wrong-secret"})
     assert resp.status_code == 401
     assert resp.json() == {"detail": "Invalid service auth"}
@@ -48,7 +50,9 @@ async def test_invalid_token_rejected():
 @pytest.mark.asyncio
 async def test_missing_header_rejected():
     app = _make_app("my-secret")
-    async with AsyncClient(transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test"
+    ) as client:
         resp = await client.get("/internal")
     assert resp.status_code == 401
 
@@ -56,7 +60,9 @@ async def test_missing_header_rejected():
 @pytest.mark.asyncio
 async def test_empty_header_rejected():
     app = _make_app("my-secret")
-    async with AsyncClient(transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test"
+    ) as client:
         resp = await client.get("/internal", headers={"X-Service-Auth": ""})
     assert resp.status_code == 401
 
@@ -81,7 +87,9 @@ async def test_healthz_endpoint_bypasses_auth():
 async def test_no_secret_configured_denies_non_health():
     """When no secret is set, non-health routes fail closed."""
     app = _make_app(secret="")
-    async with AsyncClient(transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test"
+    ) as client:
         resp = await client.get("/internal")
     assert resp.status_code == 401
     assert "not configured" in resp.json()["detail"].lower()
@@ -99,7 +107,9 @@ async def test_no_secret_health_endpoints_still_public():
 async def test_tampered_token_rejected():
     """A token differing by one character is rejected."""
     app = _make_app("correct-token-value")
-    async with AsyncClient(transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test"
+    ) as client:
         resp = await client.get("/internal", headers={"X-Service-Auth": "correct-token-valuf"})
     assert resp.status_code == 401
 

@@ -294,9 +294,7 @@ class GoldenImageBuilder:
         except (OSError, RuntimeError) as exc:
             logger.warning("Failed to store build status: %s", exc)
 
-    async def validate_image(
-        self, image_tag: str, plugins_dir: str = "plugins"
-    ) -> tuple[bool, list[str]]:
+    async def validate_image(self, image_tag: str, plugins_dir: str = "plugins") -> tuple[bool, list[str]]:
         """Validate all tools are functional in a newly built image.
 
         Starts a temporary container, runs each plugin's verification command
@@ -325,9 +323,7 @@ class GoldenImageBuilder:
                 except (json.JSONDecodeError, OSError):
                     continue
 
-                verification_cmd = (
-                    data.get("installation", {}).get("verification_command", "")
-                )
+                verification_cmd = data.get("installation", {}).get("verification_command", "")
                 exec_cmd = data.get("execution", {}).get("command", "")
                 plugin_name = data.get("name", json_file.stem)
 
@@ -455,15 +451,15 @@ class GoldenImageBuilder:
                     validation_failures,
                 )
                 result["status"] = "validation_failed"
-                result["message"] = (
-                    f"{len(validation_failures)} tool(s) failed validation"
-                )
+                result["message"] = f"{len(validation_failures)} tool(s) failed validation"
                 result["completed_at"] = datetime.now(UTC).isoformat()
 
                 # Clean up the failed temp image
                 try:
                     await asyncio.to_thread(
-                        self._client.images.remove, temp_tag, force=True,
+                        self._client.images.remove,
+                        temp_tag,
+                        force=True,
                     )
                 except OSError:
                     logger.warning("Failed to clean up temp image %s", temp_tag)

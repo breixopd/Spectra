@@ -56,33 +56,31 @@ Covered subsystems include:
 
 | Layer | Test Count | Location |
 | --- | --- | --- |
-| Unit tests | ~1920 | `tests/unit/` |
-| Integration tests | ~89 | `tests/integration/` |
-| E2E / UI tests (Playwright) | ~80 | `tests/e2e/ui/` |
+| Unit tests | 3,911 | `tests/unit/` |
+| Integration tests | 200+ (selection depends on live/e2e markers) | `tests/integration/` |
+| E2E / UI tests (Playwright) | 4 browser acceptance tests | `tests/e2e/ui/test_spa_workspace.py` |
 | Load/performance/soak harnesses | Available | `tests/load/`, `tests/performance/`, `tests/soak/` |
 
-### GDPR Test Coverage
+The merge and release gate uses a 67% aggregate unit-coverage floor. This is a
+measured ratchet (the full current suite is above it), not an omission-based
+shortcut: the gate retains every covered source area and should be raised only
+with corresponding test coverage.
 
-The `tests/e2e/ui/test_gdpr_features.py` suite (11 tests) verifies:
+Pytest treats unawaited coroutine and unraisable background-task warnings as
+errors. Test doubles must preserve the synchronous/asynchronous contracts of
+the production interface; warning suppression is not an acceptable substitute.
 
-- Data & Privacy tab visibility in settings
-- Download My Data button
-- Restrict Processing toggle
-- Training Data toggle
-- Delete Account button and confirmation modal
-- Cookie consent banner (appears, accept all, essential only)
-- Cookie preferences link in footer
-- Privacy policy automated decision-making section
-- Terms of Service data deletion section
+### React Workspace Browser Coverage
 
-### Multi-Role Test Coverage
+`tests/e2e/ui/test_spa_workspace.py` uses a real Chromium browser against the Docker application stack. It verifies:
 
-The `tests/e2e/ui/test_multi_role.py` suite (7 tests) verifies:
+- Login and the authenticated operator shell
+- Keyboard command-palette navigation and every supported lazy workspace route
+- Compact mobile navigation and horizontal-overflow safety
+- Browser-console failures on the core login and workspace-navigation paths
 
-- Operators cannot see admin link or access admin page
-- Viewers cannot see admin link or launch missions
-- Admins can see and access admin link and page
-- Newly registered users get non-admin role by default
+Privacy, account, and role enforcement are covered by their API and service-level tests. Retired server-rendered UI
+tests were removed rather than retained as a non-executing, misleading browser gate.
 
 ## Environments
 
@@ -124,9 +122,11 @@ Use the real commands already present in this repo.
 | Backup inventory | Admin UI → Backups or `GET /api/admin/backups` |
 | Backup integrity check | Admin UI → Backups → Verify |
 
-`run_ui_tests.sh` sets `APP_BASE_URL=http://app:5000` for the `ui-test-runner` container (same Docker network as the API). Manual checks in a normal browser usually go through Caddy at `http://localhost:15080`.
+`run_ui_tests.sh` sets `APP_BASE_URL=http://spectra-app:5000` for the `ui-test-runner` container (same Docker network as the API). This avoids Chromium's HTTPS-first upgrade of the single-label `app` hostname. Manual checks in a normal browser usually go through Caddy at `http://localhost:15080`.
 
-Dependency-audit note: use `pip-audit --fix --dry-run -l --ignore-vuln PYSEC-2024-65 --ignore-vuln PYSEC-2024-66 || true` when you need the exact CI-friendly command.
+The vulnerable-target network defaults to `10.254.0.0/24`. For parallel worktrees or a local Docker subnet collision, set `SPECTRA_TARGETS_SUBNET`, `SPECTRA_METASPLOITABLE_IP`, and `SPECTRA_DVWA_IP` together in `.env.test`; the two addresses must remain inside that subnet.
+
+Dependency-audit note: CI exports the frozen workspace lock and runs `uvx pip-audit --strict --require-hashes -r /tmp/uv-lock-export.txt`; no vulnerabilities are ignored.
 
 Convenience wrappers also exist in the Makefile, including `make test-unit`, `make test-integration`, `make test-all`, `make test-coverage`, `make lint`, and `make check`.
 

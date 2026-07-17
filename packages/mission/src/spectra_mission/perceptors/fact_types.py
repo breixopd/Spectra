@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 @dataclass
 class DiscoveredHost:
     """A discovered network host."""
+
     ip: str
     hostname: str = ""
     os: str = ""
@@ -24,6 +25,7 @@ class DiscoveredHost:
 @dataclass
 class DiscoveredPort:
     """An open/filtered port on a host."""
+
     host_ip: str
     port: int
     protocol: str = "tcp"  # tcp, udp
@@ -38,6 +40,7 @@ class DiscoveredPort:
 @dataclass
 class DiscoveredService:
     """A service identified on a port with version details."""
+
     host_ip: str
     port: int
     protocol: str = "tcp"
@@ -52,6 +55,7 @@ class DiscoveredService:
 @dataclass
 class DiscoveredVulnerability:
     """A vulnerability found by scanning tools."""
+
     host_ip: str
     port: int = 0
     vuln_id: str = ""  # CVE, template ID, etc.
@@ -69,6 +73,7 @@ class DiscoveredVulnerability:
 @dataclass
 class ExploitResult:
     """Result of an exploit attempt."""
+
     host_ip: str
     port: int = 0
     exploit_name: str = ""

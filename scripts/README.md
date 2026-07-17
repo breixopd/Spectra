@@ -4,7 +4,7 @@ Run everything from the **repository root** unless a script says otherwise.
 
 | Area | Path | Role |
 |------|------|------|
-| **CI / verification** | [`runbooks/ci-parity.sh`](runbooks/ci-parity.sh) | Mirror GitHub Actions: static analysis, unit coverage ≥70%, settings; `all` adds integration. |
+| **CI / verification** | [`runbooks/ci-parity.sh`](runbooks/ci-parity.sh) | Mirror GitHub Actions: static analysis, unit coverage ≥67%, settings; `all` adds integration. |
 | **Extended matrix** | [`runbooks/full-test-matrix.sh`](runbooks/full-test-matrix.sh) | Parity + load/perf/soak + Playwright + live targets + optional LLM live + API e2e (`SKIP_*` in header). |
 | **VPS sync** | [`runbooks/vps-sync.sh`](runbooks/vps-sync.sh) | `rsync` to server; **excludes `.env.test`** so remote secrets survive. |
 | **VPS full matrix** | [`runbooks/vps-full-test-matrix.sh`](runbooks/vps-full-test-matrix.sh) | SSH + `full-test-matrix.sh` on the VPS (`VPS_BACKGROUND=1` for `nohup`). |

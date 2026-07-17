@@ -122,11 +122,14 @@ class FrameworkEnforcer:
 
         # Check attempt constraints
         constraints = {}
-        if cat.constraints and cat.constraints.max_attempts_per_service and attempt_count >= cat.constraints.max_attempts_per_service:
+        if (
+            cat.constraints
+            and cat.constraints.max_attempts_per_service
+            and attempt_count >= cat.constraints.max_attempts_per_service
+        ):
             return EnforcementResult(
                 allowed=False,
-                reason=f"Max attempts ({cat.constraints.max_attempts_per_service}) "
-                f"exceeded for '{cat.label}'",
+                reason=f"Max attempts ({cat.constraints.max_attempts_per_service}) exceeded for '{cat.label}'",
             )
 
         return EnforcementResult(

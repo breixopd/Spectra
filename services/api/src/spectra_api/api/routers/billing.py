@@ -242,7 +242,9 @@ async def _handle_provider_webhook(request: Request, provider: str):
 
     if provider_id == "stripe" and event_type in _STRIPE_RECONCILED_EVENT_TYPES:
         if event_id and not await _claim_stripe_webhook_event(str(event_id)):
-            logger.info("Stripe webhook duplicate or concurrent event id=%s type=%s; skipping reconcile", event_id, event_type)
+            logger.info(
+                "Stripe webhook duplicate or concurrent event id=%s type=%s; skipping reconcile", event_id, event_type
+            )
             return {"received": True, "duplicate": True, "provider": provider_id}
         svc = PaymentService(adapter)
         await svc.reconcile_stripe_event(event_type, data)

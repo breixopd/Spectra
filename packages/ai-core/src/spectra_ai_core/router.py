@@ -31,8 +31,7 @@ def get_smart_router() -> Any:
     """
     if _smart_router is None:
         raise RuntimeError(
-            "No SmartRouter registered. services/ai must call "
-            "spectra_ai_core.router.set_smart_router() at startup."
+            "No SmartRouter registered. services/ai must call spectra_ai_core.router.set_smart_router() at startup."
         )
     return _smart_router
 

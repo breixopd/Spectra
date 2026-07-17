@@ -372,7 +372,11 @@ class TestReloadKnowledgeBase:
         import spectra_ai_core.cve_intel as mod
 
         old = mod._cve_knowledge_base
-        with patch("spectra_ai_core.cve_intel._load_cve_knowledge_base_async", new_callable=AsyncMock, return_value=_TEST_CVE_KB):
+        with patch(
+            "spectra_ai_core.cve_intel._load_cve_knowledge_base_async",
+            new_callable=AsyncMock,
+            return_value=_TEST_CVE_KB,
+        ):
             count = await reload_cve_knowledge_base()
             assert count == len(_TEST_CVE_KB)
         mod._cve_knowledge_base = old
@@ -381,10 +385,13 @@ class TestReloadKnowledgeBase:
 class TestEnrichCVE:
     def test_enrich_adds_exploit_fields(self):
         cve = {"cve": "CVE-2021-44228", "severity": "critical"}
-        with patch(
-            "spectra_ai_core.cve_intel.get_metasploit_modules",
-            return_value=[{"source": "metasploit", "module": "test"}],
-        ), patch("spectra_ai_core.exploit_db.get_exploit_db") as mock_db:
+        with (
+            patch(
+                "spectra_ai_core.cve_intel.get_metasploit_modules",
+                return_value=[{"source": "metasploit", "module": "test"}],
+            ),
+            patch("spectra_ai_core.exploit_db.get_exploit_db") as mock_db,
+        ):
             db = mock_db.return_value
             db.is_kev.return_value = True
 
@@ -434,8 +441,13 @@ class TestLookupCVEsLive:
 
     @pytest.mark.asyncio
     async def test_live_failure_falls_back(self):
-        with patch(
-            "spectra_ai_core.cve_intel.fetch_cves_from_nvd", new_callable=AsyncMock, side_effect=RuntimeError("fail")
-        ), patch("spectra_ai_core.cve_intel.enrich_cve_with_exploits", side_effect=lambda x: x):
+        with (
+            patch(
+                "spectra_ai_core.cve_intel.fetch_cves_from_nvd",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("fail"),
+            ),
+            patch("spectra_ai_core.cve_intel.enrich_cve_with_exploits", side_effect=lambda x: x),
+        ):
             results = await lookup_cves_live(product="Apache")
             assert len(results) > 0  # Falls back to builtin

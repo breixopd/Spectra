@@ -32,7 +32,6 @@ Create two tokens (or one combined `SPECTRA_ACTIONS_TOKEN` if you prefer).
 | Repository secret | Purpose |
 |-------------------|---------|
 | **`SPECTRA_WIKI_TOKEN`** | Wiki sync workflow, manual push to `<repo>.wiki.git` |
-| **`SPECTRA_RELEASE_TOKEN`** | Creating GitHub Releases |
 
 Optional combined secret:
 
@@ -135,8 +134,7 @@ These are **not** GitHub PATs — generate on the server:
 
 ```
 Repository Actions secrets:
-[ ] SPECTRA_WIKI_TOKEN
-[ ] SPECTRA_RELEASE_TOKEN
+[ ] SPECTRA_WIKI_TOKEN (only if wiki synchronization is enabled)
 [ ] (none for GHCR push — automatic in Release job)
 
 If automated SSH deploy:

@@ -78,6 +78,7 @@ if db_url:
         if context.is_disconnect:
             context.invalidate_pool_on_disconnect = True
 
+
 # --- Session Maker ---
 async_session_maker = async_sessionmaker(
     engine,

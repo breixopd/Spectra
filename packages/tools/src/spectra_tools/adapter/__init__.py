@@ -162,7 +162,11 @@ class CommandToolAdapter(ToolAdapter):
 
             # Get configured success exit codes (default [0])
             success_codes = [0]
-            if hasattr(self, 'config') and hasattr(self.config, 'execution') and hasattr(self.config.execution, 'success_exit_codes'):
+            if (
+                hasattr(self, "config")
+                and hasattr(self.config, "execution")
+                and hasattr(self.config.execution, "success_exit_codes")
+            ):
                 success_codes = self.config.execution.success_exit_codes
 
             success = proc.returncode in success_codes

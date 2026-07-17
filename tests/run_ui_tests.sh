@@ -7,6 +7,8 @@ COMPOSE_FILE="deploy/docker/compose.yaml"
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-spectra-ui-tests}"
 export GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}"
 export GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
+# Test credentials are deterministic fixtures; keep their values out of local and CI logs.
+export GARAGE_PRINT_CREDENTIALS="${GARAGE_PRINT_CREDENTIALS:-0}"
 
 cleanup() {
     echo ""
@@ -45,14 +47,14 @@ docker compose -f "$COMPOSE_FILE" --profile app up -d --force-recreate app
 # Wait for app to be ready
 echo "Waiting for app to be ready..."
 for i in $(seq 1 30); do
-    if docker compose -f "$COMPOSE_FILE" exec -T app python3 -c "import sys, urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/api/health', timeout=5); sys.exit(0)" > /dev/null 2>&1; then
+    if docker compose -f "$COMPOSE_FILE" exec -T app python3 -c "import sys, urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/api/healthz', timeout=5); sys.exit(0)" > /dev/null 2>&1; then
         echo "App is ready!"
         break
     fi
     sleep 2
 done
 
-if ! docker compose -f "$COMPOSE_FILE" exec -T app python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/api/health', timeout=5)" > /dev/null 2>&1; then
+if ! docker compose -f "$COMPOSE_FILE" exec -T app python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/api/healthz', timeout=5)" > /dev/null 2>&1; then
     echo "ERROR: app did not become ready" >&2
     docker compose -f "$COMPOSE_FILE" logs --tail=80 app >&2 || true
     exit 1
@@ -74,8 +76,9 @@ except urllib.error.HTTPError as exc:
 # Run Playwright tests
 echo "Running UI tests..."
 docker compose -f "${COMPOSE_FILE}" --profile test build ui-test-runner
-# Playwright runs in ui-test-runner on the compose network: reach the API as service `app:5000`
-# (Caddy on host :15080 is for manual browser testing, not this job.)
-docker compose -f "${COMPOSE_FILE}" --profile test run --rm -e APP_BASE_URL=http://app:5000 ui-test-runner tests/e2e/ui/ -v --tb=short -x -p no:cov --confcutdir=tests/e2e/ui --override-ini=addopts= "$@"
+# Chromium's HTTPS-first policy upgrades the single-label `app` hostname to TLS.
+# The stable compose container alias avoids that upgrade while still staying on the
+# private Docker network (Caddy on host :15080 is only for manual browser testing).
+docker compose -f "${COMPOSE_FILE}" --profile test run --rm -e APP_BASE_URL=http://spectra-app:5000 ui-test-runner tests/e2e/ui/test_spa_workspace.py -v --tb=short -x -p no:cov --confcutdir=tests/e2e/ui --override-ini=addopts= "$@"
 
 echo "=== Done ==="

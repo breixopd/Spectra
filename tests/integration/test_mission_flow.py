@@ -33,10 +33,10 @@ class TestFullMissionWorkflow:
         """Test that a mission starts and defines scope correctly."""
         # Mock event emission
         with patch("spectra_infra.events.events.emit_sync"):
-                mission_id = await mission_manager.start_mission(
-                    target=test_target_ip,
-                    directive="Full security assessment",
-                )
+            mission_id = await mission_manager.start_mission(
+                target=test_target_ip,
+                directive="Full security assessment",
+            )
 
         assert mission_id is not None
         assert mission_id in mission_manager.active_missions
@@ -50,33 +50,33 @@ class TestFullMissionWorkflow:
         """Test that mission planning triggers consensus validation."""
         # Test passes if mission starts without error - consensus is internal to workflow
         with patch("spectra_infra.events.events.emit_sync"):
-                # Start mission
-                mission_id = await mission_manager.start_mission(
-                    target=test_target_ip,
-                    directive="Security scan",
-                )
+            # Start mission
+            mission_id = await mission_manager.start_mission(
+                target=test_target_ip,
+                directive="Security scan",
+            )
 
-                # Give time for initialization
-                await asyncio.sleep(0.5)
+            # Give time for initialization
+            await asyncio.sleep(0.5)
 
-                mission = await mission_manager.get_mission(mission_id)
-                assert mission is not None
-                # Mission should have started
-                assert mission.status in ["created", "running", "failed", "completed"]
+            mission = await mission_manager.get_mission(mission_id)
+            assert mission is not None
+            # Mission should have started
+            assert mission.status in ["created", "running", "failed", "completed"]
 
     async def test_mission_logs_show_workflow_stages(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that mission logs capture key workflow stages."""
         with patch("spectra_infra.events.events.emit_sync"):
-                mission_id = await mission_manager.start_mission(
-                    target=test_target_ip,
-                    directive="Test scan",
-                )
+            mission_id = await mission_manager.start_mission(
+                target=test_target_ip,
+                directive="Test scan",
+            )
 
-                # Wait for some execution
-                await asyncio.sleep(2)
+            # Wait for some execution
+            await asyncio.sleep(2)
 
-                # Check logs - get_mission_logs is from conftest, assumes it works
-                logs = await get_mission_logs(mission_manager, mission_id)
+            # Check logs - get_mission_logs is from conftest, assumes it works
+            logs = await get_mission_logs(mission_manager, mission_id)
 
         # Verify key log messages
         log_text = "\n".join(logs)
@@ -95,41 +95,41 @@ class TestFullMissionWorkflow:
     async def test_mission_can_be_stopped(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that a running mission can be stopped."""
         with patch("spectra_infra.events.events.emit_sync"):
-                mission_id = await mission_manager.start_mission(
-                    target=test_target_ip,
-                    directive="Long running test",
-                )
+            mission_id = await mission_manager.start_mission(
+                target=test_target_ip,
+                directive="Long running test",
+            )
 
-                # Stop immediately
-                result = await mission_manager.stop_mission(mission_id)
+            # Stop immediately
+            result = await mission_manager.stop_mission(mission_id)
 
-                assert result is True
+            assert result is True
 
-                mission = await mission_manager.get_mission(mission_id)
-                assert mission is not None
-                assert mission.is_stopped()
+            mission = await mission_manager.get_mission(mission_id)
+            assert mission is not None
+            assert mission.is_stopped()
 
     async def test_mission_tracks_findings(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that findings are tracked in the mission."""
         with patch("spectra_infra.events.events.emit_sync"):
-                mission_id = await mission_manager.start_mission(
-                    target=test_target_ip,
-                    directive="Find vulnerabilities",
+            mission_id = await mission_manager.start_mission(
+                target=test_target_ip,
+                directive="Find vulnerabilities",
+            )
+
+            # Get mission and add a finding manually
+            mission = await mission_manager.get_mission(mission_id)
+            if mission:
+                mission.add_finding(
+                    {
+                        "name": "Test Vulnerability",
+                        "severity": "high",
+                        "port": 80,
+                    }
                 )
 
-                # Get mission and add a finding manually
-                mission = await mission_manager.get_mission(mission_id)
-                if mission:
-                    mission.add_finding(
-                        {
-                            "name": "Test Vulnerability",
-                            "severity": "high",
-                            "port": 80,
-                        }
-                    )
-
-                    assert len(mission.findings) > 0
-                    assert mission.findings[0]["name"] == "Test Vulnerability"
+                assert len(mission.findings) > 0
+                assert mission.findings[0]["name"] == "Test Vulnerability"
 
 
 class TestMissionConsensusValidation:
@@ -228,63 +228,63 @@ class TestMissionAttackSurface:
     async def test_services_added_to_attack_surface(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that discovered services are added to attack surface."""
         with patch("spectra_infra.events.events.emit_sync"):
-                mission_id = await mission_manager.start_mission(
-                    target=test_target_ip,
-                    directive="Discover services",
+            mission_id = await mission_manager.start_mission(
+                target=test_target_ip,
+                directive="Discover services",
+            )
+
+            mission = await mission_manager.get_mission(mission_id)
+            if mission:
+                # Simulate adding a service
+                mission.add_service(
+                    host=test_target_ip,
+                    port=22,
+                    service="ssh",
+                    product="OpenSSH",
+                    version="8.2p1",
                 )
 
-                mission = await mission_manager.get_mission(mission_id)
-                if mission:
-                    # Simulate adding a service
-                    mission.add_service(
-                        host=test_target_ip,
-                        port=22,
-                        service="ssh",
-                        product="OpenSSH",
-                        version="8.2p1",
-                    )
-
-                    assert len(mission.attack_surface.services) == 1
-                    assert mission.attack_surface.services[0].port == 22
-                    assert mission.attack_surface.services[0].service == "ssh"
+                assert len(mission.attack_surface.services) == 1
+                assert mission.attack_surface.services[0].port == 22
+                assert mission.attack_surface.services[0].service == "ssh"
 
     async def test_vulnerabilities_added_to_attack_surface(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that discovered vulnerabilities are added to attack surface."""
         with patch("spectra_infra.events.events.emit_sync"):
-                mission_id = await mission_manager.start_mission(
-                    target=test_target_ip,
-                    directive="Find vulnerabilities",
+            mission_id = await mission_manager.start_mission(
+                target=test_target_ip,
+                directive="Find vulnerabilities",
+            )
+
+            mission = await mission_manager.get_mission(mission_id)
+            if mission:
+                # Simulate adding a vulnerability
+                mission.add_vulnerability(
+                    vuln_id="CVE-2024-1234",
+                    title="SQL Injection",
+                    severity="critical",
+                    cve_id="CVE-2024-1234",
                 )
 
-                mission = await mission_manager.get_mission(mission_id)
-                if mission:
-                    # Simulate adding a vulnerability
-                    mission.add_vulnerability(
-                        vuln_id="CVE-2024-1234",
-                        title="SQL Injection",
-                        severity="critical",
-                        cve_id="CVE-2024-1234",
-                    )
-
-                    assert len(mission.attack_surface.vulnerabilities) == 1
-                    assert mission.attack_surface.vulnerabilities[0].cve_id == "CVE-2024-1234"
+                assert len(mission.attack_surface.vulnerabilities) == 1
+                assert mission.attack_surface.vulnerabilities[0].cve_id == "CVE-2024-1234"
 
     async def test_attack_surface_summary(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that attack surface summary is correct."""
         with patch("spectra_infra.events.events.emit_sync"):
-                mission_id = await mission_manager.start_mission(
-                    target=test_target_ip,
-                    directive="Map attack surface",
-                )
+            mission_id = await mission_manager.start_mission(
+                target=test_target_ip,
+                directive="Map attack surface",
+            )
 
-                mission = await mission_manager.get_mission(mission_id)
-                if mission:
-                    # Add multiple items
-                    mission.add_service(host=test_target_ip, port=22, service="ssh")
-                    mission.add_service(host=test_target_ip, port=80, service="http")
-                    mission.add_vulnerability(vuln_id="v1", title="Test", severity="high")
+            mission = await mission_manager.get_mission(mission_id)
+            if mission:
+                # Add multiple items
+                mission.add_service(host=test_target_ip, port=22, service="ssh")
+                mission.add_service(host=test_target_ip, port=80, service="http")
+                mission.add_vulnerability(vuln_id="v1", title="Test", severity="high")
 
-                    summary = mission.attack_surface.get_summary()
+                summary = mission.attack_surface.get_summary()
 
-                    assert summary["services"] == 2
-                    assert summary["vulnerabilities"] == 1
+                assert summary["services"] == 2
+                assert summary["vulnerabilities"] == 1

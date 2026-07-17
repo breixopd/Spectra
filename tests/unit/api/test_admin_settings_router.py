@@ -40,7 +40,9 @@ class TestAdminSettingsRouter:
     async def test_get_admin_settings(self):
         app = _build_app()
 
-        with patch("spectra_api.api.routers.admin.settings.get_current_settings", return_value={"MAINTENANCE_MODE": False}) as get_mock:
+        with patch(
+            "spectra_api.api.routers.admin.settings.get_current_settings", return_value={"MAINTENANCE_MODE": False}
+        ) as get_mock:
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
                 resp = await ac.get("/api/admin/settings")
 

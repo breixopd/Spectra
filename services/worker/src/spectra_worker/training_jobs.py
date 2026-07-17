@@ -25,7 +25,11 @@ async def run_fine_tuning_job(job_id: str) -> dict[str, Any]:
         job.started_at = datetime.now(UTC)
         await session.commit()
 
-        sample_types = job.sample_types if isinstance(job.sample_types, list) and all(isinstance(value, str) for value in job.sample_types) else None
+        sample_types = (
+            job.sample_types
+            if isinstance(job.sample_types, list) and all(isinstance(value, str) for value in job.sample_types)
+            else None
+        )
         samples = await export_dataset(
             session,
             sample_types=sample_types,

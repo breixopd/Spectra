@@ -70,6 +70,7 @@ SERVICE_FORBIDDEN: dict[str, list[str]] = {
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _iter_imports(tree: ast.Module) -> list[tuple[ast.stmt, str, bool]]:
     """Yield (node, module_name, is_lazy) for every import in the AST.
 
@@ -140,6 +141,7 @@ def scan_tree(
 # Baseline I/O
 # ---------------------------------------------------------------------------
 
+
 def load_baseline() -> set[str]:
     if not BASELINE_FILE.exists():
         return set()
@@ -171,6 +173,7 @@ def write_baseline(violations: list[dict]) -> None:
 # Reporting
 # ---------------------------------------------------------------------------
 
+
 def print_report(violations: list[dict], *, new_only: bool = False, baseline: set[str]) -> None:
     label = "NEW violations (not in baseline)" if new_only else "All violations"
     items = [v for v in violations if v["key"] not in baseline] if new_only else violations
@@ -186,6 +189,7 @@ def print_report(violations: list[dict], *, new_only: bool = False, baseline: se
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main(argv: list[str] | None = None) -> int:
     args = argv if argv is not None else sys.argv[1:]

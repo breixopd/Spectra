@@ -50,7 +50,10 @@ class TestTelemetryOnTransition:
     """Verify that transitions emit telemetry counters."""
 
     def test_transition_increments_counter(self):
-        with patch("spectra_mission.core.state_machine._telemetry") as mock_tel, patch("spectra_mission.core.state_machine.events"):
+        with (
+            patch("spectra_mission.core.state_machine._telemetry") as mock_tel,
+            patch("spectra_mission.core.state_machine.events"),
+        ):
             fsm = MissionStateMachine("t-1")
             fsm.transition_to(MissionStatus.INITIALIZING)
 
@@ -61,7 +64,10 @@ class TestTelemetryOnTransition:
         )
 
     def test_multiple_transitions_emit_multiple_counters(self):
-        with patch("spectra_mission.core.state_machine._telemetry") as mock_tel, patch("spectra_mission.core.state_machine.events"):
+        with (
+            patch("spectra_mission.core.state_machine._telemetry") as mock_tel,
+            patch("spectra_mission.core.state_machine.events"),
+        ):
             fsm = MissionStateMachine("t-2")
             fsm.transition_to(MissionStatus.INITIALIZING)
             fsm.transition_to(MissionStatus.SCOPING)
@@ -97,7 +103,10 @@ class TestFullLifecycle:
 
         assert fsm.get_valid_transitions() == set()
         with pytest.raises(MissionStateError):
-            with patch("spectra_mission.core.state_machine._telemetry"), patch("spectra_mission.core.state_machine.events"):
+            with (
+                patch("spectra_mission.core.state_machine._telemetry"),
+                patch("spectra_mission.core.state_machine.events"),
+            ):
                 fsm.transition_to(MissionStatus.EXECUTING)
 
 

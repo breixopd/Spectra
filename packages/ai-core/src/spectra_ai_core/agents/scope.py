@@ -234,9 +234,11 @@ class ScopeAgent(Agent[ScopeInput, ScopeAction]):
         )
         for word in words:
             value = word.lower()
-            if value not in seen and (
-                "-" in value or value.startswith(("target", "host", "server", "vm", "container"))
-            ) and value not in _skip_words:
+            if (
+                value not in seen
+                and ("-" in value or value.startswith(("target", "host", "server", "vm", "container")))
+                and value not in _skip_words
+            ):
                 seen.add(value)
                 targets.append(
                     TargetSpec(

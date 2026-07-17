@@ -3,6 +3,7 @@
 Imported by every service mode to expose /internal/metrics.
 Uses psutil for system stats and optionally Docker for container stats.
 """
+
 from __future__ import annotations
 
 import logging
@@ -85,13 +86,15 @@ def collect_node_metrics(service_mode: str = "unknown") -> NodeMetrics:
     for path in ["/", "/data", "/var/lib/docker"]:
         try:
             usage = psutil.disk_usage(path)
-            disks.append(DiskInfo(
-                path=path,
-                total_gb=round(usage.total / (1024**3), 1),
-                used_gb=round(usage.used / (1024**3), 1),
-                free_gb=round(usage.free / (1024**3), 1),
-                percent=usage.percent,
-            ))
+            disks.append(
+                DiskInfo(
+                    path=path,
+                    total_gb=round(usage.total / (1024**3), 1),
+                    used_gb=round(usage.used / (1024**3), 1),
+                    free_gb=round(usage.free / (1024**3), 1),
+                    percent=usage.percent,
+                )
+            )
         except (OSError, FileNotFoundError):
             pass
 

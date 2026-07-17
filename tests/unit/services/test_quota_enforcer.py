@@ -234,7 +234,9 @@ class TestCheckApiQuota:
         result.scalar_one_or_none.return_value = record
         session.execute = AsyncMock(return_value=result)
 
-        with patch("spectra_billing.quota_enforcer.async_session_maker", side_effect=AssertionError("unexpected new session")):
+        with patch(
+            "spectra_billing.quota_enforcer.async_session_maker", side_effect=AssertionError("unexpected new session")
+        ):
             enforcer = QuotaEnforcer()
             allowed, reason = await enforcer.check_api_quota("user-1", plan, session=session)
 

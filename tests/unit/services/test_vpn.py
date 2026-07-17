@@ -26,7 +26,10 @@ class TestConfigNameValidation:
         assert _validate_config_name("test123") == "test123"
         assert _validate_config_name("A-B-C") == "A-B-C"
         assert _validate_config_name("my_vpn") == "my_vpn"
-        assert _validate_config_name("u_123e4567-e89b-12d3-a456-426614174000_lab") == "u_123e4567-e89b-12d3-a456-426614174000_lab"
+        assert (
+            _validate_config_name("u_123e4567-e89b-12d3-a456-426614174000_lab")
+            == "u_123e4567-e89b-12d3-a456-426614174000_lab"
+        )
         assert _validate_config_name("x" * 160) == "x" * 160
 
     def test_rejects_empty(self):

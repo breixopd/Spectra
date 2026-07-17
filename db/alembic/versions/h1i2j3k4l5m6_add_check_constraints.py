@@ -26,11 +26,16 @@ def upgrade() -> None:
         "cvss_score IS NULL OR (cvss_score >= 0 AND cvss_score <= 10)",
     )
     from sqlalchemy import text
+
     conn = op.get_bind()
     has_feedback = False
     if hasattr(conn, "execute"):
         try:
-            result = conn.execute(text("SELECT 1 FROM information_schema.columns WHERE table_name = 'missions' AND column_name = 'feedback_rating'"))
+            result = conn.execute(
+                text(
+                    "SELECT 1 FROM information_schema.columns WHERE table_name = 'missions' AND column_name = 'feedback_rating'"
+                )
+            )
             has_feedback = bool(result.scalar())
         except Exception:
             pass
@@ -68,11 +73,16 @@ def downgrade() -> None:
     op.drop_constraint("ck_server_nodes_current_load_nonneg", "server_nodes", type_="check")
     op.drop_constraint("ck_server_nodes_weight_nonneg", "server_nodes", type_="check")
     from sqlalchemy import text
+
     conn = op.get_bind()
     has_feedback = False
     if hasattr(conn, "execute"):
         try:
-            result = conn.execute(text("SELECT 1 FROM information_schema.table_constraints WHERE table_name = 'missions' AND constraint_name = 'ck_missions_feedback_rating_range'"))
+            result = conn.execute(
+                text(
+                    "SELECT 1 FROM information_schema.table_constraints WHERE table_name = 'missions' AND constraint_name = 'ck_missions_feedback_rating_range'"
+                )
+            )
             has_feedback = bool(result.scalar())
         except Exception:
             pass

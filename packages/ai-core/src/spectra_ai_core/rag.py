@@ -306,16 +306,13 @@ class RAGService:
                     .all()
                 )
                 existing_hashes = {
-                    row["id"]: (row["content_hash"], row["embedding_model"], row["embedding_dimension"])
-                    for row in rows
+                    row["id"]: (row["content_hash"], row["embedding_model"], row["embedding_dimension"]) for row in rows
                 }
         except (OSError, RuntimeError, SQLAlchemyError):
             existing_hashes: dict[str, tuple[str | None, str | None, int | None]] = {}
 
         dimension_hint = self.embeddings.embedding_dim
-        profile_hint = (
-            (self.embeddings.active_model_name, dimension_hint) if dimension_hint is not None else None
-        )
+        profile_hint = (self.embeddings.active_model_name, dimension_hint) if dimension_hint is not None else None
         docs_to_index = [
             doc
             for doc in docs

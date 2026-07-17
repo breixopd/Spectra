@@ -74,6 +74,15 @@ async function downloadExport(url: string, filename: string) {
   URL.revokeObjectURL(objectUrl);
 }
 
+function selectedFindingsExportUrl(path: string, findingIds: Set<string>): string {
+  const query = new URLSearchParams();
+  for (const id of findingIds) {
+    query.append("finding_id", id);
+  }
+  const selection = query.toString();
+  return selection ? `${path}?${selection}` : path;
+}
+
 export function ReportsPage() {
   const missionsQuery = useMissions({ per_page: 100, sort_by: "created_at" });
   const reportableMissions = useMemo(
@@ -109,9 +118,12 @@ export function ReportsPage() {
   }
 
   async function exportPdf() {
-    if (!missionId) return;
+    if (!missionId || includedIds.size === 0) return;
     try {
-      await downloadExport(`/api/v1/missions/${missionId}/report/pdf`, `spectra_report_${missionId.slice(0, 8)}.pdf`);
+      await downloadExport(
+        selectedFindingsExportUrl(`/api/v1/missions/${missionId}/report/pdf`, includedIds),
+        `spectra_report_${missionId.slice(0, 8)}.pdf`,
+      );
       toast.success("PDF downloaded");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -119,9 +131,12 @@ export function ReportsPage() {
   }
 
   async function exportJson() {
-    if (!missionId) return;
+    if (!missionId || includedIds.size === 0) return;
     try {
-      await downloadExport(`/api/v1/missions/${missionId}/export/json`, `spectra_export_${missionId.slice(0, 8)}.json`);
+      await downloadExport(
+        selectedFindingsExportUrl(`/api/v1/missions/${missionId}/export/json`, includedIds),
+        `spectra_export_${missionId.slice(0, 8)}.json`,
+      );
       toast.success("JSON downloaded");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -136,11 +151,11 @@ export function ReportsPage() {
         actions={
           missionId ? (
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => void exportPdf()}>
+              <Button size="sm" variant="outline" onClick={() => void exportPdf()} disabled={includedIds.size === 0}>
                 <Download className="mr-1.5 h-3.5 w-3.5" />
                 PDF
               </Button>
-              <Button size="sm" variant="outline" onClick={() => void exportJson()}>
+              <Button size="sm" variant="outline" onClick={() => void exportJson()} disabled={includedIds.size === 0}>
                 <Download className="mr-1.5 h-3.5 w-3.5" />
                 JSON
               </Button>
@@ -206,7 +221,7 @@ export function ReportsPage() {
             <CardHeader>
               <CardTitle className="text-base">Report builder</CardTitle>
               <CardDescription>
-                {includedIds.size} of {findings.length} findings included
+                {includedIds.size} of {findings.length} findings included in each export
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">

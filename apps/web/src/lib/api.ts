@@ -1,4 +1,5 @@
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const DEFAULT_REQUEST_TIMEOUT_MS = 20_000;
 
 export class ApiError extends Error {
   readonly status: number;
@@ -21,6 +22,8 @@ export interface ApiResult<T> {
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown | URLSearchParams | FormData;
   skipCsrfBootstrap?: boolean;
+  /** Set to 0 to opt out for an explicitly long-running request. */
+  timeoutMs?: number;
 };
 
 let csrfBootstrapPromise: Promise<void> | null = null;
@@ -82,13 +85,19 @@ async function parseErrorDetail(response: Response): Promise<string | Record<str
 }
 
 export async function apiRequest<T>(url: string, options: RequestOptions = {}): Promise<ApiResult<T>> {
-  const method = (options.method ?? "GET").toUpperCase();
-  const headers = new Headers(options.headers);
+  const {
+    timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
+    signal: callerSignal,
+    skipCsrfBootstrap = false,
+    ...requestOptions
+  } = options;
+  const method = (requestOptions.method ?? "GET").toUpperCase();
+  const headers = new Headers(requestOptions.headers);
 
   if (
-    options.body !== undefined &&
-    !(options.body instanceof FormData) &&
-    !(options.body instanceof URLSearchParams)
+    requestOptions.body !== undefined &&
+    !(requestOptions.body instanceof FormData) &&
+    !(requestOptions.body instanceof URLSearchParams)
   ) {
     if (!headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json");
@@ -96,7 +105,7 @@ export async function apiRequest<T>(url: string, options: RequestOptions = {}): 
   }
 
   if (MUTATING_METHODS.has(method)) {
-    if (!options.skipCsrfBootstrap) {
+    if (!skipCsrfBootstrap) {
       await ensureCsrfCookie();
     }
     const csrfToken = getCookieValue("csrf_token");
@@ -106,19 +115,32 @@ export async function apiRequest<T>(url: string, options: RequestOptions = {}): 
   }
 
   let body: BodyInit | undefined;
-  if (options.body instanceof FormData || options.body instanceof URLSearchParams) {
-    body = options.body;
-  } else if (options.body !== undefined) {
-    body = JSON.stringify(options.body);
+  if (requestOptions.body instanceof FormData || requestOptions.body instanceof URLSearchParams) {
+    body = requestOptions.body;
+  } else if (requestOptions.body !== undefined) {
+    body = JSON.stringify(requestOptions.body);
   }
+
+  const controller = new AbortController();
+  let timedOut = false;
+  const timeout =
+    timeoutMs > 0
+      ? window.setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+        }, timeoutMs)
+      : null;
+  const abortFromCaller = () => controller.abort();
+  callerSignal?.addEventListener("abort", abortFromCaller, { once: true });
 
   try {
     const response = await fetch(url, {
-      ...options,
+      ...requestOptions,
       method,
       headers,
       body,
       credentials: "include",
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -143,12 +165,21 @@ export async function apiRequest<T>(url: string, options: RequestOptions = {}): 
     const text = (await response.text()) as unknown as T;
     return { data: text, error: null, response };
   } catch (cause) {
-    const message = cause instanceof Error ? cause.message : "Network request failed";
+    const message = timedOut
+      ? "Request timed out. Check your connection and try again."
+      : cause instanceof Error
+        ? cause.message
+        : "Network request failed";
     return {
       data: null,
       error: new ApiError(0, message, message),
       response: null,
     };
+  } finally {
+    if (timeout !== null) {
+      window.clearTimeout(timeout);
+    }
+    callerSignal?.removeEventListener("abort", abortFromCaller);
   }
 }
 

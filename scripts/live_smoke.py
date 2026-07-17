@@ -176,7 +176,9 @@ def _check_ai(token: str) -> None:
         timeout=90,
     )
     if _is_provider_quota_failure(chat):
-        print("WARN: direct AI service reached provider quota/rate limit; stack wiring is healthy but live LLM quota is exhausted")
+        print(
+            "WARN: direct AI service reached provider quota/rate limit; stack wiring is healthy but live LLM quota is exhausted"
+        )
         return
     if chat.status in (500, 502, 503) and not STRICT_LLM_SMOKE:
         print(

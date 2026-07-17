@@ -71,14 +71,19 @@ async def get_missions_summary(
         for m in db_missions
     ]
 
-    totals: dict[str, int] = {
-        "critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "total": 0
-    }
+    totals: dict[str, int] = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "total": 0}
     for sev in ("critical", "high", "medium", "low", "info"):
         totals[sev] = sum(m["findings"][sev] for m in missions)
     totals["total"] = sum(m["findings"]["total"] for m in missions)
 
-    return {"missions": missions, "totals": totals, "count": len(missions), "total": total, "skip": skip, "limit": limit}
+    return {
+        "missions": missions,
+        "totals": totals,
+        "count": len(missions),
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+    }
 
 
 @router.get("/adversary-playbooks")

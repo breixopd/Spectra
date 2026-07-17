@@ -112,7 +112,9 @@ async def _ensure_available_tool(registry: Any, tool_id: str, target: str) -> tu
         else:
             msg = f"On-demand install of {tool_id} completed but binary still not found in PATH"
             logger.error(msg)
-            await _sync_tool_status(tool_id, {"status": ToolStatus.FAILED.value, "phase": "auto_install_failed", "message": msg})
+            await _sync_tool_status(
+                tool_id, {"status": ToolStatus.FAILED.value, "phase": "auto_install_failed", "message": msg}
+            )
             return None, _error_result(tool_id, target, msg)
     except Exception as e:
         msg = f"On-demand install of {tool_id} failed: {e}"
@@ -523,8 +525,7 @@ async def verify_golden_image_on_startup() -> dict[str, Any]:
 
     if missing:
         logger.warning(
-            "GOLDEN IMAGE INCOMPLETE: %d / %d tools missing — %s. "
-            "Rebuild the golden image to bake in all plugins.",
+            "GOLDEN IMAGE INCOMPLETE: %d / %d tools missing — %s. Rebuild the golden image to bake in all plugins.",
             len(missing),
             len(tools),
             ", ".join(sorted(missing)),

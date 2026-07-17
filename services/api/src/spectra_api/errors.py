@@ -122,9 +122,7 @@ def register_exception_handlers(app: FastAPI, templates: Jinja2Templates) -> Non
         )
 
     @app.exception_handler(StarletteHTTPException)
-    async def starlette_http_exception_handler(
-        request: Request, exc: StarletteHTTPException
-    ) -> StarletteResponse:
+    async def starlette_http_exception_handler(request: Request, exc: StarletteHTTPException) -> StarletteResponse:
         """Handle Starlette/FastAPI HTTPException using the *exception's* status code.
 
         A single registration is required: registering the same exception type in a loop

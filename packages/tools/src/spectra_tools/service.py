@@ -375,10 +375,7 @@ class ToolExecutionService:
                 signals.add(str(tag).lower())
 
             spec = get_framework(framework_id)
-            matches = [
-                tc for tc in spec.technique_categories
-                if signals & {t.lower() for t in tc.tool_types}
-            ]
+            matches = [tc for tc in spec.technique_categories if signals & {t.lower() for t in tc.tool_types}]
             if not matches:
                 return None  # Tool not mapped to any technique — nothing to enforce.
 
@@ -400,8 +397,12 @@ class ToolExecutionService:
                 mode = getattr(settings, "FRAMEWORK_ENFORCEMENT_MODE", "advisory")
                 if mode == "strict":
                     mission.log(f"[FRAMEWORK-BLOCK] {tool_name}: {phase_violation.reason}")
-                    return create_error_result(tool_name, target, f"Blocked by framework phase gating: {phase_violation.reason}")
-                mission.log(f"[FRAMEWORK-ADVISORY] {tool_name} ({technique.id}) out of phase '{phase}': {phase_violation.reason}")
+                    return create_error_result(
+                        tool_name, target, f"Blocked by framework phase gating: {phase_violation.reason}"
+                    )
+                mission.log(
+                    f"[FRAMEWORK-ADVISORY] {tool_name} ({technique.id}) out of phase '{phase}': {phase_violation.reason}"
+                )
             return None
         except (AttributeError, ValueError, RuntimeError, KeyError) as e:
             logger.debug("Framework enforcement skipped for %s: %s", tool_name, e)

@@ -48,7 +48,9 @@ def _mock_core_checks(redis_ok=True, s3_ok=True):
     )
 
     with (
-        patch.dict("sys.modules", {"spectra_storage_policy.storage": MagicMock(get_storage_service=lambda: mock_storage)}),
+        patch.dict(
+            "sys.modules", {"spectra_storage_policy.storage": MagicMock(get_storage_service=lambda: mock_storage)}
+        ),
         patch("redis.asyncio.from_url", from_url_mock),
     ):
         yield
@@ -110,7 +112,10 @@ async def test_health_basic_marks_degraded_when_core_dependency_fails():
     with (
         _mock_core_checks(),
         patch("spectra_system.health.get_settings", return_value=_settings(AI_SERVICE_URL="")),
-        patch("spectra_system.health.probe_http_health", new=AsyncMock(return_value={"status": "not_configured", "critical": False})),
+        patch(
+            "spectra_system.health.probe_http_health",
+            new=AsyncMock(return_value={"status": "not_configured", "critical": False}),
+        ),
     ):
         result = await health_check(request=_mock_request(), response=response, db=db)
 
@@ -148,7 +153,10 @@ async def test_full_health_allows_service_auth_and_includes_latency():
         patch("spectra_ai_core.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw),
         patch("spectra_infra.cache.get_cache", return_value=None),
         patch("spectra_tools.sandbox.get_sandbox_pool", return_value=None),
-        patch("spectra_system.health.probe_http_health", new=AsyncMock(return_value={"status": "healthy", "critical": True, "latency_ms": 1.2})),
+        patch(
+            "spectra_system.health.probe_http_health",
+            new=AsyncMock(return_value={"status": "healthy", "critical": True, "latency_ms": 1.2}),
+        ),
         patch("spectra_system.health._collect_nodes", new=AsyncMock(return_value={})),
     ):
         result = await health_check(
@@ -179,7 +187,10 @@ async def test_readiness_uses_canonical_health_checks():
         patch("spectra_ai_core.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw),
         patch("spectra_infra.cache.get_cache", return_value=None),
         patch("spectra_tools.sandbox.get_sandbox_pool", return_value=None),
-        patch("spectra_system.health.probe_http_health", new=AsyncMock(return_value={"status": "healthy", "critical": True, "latency_ms": 1.0})),
+        patch(
+            "spectra_system.health.probe_http_health",
+            new=AsyncMock(return_value={"status": "healthy", "critical": True, "latency_ms": 1.0}),
+        ),
     ):
         result = await readiness_check(response=response, db=db)
 
@@ -222,7 +233,9 @@ async def test_service_health_returns_nodes_for_internal_call():
 
 
 def test_probe_http_health_wrapper():
-    with patch("spectra_api.api.routers.health.probe_http_health", new=AsyncMock(return_value={"status": "healthy"})) as mock_probe:
+    with patch(
+        "spectra_api.api.routers.health.probe_http_health", new=AsyncMock(return_value={"status": "healthy"})
+    ) as mock_probe:
         from spectra_api.api.routers.health import _probe_http_health
 
         result = asyncio.run(_probe_http_health("http://test", path="/health"))
@@ -257,8 +270,10 @@ async def test_get_version():
 
     app = FastAPI()
     app.include_router(health_router)
+
     def _mock_user():
         return MagicMock()
+
     app.dependency_overrides[get_current_active_user] = _mock_user
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.get("/version")

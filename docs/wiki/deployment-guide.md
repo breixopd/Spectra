@@ -249,7 +249,7 @@ With Cloudflare in **Full (Strict)** mode, Caddy handles origin TLS:
 # docker/Caddyfile.prod
 spectra.yourdomain.com {
     reverse_proxy spectra-app:5000 {
-        health_uri /api/health
+        health_uri /api/healthz
         health_interval 15s
         health_timeout 5s
         transport http {
@@ -314,7 +314,7 @@ docker compose -f deploy/docker/compose.yaml --env-file .env.prod up -d
 | **TLS termination** | Auto-provisioned Let's Encrypt certificates |
 | **Security headers** | CSP, HSTS (63072000s, preload), X-Frame-Options DENY |
 | **WebSocket proxy** | Automatic upgrade detection and proxying |
-| **Health checks** | Polls `/api/health` every 15s |
+| **Health checks** | Polls `/api/healthz` for proxy liveness; use `/api/health/ready` for full dependency readiness |
 | **Timeouts** | 300s read/write for long-running operations |
 
 Set `PLATFORM_DOMAIN` in `.env`:

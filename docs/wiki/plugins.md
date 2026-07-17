@@ -15,6 +15,16 @@ Spectra uses a **Dynamic Plugin System** to integrate security tools. Each tool 
 - **Stealth Profiles**: Per-tool configurations for stealthy operation
 - **Golden image**: Plugin `installation` blocks drive rebuilds of `spectra-tools:latest`; changing plugins emits `PLUGIN_UPDATED` and regenerates the Dockerfile layers from `plugins/*.json`
 
+### First-party plugin executables
+
+Use `installation.method: "none"` only when the named executable is shipped
+by Spectra's worker image and has a stable `--version` check. The current
+first-party implementations live in
+`packages/tools/src/spectra_tools/builtin_tools/`; their manifests remain in
+`plugins/` so normal registry, policy, audit, and golden-image verification all
+still apply. Do not embed `python -c`, shell pipelines, or download-and-execute
+snippets in a plugin manifest—the command validator rejects them by design.
+
 ---
 
 ## Plugin Structure
@@ -266,6 +276,8 @@ Spectra ships with 25+ tool plugins:
 | impacket | exploitation | Network protocol toolkit |
 | socat | network | Multipurpose relay |
 | chisel | network | TCP/UDP tunnel |
+| imds-fetcher | discovery | Bounded AWS, GCP, and Azure metadata inspection |
+| graphql-fuzzer | exploitation | GraphQL schema discovery and bounded access-exposure probes |
 
 ---
 

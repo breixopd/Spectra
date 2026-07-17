@@ -95,7 +95,7 @@ class TestRowToDict:
 
 
 # ---------------------------------------------------------------------------
-# Integration-style tests via TestClient
+# Integration-style tests through the async ASGI transport.
 # ---------------------------------------------------------------------------
 
 

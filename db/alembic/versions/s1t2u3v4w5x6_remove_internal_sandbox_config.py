@@ -27,9 +27,7 @@ def upgrade() -> None:
     """Remove env/deployment-owned keys from admin-managed system_config."""
     conn = op.get_bind()
     conn.execute(
-        sa.text("DELETE FROM system_config WHERE key IN :keys").bindparams(
-            sa.bindparam("keys", expanding=True)
-        ),
+        sa.text("DELETE FROM system_config WHERE key IN :keys").bindparams(sa.bindparam("keys", expanding=True)),
         {"keys": list(_INTERNAL_KEYS)},
     )
 

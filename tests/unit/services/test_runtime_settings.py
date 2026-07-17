@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 import os
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -104,8 +106,16 @@ async def test_hydrate_runtime_settings_commits_when_requested():
 async def test_lifespan_hydrates_runtime_before_embedding_init():
     app = FastAPI()
     order: list[str] = []
-    task = AsyncMock()
+    # A task's lifecycle methods are synchronous; AsyncMock here creates an
+    # un-awaited ``add_done_callback`` coroutine in create_safe_task.
+    task = MagicMock()
     task.cancel = MagicMock()
+
+    def close_background_coroutine(coro, **_kwargs):
+        """Preserve the task contract without leaving startup coroutines open."""
+        if asyncio.iscoroutine(coro):
+            coro.close()
+        return task
 
     class FakeEmbeddingService:
         def __init__(self):
@@ -128,8 +138,6 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         async def __aexit__(self, exc_type, exc, tb):
             return None
 
-    import contextlib
-
     with contextlib.ExitStack() as stack:
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.CacheService", return_value=MagicMock()))
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.set_cache"))
@@ -147,8 +155,12 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.asyncio.all_tasks", return_value=[task]))
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.asyncio.gather", return_value=MagicMock()))
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.asyncio.wait_for", new_callable=AsyncMock))
-        stack.enter_context(patch("spectra_api.bootstrap.lifespan.asyncio.create_task", return_value=task))
-        stack.enter_context(patch("spectra_api.bootstrap.lifespan.async_session_maker", return_value=FakeSessionContext()))
+        stack.enter_context(
+            patch("spectra_api.bootstrap.lifespan.asyncio.create_task", side_effect=close_background_coroutine)
+        )
+        stack.enter_context(
+            patch("spectra_api.bootstrap.lifespan.async_session_maker", return_value=FakeSessionContext())
+        )
         mock_hydrate = stack.enter_context(
             patch("spectra_api.bootstrap.lifespan.hydrate_runtime_settings_from_db", new_callable=AsyncMock)
         )
@@ -158,9 +170,7 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.run_startup_checks", new_callable=AsyncMock))
         stack.enter_context(patch("spectra_api.bootstrap.lifespan._validate_rate_limit_storage"))
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.seed_default_plans", new_callable=AsyncMock))
-        stack.enter_context(
-            patch("spectra_system.secret_bootstrap.ensure_persistent_secrets", new_callable=AsyncMock)
-        )
+        stack.enter_context(patch("spectra_system.secret_bootstrap.ensure_persistent_secrets", new_callable=AsyncMock))
         stack.enter_context(
             patch("spectra_infra.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock()))
         )
@@ -183,9 +193,7 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
                 return_value=MagicMock(start_health_loop=AsyncMock(), stop_health_loop=AsyncMock()),
             )
         )
-        stack.enter_context(
-            patch("spectra_tools.sandbox.pool.SandboxPool", return_value=MagicMock(available=False))
-        )
+        stack.enter_context(patch("spectra_tools.sandbox.pool.SandboxPool", return_value=MagicMock(available=False)))
         stack.enter_context(patch("spectra_tools.sandbox.SandboxPool", return_value=MagicMock(available=False)))
 
         mock_settings = stack.enter_context(patch("spectra_api.bootstrap.lifespan.settings"))

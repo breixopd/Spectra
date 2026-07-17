@@ -150,9 +150,7 @@ class SettingsUpdate(BaseModel):
         max_bytes = 10_240
         for field_name, value in self.model_dump(exclude_unset=True).items():
             if isinstance(value, str) and len(value.encode("utf-8")) > max_bytes:
-                raise ValueError(
-                    f"Field '{field_name}' exceeds maximum length of {max_bytes} bytes"
-                )
+                raise ValueError(f"Field '{field_name}' exceeds maximum length of {max_bytes} bytes")
         return self
 
 

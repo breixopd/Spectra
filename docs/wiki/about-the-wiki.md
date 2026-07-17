@@ -11,7 +11,7 @@ The repository can mirror `docs/wiki/` into the GitHub Wiki git repo (`<repo>.wi
 ### One-time setup (repo admin)
 
 1. Enable the Wiki tab and create any first page once (provisions `.wiki.git`). Delete the placeholder after the first real sync.
-2. Add fine-grained secrets **`SPECTRA_WIKI_TOKEN`** and **`SPECTRA_RELEASE_TOKEN`** — see [GitHub secrets](github-actions-secrets.md).
+2. Add the fine-grained **`SPECTRA_WIKI_TOKEN`** only when wiki synchronization is required — see [GitHub secrets](github-actions-secrets.md).
 3. Push to `main` or run **Actions → Sync wiki** when billing allows.
 4. Confirm pages match `docs/wiki/` and `_Sidebar.md` renders as the nav.
 

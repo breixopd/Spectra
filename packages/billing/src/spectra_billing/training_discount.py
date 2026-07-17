@@ -32,9 +32,7 @@ async def calculate_training_discount(
     from spectra_persistence.models.subscription import Subscription
     from spectra_persistence.models.user import User
 
-    result = await session.execute(
-        select(User.training_opt_in).where(User.id == user_id)
-    )
+    result = await session.execute(select(User.training_opt_in).where(User.id == user_id))
     row = result.one_or_none()
     if row is None or not row[0]:
         return 0.0
@@ -80,15 +78,14 @@ async def lock_training_opt_in(
         # No active subscription — lock for 30 days as fallback
         lock_until = datetime.now(UTC).replace(tzinfo=None)
         from datetime import timedelta
+
         lock_until = lock_until + timedelta(days=30)
     else:
         lock_until = sub_row[0]
         if lock_until.tzinfo is not None:
             lock_until = lock_until.replace(tzinfo=None)
 
-    user_result = await session.execute(
-        select(User).where(User.id == user_id)
-    )
+    user_result = await session.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
     if user is None:
         return False
@@ -99,7 +96,8 @@ async def lock_training_opt_in(
 
     logger.info(
         "Training opt-in locked for user %s until %s",
-        user_id, lock_until.isoformat() if lock_until else "N/A",
+        user_id,
+        lock_until.isoformat() if lock_until else "N/A",
     )
     return True
 
@@ -117,9 +115,7 @@ async def can_disable_training_opt_in(
     from spectra_persistence.models.user import User
 
     result = await session.execute(
-        select(User.training_opt_in, User.training_opt_in_locked_until).where(
-            User.id == user_id
-        )
+        select(User.training_opt_in, User.training_opt_in_locked_until).where(User.id == user_id)
     )
     row = result.one_or_none()
     if row is None:
@@ -157,9 +153,7 @@ async def disable_training_opt_in(
     if not can_disable:
         return {"success": False, "message": reason, "locked": True}
 
-    result = await session.execute(
-        select(User).where(User.id == user_id)
-    )
+    result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None:
         return {"success": False, "message": "User not found"}

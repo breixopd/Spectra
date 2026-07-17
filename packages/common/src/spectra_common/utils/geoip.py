@@ -142,7 +142,12 @@ async def resolve_batch(ips: list[str], delay: float = 0.5) -> dict[str, GeoLoca
         # Handle private/local IPs inline
         if ip in ["127.0.0.1", "localhost", "::1"] or _is_private_ip(ip):
             results[ip] = GeoLocation(
-                lat=0.0, lon=0.0, city="Localhost", country="Local", region=None, isp=None,
+                lat=0.0,
+                lon=0.0,
+                city="Localhost",
+                country="Local",
+                region=None,
+                isp=None,
             )
             continue
 

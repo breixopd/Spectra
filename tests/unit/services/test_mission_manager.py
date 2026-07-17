@@ -161,7 +161,9 @@ async def test_start_mission_records_usage_in_same_transaction(mock_manager_cont
     session = mock_manager_context["session"]
 
     with (
-        patch.object(manager.lifecycle.quota_enforcer, "check_mission_quota", new_callable=AsyncMock, return_value=(True, "")),
+        patch.object(
+            manager.lifecycle.quota_enforcer, "check_mission_quota", new_callable=AsyncMock, return_value=(True, "")
+        ),
         patch.object(manager.lifecycle.usage_tracker, "record_mission_start", new_callable=AsyncMock) as mock_record,
         patch("spectra_mission.manager.asyncio.create_task", side_effect=_safe_create_task),
     ):

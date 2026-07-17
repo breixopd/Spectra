@@ -56,13 +56,16 @@ export interface EvidenceBundle {
   remediation: string | null;
 }
 
-export interface Finding {
+export interface FindingEvidenceSummary {
   id: string;
   title: string;
-  description: string | null;
   severity: FindingSeverity;
   status: FindingStatus;
   proof_status: ProofStatus;
+}
+
+export interface Finding extends FindingEvidenceSummary {
+  description: string | null;
   verified_at: string | null;
   tool_source: string;
   target_id: string;
@@ -76,6 +79,13 @@ export interface FindingDetail extends Finding {
   cve_id: string | null;
   evidence: Record<string, unknown> | null;
   evidence_bundle?: EvidenceBundle | null;
+}
+
+export interface MissionFindingSummary extends FindingEvidenceSummary {
+  description: string;
+  tool_source: string;
+  created_at: string;
+  evidence_bundle: EvidenceBundle;
 }
 
 export interface FindingUpdateRequest {
@@ -367,16 +377,6 @@ export const PROOF_ORDER: Record<ProofStatus, number> = {
   candidate: 2,
   not_reproducible: 3,
 };
-
-export interface MissionFindingSummary {
-  id: string;
-  title: string;
-  severity: FindingSeverity | string;
-  status: FindingStatus | string;
-  description: string;
-  tool_source: string;
-  created_at: string;
-}
 
 export interface TaskTreeUITask {
   id: string;

@@ -13,13 +13,12 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/common/StateV
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useFindingDetails } from "@/hooks/useFindings";
 import { useMissionFindings, useMissions } from "@/hooks/useMissions";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import {
   evidenceBundleHasContent,
   normalizeEvidenceBundle,
-  type FindingDetail,
+  type MissionFindingSummary,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +27,7 @@ type Selection =
   | { kind: "finding"; findingId: string }
   | { kind: "section"; findingId: string; section: EvidenceSectionKey };
 
-function missionHasEvidence(findings: FindingDetail[]): boolean {
+function missionHasEvidence(findings: MissionFindingSummary[]): boolean {
   return findings.some((finding) => evidenceBundleHasContent(normalizeEvidenceBundle(finding.evidence_bundle)));
 }
 
@@ -38,24 +37,16 @@ export function EvidencePage() {
   const missionId = selectedMissionId || missionsQuery.data?.items[0]?.id || "";
 
   const missionFindingsQuery = useMissionFindings(missionId, Boolean(missionId));
-  const findingIds = useMemo(() => (missionFindingsQuery.data ?? []).map((f) => f.id), [missionFindingsQuery.data]);
-  const detailQueries = useFindingDetails(findingIds, Boolean(missionId) && findingIds.length > 0);
-
   const findingsWithBundles = useMemo(() => {
-    return detailQueries
-      .map((query) => query.data)
-      .filter((finding): finding is FindingDetail => Boolean(finding))
+    return (missionFindingsQuery.data ?? [])
       .filter((finding) => evidenceBundleHasContent(normalizeEvidenceBundle(finding.evidence_bundle)));
-  }, [detailQueries]);
+  }, [missionFindingsQuery.data]);
 
   const [selection, setSelection] = useState<Selection>({ kind: "none" });
 
   useEffect(() => {
     setSelection({ kind: "none" });
   }, [missionId]);
-
-  const detailsLoading = detailQueries.some((query) => query.isLoading);
-  const detailsError = detailQueries.find((query) => query.isError)?.error;
 
   const selectedFinding =
     selection.kind === "none"
@@ -103,10 +94,8 @@ export function EvidencePage() {
           message={getApiErrorMessage(missionFindingsQuery.error)}
           onRetry={() => void missionFindingsQuery.refetch()}
         />
-      ) : missionFindingsQuery.isLoading || detailsLoading ? (
+      ) : missionFindingsQuery.isLoading ? (
         <LoadingState label="Loading evidence…" />
-      ) : detailsError ? (
-        <ErrorState message={getApiErrorMessage(detailsError)} />
       ) : !missionHasEvidence(findingsWithBundles) ? (
         <EmptyState
           icon={FolderTree}

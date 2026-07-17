@@ -83,7 +83,9 @@ async def test_create_sandbox_rejects_unavailable_controller(monkeypatch):
 
 def test_task_health_details_reports_recovering_scheduler_loop():
     scheduler_state._scheduler_instance = SimpleNamespace(
-        _named_tasks={task_name: SimpleNamespace(done=lambda: False) for task_name, _ in scheduler_routes._SCHEDULER_TASK_SPECS},
+        _named_tasks={
+            task_name: SimpleNamespace(done=lambda: False) for task_name, _ in scheduler_routes._SCHEDULER_TASK_SPECS
+        },
         _task_restarts={"quota_reset": 1},
         _task_last_failure={"quota_reset": "RuntimeError: cache unavailable"},
     )

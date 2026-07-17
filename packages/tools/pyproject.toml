@@ -19,6 +19,10 @@ dependencies = [
     "jsonschema>=4.20.0",
 ]
 
+[project.scripts]
+imds-fetcher = "spectra_tools.builtin_tools.imds_fetcher:main"
+graphql-fuzzer = "spectra_tools.builtin_tools.graphql_fuzzer:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

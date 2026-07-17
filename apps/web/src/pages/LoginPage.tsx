@@ -1,5 +1,6 @@
 import { KeyRound } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { Navigate } from "@tanstack/react-router";
 
 import { BrandMark } from "@/components/brand/BrandMark";
 import { Button } from "@/components/ui/button";
@@ -8,13 +9,17 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/providers/AuthProvider";
 
 export function LoginPage() {
-  const { login, verifyMfa, cancelMfa } = useAuth();
+  const { login, verifyMfa, cancelMfa, isAuthenticated } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [mfaToken, setMfaToken] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

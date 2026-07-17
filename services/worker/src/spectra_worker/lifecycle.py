@@ -149,7 +149,11 @@ async def _auto_install_pending() -> None:
     # Run the detailed audit for structured reporting
     audit = await verify_golden_image_on_startup()
     if audit["missing"]:
-        logger.warning("Golden image audit: %d embedded, %d missing — rebuild needed.", len(audit["embedded"]), len(audit["missing"]))
+        logger.warning(
+            "Golden image audit: %d embedded, %d missing — rebuild needed.",
+            len(audit["embedded"]),
+            len(audit["missing"]),
+        )
     else:
         logger.info("Golden image audit: all %d tools pre-installed. Good.", audit["total"])
 

@@ -123,7 +123,12 @@ async def test_get_last_scan_found():
     mock_session = AsyncMock()
     mock_session.execute = AsyncMock(return_value=mock_result)
 
-    with patch("spectra_persistence.database.async_session_maker", return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False))):
+    with patch(
+        "spectra_persistence.database.async_session_maker",
+        return_value=MagicMock(
+            __aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False)
+        ),
+    ):
         result = await scanner.get_last_scan()
 
     assert result == {"image": "test", "status": "clean"}
@@ -140,7 +145,12 @@ async def test_get_last_scan_not_found():
     mock_session = AsyncMock()
     mock_session.execute = AsyncMock(return_value=mock_result)
 
-    with patch("spectra_persistence.database.async_session_maker", return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False))):
+    with patch(
+        "spectra_persistence.database.async_session_maker",
+        return_value=MagicMock(
+            __aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock(return_value=False)
+        ),
+    ):
         result = await scanner.get_last_scan()
 
     assert result is None

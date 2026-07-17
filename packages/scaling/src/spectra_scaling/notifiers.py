@@ -19,9 +19,7 @@ class LogNotifier(ScalingNotifier):
     """Simple logging notifier (default, no dependencies)."""
 
     async def notify(self, title: str, message: str, level: str = "info") -> None:
-        log_fn = getattr(
-            logger, level if level in ("info", "warning", "error", "critical") else "info"
-        )
+        log_fn = getattr(logger, level if level in ("info", "warning", "error", "critical") else "info")
         log_fn("[Autoscaler] %s — %s", title, message)
 
 

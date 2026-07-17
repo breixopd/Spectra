@@ -110,23 +110,17 @@ class TestTaskDispatcher:
             assert handler is not None
 
     def test_extract_tool_hint_nmap(self, dispatcher):
-        with patch(
-            "spectra_mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}
-        ):
+        with patch("spectra_mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}):
             hint = dispatcher._extract_tool_hint_from_description("Run nmap scan on target")
             assert hint == "nmap"
 
     def test_extract_tool_hint_using_pattern(self, dispatcher):
-        with patch(
-            "spectra_mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}
-        ):
+        with patch("spectra_mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}):
             hint = dispatcher._extract_tool_hint_from_description("Scan ports using nmap")
             assert hint == "nmap"
 
     def test_extract_tool_hint_with_pattern(self, dispatcher):
-        with patch(
-            "spectra_mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}
-        ):
+        with patch("spectra_mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}):
             hint = dispatcher._extract_tool_hint_from_description("Check vulnerabilities with nuclei")
             assert hint == "nuclei"
 
@@ -136,9 +130,7 @@ class TestTaskDispatcher:
             assert hint is None
 
     def test_extract_tool_hint_direct_mention(self, dispatcher):
-        with patch(
-            "spectra_mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}
-        ):
+        with patch("spectra_mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}):
             hint = dispatcher._extract_tool_hint_from_description("sqlmap injection test")
             assert hint == "sqlmap"
 

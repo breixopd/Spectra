@@ -89,9 +89,7 @@ class BenchmarkResult:
             "avg_milestone_rate": round(self.avg_milestone_rate, 3),
             "total_cost": round(self.total_cost, 4),
             "total_llm_calls": self.total_llm_calls,
-            "success_rate": round(
-                sum(1 for r in self.runs if r.success) / max(len(self.runs), 1), 3
-            ),
+            "success_rate": round(sum(1 for r in self.runs if r.success) / max(len(self.runs), 1), 3),
             "per_target": [
                 {
                     "name": r.target_name,

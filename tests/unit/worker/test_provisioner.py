@@ -98,7 +98,9 @@ class TestBuildConnKwargs:
 
     async def test_known_hosts_uses_tofu_file(self, provisioner: ServerProvisioner):
         config = ServerConfig(host="10.0.0.1", password="pw")
-        with patch.object(provisioner, "_ensure_known_host", new_callable=AsyncMock, return_value="/tmp/provisioner_known_hosts"):
+        with patch.object(
+            provisioner, "_ensure_known_host", new_callable=AsyncMock, return_value="/tmp/provisioner_known_hosts"
+        ):
             result = await provisioner._build_conn_kwargs(config)
         assert result is not None
         assert result["known_hosts"] == "/tmp/provisioner_known_hosts"
@@ -132,7 +134,9 @@ class TestEnsureKnownHost:
         assert result == known_hosts_path
         mock_exec.assert_not_called()
 
-    async def test_pinned_entry_replaces_existing_host_and_skips_keyscan(self, provisioner: ServerProvisioner, tmp_path):
+    async def test_pinned_entry_replaces_existing_host_and_skips_keyscan(
+        self, provisioner: ServerProvisioner, tmp_path
+    ):
         known_hosts_path = tmp_path / "config" / "provisioner_known_hosts"
         known_hosts_path.parent.mkdir(parents=True, exist_ok=True)
         known_hosts_path.write_text(
@@ -151,8 +155,7 @@ class TestEnsureKnownHost:
 
         assert result == known_hosts_path
         assert known_hosts_path.read_text(encoding="utf-8") == (
-            "other.example ssh-ed25519 AAAAOTHER\n"
-            "[example.com]:2222 ssh-ed25519 AAAAPINNED\n"
+            "other.example ssh-ed25519 AAAAOTHER\n[example.com]:2222 ssh-ed25519 AAAAPINNED\n"
         )
         mock_exec.assert_not_called()
 
@@ -240,7 +243,9 @@ class TestVerifyConnection:
         assert "Connection refused" in result["error"]
 
     async def test_verify_returns_clear_error_when_keyscan_fails(self, provisioner: ServerProvisioner):
-        with patch.object(provisioner, "_ensure_known_host", new_callable=AsyncMock, side_effect=RuntimeError("ssh-keyscan failed")):
+        with patch.object(
+            provisioner, "_ensure_known_host", new_callable=AsyncMock, side_effect=RuntimeError("ssh-keyscan failed")
+        ):
             config = ServerConfig(host="10.0.0.1", password="pw")
             result = await provisioner.verify_connection(config)
 

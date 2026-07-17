@@ -34,7 +34,9 @@ class RequestBodySizeLimitMiddleware:
         max_upload_size: int | None = None,
     ) -> None:
         self.app = app
-        self.max_request_body_size = settings.MAX_REQUEST_BODY_SIZE if max_request_body_size is None else max_request_body_size
+        self.max_request_body_size = (
+            settings.MAX_REQUEST_BODY_SIZE if max_request_body_size is None else max_request_body_size
+        )
         self.max_upload_size = settings.MAX_UPLOAD_SIZE if max_upload_size is None else max_upload_size
 
     @staticmethod

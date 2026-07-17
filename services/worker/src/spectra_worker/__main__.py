@@ -118,7 +118,11 @@ async def health_deep(response: Response):
         await conn.close()
         checks["queue_listen_notify"] = {"status": "healthy", "latency_ms": _latency_ms(start)}
     except Exception as exc:
-        checks["queue_listen_notify"] = {"status": "unhealthy", "latency_ms": _latency_ms(start), "error": type(exc).__name__}
+        checks["queue_listen_notify"] = {
+            "status": "unhealthy",
+            "latency_ms": _latency_ms(start),
+            "error": type(exc).__name__,
+        }
         overall = "degraded"
 
     start = time.monotonic()
@@ -149,7 +153,11 @@ async def health_deep(response: Response):
             "active_listeners": len(listeners),
         }
     except Exception as exc:
-        checks["shell_listener"] = {"status": "unhealthy", "latency_ms": _latency_ms(start), "error": type(exc).__name__}
+        checks["shell_listener"] = {
+            "status": "unhealthy",
+            "latency_ms": _latency_ms(start),
+            "error": type(exc).__name__,
+        }
         overall = "degraded"
 
     start = time.monotonic()

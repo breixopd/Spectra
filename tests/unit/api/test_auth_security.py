@@ -279,7 +279,10 @@ class TestPreSetupRegistrationBlocked:
 
         with (
             patch("spectra_api.ui.public.async_session_maker", maker),
-            patch("spectra_api.ui.public.PlanRepository.get_self_service_registration_plan", new=AsyncMock(return_value=None)),
+            patch(
+                "spectra_api.ui.public.PlanRepository.get_self_service_registration_plan",
+                new=AsyncMock(return_value=None),
+            ),
             patch("spectra_system.audit.log_event", AsyncMock()),
         ):
             result = await register_user.__wrapped__(request, body, Response())
@@ -330,7 +333,9 @@ class TestProfileEntitlementSource:
         session = AsyncMock()
         session.execute = AsyncMock(side_effect=[subscription_result, prefs_result])
 
-        with patch("spectra_api.api.routers.auth.session.get_user_entitlement", new=AsyncMock(return_value=entitlement)):
+        with patch(
+            "spectra_api.api.routers.auth.session.get_user_entitlement", new=AsyncMock(return_value=entitlement)
+        ):
             profile = await get_current_profile.__wrapped__(
                 request=_make_request(path="/api/v1/auth/me"),
                 user=user,

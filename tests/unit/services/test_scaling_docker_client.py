@@ -59,9 +59,7 @@ async def test_get_registry_digest_v2_prefers_verified_https():
         digest = await _get_registry_digest_v2("registry.example.com/team/image:stable")
 
     assert digest == "a" * 64
-    assert _FakeAsyncClient.requested_urls == [
-        "https://registry.example.com/v2/team/image/manifests/stable"
-    ]
+    assert _FakeAsyncClient.requested_urls == ["https://registry.example.com/v2/team/image/manifests/stable"]
     assert all("verify" not in kwargs for kwargs in _FakeAsyncClient.init_kwargs)
 
 
@@ -131,10 +129,12 @@ def test_failed_tasks_counts_desired_running_but_failed():
 def test_failed_tasks_ignores_old_superseded_failures():
     # A failure from long ago that swarm already replaced (desired=shutdown) must NOT count,
     # otherwise a healthy N/N service force-restarts forever.
-    svc = _FakeSwarmService([
-        _task("failed", "shutdown", ago_secs=3600, tid="old"),
-        _task("running", "running", tid="cur"),
-    ])
+    svc = _FakeSwarmService(
+        [
+            _task("failed", "shutdown", ago_secs=3600, tid="old"),
+            _task("running", "running", tid="cur"),
+        ]
+    )
     assert _failed_tasks_from_swarm(svc) == 0
 
 
@@ -145,9 +145,11 @@ def test_failed_tasks_counts_recent_crashloop_failure():
 
 
 def test_failed_tasks_dedupes_by_id_and_ignores_healthy():
-    svc = _FakeSwarmService([
-        _task("running", "running", tid="r1"),
-        _task("running", "running", tid="r2"),
-        _task("complete", "shutdown", ago_secs=10, tid="done"),
-    ])
+    svc = _FakeSwarmService(
+        [
+            _task("running", "running", tid="r1"),
+            _task("running", "running", tid="r2"),
+            _task("complete", "shutdown", ago_secs=10, tid="done"),
+        ]
+    )
     assert _failed_tasks_from_swarm(svc) == 0

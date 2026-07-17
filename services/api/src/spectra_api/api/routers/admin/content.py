@@ -47,6 +47,8 @@ SAFE_CONTENT_TAGS = {
 SAFE_CONTENT_ATTRIBUTES = {
     "a": {"href", "target", "title"},
 }
+
+
 def _sanitize_html_fragment(html: str) -> str:
     return nh3.clean(
         html,
@@ -55,6 +57,8 @@ def _sanitize_html_fragment(html: str) -> str:
         url_schemes={"http", "https", "mailto"},
         link_rel="noopener noreferrer nofollow",
     )
+
+
 def _sanitize_content_value(value: object, sanitizer: Callable[[str], str] = _sanitize_html_fragment) -> object:
     if isinstance(value, dict):
         return {key: _sanitize_content_value(item, sanitizer) for key, item in value.items()}
@@ -63,20 +67,28 @@ def _sanitize_content_value(value: object, sanitizer: Callable[[str], str] = _sa
     if isinstance(value, str):
         return sanitizer(value)
     return value
+
+
 def _sanitize_managed_content(content_type: str, value: dict[str, Any]) -> dict[str, Any]:
     sanitizer = sanitize_legal_html if is_legal_content_type(content_type) else _sanitize_html_fragment
     return cast(dict[str, Any], _sanitize_content_value(value, sanitizer))
+
+
 class ContentCreate(BaseModel):
     content_type: str
     title: str | None = None
     content: dict
     is_active: bool = True
     sort_order: int = 0
+
+
 class ContentUpdate(BaseModel):
     title: str | None = None
     content: dict | None = None
     is_active: bool | None = None
     sort_order: int | None = None
+
+
 @router.get("/api/admin/content")
 async def list_content(
     content_type: str | None = None,
@@ -101,6 +113,8 @@ async def list_content(
         }
         for item in items
     ]
+
+
 @router.post("/api/admin/content", status_code=201)
 @limiter.limit("30/minute")
 async def create_content(
@@ -120,6 +134,8 @@ async def create_content(
     await session.commit()
     await session.refresh(item)
     return {"id": item.id, "status": "created"}
+
+
 @router.put("/api/admin/content/{content_id}")
 @limiter.limit("30/minute")
 async def update_content(
@@ -143,6 +159,8 @@ async def update_content(
         item.sort_order = body.sort_order
     await session.commit()
     return {"id": item.id, "status": "updated"}
+
+
 @router.delete("/api/admin/content/{content_id}")
 @limiter.limit("30/minute")
 async def delete_content(

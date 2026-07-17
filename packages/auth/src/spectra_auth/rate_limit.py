@@ -134,7 +134,7 @@ class RateLimits:
 
     # Authentication endpoints - allows normal UI flow while preventing brute force
     # Env-var overrides let test environments raise these without weakening production.
-    _RATE_FMT = re.compile(r'^\d+/(second|minute|hour|day)$')
+    _RATE_FMT = re.compile(r"^\d+/(second|minute|hour|day)$")
 
     LOGIN = os.environ.get("RATE_LIMIT_LOGIN", "15/minute")
     SETUP = os.environ.get("RATE_LIMIT_SETUP", "10/minute")

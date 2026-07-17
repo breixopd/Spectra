@@ -25,7 +25,9 @@ class FakeMission:
 
 def _adapter(tags: list[str]):
     """A minimal stand-in for a tool adapter carrying a ToolConfig-like ``config``."""
-    return SimpleNamespace(config=SimpleNamespace(category="custom", metadata=SimpleNamespace(capabilities=[], tags=tags)))
+    return SimpleNamespace(
+        config=SimpleNamespace(category="custom", metadata=SimpleNamespace(capabilities=[], tags=tags))
+    )
 
 
 @pytest.fixture
@@ -36,13 +38,17 @@ def service() -> ToolExecutionService:
 
 def test_in_phase_technique_allowed(service):
     mission = FakeMission("exploitation")
-    result = service._apply_framework_enforcement(mission, _adapter(["exploit"]), "msf", "10.0.0.1", "msfconsole 10.0.0.1")
+    result = service._apply_framework_enforcement(
+        mission, _adapter(["exploit"]), "msf", "10.0.0.1", "msfconsole 10.0.0.1"
+    )
     assert result is None
 
 
 def test_unmapped_tool_allowed(service):
     mission = FakeMission("discovery")
-    result = service._apply_framework_enforcement(mission, _adapter(["totally-unknown-tag"]), "x", "10.0.0.1", "x 10.0.0.1")
+    result = service._apply_framework_enforcement(
+        mission, _adapter(["totally-unknown-tag"]), "x", "10.0.0.1", "x 10.0.0.1"
+    )
     assert result is None
 
 
@@ -51,7 +57,9 @@ def test_out_of_phase_advisory_allows_but_logs(service, monkeypatch):
 
     monkeypatch.setattr(settings, "FRAMEWORK_ENFORCEMENT_MODE", "advisory", raising=False)
     mission = FakeMission("discovery")  # exploitation not allowed in discovery
-    result = service._apply_framework_enforcement(mission, _adapter(["exploit"]), "msf", "10.0.0.1", "msfconsole 10.0.0.1")
+    result = service._apply_framework_enforcement(
+        mission, _adapter(["exploit"]), "msf", "10.0.0.1", "msfconsole 10.0.0.1"
+    )
     assert result is None
     assert any("FRAMEWORK-ADVISORY" in m for m in mission.logs)
 
@@ -61,7 +69,9 @@ def test_out_of_phase_strict_blocks(service, monkeypatch):
 
     monkeypatch.setattr(settings, "FRAMEWORK_ENFORCEMENT_MODE", "strict", raising=False)
     mission = FakeMission("discovery")
-    result = service._apply_framework_enforcement(mission, _adapter(["exploit"]), "msf", "10.0.0.1", "msfconsole 10.0.0.1")
+    result = service._apply_framework_enforcement(
+        mission, _adapter(["exploit"]), "msf", "10.0.0.1", "msfconsole 10.0.0.1"
+    )
     assert result is not None
     assert result.success is False
     assert any("FRAMEWORK-BLOCK" in m for m in mission.logs)
@@ -72,6 +82,8 @@ def test_unconfirmed_authorization_always_blocks(service, monkeypatch):
 
     monkeypatch.setattr(settings, "FRAMEWORK_ENFORCEMENT_MODE", "advisory", raising=False)
     mission = FakeMission("exploitation", authorized=False)  # in-phase, but auth not confirmed
-    result = service._apply_framework_enforcement(mission, _adapter(["exploit"]), "msf", "10.0.0.1", "msfconsole 10.0.0.1")
+    result = service._apply_framework_enforcement(
+        mission, _adapter(["exploit"]), "msf", "10.0.0.1", "msfconsole 10.0.0.1"
+    )
     assert result is not None
     assert result.success is False

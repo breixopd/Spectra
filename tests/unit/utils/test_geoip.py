@@ -46,19 +46,25 @@ async def test_resolve_ip_domain_name_skipped():
 async def test_resolve_ip_success():
     mock_response = MagicMock()
     mock_response.status = 200
-    mock_response.json = AsyncMock(return_value={
-        "success": True,
-        "latitude": 51.5,
-        "longitude": -0.1,
-        "city": "London",
-        "country": "UK",
-        "region": "England",
-        "connection": {"isp": "TestISP"},
-    })
+    mock_response.json = AsyncMock(
+        return_value={
+            "success": True,
+            "latitude": 51.5,
+            "longitude": -0.1,
+            "city": "London",
+            "country": "UK",
+            "region": "England",
+            "connection": {"isp": "TestISP"},
+        }
+    )
 
     mock_session = MagicMock()
     mock_session.closed = False
-    mock_session.get = MagicMock(return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_response), __aexit__=AsyncMock(return_value=False)))
+    mock_session.get = MagicMock(
+        return_value=MagicMock(
+            __aenter__=AsyncMock(return_value=mock_response), __aexit__=AsyncMock(return_value=False)
+        )
+    )
 
     with patch("spectra_common.utils.geoip._session", mock_session):
         result = await resolve_ip("1.2.3.4")
@@ -78,7 +84,11 @@ async def test_resolve_ip_api_failure():
 
     mock_session = MagicMock()
     mock_session.closed = False
-    mock_session.get = MagicMock(return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_response), __aexit__=AsyncMock(return_value=False)))
+    mock_session.get = MagicMock(
+        return_value=MagicMock(
+            __aenter__=AsyncMock(return_value=mock_response), __aexit__=AsyncMock(return_value=False)
+        )
+    )
 
     with patch("spectra_common.utils.geoip._session", mock_session):
         result = await resolve_ip("1.2.3.4")
@@ -93,7 +103,11 @@ async def test_resolve_ip_rate_limit():
 
     mock_session = MagicMock()
     mock_session.closed = False
-    mock_session.get = MagicMock(return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_response), __aexit__=AsyncMock(return_value=False)))
+    mock_session.get = MagicMock(
+        return_value=MagicMock(
+            __aenter__=AsyncMock(return_value=mock_response), __aexit__=AsyncMock(return_value=False)
+        )
+    )
 
     with patch("spectra_common.utils.geoip._session", mock_session):
         result = await resolve_ip("1.2.3.4")
@@ -105,17 +119,23 @@ async def test_resolve_ip_rate_limit():
 async def test_resolve_batch():
     mock_response = MagicMock()
     mock_response.status = 200
-    mock_response.json = AsyncMock(return_value={
-        "success": True,
-        "latitude": 40.7,
-        "longitude": -74.0,
-        "city": "NYC",
-        "country": "US",
-    })
+    mock_response.json = AsyncMock(
+        return_value={
+            "success": True,
+            "latitude": 40.7,
+            "longitude": -74.0,
+            "city": "NYC",
+            "country": "US",
+        }
+    )
 
     mock_session = MagicMock()
     mock_session.closed = False
-    mock_session.get = MagicMock(return_value=MagicMock(__aenter__=AsyncMock(return_value=mock_response), __aexit__=AsyncMock(return_value=False)))
+    mock_session.get = MagicMock(
+        return_value=MagicMock(
+            __aenter__=AsyncMock(return_value=mock_response), __aexit__=AsyncMock(return_value=False)
+        )
+    )
 
     with patch("spectra_common.utils.geoip._session", mock_session):
         with patch("asyncio.sleep", new_callable=AsyncMock):

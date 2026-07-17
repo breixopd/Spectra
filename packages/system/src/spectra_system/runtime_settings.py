@@ -17,25 +17,28 @@ from spectra_persistence.models.config import SystemConfig
 
 logger = logging.getLogger(__name__)
 
-BOOTSTRAP_ONLY_VARS: frozenset[str] = frozenset({
-    "DATABASE_URL",
-    "SERVICE_MODE",
-    "LOG_LEVEL",
-    "LOG_FORMAT",
-    "DEBUG",
-    "RATE_LIMIT_STORAGE",
-    "DOCKER_REGISTRY",
-    # Secrets managed separately by secret_bootstrap
-    "JWT_SECRET_KEY",
-    "SECRET_KEY",
-    "SERVICE_AUTH_SECRET",
-    "ENCRYPTION_KEY",
-})
+BOOTSTRAP_ONLY_VARS: frozenset[str] = frozenset(
+    {
+        "DATABASE_URL",
+        "SERVICE_MODE",
+        "LOG_LEVEL",
+        "LOG_FORMAT",
+        "DEBUG",
+        "RATE_LIMIT_STORAGE",
+        "DOCKER_REGISTRY",
+        # Secrets managed separately by secret_bootstrap
+        "JWT_SECRET_KEY",
+        "SECRET_KEY",
+        "SERVICE_AUTH_SECRET",
+        "ENCRYPTION_KEY",
+    }
+)
 
 
 def _is_explicitly_set_env(key: str) -> bool:
     """Return True only if key exists in the actual OS environment."""
     return key in os.environ
+
 
 _FERNET_TOKEN_PREFIX = "gAAAAA"
 

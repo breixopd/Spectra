@@ -241,9 +241,7 @@ class ToolRegistry:
     def list_tools_for_ai(self) -> list[dict[str, Any]]:
         """Get all available tools formatted for AI agents."""
         if self._list_tools_for_ai_cache is None:
-            self._list_tools_for_ai_cache = [
-                self._tool_to_ai_dict(t) for t in self._tools.values() if t.is_available
-            ]
+            self._list_tools_for_ai_cache = [self._tool_to_ai_dict(t) for t in self._tools.values() if t.is_available]
         return self._list_tools_for_ai_cache
 
     def _tool_to_ai_dict(self, tool: RegisteredTool) -> dict[str, Any]:

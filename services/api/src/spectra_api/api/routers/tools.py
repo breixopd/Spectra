@@ -141,7 +141,11 @@ async def _get_cached_status(tool_id: str) -> dict[str, str | list[str] | None]:
         key: value
         for key, value in payload.items()
         if isinstance(key, str)
-        and (value is None or isinstance(value, str) or (isinstance(value, list) and all(isinstance(item, str) for item in value)))
+        and (
+            value is None
+            or isinstance(value, str)
+            or (isinstance(value, list) and all(isinstance(item, str) for item in value))
+        )
     }
 
 

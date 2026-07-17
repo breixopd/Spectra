@@ -35,7 +35,9 @@ class ShellRelayClient:
             "ttl_seconds": ttl_seconds,
         }
         async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.post(f"{self.base_url}/internal/shell/listeners", json=payload, headers=self._headers)
+            response = await client.post(
+                f"{self.base_url}/internal/shell/listeners", json=payload, headers=self._headers
+            )
         response.raise_for_status()
         data = response.json()
         return int(data["port"])
@@ -49,7 +51,9 @@ class ShellRelayClient:
 
     async def stop_listener(self, session_id: str) -> bool:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.delete(f"{self.base_url}/internal/shell/listeners/{session_id}", headers=self._headers)
+            response = await client.delete(
+                f"{self.base_url}/internal/shell/listeners/{session_id}", headers=self._headers
+            )
         if response.status_code == 404:
             return False
         response.raise_for_status()

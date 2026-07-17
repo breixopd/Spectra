@@ -362,6 +362,11 @@ class Mission:
             if self._is_known_false_positive(finding_data):
                 return
             finding_data = self._apply_mitre_tags(finding_data)
+            # A finding's identity must survive checkpoints, reporting, and API
+            # reads.  Assign it once at discovery rather than deriving an array
+            # index in downstream presentation code.
+            finding_data.setdefault("id", str(uuid.uuid4()))
+            finding_data.setdefault("created_at", datetime.now(UTC).isoformat())
             finding_data["count"] = 1
             self.findings.append(finding_data)
         self._broadcast("finding", finding_data)

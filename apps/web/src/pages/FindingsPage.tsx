@@ -165,6 +165,7 @@ export function FindingsPage() {
           columns={columns}
           data={filteredItems}
           isLoading={findingsQuery.isLoading}
+          totalRows={findingsQuery.data?.total}
           emptyMessage="No findings match your filters."
           manualPagination
           pageCount={findingsQuery.data?.pages ?? 1}

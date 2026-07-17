@@ -61,25 +61,29 @@ class TextPerceptor:
 
         # ── Port/Service discovery (e.g., netstat, ss output) ─────────
         for match in PORT_LINE_PATTERN.finditer(raw_output):
-            facts.append(DiscoveredPort(
-                host_ip="",
-                port=int(match.group("port")),
-                protocol=match.group("proto"),
-                state=match.group("state"),
-                service_name=match.group("service"),
-                source_tool=source_tool,
-            ))
+            facts.append(
+                DiscoveredPort(
+                    host_ip="",
+                    port=int(match.group("port")),
+                    protocol=match.group("proto"),
+                    state=match.group("state"),
+                    service_name=match.group("service"),
+                    source_tool=source_tool,
+                )
+            )
 
         # ── Shell access detection ─────────────────────────────────────
         if SHELL_PATTERN.search(raw_output) or METERPRETER_PATTERN.search(raw_output):
             shell_type = "meterpreter" if METERPRETER_PATTERN.search(raw_output) else "interactive_shell"
-            facts.append(ExploitResult(
-                host_ip=self._extract_first_ip(raw_output),
-                success=True,
-                shell_type=shell_type,
-                evidence=raw_output[:500],
-                source_tool=source_tool,
-            ))
+            facts.append(
+                ExploitResult(
+                    host_ip=self._extract_first_ip(raw_output),
+                    success=True,
+                    shell_type=shell_type,
+                    evidence=raw_output[:500],
+                    source_tool=source_tool,
+                )
+            )
 
         # ── Credential extraction ──────────────────────────────────────
         creds: dict[str, str] = {}
@@ -92,22 +96,26 @@ class TextPerceptor:
                     creds["pass"] = m.group("pass")
 
         if creds:
-            facts.append(ExploitResult(
-                host_ip=self._extract_first_ip(raw_output),
-                success=True,
-                credentials=creds,
-                evidence="Credentials found in output",
-                source_tool=source_tool,
-            ))
+            facts.append(
+                ExploitResult(
+                    host_ip=self._extract_first_ip(raw_output),
+                    success=True,
+                    credentials=creds,
+                    evidence="Credentials found in output",
+                    source_tool=source_tool,
+                )
+            )
 
         # ── IP extraction ──────────────────────────────────────────────
         ips = set(IP_PATTERN.findall(raw_output))
         for ip in ips:
             if not ip.startswith("0.") and not ip.startswith("127."):
-                facts.append(DiscoveredHost(
-                    ip=ip,
-                    source_tool=source_tool,
-                ))
+                facts.append(
+                    DiscoveredHost(
+                        ip=ip,
+                        source_tool=source_tool,
+                    )
+                )
 
         return facts
 

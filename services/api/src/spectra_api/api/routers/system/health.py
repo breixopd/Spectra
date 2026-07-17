@@ -95,10 +95,7 @@ async def get_public_system_status(
 ):
     """Anonymous-safe system status for the public status page."""
     health = await collect_platform_health(session, detail="basic", scope="public")
-    services = {
-        name: value.get("status", "unknown")
-        for name, value in health.get("services", {}).items()
-    }
+    services = {name: value.get("status", "unknown") for name, value in health.get("services", {}).items()}
     return {
         "status": "operational" if health["status"] == "healthy" else "degraded",
         "version": health["version"],

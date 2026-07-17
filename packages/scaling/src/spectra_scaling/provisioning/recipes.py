@@ -25,16 +25,16 @@ _SPECTRA_POOL_HOST_AUTOMATION: list[ProvisionStep] = [
         name="Spectra host ops (systemd timer — weekly Docker prune via scheduler image)",
         command=(
             "bash -lc 'set -euo pipefail; "
-            "IMG=\"{registry}/spectra-scheduler:{version}\"; "
-            "docker pull \"$IMG\" 2>/dev/null || true; "
-            "printf \"%s\\n\" "
-            "\"[Unit]\" \"Description=Spectra pool Docker prune\" \"After=docker.service\" \"Requires=docker.service\" \"\" "
-            "\"[Service]\" \"Type=oneshot\" "
-            "\"ExecStart=/usr/bin/docker run --rm -v /var/run/docker.sock:/var/run/docker.sock $IMG python -m spectra_scaling.runtime.host_ops_cli\" \"\" "
-            "\"[Install]\" \"WantedBy=multi-user.target\" "
+            'IMG="{registry}/spectra-scheduler:{version}"; '
+            'docker pull "$IMG" 2>/dev/null || true; '
+            'printf "%s\\n" '
+            '"[Unit]" "Description=Spectra pool Docker prune" "After=docker.service" "Requires=docker.service" "" '
+            '"[Service]" "Type=oneshot" '
+            '"ExecStart=/usr/bin/docker run --rm -v /var/run/docker.sock:/var/run/docker.sock $IMG python -m spectra_scaling.runtime.host_ops_cli" "" '
+            '"[Install]" "WantedBy=multi-user.target" '
             "> /etc/systemd/system/spectra-host-ops.service; "
-            "printf \"%s\\n\" \"[Unit]\" \"Description=Weekly Spectra host ops\" \"\" \"[Timer]\" \"OnCalendar=Sun *-*-* 04:00\" \"Persistent=true\" \"\" "
-            "\"[Install]\" \"WantedBy=timers.target\" "
+            'printf "%s\\n" "[Unit]" "Description=Weekly Spectra host ops" "" "[Timer]" "OnCalendar=Sun *-*-* 04:00" "Persistent=true" "" '
+            '"[Install]" "WantedBy=timers.target" '
             "> /etc/systemd/system/spectra-host-ops.timer; "
             "if command -v systemctl >/dev/null 2>&1; then systemctl daemon-reload && systemctl enable --now spectra-host-ops.timer; "
             "else echo no_systemd; fi'"
@@ -63,13 +63,13 @@ _DOCKER_INSTALL_STEPS = [
             "else apt-get update && apt-get install -y ca-certificates curl gnupg && "
             "install -m 0755 -d /etc/apt/keyrings && "
             "docker_key_tmp=$(mktemp) && trap 'rm -f \"$docker_key_tmp\"' EXIT && "
-            "curl -fsSL https://download.docker.com/linux/$(. /etc/os-release && echo ${ID})/gpg -o \"$docker_key_tmp\" && "
+            'curl -fsSL https://download.docker.com/linux/$(. /etc/os-release && echo ${ID})/gpg -o "$docker_key_tmp" && '
             "docker_key_fingerprint=$(gpg --batch --show-keys --with-colons \"$docker_key_tmp\" | awk -F: '/^fpr:/ {print $10; exit}') && "
-            f"[ \"$docker_key_fingerprint\" = \"{DOCKER_APT_REPO_SIGNING_FINGERPRINT}\" ] && "
-            "gpg --dearmor --yes -o /etc/apt/keyrings/docker.asc \"$docker_key_tmp\" && "
+            f'[ "$docker_key_fingerprint" = "{DOCKER_APT_REPO_SIGNING_FINGERPRINT}" ] && '
+            'gpg --dearmor --yes -o /etc/apt/keyrings/docker.asc "$docker_key_tmp" && '
             "chmod a+r /etc/apt/keyrings/docker.asc && "
             ". /etc/os-release && "
-            "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/${ID} ${VERSION_CODENAME:-$UBUNTU_CODENAME} stable\" > /etc/apt/sources.list.d/docker.list && "
+            'echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/${ID} ${VERSION_CODENAME:-$UBUNTU_CODENAME} stable" > /etc/apt/sources.list.d/docker.list && '
             "apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; fi"
         ),
         timeout=300,
@@ -229,7 +229,7 @@ PROVISIONING_RECIPES: dict[str, list[ProvisionStep]] = {
                 "PGPASSWORD=$DB_PASS pg_dump -h $DB_HOST -U $DB_USER $DB_NAME "
                 "| gzip > /opt/spectra/backups/spectra_$TIMESTAMP.sql.gz\n"
                 "ls -t /opt/spectra/backups/spectra_*.sql.gz | tail -n +31 | xargs -r rm\n"
-                "echo \"Backup completed: spectra_$TIMESTAMP.sql.gz\"\n"
+                'echo "Backup completed: spectra_$TIMESTAMP.sql.gz"\n'
                 "BACKUP_EOF\n"
                 "chmod +x /opt/spectra/backup.sh"
             ),

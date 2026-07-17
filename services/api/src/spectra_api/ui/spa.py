@@ -14,9 +14,7 @@ logger = logging.getLogger(__name__)
 # Runtime path in the API Docker image (see deploy/docker/Dockerfile.api).
 DOCKER_SPA_DIST = Path("/app/spa")
 
-# Prefixes owned by the API or the server-rendered marketing/SEO surface. Everything else
-# under the root is a client-side route handled by the SPA. The public landing ("/") is a
-# server-rendered route registered before this fallback, so route ordering keeps it SSR.
+# Prefixes owned by the API or the server-rendered marketing/SEO surface.
 _SPA_EXCLUDED_PREFIXES = (
     "/api",
     "/static",
@@ -38,6 +36,22 @@ _SPA_EXCLUDED_PREFIXES = (
     "/sitemap.xml",
 )
 
+# Only these application routes are eligible for the index fallback. Treating every
+# non-asset path as a SPA route made typos look like successful HTTP responses and
+# hid broken server links behind a client-side redirect. The public landing ("/")
+# is registered before this fallback in the assembled app, so it remains SSR there.
+_SPA_ROUTE_PREFIXES = (
+    "/login",
+    "/dashboard",
+    "/missions",
+    "/findings",
+    "/attack-graph",
+    "/evidence",
+    "/reports",
+    "/tools",
+    "/settings",
+)
+
 
 def spa_dist_directory() -> Path | None:
     """Resolve the Vite build output directory, if present."""
@@ -56,9 +70,9 @@ def spa_dist_directory() -> Path | None:
 def _is_spa_fallback_path(path: str) -> bool:
     if path.startswith(_SPA_EXCLUDED_PREFIXES):
         return False
-    # Skip dotted asset-like paths (e.g. /favicon.ico handled by StaticFiles mount when present).
-    basename = path.rsplit("/", 1)[-1]
-    return not ("." in basename and not basename.endswith(".html"))
+    if path == "/":
+        return True
+    return any(path == prefix or path.startswith(f"{prefix}/") for prefix in _SPA_ROUTE_PREFIXES)
 
 
 def register_spa(app: FastAPI) -> None:

@@ -1,9 +1,9 @@
 {
   "id": "imds-fetcher",
   "name": "imds-fetcher",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "category": "discovery",
-  "description": "Cloud instance metadata service enumeration tool. Auto-detects and queries AWS, GCP, and Azure metadata endpoints to extract credentials, tokens, and configuration data.",
+  "description": "First-party cloud instance metadata service enumeration tool for AWS, GCP, and Azure with bounded metadata endpoints.",
   "metadata": {
     "ai_description": "imds-fetcher is a cloud reconnaissance tool that queries instance metadata services (IMDS) across AWS, GCP, and Azure. Use it when you have access to a cloud-hosted instance or container to discover IAM credentials, access tokens, SSH keys, and configuration data that may be exposed through metadata endpoints. It auto-detects the cloud provider and enumerates all accessible metadata paths, including IMDSv1 and IMDSv2 for AWS.",
     "capabilities": [
@@ -45,15 +45,11 @@
     "prerequisites": []
   },
   "installation": {
-    "method": "pipx",
-    "commands": [
-      "pipx install requests"
-    ],
-    "verification_command": "python3 -c 'import requests; print(requests.__version__)'",
-    "verification_regex": "\\d+\\.\\d+",
-    "uninstall_commands": [
-      "pipx uninstall requests"
-    ]
+    "method": "none",
+    "commands": [],
+    "verification_command": "imds-fetcher --version",
+    "verification_regex": "imds-fetcher 1\\.1\\.0",
+    "uninstall_commands": []
   },
   "execution": {
     "command": "imds-fetcher",

@@ -397,11 +397,12 @@ class SandboxPool:
                 )
             )
             active_rows = rows.all()
-            active_container_ids = {container_id for _mission_id, container_id, _network_id in active_rows if container_id}
+            active_container_ids = {
+                container_id for _mission_id, container_id, _network_id in active_rows if container_id
+            }
             active_network_ids = {network_id for _mission_id, _container_id, network_id in active_rows if network_id}
             active_role_names = {
-                sandbox_database_role_name(str(mission_id))
-                for mission_id, _container_id, _network_id in active_rows
+                sandbox_database_role_name(str(mission_id)) for mission_id, _container_id, _network_id in active_rows
             }
 
         revoked_roles = await self._reconcile_database_roles(active_role_names)
@@ -498,11 +499,7 @@ class SandboxPool:
                         {"password": password},
                     )
                 ).scalar_one()
-                await session.execute(
-                    text(
-                        create_role_sql
-                    )
-                )
+                await session.execute(text(create_role_sql))
                 await session.execute(text(f"GRANT USAGE ON SCHEMA public TO {role_name}"))
                 await session.execute(text(f"GRANT SELECT, UPDATE ON TABLE job_queue TO {role_name}"))
                 await session.commit()

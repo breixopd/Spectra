@@ -24,6 +24,7 @@ _VALID_HOSTNAME_RE = re.compile(
     r"^(?=.{1,253}\.?$)(?!-)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.(?!-)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\.?$"
 )
 
+
 @dataclass
 class ServerConfig:
     """Connection details for a remote server."""
@@ -334,9 +335,7 @@ class ServerProvisioner:
             if not pinned_lines:
                 raise ValueError(f"Pinned known-host entry for {config.host}:{config.port} is empty")
 
-            retained_lines = [
-                line for line in existing_lines if not self._line_matches_known_host(line, expected_host)
-            ]
+            retained_lines = [line for line in existing_lines if not self._line_matches_known_host(line, expected_host)]
             merged_lines = list(dict.fromkeys([*retained_lines, *pinned_lines]))
             await asyncio.to_thread(
                 known_hosts_path.write_text,
@@ -365,21 +364,15 @@ class ServerProvisioner:
             )
             stdout_data, stderr_data = await asyncio.wait_for(proc.communicate(), timeout=10)
             if proc.returncode != 0:
-                detail = (stderr_data.decode("utf-8", errors="replace").strip() or "no error output")
-                raise RuntimeError(
-                    f"ssh-keyscan failed for {config.host}:{config.port}: {detail}"
-                )
+                detail = stderr_data.decode("utf-8", errors="replace").strip() or "no error output"
+                raise RuntimeError(f"ssh-keyscan failed for {config.host}:{config.port}: {detail}")
         except TimeoutError as exc:
-            raise RuntimeError(
-                f"ssh-keyscan timed out for {config.host}:{config.port}"
-            ) from exc
+            raise RuntimeError(f"ssh-keyscan timed out for {config.host}:{config.port}") from exc
         except Exception as exc:
             if isinstance(exc, RuntimeError):
                 raise
             detail = str(exc).strip() or "no error output"
-            raise RuntimeError(
-                f"ssh-keyscan failed for {config.host}:{config.port}: {detail}"
-            ) from exc
+            raise RuntimeError(f"ssh-keyscan failed for {config.host}:{config.port}: {detail}") from exc
 
         scanned_lines = self._normalize_known_host_lines(stdout_data.decode("utf-8", errors="replace"))
         if not scanned_lines:

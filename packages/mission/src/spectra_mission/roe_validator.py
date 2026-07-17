@@ -178,11 +178,7 @@ async def get_mission_roe(mission_id: str) -> RulesOfEngagement | None:
         from spectra_persistence.models.roe import RulesOfEngagement
 
         async with async_session_maker() as session:
-            result = await session.execute(
-                select(RulesOfEngagement).where(
-                    RulesOfEngagement.mission_id == mission_id
-                )
-            )
+            result = await session.execute(select(RulesOfEngagement).where(RulesOfEngagement.mission_id == mission_id))
             return result.scalar_one_or_none()
     except Exception as e:
         logger.warning("Failed to load RoE for mission %s: %s", mission_id, e)

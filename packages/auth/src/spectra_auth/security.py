@@ -519,6 +519,7 @@ def _notify_blacklist_change(payload: str) -> None:
     try:
         asyncio.get_running_loop()
         from spectra_common.tasks import create_safe_task
+
         create_safe_task(_send_blacklist_notify(payload), name="blacklist_notify")
     except RuntimeError:
         pass

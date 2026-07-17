@@ -60,7 +60,9 @@ class SchedulerCoreLoopsMixin:
                 break
 
             try:
-                async with _sched_lock.advisory_lock_owner(_QUOTA_LOCK_ID, connection_factory=advisory_lock_connection) as lock_owner:
+                async with _sched_lock.advisory_lock_owner(
+                    _QUOTA_LOCK_ID, connection_factory=advisory_lock_connection
+                ) as lock_owner:
                     if lock_owner is None:
                         logger.debug("Quota reset lock not acquired — skipping this iteration")
                         continue
@@ -130,7 +132,9 @@ class SchedulerCoreLoopsMixin:
                 continue
 
             try:
-                async with _sched_lock.advisory_lock_owner(_BACKUP_LOCK_ID, connection_factory=advisory_lock_connection) as lock_owner:
+                async with _sched_lock.advisory_lock_owner(
+                    _BACKUP_LOCK_ID, connection_factory=advisory_lock_connection
+                ) as lock_owner:
                     if lock_owner is None:
                         logger.debug("Backup scheduler lock not acquired — skipping this iteration")
                         await async_ops.sleep(settings.BACKUP_SCHEDULE_HOURS * SECONDS_PER_HOUR)
@@ -250,15 +254,17 @@ class SchedulerCoreLoopsMixin:
                         decisions = await scaler.evaluate_and_execute(cluster_metrics)
                         for decision in decisions:
                             if decision.action != "none":
-                                await self._send_capacity_alert({
-                                    "event": f"auto_scaled_{decision.action}",
-                                    "service": decision.service,
-                                    "replicas": f"{decision.current_replicas} → {decision.desired_replicas}",
-                                    "reason": decision.reason,
-                                    "utilization_pct": 0,
-                                    "total_used": 0,
-                                    "total_capacity": 0,
-                                })
+                                await self._send_capacity_alert(
+                                    {
+                                        "event": f"auto_scaled_{decision.action}",
+                                        "service": decision.service,
+                                        "replicas": f"{decision.current_replicas} → {decision.desired_replicas}",
+                                        "reason": decision.reason,
+                                        "utilization_pct": 0,
+                                        "total_used": 0,
+                                        "total_capacity": 0,
+                                    }
+                                )
 
                     # --- Capacity warnings (always active) ---
                     from spectra_persistence.models.server_node import ServerNode
@@ -266,9 +272,7 @@ class SchedulerCoreLoopsMixin:
                     async with async_session_maker() as session:
                         from sqlalchemy import select as sa_select
 
-                        result = await session.execute(
-                            sa_select(ServerNode).where(ServerNode.is_active)
-                        )
+                        result = await session.execute(sa_select(ServerNode).where(ServerNode.is_active))
                         nodes = list(result.scalars().all())
 
                     if not nodes:
@@ -326,7 +330,9 @@ class SchedulerCoreLoopsMixin:
             if not self.running:
                 break
             try:
-                async with _sched_lock.advisory_lock_owner(_STALE_JOB_LOCK_ID, connection_factory=advisory_lock_connection) as lock_owner:
+                async with _sched_lock.advisory_lock_owner(
+                    _STALE_JOB_LOCK_ID, connection_factory=advisory_lock_connection
+                ) as lock_owner:
                     if lock_owner is None:
                         continue
 
@@ -342,13 +348,15 @@ class SchedulerCoreLoopsMixin:
                     if dlq_jobs:
                         dlq_count = len(await mgr.list_dead_letter_jobs(limit=100))
                         logger.warning("Dead-letter queue has %d jobs", dlq_count)
-                        await self._send_capacity_alert({
-                            "event": "dead_letter_alert",
-                            "message": f"{dlq_count} jobs in dead-letter queue",
-                            "utilization_pct": 0,
-                            "total_used": dlq_count,
-                            "total_capacity": 0,
-                        })
+                        await self._send_capacity_alert(
+                            {
+                                "event": "dead_letter_alert",
+                                "message": f"{dlq_count} jobs in dead-letter queue",
+                                "utilization_pct": 0,
+                                "total_used": dlq_count,
+                                "total_capacity": 0,
+                            }
+                        )
             except Exception as e:
                 logger.warning("Stale job recovery failed: %s", e)
 

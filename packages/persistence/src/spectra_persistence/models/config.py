@@ -99,9 +99,7 @@ def _auto_encrypt_secret_value(mapper, connection, target):
                 getattr(target, "key", "?"),
                 exc,
             )
-            raise ValueError(
-                f"Could not encrypt secret value for key {getattr(target, 'key', '?')!r}"
-            ) from exc
+            raise ValueError(f"Could not encrypt secret value for key {getattr(target, 'key', '?')!r}") from exc
         except Exception:
             logger.exception(
                 "Unexpected failure auto-encrypting secret config '%s'",

@@ -186,7 +186,9 @@ async def create_sandbox(payload: SandboxCreateRequest):
         raise
     except (OSError, RuntimeError, ValueError) as exc:
         logger.warning("Scheduler sandbox creation rejected for mission %s: %s", mission_id[:8], exc)
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Sandbox creation unavailable") from exc
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Sandbox creation unavailable"
+        ) from exc
     return sandbox_payload(info)
 
 
@@ -239,7 +241,11 @@ async def health_deep(response: Response):
             if lock_conn is not None:
                 checks["advisory_lock"] = {"status": "healthy", "latency_ms": latency_ms(start)}
             else:
-                checks["advisory_lock"] = {"status": "degraded", "latency_ms": latency_ms(start), "error": "lock not acquired"}
+                checks["advisory_lock"] = {
+                    "status": "degraded",
+                    "latency_ms": latency_ms(start),
+                    "error": "lock not acquired",
+                }
                 overall = "degraded"
     except Exception as exc:
         checks["advisory_lock"] = {"status": "unhealthy", "latency_ms": latency_ms(start), "error": type(exc).__name__}
@@ -426,15 +432,17 @@ async def internal_scaling_dashboard():
                 node_services.setdefault(node_name, []).append(svc_name)
 
         for n in cnm.per_node:
-            nodes_list.append({
-                "name": n.name,
-                "service_type": n.service_type,
-                "cpu_percent": round(n.cpu_percent, 1),
-                "memory_percent": round(n.memory_percent, 1),
-                "disk_free_gb": round(n.disk_free_gb, 1),
-                "services": node_services.get(n.name, []),
-                "last_metrics_at": n.last_metrics_at,
-            })
+            nodes_list.append(
+                {
+                    "name": n.name,
+                    "service_type": n.service_type,
+                    "cpu_percent": round(n.cpu_percent, 1),
+                    "memory_percent": round(n.memory_percent, 1),
+                    "disk_free_gb": round(n.disk_free_gb, 1),
+                    "services": node_services.get(n.name, []),
+                    "last_metrics_at": n.last_metrics_at,
+                }
+            )
 
     # --- Autoscaler state ---
     scaler_config = AutoScalerConfig.from_settings(settings)
@@ -453,15 +461,45 @@ async def internal_scaling_dashboard():
     if cnm:
         for n in cnm.per_node:
             if n.memory_percent > 95:
-                alerts.append({"severity": "critical", "message": f"{n.name} memory at {n.memory_percent:.1f}%", "at": n.last_metrics_at})
+                alerts.append(
+                    {
+                        "severity": "critical",
+                        "message": f"{n.name} memory at {n.memory_percent:.1f}%",
+                        "at": n.last_metrics_at,
+                    }
+                )
             elif n.memory_percent > 85:
-                alerts.append({"severity": "warning", "message": f"{n.name} memory at {n.memory_percent:.1f}%", "at": n.last_metrics_at})
+                alerts.append(
+                    {
+                        "severity": "warning",
+                        "message": f"{n.name} memory at {n.memory_percent:.1f}%",
+                        "at": n.last_metrics_at,
+                    }
+                )
             if 0 < n.disk_free_gb < 5:
-                alerts.append({"severity": "critical", "message": f"{n.name} disk free {n.disk_free_gb:.1f}GB", "at": n.last_metrics_at})
+                alerts.append(
+                    {
+                        "severity": "critical",
+                        "message": f"{n.name} disk free {n.disk_free_gb:.1f}GB",
+                        "at": n.last_metrics_at,
+                    }
+                )
             elif 0 < n.disk_free_gb < 10:
-                alerts.append({"severity": "warning", "message": f"{n.name} disk free {n.disk_free_gb:.1f}GB", "at": n.last_metrics_at})
+                alerts.append(
+                    {
+                        "severity": "warning",
+                        "message": f"{n.name} disk free {n.disk_free_gb:.1f}GB",
+                        "at": n.last_metrics_at,
+                    }
+                )
     if cluster.system.cpu_percent > 90:
-        alerts.append({"severity": "warning", "message": f"Local CPU at {cluster.system.cpu_percent:.1f}%", "at": cluster.timestamp.isoformat()})
+        alerts.append(
+            {
+                "severity": "warning",
+                "message": f"Local CPU at {cluster.system.cpu_percent:.1f}%",
+                "at": cluster.timestamp.isoformat(),
+            }
+        )
 
     return {
         "cluster": cluster_summary,
@@ -492,6 +530,7 @@ async def internal_update_apply(request_body: dict):
     original = None
     if target:
         import spectra_scaling.image_updater as _updater
+
         original = _updater.MANAGED_SERVICES
         _updater.MANAGED_SERVICES = {target}
 
@@ -503,8 +542,13 @@ async def internal_update_apply(request_body: dict):
 
     return {
         "results": [
-            {"service": r.service, "old_digest": r.old_digest, "new_digest": r.new_digest,
-             "success": r.success, "error": r.error}
+            {
+                "service": r.service,
+                "old_digest": r.old_digest,
+                "new_digest": r.new_digest,
+                "success": r.success,
+                "error": r.error,
+            }
             for r in results
         ],
     }
@@ -534,13 +578,15 @@ async def internal_rollback(request_body: dict):
     return {"success": success, "service": service_name}
 
 
-_INTERNAL_ALLOWED_SERVICES = frozenset({
-    "spectra_app",
-    "spectra_worker",
-    "spectra_ai-svc",
-    "spectra_scheduler",
-    "spectra_caddy",
-})
+_INTERNAL_ALLOWED_SERVICES = frozenset(
+    {
+        "spectra_app",
+        "spectra_worker",
+        "spectra_ai-svc",
+        "spectra_scheduler",
+        "spectra_caddy",
+    }
+)
 
 
 @app.post("/internal/scaling/action")

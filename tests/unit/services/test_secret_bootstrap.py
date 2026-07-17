@@ -5,8 +5,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pydantic import SecretStr
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_system.secret_bootstrap import _apply_secret, ensure_persistent_secrets
+
+
+def _make_session(result: MagicMock) -> MagicMock:
+    """Provide a spec-faithful async SQLAlchemy session test double."""
+    session = MagicMock(spec=AsyncSession)
+    session.execute = AsyncMock(return_value=result)
+    return session
 
 
 class TestApplySecret:
@@ -33,11 +41,10 @@ class TestEnsurePersistentSecrets:
     @pytest.mark.asyncio
     async def test_first_boot_generates_and_persists(self):
         """On first boot with no DB values and no env vars, secrets are generated and persisted."""
-        mock_session = AsyncMock()
         # Simulate empty DB (no existing config rows)
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
-        mock_session.execute.return_value = mock_result
+        mock_session = _make_session(mock_result)
 
         mock_settings = MagicMock()
         mock_settings.JWT_SECRET_KEY = SecretStr("auto-generated-jwt")
@@ -46,13 +53,20 @@ class TestEnsurePersistentSecrets:
         mock_settings.JWT_PRIVATE_KEY = SecretStr("")
         mock_settings.JWT_PUBLIC_KEY = ""
 
-        with patch("spectra_system.secret_bootstrap.settings", mock_settings), \
-             patch.dict(os.environ, {}, clear=False):
+        with patch("spectra_system.secret_bootstrap.settings", mock_settings), patch.dict(os.environ, {}, clear=False):
             # Remove any existing env vars for managed secrets
-            for key in ["JWT_SECRET_KEY", "SECRET_KEY", "SERVICE_AUTH_SECRET",
-                        "JWT_PRIVATE_KEY", "JWT_PUBLIC_KEY",
-                        "JWT_SECRET_KEY_FILE", "SECRET_KEY_FILE", "SERVICE_AUTH_SECRET_FILE",
-                        "JWT_PRIVATE_KEY_FILE", "JWT_PUBLIC_KEY_FILE"]:
+            for key in [
+                "JWT_SECRET_KEY",
+                "SECRET_KEY",
+                "SERVICE_AUTH_SECRET",
+                "JWT_PRIVATE_KEY",
+                "JWT_PUBLIC_KEY",
+                "JWT_SECRET_KEY_FILE",
+                "SECRET_KEY_FILE",
+                "SERVICE_AUTH_SECRET_FILE",
+                "JWT_PRIVATE_KEY_FILE",
+                "JWT_PUBLIC_KEY_FILE",
+            ]:
                 os.environ.pop(key, None)
             await ensure_persistent_secrets(mock_session)
 
@@ -82,18 +96,22 @@ class TestEnsurePersistentSecrets:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_config
 
-        mock_session = AsyncMock()
-        mock_session.execute.return_value = mock_result
+        mock_session = _make_session(mock_result)
 
         mock_settings = MagicMock()
         mock_settings.JWT_SECRET_KEY = SecretStr("")
         mock_settings.SECRET_KEY = SecretStr("")
         mock_settings.SERVICE_AUTH_SECRET = SecretStr("")
 
-        with patch("spectra_system.secret_bootstrap.settings", mock_settings), \
-             patch.dict(os.environ, {}, clear=False):
-            for key in ["JWT_SECRET_KEY", "SECRET_KEY", "SERVICE_AUTH_SECRET",
-                        "JWT_SECRET_KEY_FILE", "SECRET_KEY_FILE", "SERVICE_AUTH_SECRET_FILE"]:
+        with patch("spectra_system.secret_bootstrap.settings", mock_settings), patch.dict(os.environ, {}, clear=False):
+            for key in [
+                "JWT_SECRET_KEY",
+                "SECRET_KEY",
+                "SERVICE_AUTH_SECRET",
+                "JWT_SECRET_KEY_FILE",
+                "SECRET_KEY_FILE",
+                "SERVICE_AUTH_SECRET_FILE",
+            ]:
                 os.environ.pop(key, None)
             await ensure_persistent_secrets(mock_session)
 
@@ -111,18 +129,24 @@ class TestEnsurePersistentSecrets:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_config
 
-        mock_session = AsyncMock()
-        mock_session.execute.return_value = mock_result
+        mock_session = _make_session(mock_result)
 
         mock_settings = MagicMock()
         mock_settings.JWT_SECRET_KEY = SecretStr("")
         mock_settings.SECRET_KEY = SecretStr("")
         mock_settings.SERVICE_AUTH_SECRET = SecretStr("")
 
-        with patch("spectra_system.secret_bootstrap.settings", mock_settings), \
-             patch.dict(os.environ, {"JWT_SECRET_KEY": "from-env-override"}, clear=False):
-            for key in ["SECRET_KEY", "SERVICE_AUTH_SECRET",
-                        "JWT_SECRET_KEY_FILE", "SECRET_KEY_FILE", "SERVICE_AUTH_SECRET_FILE"]:
+        with (
+            patch("spectra_system.secret_bootstrap.settings", mock_settings),
+            patch.dict(os.environ, {"JWT_SECRET_KEY": "from-env-override"}, clear=False),
+        ):
+            for key in [
+                "SECRET_KEY",
+                "SERVICE_AUTH_SECRET",
+                "JWT_SECRET_KEY_FILE",
+                "SECRET_KEY_FILE",
+                "SERVICE_AUTH_SECRET_FILE",
+            ]:
                 os.environ.pop(key, None)
             await ensure_persistent_secrets(mock_session)
 

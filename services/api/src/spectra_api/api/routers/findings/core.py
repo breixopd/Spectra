@@ -72,7 +72,9 @@ class FindingCreate(BaseModel):
     @model_validator(mode="after")
     def require_artifact_for_high_severity(self) -> FindingCreate:
         if self.severity in {Severity.HIGH, Severity.CRITICAL} and not has_reproducible_evidence(self.evidence):
-            raise ValueError("High and critical findings require artifact_id, tool_execution_id, s3_key, or sha256 evidence")
+            raise ValueError(
+                "High and critical findings require artifact_id, tool_execution_id, s3_key, or sha256 evidence"
+            )
         return self
 
 

@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TrainingExample:
     """A single training example extracted from a mission."""
+
     id: str
     mission_id: str
     prompt: str
@@ -33,6 +34,7 @@ class TrainingExample:
 @dataclass
 class MissionLog:
     """Raw data collected from a mission for training."""
+
     mission_id: str
     target: str = ""
     framework: str = "ptes"
@@ -56,7 +58,9 @@ class MissionDataCollector:
     def __init__(self, storage_path: str = "training/raw/"):
         self.storage_path = Path(storage_path)
 
-    def log_agent_decision(self, mission_id: str, agent_role: str, prompt: str, response: str, action: dict, confidence: float) -> None:
+    def log_agent_decision(
+        self, mission_id: str, agent_role: str, prompt: str, response: str, action: dict, confidence: float
+    ) -> None:
         """Record an agent decision for training."""
         entry = {
             "timestamp": time.time(),
@@ -69,7 +73,9 @@ class MissionDataCollector:
         }
         self._append_log(mission_id, "agent_decisions", entry)
 
-    def log_tool_execution(self, mission_id: str, tool_name: str, args: dict, output: str, success: bool, duration: float) -> None:
+    def log_tool_execution(
+        self, mission_id: str, tool_name: str, args: dict, output: str, success: bool, duration: float
+    ) -> None:
         """Record a tool execution for training."""
         entry = {
             "timestamp": time.time(),
@@ -199,6 +205,7 @@ class TrainingExampleExtractor:
 
 # ── Dataset export for fine-tuning jobs ────────────────────────────
 
+
 async def export_dataset(
     session,
     *,
@@ -248,9 +255,9 @@ async def export_dataset(
 
 import re as _re
 
-_IP_PATTERN = _re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
-_CRED_PATTERN = _re.compile(r'(?:password|passwd|pwd|secret|token|key|api_key)\s*[=:]\s*\S+', _re.IGNORECASE)
-_PATH_PATTERN = _re.compile(r'(?:/home/|/root/|/var/|/etc/|/tmp/)\S+')
+_IP_PATTERN = _re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+_CRED_PATTERN = _re.compile(r"(?:password|passwd|pwd|secret|token|key|api_key)\s*[=:]\s*\S+", _re.IGNORECASE)
+_PATH_PATTERN = _re.compile(r"(?:/home/|/root/|/var/|/etc/|/tmp/)\S+")
 
 
 def anonymize_text(text: str) -> str:
@@ -262,6 +269,7 @@ def anonymize_text(text: str) -> str:
 
 
 # ── DB-backed functions ─────────────────────────────────────────────
+
 
 async def create_training_sample(
     session,
@@ -297,9 +305,7 @@ async def user_allows_training_data(session, user_id: str) -> bool:
 
     from spectra_persistence.models.user import User
 
-    result = await session.execute(
-        select(User.training_opt_in, User.processing_restricted).where(User.id == user_id)
-    )
+    result = await session.execute(select(User.training_opt_in, User.processing_restricted).where(User.id == user_id))
     row = result.one_or_none()
     if row is None:
         return False
@@ -336,18 +342,20 @@ async def create_mission_completion_sample(session, mission, summary: dict) -> A
         return None
 
     # Build anonymized input/output
-    input_text = _json.dumps({
-        "target": anonymize_text(summary.get("target", "")),
-        "directive": summary.get("directive", ""),
-        "findings_count": len(summary.get("findings", [])),
-    })
-    output_text = _json.dumps({
-        "tools_run": summary.get("tools_run", []),
-        "high_severity_count": sum(
-            1 for f in (summary.get("findings") or []) if f.get("severity") == "high"
-        ),
-        "status": getattr(mission, "status", "completed"),
-    })
+    input_text = _json.dumps(
+        {
+            "target": anonymize_text(summary.get("target", "")),
+            "directive": summary.get("directive", ""),
+            "findings_count": len(summary.get("findings", [])),
+        }
+    )
+    output_text = _json.dumps(
+        {
+            "tools_run": summary.get("tools_run", []),
+            "high_severity_count": sum(1 for f in (summary.get("findings") or []) if f.get("severity") == "high"),
+            "status": getattr(mission, "status", "completed"),
+        }
+    )
 
     # Calculate quality score based on findings
     quality = 0.7

@@ -37,12 +37,16 @@ class TestIsSafeUrl:
 
     @pytest.mark.asyncio
     async def test_rejects_192_168_private(self):
-        with patch("spectra_common.utils.url_validation.socket.getaddrinfo", return_value=_fake_addrinfo("192.168.1.1")):
+        with patch(
+            "spectra_common.utils.url_validation.socket.getaddrinfo", return_value=_fake_addrinfo("192.168.1.1")
+        ):
             assert await is_safe_url("http://homerouter.local/hook") is False
 
     @pytest.mark.asyncio
     async def test_rejects_link_local(self):
-        with patch("spectra_common.utils.url_validation.socket.getaddrinfo", return_value=_fake_addrinfo("169.254.1.1")):
+        with patch(
+            "spectra_common.utils.url_validation.socket.getaddrinfo", return_value=_fake_addrinfo("169.254.1.1")
+        ):
             assert await is_safe_url("http://whatever/hook") is False
 
     @pytest.mark.asyncio

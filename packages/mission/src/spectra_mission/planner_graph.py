@@ -85,7 +85,7 @@ class PlannerGraph:
         for i, phase in enumerate(ordered):
             preconds = []
             if i > 0:
-                preconds.append(f"phase_{ordered[i-1].id}_complete")
+                preconds.append(f"phase_{ordered[i - 1].id}_complete")
 
             node = GraphNode(
                 id=f"phase_{phase.id}",
@@ -98,11 +98,13 @@ class PlannerGraph:
 
             # Edge from previous phase
             if i > 0:
-                self.edges.append(GraphEdge(
-                    source=f"phase_{ordered[i-1].id}",
-                    target=f"phase_{phase.id}",
-                    label=f"{ordered[i-1].label} → {phase.label}",
-                ))
+                self.edges.append(
+                    GraphEdge(
+                        source=f"phase_{ordered[i - 1].id}",
+                        target=f"phase_{phase.id}",
+                        label=f"{ordered[i - 1].label} → {phase.label}",
+                    )
+                )
 
         # Milestone nodes (linked to their phases)
         for milestone in self.framework.milestones:
@@ -114,11 +116,13 @@ class PlannerGraph:
                 preconditions=[f"phase_{milestone.phase}_active"],
                 metadata={"milestone_id": milestone.id, "phase": milestone.phase},
             )
-            self.edges.append(GraphEdge(
-                source=f"phase_{milestone.phase}",
-                target=node_id,
-                label=milestone.label,
-            ))
+            self.edges.append(
+                GraphEdge(
+                    source=f"phase_{milestone.phase}",
+                    target=node_id,
+                    label=milestone.label,
+                )
+            )
 
     # ── State management ──────────────────────────────────────────────
 
@@ -228,10 +232,7 @@ class PlannerGraph:
                 }
                 for nid, node in self.nodes.items()
             },
-            "edges": [
-                {"source": e.source, "target": e.target, "label": e.label}
-                for e in self.edges
-            ],
+            "edges": [{"source": e.source, "target": e.target, "label": e.label} for e in self.edges],
             "facts": self._facts,
         }
 

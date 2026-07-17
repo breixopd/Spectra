@@ -41,10 +41,17 @@ _DANGEROUS_OPENVPN_DIRECTIVES = frozenset(
 )
 
 # Dangerous WireGuard directives that allow arbitrary command execution or routing manipulation
-_WIREGUARD_DANGEROUS_DIRECTIVES = frozenset({
-    "postup", "postdown", "predown", "saveconfig",
-    "dns", "table", "fwmark",  # Can manipulate routing
-})
+_WIREGUARD_DANGEROUS_DIRECTIVES = frozenset(
+    {
+        "postup",
+        "postdown",
+        "predown",
+        "saveconfig",
+        "dns",
+        "table",
+        "fwmark",  # Can manipulate routing
+    }
+)
 
 _VPN_EXTENSIONS = {"wireguard": ".conf", "openvpn": ".ovpn"}
 

@@ -21,7 +21,9 @@ logger = logging.getLogger(__name__)
 async def cleanup_expired_cache(session) -> int:
     """Remove expired system cache entries."""
     now = datetime.now(UTC)
-    result = await session.execute(delete(SystemCache).where(SystemCache.expires_at.isnot(None), SystemCache.expires_at < now))
+    result = await session.execute(
+        delete(SystemCache).where(SystemCache.expires_at.isnot(None), SystemCache.expires_at < now)
+    )
     await session.commit()
     count = result.rowcount  # type: ignore[union-attr]
     if count:
@@ -52,7 +54,9 @@ async def cleanup_orphaned_sandboxes(sandbox_pool) -> int:
 async def cleanup_old_cache_entries(session, max_age_days: int = 7) -> int:
     """Purge cache entries older than max_age_days."""
     cutoff = datetime.now(UTC) - timedelta(days=max_age_days)
-    result = await session.execute(delete(CacheEntry).where(CacheEntry.expires_at.isnot(None), CacheEntry.expires_at < cutoff))
+    result = await session.execute(
+        delete(CacheEntry).where(CacheEntry.expires_at.isnot(None), CacheEntry.expires_at < cutoff)
+    )
     await session.commit()
     count = result.rowcount  # type: ignore[union-attr]
     if count:

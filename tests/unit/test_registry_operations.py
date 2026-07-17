@@ -73,9 +73,7 @@ def registry(tmp_path):
 async def test_sync_status_from_cache_uses_direct_cache_when_global_missing(registry):
     cache = MagicMock()
     cache.get = AsyncMock(
-        side_effect=lambda key: {"status": "ready", "error": ""}
-        if key == "spectra:tool_status:nikto"
-        else None
+        side_effect=lambda key: {"status": "ready", "error": ""} if key == "spectra:tool_status:nikto" else None
     )
 
     with (

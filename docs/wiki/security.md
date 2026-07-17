@@ -260,6 +260,8 @@ The Settings → Data & Privacy tab provides:
 - Training Data opt-out toggle
 - Delete Account button (with password confirmation modal)
 
-All GDPR features are covered by dedicated Playwright tests (`tests/e2e/ui/test_gdpr_features.py`).
+Privacy and training-consent enforcement is covered by the settings and training-data service tests. The browser gate
+(`tests/e2e/ui/test_spa_workspace.py`) verifies the supported React workspace's authenticated shell, route loading,
+and mobile navigation without relying on retired server-rendered controls.
 
 See [Operations](operations.md#gdpr-data-management) for operator-facing GDPR commands.

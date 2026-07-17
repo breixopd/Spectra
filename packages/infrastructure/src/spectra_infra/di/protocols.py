@@ -32,7 +32,6 @@ class AgentInput(Protocol):
     """Base protocol for agent input types."""
 
 
-
 class AgentOutput(Protocol):
     """Base protocol for agent output types."""
 

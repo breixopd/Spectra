@@ -18,7 +18,7 @@ from spectra_system.email.templates import TEMPLATES
 async def test_console_provider_send_logs_output(caplog):
     """ConsoleProvider.send() should log the email and return True."""
     provider = ConsoleProvider()
-    with caplog.at_level(logging.INFO, logger="spectra.email.console"):
+    with caplog.at_level(logging.INFO, logger="spectra_system.email.providers.console"):
         result = await provider.send(
             to="user@example.com",
             subject="Test Subject",
@@ -33,7 +33,7 @@ async def test_console_provider_send_logs_output(caplog):
 async def test_console_provider_send_prefers_text_body(caplog):
     """When text_body is provided, ConsoleProvider logs it instead of html."""
     provider = ConsoleProvider()
-    with caplog.at_level(logging.INFO, logger="spectra.email.console"):
+    with caplog.at_level(logging.INFO, logger="spectra_system.email.providers.console"):
         await provider.send(
             to="a@b.com",
             subject="S",

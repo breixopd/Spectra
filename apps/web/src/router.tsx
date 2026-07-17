@@ -9,16 +9,6 @@ import {
 } from "@tanstack/react-router";
 
 import { AppShell } from "@/components/layout/AppShell";
-import { EvidencePage } from "@/pages/EvidencePage";
-import { ReportsPage } from "@/pages/ReportsPage";
-import { SettingsPage } from "@/pages/SettingsPage";
-import { ToolsPage } from "@/pages/ToolsPage";
-import { FindingDetailPage } from "@/pages/FindingDetailPage";
-import { FindingsPage } from "@/pages/FindingsPage";
-import { LoginPage } from "@/pages/LoginPage";
-import { MissionControlPage } from "@/pages/MissionControlPage";
-import { MissionDetailPage } from "@/pages/MissionDetailPage";
-import { MissionsPage } from "@/pages/MissionsPage";
 
 export interface RouterContext {
   auth: {
@@ -34,7 +24,7 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
-  component: LoginPage,
+  component: lazyRouteComponent(() => import("@/pages/LoginPage"), "LoginPage"),
   beforeLoad: ({ context }) => {
     if (context.auth.isAuthenticated) {
       throw redirect({ to: "/dashboard" });
@@ -56,31 +46,31 @@ const authenticatedRoute = createRoute({
 const indexRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/dashboard",
-  component: MissionControlPage,
+  component: lazyRouteComponent(() => import("@/pages/MissionControlPage"), "MissionControlPage"),
 });
 
 const missionsRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/missions",
-  component: MissionsPage,
+  component: lazyRouteComponent(() => import("@/pages/MissionsPage"), "MissionsPage"),
 });
 
 const missionDetailRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/missions/$id",
-  component: MissionDetailPage,
+  component: lazyRouteComponent(() => import("@/pages/MissionDetailPage"), "MissionDetailPage"),
 });
 
 const findingsRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/findings",
-  component: FindingsPage,
+  component: lazyRouteComponent(() => import("@/pages/FindingsPage"), "FindingsPage"),
 });
 
 const findingDetailRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/findings/$id",
-  component: FindingDetailPage,
+  component: lazyRouteComponent(() => import("@/pages/FindingDetailPage"), "FindingDetailPage"),
 });
 
 // Lazy: the attack graph pulls in elkjs (~1.4 MB), keep it out of the main chunk.
@@ -93,25 +83,25 @@ const attackGraphRoute = createRoute({
 const evidenceRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/evidence",
-  component: EvidencePage,
+  component: lazyRouteComponent(() => import("@/pages/EvidencePage"), "EvidencePage"),
 });
 
 const reportsRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/reports",
-  component: ReportsPage,
+  component: lazyRouteComponent(() => import("@/pages/ReportsPage"), "ReportsPage"),
 });
 
 const toolsRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/tools",
-  component: ToolsPage,
+  component: lazyRouteComponent(() => import("@/pages/ToolsPage"), "ToolsPage"),
 });
 
 const settingsRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/settings",
-  component: SettingsPage,
+  component: lazyRouteComponent(() => import("@/pages/SettingsPage"), "SettingsPage"),
 });
 
 const catchAllRoute = createRoute({

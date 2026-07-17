@@ -83,7 +83,9 @@ class TestSandboxControllerInitialization:
         )
         with (
             patch.object(lifespan_mod, "settings", fake_settings),
-            patch("spectra_ai_core.gateway.sandbox_orchestrator.SandboxOrchestratorClient", return_value=controller) as client_cls,
+            patch(
+                "spectra_ai_core.gateway.sandbox_orchestrator.SandboxOrchestratorClient", return_value=controller
+            ) as client_cls,
             patch("spectra_tools.sandbox.set_sandbox_pool") as set_pool,
             patch("spectra_tools.sandbox.SandboxPool") as local_pool_cls,
         ):

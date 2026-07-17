@@ -353,7 +353,11 @@ class VotingSystem:
         threshold_idx = risk_levels.index(self.config.human_approval_risk)
         if settings.REQUIRE_APPROVAL:
             return action_idx >= threshold_idx
-        if self.mission and getattr(self.mission, "requires_approval", None) is not None and not self.mission.requires_approval:
+        if (
+            self.mission
+            and getattr(self.mission, "requires_approval", None) is not None
+            and not self.mission.requires_approval
+        ):
             return False  # Mission is fully autonomous
         return action_idx >= threshold_idx
 
@@ -650,7 +654,13 @@ Vote REJECT only if it is clearly dangerous (e.g. destructive, out of scope) or 
 
         if not suggestions:
             # Every voter failed — degrade gracefully rather than randomly guessing.
-            return {"tool": available_tools[0], "confidence": 0.5, "votes": 0, "total_voters": num_voters, "note": "voter_failure"}
+            return {
+                "tool": available_tools[0],
+                "confidence": 0.5,
+                "votes": 0,
+                "total_voters": num_voters,
+                "note": "voter_failure",
+            }
 
         tool_votes = Counter(s["tool"] for s in suggestions)
         winner, count = tool_votes.most_common(1)[0]
@@ -827,22 +837,34 @@ observed value, and optional detail.
         if expected_format == "json":
             try:
                 import json as _json
+
                 _json.loads(output)
             except Exception:
-                flags.append({"type": "invalid_json", "reason": "Expected JSON but output is not valid JSON", "severity": "error"})
+                flags.append(
+                    {
+                        "type": "invalid_json",
+                        "reason": "Expected JSON but output is not valid JSON",
+                        "severity": "error",
+                    }
+                )
 
         # XML format expected but not valid
         if expected_format == "xml":
             import re
+
             if not re.search(r"<\?xml|<[a-zA-Z]+>", output):
-                flags.append({"type": "invalid_xml", "reason": "Expected XML but no XML tags found", "severity": "error"})
+                flags.append(
+                    {"type": "invalid_xml", "reason": "Expected XML but no XML tags found", "severity": "error"}
+                )
 
         # Error indicators in output
         error_keywords = ["segmentation fault", "core dumped", "killed", "out of memory", "connection refused"]
         output_lower = output.lower()
         for kw in error_keywords:
             if kw in output_lower:
-                flags.append({"type": "error_indicator", "reason": f"Output contains error: '{kw}'", "severity": "warn"})
+                flags.append(
+                    {"type": "error_indicator", "reason": f"Output contains error: '{kw}'", "severity": "warn"}
+                )
                 break
 
         if flags:

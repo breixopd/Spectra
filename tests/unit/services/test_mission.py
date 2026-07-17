@@ -223,6 +223,7 @@ class TestAttackSurfaceIntegration:
 
         assert len(mission.findings) == 1
         assert mission.findings[0]["name"] == "XSS Vulnerability"
+        assert mission.findings[0]["id"]
 
 
 class TestAttackVectorManagement:

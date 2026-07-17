@@ -51,6 +51,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+
 class SubscriptionBeforeState(TypedDict):
     plan_id: str
     status: str
@@ -136,7 +137,9 @@ def _serialize_subscription_before_state(subscription: Subscription | None) -> S
         "plan_id": str(subscription.plan_id),
         "status": subscription.status,
         "trial_ends_at": subscription.trial_ends_at.isoformat() if subscription.trial_ends_at else None,
-        "current_period_start": subscription.current_period_start.isoformat() if subscription.current_period_start else None,
+        "current_period_start": subscription.current_period_start.isoformat()
+        if subscription.current_period_start
+        else None,
         "current_period_end": subscription.current_period_end.isoformat() if subscription.current_period_end else None,
         "external_subscription_id": subscription.external_subscription_id,
         "external_customer_id": subscription.external_customer_id,
@@ -442,9 +445,7 @@ async def list_users(
     rows = (await session.execute(stmt)).scalars().all()
 
     effective_plan_ids = await _get_effective_plan_ids(session, [str(user.id) for user in rows])
-    items = [
-        _to_user_admin_response(user, effective_plan_id=effective_plan_ids.get(str(user.id))) for user in rows
-    ]
+    items = [_to_user_admin_response(user, effective_plan_id=effective_plan_ids.get(str(user.id))) for user in rows]
     return PaginatedResponse(items=items, total=total, page=page, per_page=per_page)
 
 
@@ -556,7 +557,9 @@ async def update_user(
         if dup:
             raise HTTPException(status_code=409, detail="Email already in use")
 
-    if _has_reversible_user_update(body, row, plan_change_requested=plan_change_requested) and _user_update_is_snapshot_restorable(
+    if _has_reversible_user_update(
+        body, row, plan_change_requested=plan_change_requested
+    ) and _user_update_is_snapshot_restorable(
         before_state,
         plan_change_requested=plan_change_requested,
     ):

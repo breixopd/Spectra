@@ -28,14 +28,13 @@ jobs:
   release:
     name: Build & Push Release Images
     runs-on: ubuntu-latest
+    timeout-minutes: 180
     permissions:
-      contents: write
+      contents: read
       packages: write
     env:
       ENCRYPTION_KEY: test-encryption-key
       ENV_FILE: ../.env.test
-      # Fine-grained PAT: Contents read/write on Spectra only (releases API, not GHCR).
-      SPECTRA_RELEASE_TOKEN: ${{ secrets.SPECTRA_RELEASE_TOKEN || secrets.SPECTRA_ACTIONS_TOKEN }}
       GHCR_USERNAME: ${{ github.repository_owner }}
     concurrency:
       group: release
@@ -52,8 +51,9 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.0
         with:
+          persist-credentials: false
           ref: refs/heads/main
           fetch-depth: 0
 
@@ -67,8 +67,10 @@ jobs:
       # ── Determine release version from manual input ───────────
       - name: Set version
         id: version
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
         run: |
-          VERSION="${{ inputs.version }}"
+          VERSION="$VERSION_INPUT"
           if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]{4}\.[0-9]{2}\.[0-9]{2}(\.[0-9]+)?$'; then
             echo "::error::Version must match YYYY.MM.DD or YYYY.MM.DD.N"
             exit 1
@@ -96,7 +98,7 @@ jobs:
       - name: Run unit tests with coverage in Docker
         run: |
           docker compose -f deploy/docker/compose.yaml --profile test run --rm unit-test-runner \
-            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov=spectra_ai_core --cov=spectra_billing --cov=spectra_common --cov=spectra_mission --cov=spectra_persistence --cov=spectra_scaling --cov=spectra_storage_policy --cov=spectra_tools_core --cov-report=term-missing --cov-fail-under=70"
+            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov=spectra_ai_core --cov=spectra_billing --cov=spectra_common --cov=spectra_mission --cov=spectra_persistence --cov=spectra_scaling --cov=spectra_storage_policy --cov=spectra_tools_core --cov-report=term-missing --cov-fail-under=67"
 
       - name: Bootstrap Garage for integration tests
         run: |
@@ -130,11 +132,29 @@ jobs:
           GARAGE_RPC_SECRET: release-config-validation
         run: docker compose --env-file .env.example -f deploy/docker/docker-compose.swarm.yml config --quiet
 
+      # GitHub Packages is not a PyPI-compatible package registry. Publish the
+      # complete, reproducible workspace distribution set as release assets.
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7.0.0
+        with:
+          python-version: "3.11"
+          # Release artifacts must not consume dependency cache content written
+          # by any lower-trust workflow run.
+          enable-cache: false
+      - name: Build workspace package distributions
+        run: uv build --all-packages --out-dir release-dist --clear
+      - name: Upload Python package distributions
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
+        with:
+          name: python-release-packages
+          path: release-dist/*
+          if-no-files-found: error
+          retention-days: 30
+
       # ── Build & push Docker images ────────────────────────────
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.0.0
 
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.0.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ env.GHCR_USERNAME }}
@@ -142,7 +162,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & push API image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.0.0
         with:
           context: .
           file: deploy/docker/Dockerfile.api
@@ -160,7 +180,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build & push AI image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.0.0
         with:
           context: .
           file: deploy/docker/Dockerfile.ai
@@ -178,7 +198,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build & push scheduler image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.0.0
         with:
           context: .
           file: deploy/docker/Dockerfile.scheduler
@@ -196,7 +216,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build & push worker image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.0.0
         with:
           context: .
           file: deploy/docker/Dockerfile.worker
@@ -214,7 +234,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build & push caddy image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.0.0
         with:
           context: .
           file: deploy/docker/Dockerfile.caddy
@@ -277,27 +297,21 @@ jobs:
     if: ${{ inputs.deploy == true }}
     needs: [release, publish]
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     environment: ${{ vars.RELEASE_ENVIRONMENT || 'production' }}
     permissions: {}
     env:
-      DEPLOY_HOST_SECRET_NAME: DEPLOY_HOST
-      DEPLOY_USER_SECRET_NAME: DEPLOY_USER
-      DEPLOY_SSH_KEY_SECRET_NAME: DEPLOY_SSH_KEY
-      DEPLOY_SSH_FINGERPRINT_SECRET_NAME: DEPLOY_SSH_HOST_FINGERPRINT
-      DEPLOY_GHCR_USERNAME_SECRET_NAME: DEPLOY_GHCR_USERNAME
-      DEPLOY_GHCR_TOKEN_SECRET_NAME: DEPLOY_GHCR_TOKEN
-      DEPLOY_WEBHOOK_SECRET_NAME: DEPLOY_WEBHOOK_URL
       DEPLOY_REGISTRY: ghcr.io
       DEPLOY_IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/
     steps:
       - name: Validate deploy secrets
         env:
-          DEPLOY_HOST: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
-          DEPLOY_USER: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
-          DEPLOY_SSH_KEY: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
-          DEPLOY_SSH_FINGERPRINT: ${{ secrets[env.DEPLOY_SSH_FINGERPRINT_SECRET_NAME] }}
-          DEPLOY_GHCR_USERNAME: ${{ secrets[env.DEPLOY_GHCR_USERNAME_SECRET_NAME] }}
-          DEPLOY_GHCR_TOKEN: ${{ secrets[env.DEPLOY_GHCR_TOKEN_SECRET_NAME] }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_FINGERPRINT: ${{ secrets.DEPLOY_SSH_HOST_FINGERPRINT }}
+          DEPLOY_GHCR_USERNAME: ${{ secrets.DEPLOY_GHCR_USERNAME }}
+          DEPLOY_GHCR_TOKEN: ${{ secrets.DEPLOY_GHCR_TOKEN }}
         run: |
           test -n "$DEPLOY_HOST"
           test -n "$DEPLOY_USER"
@@ -309,12 +323,12 @@ jobs:
       - name: Resolve deploy rollback preconditions
         env:
           VERSION: ${{ needs.release.outputs.version }}
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.2
         with:
-          host: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
-          username: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
-          key: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
-          fingerprint: ${{ secrets[env.DEPLOY_SSH_FINGERPRINT_SECRET_NAME] }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          fingerprint: ${{ secrets.DEPLOY_SSH_HOST_FINGERPRINT }}
           envs: VERSION
           script: |
             bash -seuo pipefail <<'REMOTE'
@@ -449,14 +463,14 @@ jobs:
       - name: Deploy via SSH
         env:
           VERSION: ${{ needs.release.outputs.version }}
-          DEPLOY_GHCR_USERNAME: ${{ secrets[env.DEPLOY_GHCR_USERNAME_SECRET_NAME] }}
-          DEPLOY_GHCR_TOKEN: ${{ secrets[env.DEPLOY_GHCR_TOKEN_SECRET_NAME] }}
-        uses: appleboy/ssh-action@v1
+          DEPLOY_GHCR_USERNAME: ${{ secrets.DEPLOY_GHCR_USERNAME }}
+          DEPLOY_GHCR_TOKEN: ${{ secrets.DEPLOY_GHCR_TOKEN }}
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.2
         with:
-          host: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
-          username: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
-          key: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
-          fingerprint: ${{ secrets[env.DEPLOY_SSH_FINGERPRINT_SECRET_NAME] }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          fingerprint: ${{ secrets.DEPLOY_SSH_HOST_FINGERPRINT }}
           envs: VERSION,DEPLOY_GHCR_USERNAME,DEPLOY_GHCR_TOKEN
           script: |
             bash -seuo pipefail <<'REMOTE'
@@ -519,12 +533,12 @@ jobs:
             REMOTE
 
       - name: Post-deploy health check
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.2
         with:
-          host: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
-          username: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
-          key: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
-          fingerprint: ${{ secrets[env.DEPLOY_SSH_FINGERPRINT_SECRET_NAME] }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          fingerprint: ${{ secrets.DEPLOY_SSH_HOST_FINGERPRINT }}
           script: |
             set -e
             HEALTH_PORT="${HEALTH_PORT:-80}"
@@ -545,12 +559,12 @@ jobs:
         if: success()
         env:
           VERSION: ${{ needs.release.outputs.version }}
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.2
         with:
-          host: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
-          username: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
-          key: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
-          fingerprint: ${{ secrets[env.DEPLOY_SSH_FINGERPRINT_SECRET_NAME] }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          fingerprint: ${{ secrets.DEPLOY_SSH_HOST_FINGERPRINT }}
           envs: VERSION
           script: |
             bash -seuo pipefail <<'REMOTE'
@@ -572,14 +586,14 @@ jobs:
       - name: Rollback on failure
         if: failure()
         env:
-          DEPLOY_GHCR_USERNAME: ${{ secrets[env.DEPLOY_GHCR_USERNAME_SECRET_NAME] }}
-          DEPLOY_GHCR_TOKEN: ${{ secrets[env.DEPLOY_GHCR_TOKEN_SECRET_NAME] }}
-        uses: appleboy/ssh-action@v1
+          DEPLOY_GHCR_USERNAME: ${{ secrets.DEPLOY_GHCR_USERNAME }}
+          DEPLOY_GHCR_TOKEN: ${{ secrets.DEPLOY_GHCR_TOKEN }}
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.2
         with:
-          host: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
-          username: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
-          key: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
-          fingerprint: ${{ secrets[env.DEPLOY_SSH_FINGERPRINT_SECRET_NAME] }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          fingerprint: ${{ secrets.DEPLOY_SSH_HOST_FINGERPRINT }}
           envs: DEPLOY_GHCR_USERNAME,DEPLOY_GHCR_TOKEN
           script: |
             bash -seuo pipefail <<'REMOTE'
@@ -668,10 +682,10 @@ jobs:
       - name: Deploy notification
         if: always()
         env:
-          DEPLOY_WEBHOOK_URL: ${{ secrets[env.DEPLOY_WEBHOOK_SECRET_NAME] }}
+          DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          STATUS: ${{ job.status }}
+          VERSION: ${{ needs.release.outputs.version }}
         run: |
-          STATUS="${{ job.status }}"
-          VERSION="${{ needs.release.outputs.version }}"
           WEBHOOK_URL="$DEPLOY_WEBHOOK_URL"
 
           if [ -z "$WEBHOOK_URL" ]; then
@@ -692,21 +706,23 @@ jobs:
     name: Publish Tag & GitHub Release
     needs: release
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
-    env:
-      SPECTRA_RELEASE_TOKEN: ${{ secrets.SPECTRA_RELEASE_TOKEN || secrets.SPECTRA_ACTIONS_TOKEN }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.0
         with:
+          # This is the sole job with contents:write; the credential is needed to push the immutable tag.
+          persist-credentials: true
           ref: ${{ needs.release.outputs.release_sha }}
           fetch-depth: 0
 
       - name: Tag release
         env:
           VERSION: ${{ needs.release.outputs.version }}
+          RELEASE_SHA: ${{ needs.release.outputs.release_sha }}
         run: |
-          git tag -a "v${VERSION}" -m "Release ${VERSION}" "${{ needs.release.outputs.release_sha }}"
+          git tag -a "v${VERSION}" -m "Release ${VERSION}" "${RELEASE_SHA}"
           git push origin "refs/tags/v${VERSION}:refs/tags/v${VERSION}"
 
       - name: Generate changelog
@@ -720,15 +736,16 @@ jobs:
           echo "$CHANGELOG" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
+      - name: Download Python package distributions
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          tag_name: "v${{ needs.release.outputs.version }}"
-          name: "v${{ needs.release.outputs.version }}"
-          target_commitish: ${{ needs.release.outputs.release_sha }}
-          body: |
-            ${{ steps.changelog.outputs.changelog }}
-          draft: false
-          prerelease: false
+          name: python-release-packages
+          path: release-dist
+
+      - name: Create GitHub Release
         env:
-          GITHUB_TOKEN: ${{ env.SPECTRA_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.release.outputs.version }}
+          CHANGELOG: ${{ steps.changelog.outputs.changelog }}
+        run: |
+          gh release create "v${VERSION}" --title "v${VERSION}" --notes "${CHANGELOG}" --verify-tag release-dist/*

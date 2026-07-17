@@ -677,7 +677,11 @@ class PaymentService:
                 subscription_id=data.get("subscription"),
             )
 
-        if event_type in {"customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"}:
+        if event_type in {
+            "customer.subscription.created",
+            "customer.subscription.updated",
+            "customer.subscription.deleted",
+        }:
             async with async_session_maker() as session:
                 existing = await self._find_local_subscription(
                     session,

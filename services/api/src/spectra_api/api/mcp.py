@@ -351,9 +351,9 @@ async def _tool_get_mission_status(arguments: dict, session: AsyncSession) -> di
     if not user_id:
         raise ValueError("'user_id' is required")
 
-    mission = (await session.execute(
-        select(Mission).where(Mission.id == mission_id, Mission.user_id == user_id)
-    )).scalar_one_or_none()
+    mission = (
+        await session.execute(select(Mission).where(Mission.id == mission_id, Mission.user_id == user_id))
+    ).scalar_one_or_none()
 
     if not mission:
         raise ValueError(f"Mission {mission_id} not found")
@@ -385,9 +385,9 @@ async def _tool_get_findings(arguments: dict, session: AsyncSession) -> dict:
     severity_filter = arguments.get("severity")
     limit = min(arguments.get("limit", 50), 100)
 
-    mission = (await session.execute(
-        select(Mission).where(Mission.id == mission_id, Mission.user_id == user_id)
-    )).scalar_one_or_none()
+    mission = (
+        await session.execute(select(Mission).where(Mission.id == mission_id, Mission.user_id == user_id))
+    ).scalar_one_or_none()
 
     if not mission:
         raise ValueError(f"Mission {mission_id} not found")
@@ -413,9 +413,15 @@ async def _tool_list_targets(arguments: dict, session: AsyncSession) -> dict:
     if not user_id:
         raise ValueError("'user_id' is required")
 
-    targets = (await session.execute(
-        select(Target).where(Target.user_id == user_id).order_by(Target.created_at.desc()).limit(limit)
-    )).scalars().all()
+    targets = (
+        (
+            await session.execute(
+                select(Target).where(Target.user_id == user_id).order_by(Target.created_at.desc()).limit(limit)
+            )
+        )
+        .scalars()
+        .all()
+    )
 
     return {
         "count": len(targets),

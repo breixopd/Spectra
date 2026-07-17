@@ -140,9 +140,7 @@ class MetricsCollector:
                     replicas=svc.running_tasks,
                     desired_replicas=svc.desired_replicas,
                     running_tasks=svc.running_tasks,
-                    healthy=(
-                        svc.running_tasks == svc.desired_replicas and svc.failed_tasks == 0
-                    ),
+                    healthy=(svc.running_tasks == svc.desired_replicas and svc.failed_tasks == 0),
                     failed_tasks=svc.failed_tasks,
                 )
 
@@ -174,9 +172,7 @@ class MetricsCollector:
                     svc.cpu_percent /= svc.replicas
                     svc.memory_limit_mb /= svc.replicas
                     svc.memory_percent = (
-                        (svc.memory_mb / (svc.memory_limit_mb * svc.replicas)) * 100
-                        if svc.memory_limit_mb > 0
-                        else 0.0
+                        (svc.memory_mb / (svc.memory_limit_mb * svc.replicas)) * 100 if svc.memory_limit_mb > 0 else 0.0
                     )
 
         except Exception as exc:
@@ -264,7 +260,6 @@ class MetricsCollector:
             logger.warning("Failed to collect node metrics: %s", exc)
         return total, healthy, unhealthy
 
-
     async def collect_cluster_metrics(self) -> ClusterNodeMetrics:
         """Aggregate cached node metrics from PoolManager (stored in metadata_.node_metrics)."""
         result = ClusterNodeMetrics()
@@ -275,9 +270,7 @@ class MetricsCollector:
             from spectra_persistence.models.server_node import ServerNode
 
             async with async_session_maker() as session:
-                rows = (await session.execute(
-                    select(ServerNode).where(ServerNode.is_active)
-                )).scalars().all()
+                rows = (await session.execute(select(ServerNode).where(ServerNode.is_active))).scalars().all()
 
             cpu_values: list[float] = []
             mem_values: list[float] = []
@@ -301,6 +294,7 @@ class MetricsCollector:
                 last_at = None
                 if ts:
                     from datetime import datetime as _dt
+
                     try:
                         last_at = _dt.fromtimestamp(float(ts), tz=UTC).isoformat()
                     except (ValueError, TypeError, OSError):

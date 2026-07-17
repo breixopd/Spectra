@@ -4,6 +4,7 @@ Polls the configured container registry for new image digests and
 triggers Swarm rolling updates when a newer version is available.
 Runs as a scheduler task on the Swarm manager node.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -89,32 +90,39 @@ async def check_and_update_services(*, apply: bool = True) -> list[ImageUpdateRe
                 continue  # Up to date
 
             if not apply:
-                results.append(ImageUpdateResult(
-                    service=service,
-                    old_digest=(running_digest or "unknown")[:12],
-                    new_digest=registry_digest[:12],
-                    success=True,
-                    error="dry-run (auto-update disabled)",
-                ))
+                results.append(
+                    ImageUpdateResult(
+                        service=service,
+                        old_digest=(running_digest or "unknown")[:12],
+                        new_digest=registry_digest[:12],
+                        success=True,
+                        error="dry-run (auto-update disabled)",
+                    )
+                )
                 continue
 
             logger.info(
                 "Image update available for %s: %s -> %s",
-                service, (running_digest or "unknown")[:12], registry_digest[:12],
+                service,
+                (running_digest or "unknown")[:12],
+                registry_digest[:12],
             )
 
             # Record previous image for rollback
-            _update_history.append({
-                "service": service,
-                "old_image": image_ref,
-                "old_digest": running_digest or "unknown",
-                "new_digest": registry_digest,
-                "timestamp": time.time(),
-            })
+            _update_history.append(
+                {
+                    "service": service,
+                    "old_image": image_ref,
+                    "old_digest": running_digest or "unknown",
+                    "new_digest": registry_digest,
+                    "timestamp": time.time(),
+                }
+            )
 
             # Trigger rolling update
             ok = await update_service_image(
-                service, f"{image_ref}@sha256:{registry_digest}",
+                service,
+                f"{image_ref}@sha256:{registry_digest}",
             )
 
             result = ImageUpdateResult(
@@ -136,10 +144,15 @@ async def check_and_update_services(*, apply: bool = True) -> list[ImageUpdateRe
 
         except Exception as exc:
             logger.exception("Error checking updates for %s", service)
-            results.append(ImageUpdateResult(
-                service=service, old_digest="", new_digest="",
-                success=False, error=str(exc)[:200],
-            ))
+            results.append(
+                ImageUpdateResult(
+                    service=service,
+                    old_digest="",
+                    new_digest="",
+                    success=False,
+                    error=str(exc)[:200],
+                )
+            )
 
     return results
 

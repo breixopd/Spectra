@@ -239,7 +239,9 @@ _SERVICE_TYPE_TO_SWARM_ROLE: dict[str, str] = {
 
 
 async def _update_swarm_node_labels(
-    node_name: str, old_service_type: str | None, new_service_type: str,
+    node_name: str,
+    old_service_type: str | None,
+    new_service_type: str,
 ) -> str | None:
     """Update Docker Swarm node placement labels when service_type changes.
 
@@ -304,7 +306,9 @@ async def update_server_node(
     new_service_type = filtered.get("service_type")
     if new_service_type and new_service_type != old_service_type:
         swarm_warning = await _update_swarm_node_labels(
-            node["name"], old_service_type, new_service_type,
+            node["name"],
+            old_service_type,
+            new_service_type,
         )
 
     await audit_log_event(
@@ -314,7 +318,11 @@ async def update_server_node(
         details={
             "action": "server_node_updated",
             "node_id": str(node_id),
-            **(({"service_type_changed": f"{old_service_type} -> {new_service_type}"}) if new_service_type and new_service_type != old_service_type else {}),
+            **(
+                ({"service_type_changed": f"{old_service_type} -> {new_service_type}"})
+                if new_service_type and new_service_type != old_service_type
+                else {}
+            ),
         },
         request=request,
     )
@@ -449,7 +457,11 @@ async def list_service_nodes(
 
     from spectra_persistence.models.server_node import ServerNode
 
-    nodes = (await session.execute(sa_select(ServerNode).order_by(ServerNode.created_at.desc()).limit(1000))).scalars().all()
+    nodes = (
+        (await session.execute(sa_select(ServerNode).order_by(ServerNode.created_at.desc()).limit(1000)))
+        .scalars()
+        .all()
+    )
     return {"nodes": [n.to_dict() for n in nodes]}
 
 
@@ -667,9 +679,7 @@ async def get_resource_capacity(
 
     s = _get_settings()
     local = await ResourceManager.get_node_resources()
-    capacity = ResourceManager.calculate_node_capacity(
-        local["total_memory_mb"], local["cpu_cores"], s.SERVICE_MODE
-    )
+    capacity = ResourceManager.calculate_node_capacity(local["total_memory_mb"], local["cpu_cores"], s.SERVICE_MODE)
 
     # Collect live system metrics
     collector = MetricsCollector()
@@ -820,13 +830,15 @@ class ScalingActionRequest(BaseModel):
     service: str
 
 
-_ALLOWED_SCALING_SERVICES = frozenset({
-    "spectra_app",
-    "spectra_worker",
-    "spectra_ai-svc",
-    "spectra_scheduler",
-    "spectra_caddy",
-})
+_ALLOWED_SCALING_SERVICES = frozenset(
+    {
+        "spectra_app",
+        "spectra_worker",
+        "spectra_ai-svc",
+        "spectra_scheduler",
+        "spectra_caddy",
+    }
+)
 
 
 async def _proxy_scaling_to_scheduler(action: str, service: str) -> dict | None:
@@ -881,6 +893,7 @@ async def execute_scaling_action(
         collector = MetricsCollector()
         metrics = await collector.collect_all()
         from spectra_common.config import get_settings as _get_settings
+
         heal_config = AutoScalerConfig.from_settings(_get_settings())
         scaler = AutoScaler(heal_config, DockerSwarmBackend(), SpectraNotifier())
         actions = await scaler._auto_heal(metrics)

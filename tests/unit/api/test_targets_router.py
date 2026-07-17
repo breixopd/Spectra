@@ -7,6 +7,7 @@ import pytest
 import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.routers.targets import router
 
@@ -55,8 +56,11 @@ async def client():
     user = _fake_user()
     app.dependency_overrides[get_current_active_user] = lambda: user
 
-    mock_session = AsyncMock()
+    mock_session = MagicMock(spec=AsyncSession)
     mock_session.add = MagicMock()  # sync method — avoid AsyncMock coroutine warning
+    mock_session.execute = AsyncMock(return_value=MagicMock())
+    mock_session.commit = AsyncMock()
+    mock_session.rollback = AsyncMock()
 
     async def _get_session():
         yield mock_session

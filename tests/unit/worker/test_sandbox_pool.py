@@ -290,14 +290,18 @@ class TestSandboxSingleton:
 class TestSandboxPoolTierLimits:
     def test_get_tier_limits_known(self):
         from spectra_tools.sandbox.pool import SandboxPool
+
         with patch("spectra_tools.sandbox.pool.get_settings") as mock_settings:
-            mock_settings.return_value.SANDBOX_RESOURCE_TIERS = '{"light": {"memory": "256m", "cpu_shares": 128}, "medium": {"memory": "512m", "cpu_shares": 256}}'
+            mock_settings.return_value.SANDBOX_RESOURCE_TIERS = (
+                '{"light": {"memory": "256m", "cpu_shares": 128}, "medium": {"memory": "512m", "cpu_shares": 256}}'
+            )
             memory, cpu = SandboxPool.get_tier_limits("light")
             assert memory == "256m"
             assert cpu == 128
 
     def test_get_tier_limits_unknown_fallback(self):
         from spectra_tools.sandbox.pool import SandboxPool
+
         with patch("spectra_tools.sandbox.pool.get_settings") as mock_settings:
             mock_settings.return_value.SANDBOX_RESOURCE_TIERS = '{"medium": {"memory": "512m", "cpu_shares": 256}}'
             memory, cpu = SandboxPool.get_tier_limits("nonexistent")

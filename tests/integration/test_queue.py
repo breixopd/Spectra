@@ -33,8 +33,7 @@ async def queue_engine():
     database_url = _queue_database_url()
     if not database_url.startswith("postgresql"):
         pytest.fail(
-            "Queue integration tests require a PostgreSQL test DB; "
-            "set DATABASE_URL to the test Postgres instance."
+            "Queue integration tests require a PostgreSQL test DB; set DATABASE_URL to the test Postgres instance."
         )
 
     engine = create_async_engine(database_url)

@@ -104,7 +104,7 @@ async def dispatch_and_process_result(
             )
 
         # Verify: compare claimed success with actual exit code
-        if hasattr(result, 'exit_code') and result.exit_code is not None:
+        if hasattr(result, "exit_code") and result.exit_code is not None:
             if result.success and result.exit_code not in [0]:
                 logger.warning("Tool reported success but exit_code=%d (non-zero)", result.exit_code)
             elif not result.success and result.exit_code == 0:

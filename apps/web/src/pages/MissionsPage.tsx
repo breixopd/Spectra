@@ -123,6 +123,7 @@ export function MissionsPage() {
           columns={columns}
           data={missionsQuery.data?.items ?? []}
           isLoading={missionsQuery.isLoading}
+          totalRows={missionsQuery.data?.total}
           emptyMessage="No missions yet. Start your first assessment."
           manualPagination
           pageCount={missionsQuery.data?.pages}

@@ -1,7 +1,7 @@
 """Mission core endpoints — start/list, per-mission CRUD and lifecycle (catalog lives in mission_catalog)."""
 
 import logging
-from typing import Any
+from typing import Any, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import select
@@ -31,6 +31,7 @@ from spectra_mission.output_model import (
     get_mission_summary_dict,
 )
 from spectra_persistence.database import get_async_session
+from spectra_persistence.finding_evidence import EvidenceBundle, normalize_evidence_bundle
 from spectra_persistence.models.audit_log import AuditEventType
 from spectra_persistence.models.user import User
 from spectra_persistence.models.user_preferences import UserPreferences
@@ -39,6 +40,116 @@ from spectra_system.audit import log_event as audit_log_event
 from spectra_system.compliance.mission_abuse import evaluate_mission_abuse
 
 logger = logging.getLogger(__name__)
+
+_MISSION_EVIDENCE_KEYS = frozenset(
+    {
+        "http_transcript",
+        "request_response",
+        "request",
+        "response",
+        "curl_output",
+        "matched-at",
+        "terminal_output",
+        "stdout",
+        "stderr",
+        "output",
+        "proof",
+        "command",
+        "cmd",
+        "tool_command",
+        "executed_command",
+        "screenshot",
+        "screenshots",
+        "scanner_output",
+        "nuclei_output",
+        "template_output",
+        "scan_output",
+        "matched-line",
+        "poc_script",
+        "exploit_script",
+        "script",
+        "payload",
+        "artifact_refs",
+        "s3_key",
+        "sha256",
+        "artifact_id",
+        "mime",
+        "mime_type",
+        "kind",
+        "role",
+        "replay_steps",
+        "steps",
+        "reproduction",
+        "replay",
+        "remediation",
+        "recommendation",
+        "fix",
+    }
+)
+
+MissionFindingSeverity = Literal["critical", "high", "medium", "low", "info"]
+MissionFindingStatus = Literal["potential", "verified", "exploited", "false_positive", "dismissed", "retest_pending"]
+MissionFindingProofStatus = Literal["candidate", "needs_verification", "verified", "not_reproducible"]
+
+
+def _mission_finding_evidence_bundle(finding: dict[str, Any]) -> EvidenceBundle:
+    raw_evidence = finding.get("evidence")
+    evidence = dict(raw_evidence) if isinstance(raw_evidence, dict) else {}
+    raw_bundle = finding.get("evidence_bundle")
+    if isinstance(raw_bundle, dict):
+        evidence["_bundle"] = raw_bundle
+    for key in _MISSION_EVIDENCE_KEYS:
+        if key in finding and key not in evidence:
+            evidence[key] = finding[key]
+    try:
+        return normalize_evidence_bundle(evidence)
+    except (TypeError, ValueError):
+        logger.warning("Mission finding contains an invalid evidence bundle", exc_info=True)
+        return EvidenceBundle()
+
+
+def _mission_finding_proof_status(finding: dict[str, Any], bundle: EvidenceBundle) -> MissionFindingProofStatus:
+    explicit = finding.get("proof_status")
+    if explicit in {"candidate", "needs_verification", "verified", "not_reproducible"}:
+        return cast(MissionFindingProofStatus, explicit)
+    status_value = str(finding.get("status") or "").lower()
+    if status_value in {"verified", "exploited"}:
+        return "verified"
+    if status_value in {"false_positive", "dismissed"}:
+        return "not_reproducible"
+    if bundle.artifact_refs:
+        return "needs_verification"
+    return "candidate"
+
+
+def _mission_finding_severity(finding: dict[str, Any]) -> MissionFindingSeverity:
+    severity = str(finding.get("severity") or "info").lower()
+    if severity in {"critical", "high", "medium", "low", "info"}:
+        return cast(MissionFindingSeverity, severity)
+    return "info"
+
+
+def _mission_finding_status(finding: dict[str, Any]) -> MissionFindingStatus:
+    status = str(finding.get("status") or "potential").lower()
+    known_statuses = {"potential", "verified", "exploited", "false_positive", "dismissed", "retest_pending"}
+    if status in known_statuses:
+        return cast(MissionFindingStatus, status)
+    return "potential"
+
+
+def _mission_finding_summary(finding: dict[str, Any]) -> MissionFindingSummary:
+    bundle = _mission_finding_evidence_bundle(finding)
+    return MissionFindingSummary(
+        id=str(finding["id"]),
+        title=str(finding.get("title") or finding.get("name") or "Untitled"),
+        severity=_mission_finding_severity(finding),
+        status=_mission_finding_status(finding),
+        description=str(finding.get("description") or ""),
+        tool_source=str(finding.get("tool_source") or finding.get("tool") or finding.get("source") or ""),
+        created_at=str(finding.get("created_at") or ""),
+        proof_status=_mission_finding_proof_status(finding, bundle),
+        evidence_bundle=bundle,
+    )
 
 
 def _mission_response_fields(
@@ -63,6 +174,7 @@ def _mission_response_fields(
             pentest_framework=fw,
         ),
     }
+
 
 router = APIRouter()
 
@@ -353,20 +465,7 @@ async def get_mission_findings(
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
     check_resource_owner(mission, _current_user, "mission")
-    raw_findings = get_mission_output_findings(mission)
-    return [
-        MissionFindingSummary(
-            id=str(i),
-            title=f.get("title", "Untitled"),
-            severity=f.get("severity", "info"),
-            status=f.get("status", "potential"),
-            description=f.get("description", ""),
-            tool_source=f.get("tool_source", f.get("tool", "")),
-            created_at=f.get("created_at", ""),
-        )
-        for i, f in enumerate(raw_findings)
-        if isinstance(f, dict)
-    ]
+    return [_mission_finding_summary(finding) for finding in get_mission_output_findings(mission)]
 
 
 @router.get(

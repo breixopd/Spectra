@@ -1,2 +1,1 @@
 """Spectra scheduler service package."""
-

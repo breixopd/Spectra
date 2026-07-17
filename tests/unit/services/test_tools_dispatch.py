@@ -119,9 +119,7 @@ class TestBuildExecutionRequest:
         adapter_instance.builder.build_command.return_value = long_cmd
 
         with patch("spectra_tools.dispatch.CommandToolAdapter", return_value=adapter_instance):
-            build_execution_request(
-                mission=mission, tool=tool, tool_name="test", target="t", args=None, timeout=None
-            )
+            build_execution_request(mission=mission, tool=tool, tool_name="test", target="t", args=None, timeout=None)
 
         # The CMD log line should contain '...' for truncation
         cmd_log_calls = [c for c in mission.log.call_args_list if "[CMD]" in str(c)]
@@ -292,7 +290,14 @@ class TestDispatchAndProcessResult:
         adapter = MagicMock()
 
         mock_execute.return_value = ToolExecutionResult(
-            tool_id="nmap", target="10.0.0.1", success=True, stdout="ok", stderr="", exit_code=0, duration_seconds=0.5, parsed_findings=[]
+            tool_id="nmap",
+            target="10.0.0.1",
+            success=True,
+            stdout="ok",
+            stderr="",
+            exit_code=0,
+            duration_seconds=0.5,
+            parsed_findings=[],
         )
 
         with patch("spectra_tools.dispatch.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
@@ -334,7 +339,14 @@ class TestDispatchAndProcessResult:
         mock_persist.side_effect = OSError("disk full")
 
         mock_execute.return_value = ToolExecutionResult(
-            tool_id="nmap", target="10.0.0.1", success=True, stdout="ok", stderr="", exit_code=0, duration_seconds=0.1, parsed_findings=[]
+            tool_id="nmap",
+            target="10.0.0.1",
+            success=True,
+            stdout="ok",
+            stderr="",
+            exit_code=0,
+            duration_seconds=0.1,
+            parsed_findings=[],
         )
 
         # Should not raise

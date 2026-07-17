@@ -13,10 +13,7 @@ def api_assets_root() -> Path:
     for base in (pkg, *pkg.parents):
         if (base / "static").is_dir() and (base / "templates").is_dir():
             return base
-    msg = (
-        "Could not locate API assets root containing static/ and templates/ "
-        f"(started from {pkg})."
-    )
+    msg = f"Could not locate API assets root containing static/ and templates/ (started from {pkg})."
     raise RuntimeError(msg)
 
 

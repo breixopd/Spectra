@@ -189,7 +189,7 @@ async def test_check_rate_limit_within_plan():
         patch("spectra_billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=entitlement)),
         patch("spectra_billing.usage_tracker.telemetry"),
     ):
-            within, current, maximum = await tracker.check_rate_limit("user-1", "api_requests")
+        within, current, maximum = await tracker.check_rate_limit("user-1", "api_requests")
 
     assert within is True
     assert current == 50
@@ -224,7 +224,7 @@ async def test_check_rate_limit_over_plan():
         patch("spectra_billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=entitlement)),
         patch("spectra_billing.usage_tracker.telemetry"),
     ):
-            within, current, maximum = await tracker.check_rate_limit("user-1", "api_requests")
+        within, current, maximum = await tracker.check_rate_limit("user-1", "api_requests")
 
     assert within is False
     assert current == 100

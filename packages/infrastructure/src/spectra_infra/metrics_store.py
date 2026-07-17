@@ -21,6 +21,7 @@ class MetricsStore:
     async def start(self) -> None:
         """Start periodic snapshotting."""
         from spectra_common.tasks import create_safe_task
+
         self._task = create_safe_task(self._snapshot_loop(), name="metrics_snapshot")
         logger.info(
             "MetricsStore started (interval=%ds, max_history=%d)",

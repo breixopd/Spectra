@@ -53,7 +53,10 @@ async def test_db_connectivity_success(caplog):
         ctx.__aexit__ = AsyncMock(return_value=False)
         return ctx
 
-    with patch("spectra_api.bootstrap.lifespan.async_session_maker", side_effect=session_factory), caplog.at_level("INFO"):
+    with (
+        patch("spectra_api.bootstrap.lifespan.async_session_maker", side_effect=session_factory),
+        caplog.at_level("INFO"),
+    ):
         from spectra_api.bootstrap.lifespan import run_startup_checks
 
         await run_startup_checks()
@@ -107,7 +110,10 @@ async def test_missing_tables_warning(caplog):
         ctx.__aexit__ = AsyncMock(return_value=False)
         return ctx
 
-    with patch("spectra_api.bootstrap.lifespan.async_session_maker", side_effect=session_factory), caplog.at_level("WARNING"):
+    with (
+        patch("spectra_api.bootstrap.lifespan.async_session_maker", side_effect=session_factory),
+        caplog.at_level("WARNING"),
+    ):
         from spectra_api.bootstrap.lifespan import run_startup_checks
 
         await run_startup_checks()

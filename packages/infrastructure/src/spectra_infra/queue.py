@@ -129,7 +129,7 @@ class PostgresJobQueue:
                 )
             else:
                 # Exponential backoff: 2^retry_count seconds, capped at 300s
-                delay = min(2 ** job.retry_count, 300)
+                delay = min(2**job.retry_count, 300)
                 job.status = "pending"
                 job.next_retry_at = datetime.now(UTC) + timedelta(seconds=delay)
                 logger.info(

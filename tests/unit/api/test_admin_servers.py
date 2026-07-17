@@ -259,7 +259,9 @@ class TestDeployToNode:
 
         with (
             patch("spectra_api.api.routers.admin.servers.audit_log_event", new_callable=AsyncMock),
-            patch("spectra_scaling.infrastructure_services.deploy.ServerDeployer.deploy_to_server", new_callable=AsyncMock) as mock_deploy,
+            patch(
+                "spectra_scaling.infrastructure_services.deploy.ServerDeployer.deploy_to_server", new_callable=AsyncMock
+            ) as mock_deploy,
         ):
             mock_deploy.return_value = deploy_result
             response = await deploy_to_node(

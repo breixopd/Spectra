@@ -36,7 +36,10 @@ import Caddyfile.snippets
 		import rate_limit_public 30
 
 		reverse_proxy {$APP_UPSTREAM:spectra-app:5000} {
-			health_uri /api/health
+			# Use process liveness for proxy membership.  /api/health is an
+			# intentionally dependency-aware platform diagnostic and can be
+			# degraded while this API instance remains safe to serve.
+			health_uri /api/healthz
 			health_interval 10s
 			health_timeout 5s
 
