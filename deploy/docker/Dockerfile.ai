@@ -1,5 +1,5 @@
 # Spectra AI service — LLM/RAG runtime adapters.
-ARG PYTHON_BASE_IMAGE=python:3.11.13-slim-bookworm
+ARG PYTHON_BASE_IMAGE=python:3.11-slim-bookworm
 
 FROM ${PYTHON_BASE_IMAGE} AS builder
 COPY --from=ghcr.io/astral-sh/uv:0.11.17 /uv /usr/local/bin/uv

@@ -855,6 +855,8 @@ services:
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
     volumes:
       - ../../.env.test:/app/.env.test:ro
+      - ../../.env.test.example:/app/.env.test.example:ro
+      - ../../.github:/app/.github:ro
       - ../../packages:/app/packages:ro
       - ../../services:/app/services:ro
       - ../../tests:/app/tests:ro

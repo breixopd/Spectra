@@ -50,6 +50,7 @@ jobs:
     timeout-minutes: 75
     env:
       ENCRYPTION_KEY: test-encryption-key
+      ENV_FILE: ../../.env.test
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.0
         with:
@@ -61,6 +62,10 @@ jobs:
       - name: Validate TensorZero config
         run: |
           docker compose -f deploy/docker/compose.yaml --profile test run --rm --no-deps unit-test-runner "python -c \"import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')\""
+      - name: Prepare unit database
+        run: |
+          docker compose -f deploy/docker/compose.yaml --profile test run --rm unit-test-runner \
+            "alembic upgrade head"
       - name: Run unit tests with coverage in Docker
         run: |
           set +e

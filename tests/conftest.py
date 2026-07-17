@@ -239,6 +239,8 @@ def mock_database_for_unit_tests(request):
     mock_session.flush = AsyncMock()
     mock_session.refresh = AsyncMock()
     mock_session.add = MagicMock()  # sync method
+    mock_session.bind = MagicMock()
+    mock_session.bind.dialect.name = "postgresql"
 
     # AsyncSession.execute() returns a synchronous Result object. Returning a
     # bare AsyncMock here turns ``(await execute()).mappings().all()`` into an
@@ -261,7 +263,31 @@ def mock_database_for_unit_tests(request):
         async def __aexit__(self, *args):
             pass
 
-    with patch("spectra_persistence.database.async_session_maker", MockSessionMaker()):
+    mock_maker = MockSessionMaker()
+
+    # A number of production modules import ``async_session_maker`` by value.
+    # Patching only the attribute on ``spectra_persistence.database`` therefore
+    # leaves those aliases holding the real asyncpg-backed maker.  That is mostly
+    # invisible with SQLite/local runs, but it leaks real connections into the
+    # unit runner and binds them to a different pytest event loop.  Intercept the
+    # original maker instance at its call boundary so every imported alias gets
+    # the same isolated session while custom makers supplied by cache tests keep
+    # their normal behaviour.
+    import spectra_persistence.database as database
+
+    original_maker = database.async_session_maker
+    maker_type = type(original_maker)
+    original_call = maker_type.__call__
+
+    def unit_session_call(self, *args, **kwargs):
+        if self is original_maker:
+            return mock_maker
+        return original_call(self, *args, **kwargs)
+
+    with (
+        patch("spectra_persistence.database.async_session_maker", mock_maker),
+        patch.object(maker_type, "__call__", unit_session_call),
+    ):
         yield mock_session
 
 

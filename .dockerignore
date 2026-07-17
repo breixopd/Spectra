@@ -8,7 +8,6 @@ data/
 logs/
 .env
 .env.*
-tests/
 docs/
 *.md
 !README.md

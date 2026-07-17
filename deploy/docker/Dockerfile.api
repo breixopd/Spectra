@@ -1,7 +1,7 @@
 # Spectra API — FastAPI web application.
 # Built packages (first-party wheels) are installed via uv; the runtime image is
 # the resolved virtualenv plus repo-level runtime assets (plugins, migrations).
-ARG PYTHON_BASE_IMAGE=python:3.11.13-slim-bookworm
+ARG PYTHON_BASE_IMAGE=python:3.11-slim-bookworm
 ARG NODE_BASE_IMAGE=node:22.12.0-bookworm-slim
 
 # ── Frontend build: use the Node version required by the locked SPA toolchain ──
@@ -60,7 +60,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /etc/apt/trusted.gpg.d/postgresql.asc \
     && echo "deb http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
     && apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 postgresql-client-16 libcairo2 netcat-openbsd gosu \
+    libpq5 postgresql-client-16 libcairo2 libgnutls30 libssl3 openssl netcat-openbsd gosu \
     && apt-get purge -y --auto-remove gnupg \
     && rm -rf /var/lib/apt/lists/*
 

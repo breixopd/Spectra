@@ -74,7 +74,7 @@ usage() {
 }
 
 compose() {
-    docker compose -f "$COMPOSE_FILE" "$@"
+    ENV_FILE=../../.env.test docker compose --env-file "$PROJECT_ROOT/.env.test" -f "$COMPOSE_FILE" "$@"
 }
 
 build_runner() {
@@ -86,6 +86,7 @@ build_runner() {
 run_unit_runner() {
     # unit-test-runner only depends on db (compose pulls it up automatically).
     build_runner
+    compose --profile test run --rm unit-test-runner "alembic upgrade head"
     compose --profile test run --rm unit-test-runner "$*"
 }
 
