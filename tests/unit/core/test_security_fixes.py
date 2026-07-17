@@ -129,12 +129,15 @@ class TestPersistentTokenBlacklist:
         import spectra_auth.security as sec
 
         token = "test-token-123"
-        with patch.object(sec, "_persist_blacklist"):
-            with patch.object(sec, "_get_token_expiry", return_value=time.time() + 3600):
-                await sec.invalidate_token(token)
+        with (
+            patch.object(sec, "_persist_blacklist_entry", new_callable=AsyncMock) as mock_persist,
+            patch.object(sec, "_get_token_expiry", return_value=time.time() + 3600),
+        ):
+            await sec.invalidate_token(token)
         token_h = sec._token_hash(token)
         assert token_h in sec._blacklisted_tokens
         assert sec._blacklisted_tokens[token_h] > time.time()
+        mock_persist.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_is_token_blacklisted_checks_expiry(self):
@@ -154,24 +157,6 @@ class TestPersistentTokenBlacklist:
         token_h = sec._token_hash(token)
         sec._blacklisted_tokens[token_h] = time.time() + 3600
         assert await sec.is_token_blacklisted(token) is True
-
-    def test_persist_blacklist_calls_db(self):
-        import spectra_auth.security as sec
-
-        with patch.object(sec, "_persist_to_db") as mock_db:
-            # Provide a running loop so create_task works
-            import asyncio
-
-            loop = asyncio.new_event_loop()
-            try:
-                loop.run_until_complete(self._run_persist(sec, mock_db))
-            finally:
-                loop.close()
-
-    @staticmethod
-    async def _run_persist(sec, mock_db):
-        mock_db.return_value = None
-        sec._persist_blacklist()
 
     @pytest.mark.asyncio
     async def test_ensure_blacklist_loaded_awaits_load(self):
@@ -193,10 +178,35 @@ class TestPersistentTokenBlacklist:
     async def test_invalidate_all_user_tokens_persists(self):
         import spectra_auth.security as sec
 
-        with patch.object(sec, "_persist_blacklist") as mock_persist:
+        with patch.object(sec, "_persist_blacklist_entry", new_callable=AsyncMock) as mock_persist:
             await sec.invalidate_all_user_tokens("testuser")
-        mock_persist.assert_called_once()
+        mock_persist.assert_awaited_once()
         assert "testuser" in sec._user_token_blacklist
+
+    @pytest.mark.asyncio
+    async def test_blacklist_load_failure_fails_closed(self):
+        import spectra_auth.security as sec
+
+        sec._blacklist_ready.clear()
+        sec._blacklist_load_started = False
+        with patch.object(sec, "_load_from_db", new_callable=AsyncMock):
+            with pytest.raises(sec.JWTError, match="revocation state is unavailable"):
+                await sec._ensure_blacklist_loaded()
+
+    @pytest.mark.asyncio
+    async def test_failed_blacklist_persistence_does_not_report_a_revocation(self):
+        import spectra_auth.security as sec
+
+        token = sec.create_access_token({"sub": "user-with-failed-revocation"})
+        with patch.object(
+            sec,
+            "_persist_blacklist_entry",
+            new_callable=AsyncMock,
+            side_effect=sec.JWTError("database unavailable"),
+        ):
+            with pytest.raises(sec.JWTError, match="database unavailable"):
+                await sec.invalidate_token(token)
+        assert sec._token_hash(token) not in sec._blacklisted_tokens
 
 
 # ============================================================================
