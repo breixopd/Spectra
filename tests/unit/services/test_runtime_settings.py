@@ -145,7 +145,7 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         stack.enter_context(patch("spectra_ai_core.llm.close_global_llm_client", new_callable=AsyncMock))
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.engine", new=MagicMock(dispose=AsyncMock())))
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.asyncio.all_tasks", return_value=[task]))
-        stack.enter_context(patch("spectra_api.bootstrap.lifespan.asyncio.gather", new_callable=AsyncMock))
+        stack.enter_context(patch("spectra_api.bootstrap.lifespan.asyncio.gather", return_value=MagicMock()))
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.asyncio.wait_for", new_callable=AsyncMock))
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.asyncio.create_task", return_value=task))
         stack.enter_context(patch("spectra_api.bootstrap.lifespan.async_session_maker", return_value=FakeSessionContext()))
