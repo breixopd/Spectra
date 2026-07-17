@@ -342,6 +342,15 @@ async def list_available_tools(
     return ToolListResponse(tools=summaries, total=len(summaries))
 
 
+@router.get("/for-ai", response_model=list[dict])
+async def get_tools_for_ai(
+    registry: ToolRegistry = Depends(get_tool_registry),
+    _current_user: User = Depends(get_current_active_user),
+):
+    """Return available tools formatted for AI-agent prompts."""
+    return registry.list_tools_for_ai()
+
+
 @router.get("/{tool_id}", response_model=ToolDetailResponse)
 async def get_tool(
     tool_id: str,
@@ -646,19 +655,6 @@ async def remove_tool(
     )
 
     return ToolRemoveResponse(success=True, message=f"Tool '{tool_id}' removed; golden image rebuild queued")
-
-
-@router.get("/for-ai", response_model=list[dict])
-async def get_tools_for_ai(
-    registry: ToolRegistry = Depends(get_tool_registry),
-    _current_user: User = Depends(get_current_active_user),
-):
-    """
-    Get all available tools formatted for AI agents.
-
-    Returns simplified tool information suitable for LLM prompts.
-    """
-    return registry.list_tools_for_ai()
 
 
 @router.post("/{tool_id}/test", response_model=TestExecutionResponse)
