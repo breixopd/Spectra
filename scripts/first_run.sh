@@ -8,6 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 COMPOSE_FILE="${PROJECT_ROOT}/deploy/docker/compose.yaml"
 ENV_FILE="${PROJECT_ROOT}/.env"
+export COMPOSE_PROFILES="${COMPOSE_PROFILES:-app}"
 
 # Colors
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
@@ -203,7 +204,7 @@ start_all() {
     log "[5/5] Starting all services..."
 
     # Re-read .env (now has Garage keys)
-    docker compose -f "${COMPOSE_FILE}" up -d
+    docker compose -f "${COMPOSE_FILE}" --profile app up -d
 
     log "Waiting for application to be healthy..."
     local retries=30
@@ -215,7 +216,9 @@ start_all() {
         retries=$((retries - 1))
         sleep 3
     done
-    warn "Application health check timed out — check docker logs"
+    err "Application health check timed out — check docker logs"
+    docker compose -f "${COMPOSE_FILE}" --profile app logs --tail=80 app >&2 || true
+    exit 1
 }
 
 # ── Summary ──

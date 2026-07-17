@@ -19,6 +19,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-spectra-full-matrix}"
 cd "$ROOT"
 
 ensure_env_test() {
@@ -92,7 +93,7 @@ run_api_e2e() {
   GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}" \
     GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}" \
     GARAGE_PRINT_CREDENTIALS=0 \
-    bash "${ROOT}/docker/garage-init.sh"
+    bash "${ROOT}/deploy/docker/garage-init.sh"
 
   echo ">>> [full-test-matrix] waiting for app health on :5000"
   _ready=""

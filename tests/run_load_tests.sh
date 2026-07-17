@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
 COMPOSE_FILE="${PROJECT_DIR}/deploy/docker/compose.yaml"
 KEEP_STACK="${KEEP_STACK:-0}"
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-spectra-load-tests}"
 # Enable app + test profiles for every compose invocation (load-test-runner is profile `test`;
 # without this, `compose run load-test-runner` can miss the service or join the wrong project context).
 export COMPOSE_PROFILES="${COMPOSE_PROFILES:-app,test}"
@@ -70,7 +71,7 @@ bootstrap_garage() {
     GARAGE_CONTAINER="${garage_container}" \
     GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY}" \
     GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY}" \
-    bash "${PROJECT_DIR}/docker/garage-init.sh"
+    bash "${PROJECT_DIR}/deploy/docker/garage-init.sh"
 }
 
 MODE="${1:-all}"

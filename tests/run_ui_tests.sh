@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 COMPOSE_FILE="deploy/docker/compose.yaml"
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-spectra-ui-tests}"
 export GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}"
 export GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
 
@@ -36,7 +37,7 @@ GARAGE_CONTAINER="$(docker compose -f "$COMPOSE_FILE" ps -q garage)"
 GARAGE_CONTAINER="$GARAGE_CONTAINER" \
 GARAGE_ACCESS_KEY="$GARAGE_ACCESS_KEY" \
 GARAGE_SECRET_KEY="$GARAGE_SECRET_KEY" \
-bash ./docker/garage-init.sh
+bash ./deploy/docker/garage-init.sh
 
 docker compose -f "$COMPOSE_FILE" --profile app build app
 docker compose -f "$COMPOSE_FILE" --profile app up -d --force-recreate app
@@ -51,6 +52,12 @@ for i in $(seq 1 30); do
     sleep 2
 done
 
+if ! docker compose -f "$COMPOSE_FILE" exec -T app python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/api/health', timeout=5)" > /dev/null 2>&1; then
+    echo "ERROR: app did not become ready" >&2
+    docker compose -f "$COMPOSE_FILE" logs --tail=80 app >&2 || true
+    exit 1
+fi
+
 # Run setup if needed
 echo "Setting up test user..."
 docker compose -f "$COMPOSE_FILE" exec -T app python3 -c "import json, sys, urllib.error, urllib.request; req = urllib.request.Request('http://127.0.0.1:5000/api/v1/auth/setup', data=json.dumps({'user': {'username': 'admin', 'email': 'admin@test.com', 'password': 'TestPassword123!'}, 'provider_profiles': {'default': {'provider': 'mock', 'model': 'mock'}}, 'provider_routing': {'default': 'default'}, 'provider_fallbacks': {'default': []}}).encode(), headers={'Content-Type': 'application/json'}); 
@@ -62,7 +69,7 @@ except urllib.error.HTTPError as exc:
         print('Already set up; continuing.')
         sys.exit(0)
     raise" \
-    || echo "(setup step failed; continuing with existing state)"
+    || { echo "ERROR: test-user setup failed" >&2; exit 1; }
 
 # Run Playwright tests
 echo "Running UI tests..."

@@ -23,6 +23,7 @@ LOG_DIR="$PROJECT_DIR/logs"
 LOG_FILE="$LOG_DIR/deploy.log"
 BACKUP_DIR="$PROJECT_DIR/data/backups"
 COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_DIR/deploy/docker/compose.yaml}"
+export COMPOSE_PROFILES="${COMPOSE_PROFILES:-app}"
 HEALTH_URL="${HEALTH_URL:-http://localhost:80/api/v1/health?scope=public}"
 VERSION="${1:-latest}"
 DEPLOY_WEBHOOK_URL="${DEPLOY_WEBHOOK_URL:-}"
@@ -139,7 +140,7 @@ rollback() {
 
     # Restart old containers
     log "Restarting previous deployment..."
-    VERSION="${OLD_VERSION:-latest}" docker compose -f "$COMPOSE_FILE" up -d --remove-orphans 2>/dev/null || true
+    VERSION="${OLD_VERSION:-latest}" docker compose -f "$COMPOSE_FILE" --profile app up -d --remove-orphans 2>/dev/null || true
 
     # Restore DB if backup exists and migration may have run
     if [ -n "$DB_BACKUP_FILE" ] && [ -f "$DB_BACKUP_FILE" ]; then
@@ -208,11 +209,11 @@ deploy() {
 
     # Pull new images
     log "Pulling images for version: $VERSION"
-    VERSION="$VERSION" docker compose -f "$COMPOSE_FILE" pull
+    VERSION="$VERSION" docker compose -f "$COMPOSE_FILE" --profile app pull
 
     # In-place restart: pull new images and recreate containers
     log "Starting new containers..."
-    VERSION="$VERSION" docker compose -f "$COMPOSE_FILE" up -d --remove-orphans
+    VERSION="$VERSION" docker compose -f "$COMPOSE_FILE" --profile app up -d --remove-orphans
 
     # Post-deploy health check with exponential backoff
     log "Running post-deploy health check..."

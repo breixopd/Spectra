@@ -14,6 +14,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 COMPOSE_BASE="deploy/docker/compose.yaml"
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-spectra-live-tests}"
 
 cd "$PROJECT_DIR"
 
@@ -73,7 +74,7 @@ bootstrap_garage() {
     GARAGE_CONTAINER="$garage_container" \
     GARAGE_ACCESS_KEY="$OPS_GARAGE_ACCESS_KEY" \
     GARAGE_SECRET_KEY="$OPS_GARAGE_SECRET_KEY" \
-    bash ./docker/garage-init.sh
+    bash ./deploy/docker/garage-init.sh
 }
 
 wait_for_tools_worker_ready() {
