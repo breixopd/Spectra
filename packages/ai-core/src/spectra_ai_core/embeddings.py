@@ -69,6 +69,33 @@ class EmbeddingService:
         """Return the embedding dimension if known."""
         return self._embedding_dim
 
+    @property
+    def active_model_name(self) -> str:
+        """Return the model identity that produced (or will produce) vectors.
+
+        The configured model can differ from the local fallback.  RAG uses this
+        identity to prevent comparisons across incompatible embedding spaces.
+        """
+        if self._use_local and self._local_model_name:
+            return self._local_model_name
+        return self._openai_model or self.model_name
+
+    def _record_embedding_dimension(self, vectors: list[list[float]]) -> None:
+        """Pin an initialized backend to one non-empty vector dimension."""
+        dimensions = {len(vector) for vector in vectors if vector}
+        if not dimensions:
+            return
+        if len(dimensions) != 1:
+            raise ValueError("Embedding backend returned vectors with inconsistent dimensions")
+
+        dimension = dimensions.pop()
+        if self._embedding_dim is not None and self._embedding_dim != dimension:
+            raise ValueError(
+                "Embedding backend changed dimensions "
+                f"from {self._embedding_dim} to {dimension}; reinitialize it before use"
+            )
+        self._embedding_dim = dimension
+
     async def _ensure_local_loaded(self) -> None:
         """Lazy-load the local fastembed model on first use."""
         if self._local_embedder is not None:
@@ -164,7 +191,9 @@ class EmbeddingService:
             await self._ensure_local_loaded()
             try:
                 raw = await asyncio.to_thread(lambda: list(self._local_embedder.embed(texts)))  # type: ignore[union-attr]
-                return [list(v) for v in raw]
+                vectors = [list(v) for v in raw]
+                self._record_embedding_dimension(vectors)
+                return vectors
             except (OSError, RuntimeError) as e:
                 logger.warning("Local embedding failed: %s", e)
                 return [[] for _ in texts]
@@ -176,7 +205,9 @@ class EmbeddingService:
                     input=texts,
                     encoding_format="float",
                 )
-                return [item.embedding for item in resp.data]
+                vectors = [item.embedding for item in resp.data]
+                self._record_embedding_dimension(vectors)
+                return vectors
             except (OSError, RuntimeError) as e:
                 logger.warning("API embedding failed: %s", e)
                 return [[] for _ in texts]

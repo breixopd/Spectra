@@ -12,6 +12,7 @@ def rag_service():
     with patch("spectra_ai_core.rag.EmbeddingService") as MockEmbed:
         mock_embed = MockEmbed.return_value
         mock_embed.is_functional = False
+        mock_embed.active_model_name = "BAAI/bge-small-en-v1.5"
         mock_embed.embed_one = AsyncMock(return_value=[0.1] * 384)
         mock_embed.embed = AsyncMock(return_value=[[0.1] * 384])
         svc = RAGService()
@@ -23,6 +24,7 @@ def functional_rag():
     with patch("spectra_ai_core.rag.EmbeddingService") as MockEmbed:
         mock_embed = MockEmbed.return_value
         mock_embed.is_functional = True
+        mock_embed.active_model_name = "BAAI/bge-small-en-v1.5"
         mock_embed.embed_one = AsyncMock(return_value=[0.5] * 384)
         mock_embed.embed = AsyncMock(return_value=[[0.5] * 384])
         svc = RAGService()
@@ -63,6 +65,25 @@ class TestRAGServiceInit:
     def test_default_config_used(self, rag_service):
         assert rag_service.config.embedding_dim == 0
 
+    @pytest.mark.asyncio
+    async def test_initialize_verifies_migrated_schema_without_runtime_ddl(self, functional_rag):
+        schema_result = MagicMock()
+        schema_result.scalar.return_value = sorted(functional_rag._REQUIRED_COLUMNS)
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=schema_result)
+        session_maker = AsyncMock()
+        session_maker.__aenter__ = AsyncMock(return_value=session)
+        session_maker.__aexit__ = AsyncMock(return_value=False)
+        functional_rag.embeddings._load_model = AsyncMock()
+
+        with patch("spectra_ai_core.rag.get_async_session_maker", return_value=lambda: session_maker):
+            assert await functional_rag.initialize() is True
+
+        sql = "\n".join(str(call.args[0]) for call in session.execute.call_args_list).upper()
+        assert "RAG_DOCUMENTS" in sql
+        assert "CREATE " not in sql
+        assert "ALTER " not in sql
+
 
 class TestRAGDocument:
     def test_document_creation(self, sample_doc):
@@ -83,7 +104,9 @@ class TestRAGIndexDocument:
     @pytest.mark.asyncio
     async def test_index_document_calls_embed(self, functional_rag, sample_doc):
         mock_session = AsyncMock()
-        mock_session.execute = AsyncMock()
+        existing_result = MagicMock()
+        existing_result.mappings.return_value.first.return_value = None
+        mock_session.execute = AsyncMock(return_value=existing_result)
         mock_session.commit = AsyncMock()
         mock_session_maker = AsyncMock()
         mock_session_maker.__aenter__ = AsyncMock(return_value=mock_session)
@@ -134,15 +157,15 @@ class TestRAGBatchIndex:
         assert result == 0
 
     @pytest.mark.asyncio
-    async def test_batch_falls_back_to_sequential(self, rag_service):
+    async def test_batch_falls_back_to_sequential(self, functional_rag):
         """When batch embedding fails, index_batch falls back to index_document."""
         docs = [
             Document(id="d1", content="test1", doc_type="cve"),
             Document(id="d2", content="test2", doc_type="finding"),
         ]
-        rag_service._table_ready = True
-        rag_service.embeddings.embed = AsyncMock(side_effect=RuntimeError("batch fail"))
-        rag_service.index_document = AsyncMock(return_value=True)
+        functional_rag._table_ready = True
+        functional_rag.embeddings.embed = AsyncMock(side_effect=RuntimeError("batch fail"))
+        functional_rag.index_document = AsyncMock(return_value=True)
 
         mock_session = AsyncMock()
         mock_session.execute = AsyncMock(return_value=AsyncMock(mappings=lambda: AsyncMock(all=list)))
@@ -151,9 +174,9 @@ class TestRAGBatchIndex:
         mock_session_maker.__aexit__ = AsyncMock(return_value=False)
 
         with patch("spectra_ai_core.rag.get_async_session_maker", return_value=lambda: mock_session_maker):
-            result = await rag_service.index_batch(docs)
+            result = await functional_rag.index_batch(docs)
         assert result == 2
-        assert rag_service.index_document.await_count == 2
+        assert functional_rag.index_document.await_count == 2
 
 
 class TestSearchResult:

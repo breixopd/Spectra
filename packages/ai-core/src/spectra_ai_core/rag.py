@@ -14,7 +14,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import text
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import SQLAlchemyError
 
 from spectra_ai_core.db import get_async_session_maker
 from spectra_ai_core.embeddings import EmbeddingService
@@ -95,6 +95,27 @@ class RAGService:
         "doc_type": "doc_type",
     }
     _SAFE_COLUMNS: frozenset[str] = frozenset(FILTER_COLUMNS.values())
+    _REQUIRED_COLUMNS: frozenset[str] = frozenset(
+        {
+            "id",
+            "content",
+            "doc_type",
+            "cve_id",
+            "severity",
+            "target",
+            "session_id",
+            "metadata",
+            "embedding",
+            "embedding_model",
+            "embedding_dimension",
+            "content_hash",
+            "created_at",
+        }
+    )
+    _INDEXED_PROFILES: dict[tuple[str, int], str] = {
+        ("BAAI/bge-small-en-v1.5", 384): "embedding::vector(384)",
+        ("text-embedding-3-small", 1536): "embedding::vector(1536)",
+    }
 
     def __init__(self, config: RAGConfig | None = None):
         self.config = config or RAGConfig()
@@ -108,64 +129,61 @@ class RAGService:
         return self.embeddings.is_functional
 
     async def initialize(self) -> bool:
-        """Ensure RAG storage table exists."""
+        """Verify the migration-owned RAG schema and load the embedding backend."""
         try:
-            dim = self.config.embedding_dim
-            if dim == 0:
-                await self.embeddings._load_model()
-                dim = self.embeddings.embedding_dim or 384
-                self.config.embedding_dim = dim
-            dim = _validate_vector_dimension(dim)
             async with get_async_session_maker()() as session:
-                await session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-                await session.execute(
-                    text(f"""
-                    CREATE TABLE IF NOT EXISTS rag_documents (
-                        id TEXT PRIMARY KEY,
-                        content TEXT NOT NULL,
-                        doc_type TEXT NOT NULL,
-                        cve_id TEXT NULL,
-                        severity TEXT NULL,
-                        target TEXT NULL,
-                        session_id TEXT NULL,
-                        metadata JSONB NOT NULL DEFAULT '{{}}'::jsonb,
-                        embedding vector({dim}) NOT NULL,
-                        content_hash TEXT NULL,
-                        created_at TIMESTAMPTZ DEFAULT now()
-                    )
-                """)
-                )
-                await session.execute(
-                    text("CREATE INDEX IF NOT EXISTS idx_rag_documents_doc_type ON rag_documents (doc_type)")
-                )
-                await session.execute(
+                result = await session.execute(
                     text(
-                        "CREATE INDEX IF NOT EXISTS idx_rag_embedding_hnsw "
-                        "ON rag_documents USING hnsw (embedding vector_cosine_ops) "
-                        "WITH (m = 16, ef_construction = 100)"
+                        """
+                        SELECT array_agg(column_name ORDER BY column_name)
+                        FROM information_schema.columns
+                        WHERE table_schema = current_schema()
+                          AND table_name = 'rag_documents'
+                        """
                     )
                 )
-                await session.commit()
+                columns = set(result.scalar() or [])
+                missing_columns = self._REQUIRED_COLUMNS - columns
+                if missing_columns:
+                    missing = ", ".join(sorted(missing_columns))
+                    raise RuntimeError(f"RAG schema is not migrated; missing columns: {missing}")
 
-            self._table_ready = True
-            # Initialize embedding service (async load)
             await self.embeddings._load_model()
+            self._table_ready = True
             if self.is_functional:
-                model_info = self.embeddings.model_name
-                logger.info("RAG initialized: pgvector + %s embeddings", model_info)
+                logger.info("RAG initialized with %s embeddings", self.embeddings.active_model_name)
             else:
-                logger.warning("RAG table ready but embedding API not configured  semantic search disabled")
+                logger.warning("RAG schema is ready but embeddings are unavailable; semantic search is disabled")
             return True
-        except (OSError, RuntimeError, OperationalError) as e:
-            logger.error("Failed to initialize Postgres RAG table: %s", e)
+        except (OSError, RuntimeError, SQLAlchemyError) as e:
+            logger.error("Failed to verify Postgres RAG schema: %s", e)
             return False
+
+    async def _ensure_initialized(self) -> bool:
+        """Initialize once and propagate failure to the public operation."""
+        return self._table_ready or await self.initialize()
+
+    def _embedding_profile(self, embedding: list[float]) -> tuple[str, int]:
+        """Return a validated model/dimension pair for one vector."""
+        dimension = _validate_vector_dimension(len(embedding))
+        configured_dimension = self.config.embedding_dim
+        if configured_dimension and dimension != _validate_vector_dimension(configured_dimension):
+            raise ValueError(
+                f"Embedding dimension {dimension} does not match configured RAG dimension {configured_dimension}"
+            )
+        return self.embeddings.active_model_name, dimension
+
+    @classmethod
+    def _vector_expression(cls, profile: tuple[str, int]) -> str:
+        """Use a profile-specific HNSW expression only where migration provides one."""
+        return cls._INDEXED_PROFILES.get(profile, "embedding")
 
     MAX_DOCUMENT_SIZE = 500_000  # 500 KB per document
 
     async def index_document(self, doc: Document) -> bool:
         """Index a document with its embedding."""
-        if not self._table_ready:
-            await self.initialize()
+        if not await self._ensure_initialized():
+            return False
 
         if len(doc.content) > self.MAX_DOCUMENT_SIZE:
             logger.warning(
@@ -178,41 +196,55 @@ class RAGService:
 
         if not self.is_functional:
             logger.warning(
-                "Embedding API not configured  semantic search will not work. "
-                "Storing document %s without usable embeddings.",
+                "Embedding backend is unavailable; cannot index document %s.",
                 doc.id,
             )
+            return False
 
         try:
             content_hash = hashlib.sha256(doc.content.encode()).hexdigest()
 
-            # Check if document exists with same content hash
+            embedding = await self.embeddings.embed_one(doc.content)
+            profile = self._embedding_profile(embedding)
+            embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
+
             async with get_async_session_maker()() as session:
                 existing = await session.execute(
-                    text("SELECT content_hash FROM rag_documents WHERE id = :id"),
+                    text(
+                        """
+                        SELECT content_hash, embedding_model, embedding_dimension
+                        FROM rag_documents
+                        WHERE id = :id
+                        """
+                    ),
                     {"id": doc.id},
                 )
-                existing_hash = existing.scalar()
-                if isawaitable(existing_hash):
-                    existing_hash = await existing_hash
-                if existing_hash == content_hash:
-                    return True  # Content unchanged, skip re-embedding
+                existing_row = existing.mappings().first()
+                if isawaitable(existing_row):
+                    existing_row = await existing_row
+                if existing_row and (
+                    existing_row["content_hash"],
+                    existing_row["embedding_model"],
+                    existing_row["embedding_dimension"],
+                ) == (content_hash, profile[0], profile[1]):
+                    return True
 
-            embedding = await self.embeddings.embed_one(doc.content)
-            embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
-            async with get_async_session_maker()() as session:
                 await session.execute(
                     text("""
                         INSERT INTO rag_documents
-                            (id, content, doc_type, cve_id, severity, target, session_id, metadata, embedding, content_hash)
+                            (id, content, doc_type, cve_id, severity, target, session_id, metadata,
+                             embedding, embedding_model, embedding_dimension, content_hash)
                         VALUES
                             (:id, :content, :doc_type, :cve_id, :severity, :target, :session_id,
-                             CAST(:metadata AS JSONB), CAST(:embedding AS vector), :content_hash)
+                             CAST(:metadata AS JSONB), CAST(:embedding AS vector), :embedding_model,
+                             :embedding_dimension, :content_hash)
                         ON CONFLICT (id) DO UPDATE SET
                             content = EXCLUDED.content, doc_type = EXCLUDED.doc_type,
                             cve_id = EXCLUDED.cve_id, severity = EXCLUDED.severity,
                             target = EXCLUDED.target, session_id = EXCLUDED.session_id,
                             metadata = EXCLUDED.metadata, embedding = EXCLUDED.embedding,
+                            embedding_model = EXCLUDED.embedding_model,
+                            embedding_dimension = EXCLUDED.embedding_dimension,
                             content_hash = EXCLUDED.content_hash
                     """),
                     {
@@ -225,12 +257,14 @@ class RAGService:
                         "session_id": doc.session_id,
                         "metadata": json.dumps(doc.metadata),
                         "embedding": embedding_str,
+                        "embedding_model": profile[0],
+                        "embedding_dimension": profile[1],
                         "content_hash": content_hash,
                     },
                 )
                 await session.commit()
             return True
-        except (OSError, RuntimeError, ValueError) as e:
+        except (OSError, RuntimeError, ValueError, SQLAlchemyError) as e:
             logger.error("Failed to index document %s in Postgres RAG: %s", doc.id, e)
             return False
 
@@ -238,8 +272,11 @@ class RAGService:
         """Index multiple documents with batch embedding."""
         if not docs:
             return 0
-        if not self._table_ready:
-            await self.initialize()
+        if not await self._ensure_initialized():
+            return 0
+        if not self.is_functional:
+            logger.warning("Embedding backend is unavailable; cannot index a batch of %d documents", len(docs))
+            return 0
 
         # Compute content hashes and filter out unchanged documents
         doc_hashes = {}
@@ -255,19 +292,35 @@ class RAGService:
                 rows = (
                     (
                         await session.execute(
-                            text("SELECT id, content_hash FROM rag_documents WHERE id = ANY(:ids)"),
+                            text(
+                                """
+                                SELECT id, content_hash, embedding_model, embedding_dimension
+                                FROM rag_documents
+                                WHERE id = ANY(:ids)
+                                """
+                            ),
                             {"ids": doc_ids},
                         )
                     )
                     .mappings()
                     .all()
                 )
-                existing_hashes = {r["id"]: r["content_hash"] for r in rows}
-        except (OSError, RuntimeError, OperationalError):
-            existing_hashes = {}
+                existing_hashes = {
+                    row["id"]: (row["content_hash"], row["embedding_model"], row["embedding_dimension"])
+                    for row in rows
+                }
+        except (OSError, RuntimeError, SQLAlchemyError):
+            existing_hashes: dict[str, tuple[str | None, str | None, int | None]] = {}
 
-        # Filter to only docs that changed
-        docs_to_index = [doc for doc in docs if doc_hashes.get(doc.id) != existing_hashes.get(doc.id)]
+        dimension_hint = self.embeddings.embedding_dim
+        profile_hint = (
+            (self.embeddings.active_model_name, dimension_hint) if dimension_hint is not None else None
+        )
+        docs_to_index = [
+            doc
+            for doc in docs
+            if (doc_hashes.get(doc.id), *(profile_hint or (None, None))) != existing_hashes.get(doc.id)
+        ]
         if not docs_to_index:
             return len(docs)  # All unchanged
 
@@ -293,19 +346,23 @@ class RAGService:
                 for doc, embedding in zip(docs_to_index, embeddings, strict=True):
                     content_hash = doc_hashes[doc.id]
                     embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
+                    profile = self._embedding_profile(embedding)
                     await session.execute(
                         text("""
                             INSERT INTO rag_documents
                                 (id, content, doc_type, cve_id, severity, target, session_id,
-                                 metadata, embedding, content_hash)
+                                 metadata, embedding, embedding_model, embedding_dimension, content_hash)
                             VALUES
                                 (:id, :content, :doc_type, :cve_id, :severity, :target, :session_id,
-                                 CAST(:metadata AS JSONB), CAST(:embedding AS vector), :content_hash)
+                                 CAST(:metadata AS JSONB), CAST(:embedding AS vector), :embedding_model,
+                                 :embedding_dimension, :content_hash)
                             ON CONFLICT (id) DO UPDATE SET
                                 content = EXCLUDED.content, doc_type = EXCLUDED.doc_type,
                                 cve_id = EXCLUDED.cve_id, severity = EXCLUDED.severity,
                                 target = EXCLUDED.target, session_id = EXCLUDED.session_id,
                                 metadata = EXCLUDED.metadata, embedding = EXCLUDED.embedding,
+                                embedding_model = EXCLUDED.embedding_model,
+                                embedding_dimension = EXCLUDED.embedding_dimension,
                                 content_hash = EXCLUDED.content_hash
                         """),
                         {
@@ -320,12 +377,14 @@ class RAGService:
                             "session_id": doc.session_id,
                             "metadata": json.dumps(doc.metadata),
                             "embedding": embedding_str,
+                            "embedding_model": profile[0],
+                            "embedding_dimension": profile[1],
                             "content_hash": content_hash,
                         },
                     )
                     success += 1
                 await session.commit()
-        except (OSError, RuntimeError, ValueError) as e:
+        except (OSError, RuntimeError, ValueError, SQLAlchemyError) as e:
             logger.error("Batch insert failed: %s", e)
 
         # Count unchanged docs as success too
@@ -342,8 +401,8 @@ class RAGService:
         exclude_session_id: str | None = None,
     ) -> list[SearchResult]:
         """Search for similar documents using cosine similarity."""
-        if not self._table_ready:
-            await self.initialize()
+        if not await self._ensure_initialized():
+            return []
 
         if not self.is_functional:
             logger.warning("RAG search skipped: embedding API not configured")
@@ -355,10 +414,19 @@ class RAGService:
 
         try:
             query_embedding = await self.embeddings.embed_one(query)
+            profile = self._embedding_profile(query_embedding)
+            vector_expression = self._vector_expression(profile)
+            vector_type = f"vector({profile[1]})" if vector_expression != "embedding" else "vector"
 
             # Build SQL with pre-filtering to avoid fetching ALL documents
-            where_clauses: list[str] = []
-            params: dict[str, Any] = {}
+            where_clauses: list[str] = [
+                "embedding_model = :rag_embedding_model",
+                "embedding_dimension = :rag_embedding_dimension",
+            ]
+            params: dict[str, Any] = {
+                "rag_embedding_model": profile[0],
+                "rag_embedding_dimension": profile[1],
+            }
 
             effective_types = doc_types if doc_types else None
             if effective_types:
@@ -390,23 +458,25 @@ class RAGService:
 
             where_sql = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
 
-            # Native pgvector search — O(log N) with HNSW index
+            # Native pgvector search. Built-in profiles use a migration-owned
+            # HNSW expression index; custom profiles preserve exact recall.
             embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
             extra_where = "AND" if where_clauses else "WHERE"
             sql = f"""
                 SELECT id, content, doc_type, cve_id, severity, target, session_id, metadata,
-                       1 - (embedding <=> CAST(:q_emb AS vector)) AS similarity
+                       1 - ({vector_expression} <=> CAST(:q_emb AS {vector_type})) AS similarity
                 FROM rag_documents
                 {where_sql}
                 {extra_where} embedding IS NOT NULL
-                ORDER BY embedding <=> CAST(:q_emb AS vector)
+                ORDER BY {vector_expression} <=> CAST(:q_emb AS {vector_type})
                 LIMIT :sql_limit
             """
             params["q_emb"] = embedding_str
             params["sql_limit"] = sql_limit
 
             async with get_async_session_maker()() as session:
-                await session.execute(text("SET hnsw.ef_search = 60"))
+                if vector_expression != "embedding":
+                    await session.execute(text("SET LOCAL hnsw.ef_search = 60"))
                 rows = (await session.execute(text(sql), params)).mappings().all()
 
             results: list[SearchResult] = []
@@ -432,14 +502,14 @@ class RAGService:
                 if len(results) >= want:
                     break
             return results
-        except (OSError, RuntimeError, ValueError) as e:
+        except (OSError, RuntimeError, ValueError, SQLAlchemyError) as e:
             logger.error("Postgres RAG search failed: %s", e)
             return []
 
     async def get_document(self, doc_id: str) -> Document | None:
         """Retrieve a document by ID."""
-        if not self._table_ready:
-            await self.initialize()
+        if not await self._ensure_initialized():
+            return None
 
         try:
             async with get_async_session_maker()() as session:
@@ -479,33 +549,33 @@ class RAGService:
                 session_id=row.get("session_id"),
                 metadata=metadata or {},
             )
-        except (OSError, RuntimeError) as e:
+        except (OSError, RuntimeError, SQLAlchemyError) as e:
             logger.error("Failed to get document %s from Postgres RAG: %s", doc_id, e)
             return None
 
     async def delete_document(self, doc_id: str) -> bool:
         """Delete a document from the index."""
-        if not self._table_ready:
-            await self.initialize()
+        if not await self._ensure_initialized():
+            return False
         try:
             async with get_async_session_maker()() as session:
                 result = await session.execute(text("DELETE FROM rag_documents WHERE id = :id"), {"id": doc_id})
                 deleted = result.rowcount > 0  # type: ignore[union-attr]
                 await session.commit()
                 return deleted
-        except (OSError, RuntimeError) as e:
+        except (OSError, RuntimeError, SQLAlchemyError) as e:
             logger.error("Failed to delete document %s from Postgres RAG: %s", doc_id, e)
             return False
 
     async def get_stats(self) -> dict[str, Any]:
         """Get basic index statistics."""
-        if not self._table_ready:
-            await self.initialize()
+        if not await self._ensure_initialized():
+            return {"num_docs": 0, "backend": "postgres", "error": "RAG schema is unavailable"}
         try:
             async with get_async_session_maker()() as session:
                 count = await session.execute(text("SELECT COUNT(*) FROM rag_documents"))
                 return {"num_docs": count.scalar() or 0, "backend": "postgres"}
-        except (OSError, RuntimeError) as e:
+        except (OSError, RuntimeError, SQLAlchemyError) as e:
             logger.error("Failed to get Postgres RAG stats: %s", e)
             return {"num_docs": 0, "backend": "postgres", "error": str(e)}
 

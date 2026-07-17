@@ -36,6 +36,8 @@ class TestEmbeddingSingleText:
         assert isinstance(result, list)
         assert all(isinstance(v, float) for v in result)
         assert len(result) == 3
+        assert service.embedding_dim == 3
+        assert service.active_model_name == "test-model"
 
     @pytest.mark.asyncio
     async def test_embed_calls_openai_with_correct_args(self, service):
@@ -86,6 +88,14 @@ class TestEmbeddingBatch:
         assert len(result) == 2
         assert all(isinstance(row, list) for row in result)
         assert all(isinstance(v, float) for v in result[0])
+
+    def test_dimension_contract_rejects_mixed_or_changed_vectors(self, service):
+        with pytest.raises(ValueError, match="inconsistent dimensions"):
+            service._record_embedding_dimension([[0.1], [0.2, 0.3]])
+
+        service._record_embedding_dimension([[0.1, 0.2]])
+        with pytest.raises(ValueError, match="changed dimensions"):
+            service._record_embedding_dimension([[0.1]])
 
 
 class TestModelLoading:
