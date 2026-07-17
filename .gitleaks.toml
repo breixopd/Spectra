@@ -1,0 +1,6 @@
+# The bundled xterm.js distribution is third-party code.  It is scanned for
+# dependency integrity separately; its minified, non-first-party text contains
+# a high-entropy string that is not a project credential.
+[allowlist]
+description = "Third-party vendored browser bundle"
+paths = ['''^services/api/static/vendor/js/xterm\\.js$''']

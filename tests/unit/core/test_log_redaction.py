@@ -42,9 +42,9 @@ class TestSensitiveFieldFilter:
         assert "s3cretValue" not in rec.msg
 
     def test_redacts_token(self):
-        rec = self._make_record("tREDACTED_SECRET_60f3b74c18ae
+        rec = self._make_record("token=unit-test-token")
         self.f.filter(rec)
-        assert "abc123def456" not in rec.msg
+        assert "unit-test-token" not in rec.msg
         assert "***REDACTED***" in rec.msg
 
     def test_redacts_api_key(self):
@@ -58,9 +58,9 @@ class TestSensitiveFieldFilter:
         assert "sk-12345" not in rec.msg
 
     def test_redacts_bearer_token(self):
-        rec = self._make_record("Bearer eyJhbGciOiJub25lIn0.payload.sig")
+        rec = self._make_record("Bearer TEST.JWT.PAYLOAD")
         self.f.filter(rec)
-        assert "eyJhbGciOiJub25lIn0" not in rec.msg
+        assert "TEST.JWT.PAYLOAD" not in rec.msg
         assert "Bearer" in rec.msg
         assert "***REDACTED***" in rec.msg
 

@@ -28,8 +28,8 @@ const crypto = require('crypto');
 const app = express();
 app.use(express.json());
 
-const SECRET = 'spectra-weak-jwt-secret-2024';
-const AREDACTED_SECRET_f3f925d7e3b6
+const SECRET = 'weak-demo-secret';
+const API_KEY = 'test-api-key';
 
 // Security headers (looks hardened)
 app.use((req, res, next) => {

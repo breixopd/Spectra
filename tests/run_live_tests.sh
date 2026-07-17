@@ -57,8 +57,8 @@ echo ""
 export OPS_DB_NAME="spectra_test"
 export OPS_DB_USER="spectra"
 export OPS_GARAGE_ADMIN_URL="http://127.0.0.1:3903"
-export REDACTED_SECRET_ace410934cec
-export OREDACTED_SECRET_9044371ec359
+export OPS_GARAGE_ACCESS_KEY="${OPS_GARAGE_ACCESS_KEY:-GK$(openssl rand -hex 12)}"
+export OPS_GARAGE_SECRET_KEY="${OPS_GARAGE_SECRET_KEY:-$(openssl rand -hex 32)}"
 export GARAGE_ACCESS_KEY="${OPS_GARAGE_ACCESS_KEY}"
 export GARAGE_SECRET_KEY="${OPS_GARAGE_SECRET_KEY}"
 

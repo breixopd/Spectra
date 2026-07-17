@@ -103,21 +103,21 @@
     {
       "description": "Test JWT for algorithm confusion and common attacks",
       "args": {
-        "target": "eREDACTED_SECRET_ac63eff2a1bd
+        "target": "header.payload.signature",
         "flags": "-M at"
       }
     },
     {
       "description": "Crack HMAC secret with wordlist",
       "args": {
-        "target": "eREDACTED_SECRET_ac63eff2a1bd
+        "target": "header.payload.signature",
         "flags": "-C -d /usr/share/wordlists/rockyou.txt"
       }
     },
     {
       "description": "Forge token with custom claims",
       "args": {
-        "target": "eREDACTED_SECRET_ac63eff2a1bd
+        "target": "header.payload.signature",
         "rc": "role=admin,username=admin",
         "flags": "-I -pc role -pv admin"
       }

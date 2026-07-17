@@ -90,7 +90,7 @@ class TestRBACPermissions:
 
 class TestEncryption:
     def test_encrypt_decrypt_roundtrip(self):
-        sREDACTED_SECRET_3161cd504855
+        secret = "unit-test-encryption-key"
         original = "sensitive data here"
         encrypted = encrypt_field(original, secret)
         decrypted = decrypt_field(encrypted, secret)
