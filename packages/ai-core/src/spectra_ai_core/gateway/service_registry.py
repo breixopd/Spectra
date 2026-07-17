@@ -44,6 +44,7 @@ class ServiceRegistry:
                             settings.SANDBOX_ORCHESTRATOR_URL,
                             timeout=settings.SANDBOX_ORCHESTRATOR_TIMEOUT,
                             api_key=api_key,
+                            service_auth=settings.SERVICE_AUTH_SECRET.get_secret_value(),
                         )
                         logger.info(
                             "Sandbox orchestrator: HTTP gateway at %s",

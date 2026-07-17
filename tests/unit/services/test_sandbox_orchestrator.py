@@ -1,5 +1,7 @@
 """Tests for sandbox orchestrator client."""
 
+from datetime import UTC, datetime
+
 import pytest
 
 from spectra_ai_core.gateway.sandbox_orchestrator import SandboxOrchestratorClient
@@ -7,7 +9,7 @@ from spectra_ai_core.gateway.sandbox_orchestrator import SandboxOrchestratorClie
 
 @pytest.fixture
 def client():
-    return SandboxOrchestratorClient("http://test", api_key="key")
+    return SandboxOrchestratorClient("http://test", api_key="key", service_auth="service-secret")
 
 
 def test_client_available(client):
@@ -20,14 +22,34 @@ async def test_client_create_posts_to_gateway(client, monkeypatch):
 
     async def fake_post(path, json=None):
         calls.append((path, json))
-        return {"id": "sandbox-1"}
+        return {
+            "container_id": "sandbox-1",
+            "container_name": "spectra-sandbox-1",
+            "mission_id": "mission-1",
+            "queue_name": "mission_12345678",
+            "status": "running",
+            "image": "spectra-tools",
+            "resource_tier": "high",
+            "created_at": datetime.now(UTC).isoformat(),
+        }
 
     monkeypatch.setattr(client._client, "post", fake_post)
-    result = await client.create("mission-1", resource_tier="high", user_id="user-1")
-    assert result == {"id": "sandbox-1"}
+    result = await client.create(
+        "mission-1",
+        resource_tier="high",
+        user_id="user-1",
+        vpn_config_name="engagement-vpn",
+    )
+    assert result.container_id == "sandbox-1"
+    assert result.container_name == "spectra-sandbox-1"
     assert calls[0] == (
         "/v1/sandboxes",
-        {"mission_id": "mission-1", "resource_tier": "high", "user_id": "user-1"},
+        {
+            "mission_id": "mission-1",
+            "resource_tier": "high",
+            "user_id": "user-1",
+            "vpn_config_name": "engagement-vpn",
+        },
     )
 
 
@@ -46,11 +68,20 @@ async def test_client_destroy_deletes_from_gateway(client, monkeypatch):
 @pytest.mark.asyncio
 async def test_client_get_returns_data(client, monkeypatch):
     async def fake_get(path):
-        return {"status": "running"}
+        return {
+            "container_id": "sandbox-1",
+            "container_name": "spectra-sandbox-1",
+            "mission_id": "mission-1",
+            "queue_name": "mission_12345678",
+            "status": "running",
+            "image": "spectra-tools",
+            "created_at": datetime.now(UTC).isoformat(),
+        }
 
     monkeypatch.setattr(client._client, "get", fake_get)
     result = await client.get("mission-1")
-    assert result == {"status": "running"}
+    assert result is not None
+    assert result.queue_name == "mission_12345678"
 
 
 @pytest.mark.asyncio
@@ -64,28 +95,12 @@ async def test_client_get_returns_none_on_error(client, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_client_exec_posts_command(client, monkeypatch):
-    calls = []
-
-    async def fake_post(path, json=None):
-        calls.append((path, json))
-        return {"output": "ok"}
-
-    monkeypatch.setattr(client._client, "post", fake_post)
-    result = await client.exec_command("mission-1", "ls -la", env={"X": "1"})
-    assert result == {"output": "ok"}
-    assert calls[0] == (
-        "/v1/sandboxes/mission-1/exec",
-        {"command": "ls -la", "env": {"X": "1"}},
-    )
-
-
-@pytest.mark.asyncio
 async def test_client_health_check_delegates(client, monkeypatch):
-    async def fake_health():
+    async def fake_get(path):
+        assert path == "/v1/sandboxes/health"
         return {"status": "ok"}
 
-    monkeypatch.setattr(client._client, "health_check", fake_health)
+    monkeypatch.setattr(client._client, "get", fake_get)
     result = await client.health_check()
     assert result == {"status": "ok"}
 

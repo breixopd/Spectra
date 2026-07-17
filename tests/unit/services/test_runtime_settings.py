@@ -245,7 +245,7 @@ def test_sandbox_settings_in_general_runtime_field_map():
     assert GENERAL_RUNTIME_FIELD_MAP["SANDBOX_MEMORY_LIMIT"][1] == "str"
     assert GENERAL_RUNTIME_FIELD_MAP["SANDBOX_CPU_SHARES"][1] == "int"
     assert GENERAL_RUNTIME_FIELD_MAP["SANDBOX_MAX_LIFETIME"][1] == "int"
-    for internal_key in ("SANDBOX_IMAGE", "SANDBOX_NETWORK", "SANDBOX_PLUGINS_VOLUME"):
+    for internal_key in ("SANDBOX_IMAGE", "SANDBOX_NETWORK"):
         assert internal_key not in GENERAL_RUNTIME_FIELD_MAP
 
 
@@ -253,7 +253,6 @@ class TestGeneralRuntimeFieldMapIncludes:
     def test_field_map_has_new_sandbox_keys(self):
         new_keys = [
             "SANDBOX_RESOURCE_TIERS",
-            "SANDBOX_NETWORK_ISOLATION",
             "SANDBOX_IDLE_TIMEOUT",
             "SANDBOX_HEARTBEAT_INTERVAL",
             "SANDBOX_PER_USER_LIMIT",
@@ -266,7 +265,6 @@ class TestGeneralRuntimeFieldMapIncludes:
 
     def test_field_map_types_correct(self):
         type_checks = {
-            "SANDBOX_NETWORK_ISOLATION": "bool",
             "SANDBOX_OOM_ESCALATION_ENABLED": "bool",
             "SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL": "bool",
             "SANDBOX_IDLE_TIMEOUT": "int",

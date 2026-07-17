@@ -177,18 +177,30 @@ class MissionExecutionManager:
         pool = get_sandbox_pool()
         if pool and pool.available:
             try:
-                vpn_path = None
-                if getattr(mission, "vpn_config", None):
-                    from spectra_tools.vpn import VPNManager
+                if getattr(pool, "is_remote", False):
+                    sandbox_info = await pool.create(
+                        mission.id,
+                        user_id=mission.user_id,
+                        vpn_config_name=mission.vpn_config,
+                    )
+                else:
+                    vpn_path = None
+                    vpn_config_name = mission.vpn_config
+                    if vpn_config_name:
+                        from spectra_tools.vpn import VPNManager
 
-                    _vpn_mgr = VPNManager()
-                    _local = await _vpn_mgr._download_to_local(mission.vpn_config)
-                    if _local:
-                        vpn_path = str(_local)
-                    else:
-                        mission.log(f"[WARN] VPN config '{mission.vpn_config}' not found in S3, skipping VPN")
+                        _vpn_mgr = VPNManager()
+                        _local = await _vpn_mgr._download_to_local(vpn_config_name)
+                        if _local:
+                            vpn_path = str(_local)
+                        else:
+                            mission.log(f"[WARN] VPN config '{mission.vpn_config}' not found in S3, skipping VPN")
 
-                sandbox_info = await pool.create(mission.id, vpn_config_path=vpn_path)
+                    sandbox_info = await pool.create(
+                        mission.id,
+                        vpn_config_path=vpn_path,
+                        user_id=mission.user_id,
+                    )
                 mission.log(
                     f"[SANDBOX] Created sandbox: {sandbox_info.container_name} (queue={sandbox_info.queue_name})"
                 )

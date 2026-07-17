@@ -171,6 +171,7 @@ services:
           memory: 512M
     networks:
       - backend
+      - sandbox
     logging: *default-logging
     cap_drop:
       - ALL
@@ -371,6 +372,7 @@ services:
       <<: *common-env
       AI_SERVICE_URL: http://ai-svc:5010
       WORKER_SERVICE_URL: http://worker:5012
+      SANDBOX_ORCHESTRATOR_URL: http://scheduler:5011
       CONNECT_BACK_HOST: ${CALLBACK_RELAY_HOST:-worker}
       SHELL_ROUTING_MODE: proxy
       RATE_LIMIT_STORAGE: redis://:${REDIS_PASSWORD:-spectra_test_redis}@redis:6379/0
@@ -587,6 +589,7 @@ services:
       <<: *common-env
       AI_SERVICE_URL: http://ai-svc:5010
       WORKER_SERVICE_URL: http://worker:5012
+      SANDBOX_ORCHESTRATOR_URL: http://scheduler:5011
       CONNECT_BACK_HOST: ${CALLBACK_RELAY_HOST:-worker}
       SHELL_ROUTING_MODE: proxy
       RATE_LIMIT_STORAGE: redis://:${REDIS_PASSWORD:-spectra_test_redis}@redis:6379/0
@@ -1054,6 +1057,11 @@ networks:
     ipam:
       config:
         - subnet: 172.31.0.0/16
+  # Only PostgreSQL and ephemeral tool sandboxes join this network. Sandbox
+  # egress happens via a separate per-mission network created by the scheduler.
+  sandbox:
+    driver: bridge
+    internal: true
   targets:
     driver: bridge
     ipam:

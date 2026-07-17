@@ -258,8 +258,10 @@ class Settings(BaseSettings):
 
     # --- Sandbox Pool ---
     SANDBOX_IMAGE: str = "spectra-tools"
-    SANDBOX_NETWORK: str = "spectra-network"
-    SANDBOX_PLUGINS_VOLUME: str = "spectra_plugins"
+    # This network is attached only to PostgreSQL and ephemeral sandboxes. It
+    # must never be the platform's general backend network.
+    SANDBOX_NETWORK: str = "sandbox"
+    SANDBOX_ALLOW_RAW_NETWORK: bool = False
     SANDBOX_MAX_CONTAINERS: int = 10
 
     @field_validator("SANDBOX_MAX_CONTAINERS")
@@ -283,6 +285,13 @@ class Settings(BaseSettings):
 
     SANDBOX_WORKER_POLL_DELAY: float = 0.5
     SANDBOX_NETWORK_ISOLATION: bool = True
+
+    @field_validator("SANDBOX_NETWORK_ISOLATION")
+    @classmethod
+    def require_sandbox_network_isolation(cls, v: bool) -> bool:
+        if not v:
+            raise ValueError("SANDBOX_NETWORK_ISOLATION must remain enabled")
+        return v
     SANDBOX_IDLE_TIMEOUT: int = 600  # seconds — destroy sandbox if no heartbeat for this long
     SANDBOX_HEARTBEAT_INTERVAL: int = 30  # seconds — how often worker sends heartbeat
     SANDBOX_PER_USER_LIMIT: int = 3  # Max concurrent sandboxes per user

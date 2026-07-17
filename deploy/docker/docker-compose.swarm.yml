@@ -120,6 +120,7 @@ services:
       - pgdata:/var/lib/postgresql/data
     networks:
       - backend
+      - sandbox
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U spectra"]
       interval: 10s
@@ -163,6 +164,7 @@ services:
       AI_SERVICE_URL: http://ai-svc:5010
       SCHEDULER_SERVICE_URL: http://scheduler:5011
       WORKER_SERVICE_URL: http://worker:5012
+      SANDBOX_ORCHESTRATOR_URL: http://scheduler:5011
       CONNECT_BACK_HOST: ${CALLBACK_RELAY_HOST:?set CALLBACK_RELAY_HOST to worker or callback-relay egress address}
       SHELL_ROUTING_MODE: proxy
       TMPDIR: /tmp
@@ -674,6 +676,14 @@ networks:
     driver_opts:
       encrypted: "true"
   backend:
+    driver: overlay
+    internal: true
+    attachable: true
+    driver_opts:
+      encrypted: "true"
+  # Only PostgreSQL and ephemeral tool sandboxes join this network. Sandbox
+  # egress happens via a separate per-mission network created by the scheduler.
+  sandbox:
     driver: overlay
     internal: true
     attachable: true

@@ -1,208 +1,86 @@
 # Sandboxes
 
-[← Wiki Home](Home.md) | [Scaling](scaling.md) | [Configuration](configuration.md)
-
----
-
-Per-mission ephemeral sandbox containers — design, lifecycle, security, and resource management.
-
-## Overview
-
-Each mission runs in its own ephemeral Docker container with a dedicated worker. Sandboxes are created lazily on first tool execution and destroyed when the mission reaches a terminal state. The `SandboxPool` service manages the full lifecycle.
-
----
-
-## Golden Image System
-
-| Layer | Image | Contents |
-| ------- | ------- | ---------- |
-| Base | `spectra-tools:base` | `deploy/docker/Dockerfile.worker` base tooling — Kali rolling + OS essentials (curl, git, networking, VPN tools). No security tools preinstalled. |
-| Golden | `spectra-tools:latest` | Base plus Dockerfile `RUN` layers generated from current `plugins/*.json` install steps (built image), not a runtime “install everything on first boot” step |
-
-The base image is intentionally minimal (~1.1 GB). Security scanners and similar tools are added when the golden pipeline rebuilds `spectra-tools:latest` from plugin definitions; new sandboxes pull that tag. Individual tool runs can still trigger installs if a plugin marks something missing.
-
-**Rebuild trigger**: When plugins change (upload/remove via the API or `PLUGIN_UPDATED` event), the golden image is rebuilt automatically — required for ephemeral workers to pull consistent tool images.
-
-**Build process**:
-
-1. Parse all `plugins/*.json` → extract install commands
-2. Generate ephemeral Dockerfile `FROM spectra-tools:base`
-3. `docker build` → tag as `spectra-tools:latest`
-4. Docker layer caching keeps unchanged layers fast
-5. Until the new image is ready, sandboxes keep using the previous `:latest`; swap happens when the build finishes
-
-**Image scanning**: Golden images are scanned for CVEs after each successful build when Grype is available.
-
----
-
-## Sandbox Lifecycle
-
-### Creation
-
-```text
-Image: spectra-tools:latest
-Network: spectra-network
-Capabilities: NET_ADMIN, NET_RAW (all others dropped)
-Devices: /dev/net/tun
-Volumes: reports/missions/{id}/ (rw)
-Entrypoint: `uvicorn spectra_worker.main:app` (queue via `QUEUE_NAME`); ephemeral sandboxes use images produced from the golden-image pipeline.
-Resource limits: memory (2GB default), CPU (512 shares default)
-Name: spectra-sandbox-{mission_id[:8]}
-```
-
-### Lifecycle Flow
-
-1. Mission starts → `MissionExecutionManager.run_mission_loop()`
-2. First tool exec → `SandboxPool.create_sandbox(mission_id)`
-3. Worker in sandbox listens on mission-specific queue
-4. Tools execute as local subprocesses inside the sandbox
-5. Results flow through PostgreSQL job queue
-6. Mission ends → `SandboxPool.destroy_sandbox(mission_id)`
-7. Orphan cleanup: periodic task removes stale `spectra-sandbox-*` containers
-
----
-
-## Queue & LISTEN/NOTIFY
-
-### Per-Mission Queue Routing
-
-```python
-# App side
-queue = PostgresJobQueue(queue_name=f"mission_{mission_id}")
-job_id = await queue.enqueue_job("execute_tool_job", ...)
-# → NOTIFY spectra_jobs_mission_{mission_id}
-
-# Worker side (in sandbox)
-await worker_loop(functions, queue_name=f"mission_{mission_id}")
-# → LISTEN spectra_jobs_mission_{mission_id}
-```
-
-Each sandbox has its own queue. `SKIP LOCKED` ensures atomic job claiming.
-
----
-
-## Resource Tiers
-
-| Tier | Memory | CPU Shares | Example Tools |
-| ------ | -------- | ------------ | --------------- |
-| light | 512m | 256 | nmap, whatweb, subfinder |
-| medium | 2g | 512 | gobuster, ffuf, nuclei |
-| heavy | 4g | 1024 | sqlmap, metasploit, hydra |
-| extreme | 8g | 2048 | large-scale scans |
-
-### OOM Escalation
-
-When a tool exits with code 137 (OOM killed), the sandbox is automatically recreated at the next tier up (`SANDBOX_OOM_ESCALATION_ENABLED=true`). Max one escalation to prevent infinite scaling.
-
----
-
-## Data Persistence
-
-| Data Type | Storage | Survives Sandbox Destruction? |
-| ----------- | --------- | ------------------------------- |
-| stdout/stderr | Job result in PostgreSQL | Yes |
-| Parsed findings | Mission object + DB | Yes |
-| Output files (nmap XML, etc.) | S3 or mounted volume | Yes |
-| Mission logs | DB | Yes |
-| Tool cache | App container CacheService | Yes (shared) |
-
-### S3 Storage Integration
-
-When `S3_ENDPOINT_URL` is configured, mission artifacts are stored in S3-compatible storage instead of local volumes. This enables multi-server setups where sandboxes run on different hosts.
-
-See [Scaling](scaling.md) for Garage/S3 setup details.
-
----
-
-## Wordlist Management
-
-- **Seclists** and other wordlists are installed on demand via plugin install commands — they are not baked into the base image
-- Plugin `args_templates` reference `/usr/share/seclists/` paths (available after the relevant tool installs its dependencies)
-- **User wordlists** go on a named volume `spectra_wordlists` mounted read-only into sandboxes
-- The app container mounts the same volume read-write for uploads via the API
-
----
-
-## VPN Integration
-
-VPN config is injected at sandbox creation:
-
-1. Check `mission.vpn_config` — if set, mount config file into sandbox
-2. First job enqueued is `vpn_connect_job`
-3. Worker connects VPN before any tool jobs execute
-4. Each sandbox has its own network namespace — VPN in one sandbox doesn't affect others
-5. Sandboxes include `NET_ADMIN`, `NET_RAW` capabilities and `/dev/net/tun`
-
----
-
-## Security Hardening
-
-### Container Security
-
-- `CAP_DROP ALL` + only `NET_ADMIN`/`NET_RAW` added
-- PID limits (`--pids-limit 256`)
-- tmpfs for temp space (`--tmpfs /tmp:size=2G`)
-- Read-only root filesystem where possible
-- No Docker socket mounted in sandboxes
-- Default seccomp profile
-
-### Network Isolation
-
-- Each sandbox ideally gets its own Docker network (`spectra-sandbox-{mission_id}`)
-- Connected to `spectra-network` only for DB access
-- `SANDBOX_NETWORK_ISOLATION=true` enables per-sandbox network isolation
-- Prevents sandbox A from targeting sandbox B
-
-### Secrets Segregation
-
-- Sandboxes only receive `DATABASE_URL` (limited-privilege user) and `IS_TOOLS_CONTAINER=true`
-- Never: `JWT_SECRET_KEY`, `LLM_API_KEY`, or other app secrets
-- Mission-scoped secrets passed as Docker secrets or tmpfs-mounted files
-
-### Audit
-
-All sandbox lifecycle events are logged: create, destroy, crash, VPN connect, tool execution, resource limit hits.
-
----
-
-## Failure Handling
-
-### Sandbox Crash Recovery
-
-1. `SandboxPool` monitors containers via Docker events API or periodic health checks
-2. On crash: mark stuck `in_progress` jobs as `failed`, save checkpoint
-3. Auto-restart: create new sandbox → resume from checkpoint (up to 3 retries)
-4. After 3 failures: mark mission `paused`, notify user via WebSocket
-
-### Job Reaper
-
-Periodic task reclaims jobs stuck in `in_progress` longer than 2× their timeout.
-
-### Idle Watchdog
-
-Sandboxes are destroyed if no heartbeat is received within `SANDBOX_IDLE_TIMEOUT` (default: 600s). Workers send heartbeats every `SANDBOX_HEARTBEAT_INTERVAL` (default: 30s).
-
----
-
-## Warm Pool
-
-Pre-warmed idle containers for instant mission start (always active):
-
-- Maintains an automatically sized idle warm pool (from registered sandbox_worker nodes)
-- When a mission requests a sandbox, assign a pre-warmed one
-- Spin up a replacement in the background
-- Pool size follows registered **sandbox_worker** hosts (see configuration wiki)
-
----
-
-## Configuration
-
-See [Configuration](configuration.md) for all sandbox-related settings. Key settings:
-
-| Setting | Default | Description |
-| --------- | --------- | ------------- |
-| `SANDBOX_MAX_CONTAINERS` | 10 | Max concurrent sandboxes |
-| `SANDBOX_MEMORY_LIMIT` | 2g | Default memory per sandbox |
-| `SANDBOX_PER_USER_LIMIT` | 3 | Max sandboxes per user |
-| `SANDBOX_MAX_LIFETIME` | 7200 | Max sandbox lifetime (seconds) |
-| `SANDBOX_IDLE_TIMEOUT` | 600 | Idle timeout (seconds) |
+[Wiki Home](Home.md) · [Configuration](configuration.md) · [Security](security.md)
+
+Spectra runs target-facing tool work in short-lived, per-mission containers. A
+sandbox is an execution boundary, not a general-purpose application replica.
+
+## Control plane
+
+The scheduler is the only production service with Docker access. API replicas
+use the scheduler's authenticated `/v1/sandboxes` control-plane API and never
+remove containers on application startup or shutdown. This prevents an API
+rollout from interrupting active work.
+
+The scheduler reconciles only labelled resources that have no active sandbox
+database record. It does not use blanket container cleanup. Stale creation
+records are failed after five minutes; their credentials and Docker resources
+are then eligible for reconciliation.
+
+## Lifecycle
+
+1. A mission requests a sandbox through the scheduler.
+2. The scheduler records a `creating` sandbox, provisions a database role for
+   that mission, then starts the container.
+3. The worker consumes only that mission's `mission_<uuid-prefix>` queue.
+4. Normal mission finalization or the watchdog destroys the container,
+   revokes its database permissions, and removes its private egress network.
+
+Container and network names include the full UUID (with separators removed),
+avoiding the collision risk of short identifiers in long-lived deployments.
+
+## Network and database isolation
+
+Every sandbox has two networks:
+
+- A per-mission bridge network provides target-facing egress.
+- The deployment-owned `sandbox` network is internal and attaches only the
+  sandbox and PostgreSQL. It is never the general backend network, so a tool
+  container cannot reach Redis, internal APIs, or object storage directly.
+
+Network isolation is mandatory. `SANDBOX_NETWORK_ISOLATION=false` is rejected
+at configuration load, and the admin settings API does not expose that
+boundary as a mutable switch.
+
+The scheduler creates a random-password PostgreSQL login role per mission.
+That role has only `SELECT` and `UPDATE` on `job_queue`; PostgreSQL row-level
+security restricts it to its own queue. The primary platform database
+credential is never passed to a sandbox. The database role used by the
+scheduler must therefore be allowed to create and drop these ephemeral roles;
+if it is not, sandbox creation fails closed and the mission uses the shared
+worker path instead.
+
+## Container hardening
+
+- Read-only root filesystem with bounded `tmpfs` mounts for `/tmp`, `/var/tmp`,
+  and transient `/app/data`.
+- No Docker socket, application data volume, tool-binary volume, or mutable
+  plugin volume is mounted into a sandbox.
+- All Linux capabilities are dropped. VPN missions receive only `NET_ADMIN`,
+  `NET_RAW`, and `/dev/net/tun`; raw networking is otherwise opt-in through
+  `SANDBOX_ALLOW_RAW_NETWORK`.
+- `no-new-privileges`, a PID limit of 256, no swap, and Docker's default seccomp
+  profile apply to every container.
+
+The approved plugin definitions are baked into the promoted worker image.
+Runtime plugin volume sharing is intentionally not supported at this boundary.
+
+## Operational checks
+
+`GET /v1/sandboxes/health` is service-authenticated and reports scheduler
+controller availability. Scheduler deep health and maintenance loops expose
+task failure/recovery state; operational automation should alert on a degraded
+scheduler rather than treating a container process as proof of control-plane
+health.
+
+Relevant deployment settings:
+
+| Setting | Default | Meaning |
+|---|---:|---|
+| `SANDBOX_IMAGE` | `spectra-tools` | Promoted image used for new sandboxes |
+| `SANDBOX_NETWORK` | `sandbox` | Internal PostgreSQL-only network |
+| `SANDBOX_MAX_CONTAINERS` | `10` | Platform-wide capacity limit |
+| `SANDBOX_PER_USER_LIMIT` | `3` | Per-user concurrent limit |
+| `SANDBOX_MAX_LIFETIME` | `7200` | Maximum sandbox age in seconds |
+| `SANDBOX_IDLE_TIMEOUT` | `600` | Watchdog idle timeout in seconds |
+| `SANDBOX_ALLOW_RAW_NETWORK` | `false` | Allow `NET_RAW` outside VPN missions |

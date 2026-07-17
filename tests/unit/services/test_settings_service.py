@@ -190,7 +190,6 @@ class TestGetCurrentSettings:
             SANDBOX_CPU_SHARES=512,
             SANDBOX_MAX_LIFETIME=7200,
             SANDBOX_RESOURCE_TIERS='{"default": {}}',
-            SANDBOX_NETWORK_ISOLATION=True,
             SANDBOX_IDLE_TIMEOUT=600,
             SANDBOX_HEARTBEAT_INTERVAL=30,
             SANDBOX_PER_USER_LIMIT=3,

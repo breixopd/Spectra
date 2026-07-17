@@ -67,6 +67,39 @@ class TestSetSystemStatus:
             await set_system_status("error", "bad")
 
 
+class TestSandboxControllerInitialization:
+    @pytest.mark.asyncio
+    async def test_remote_controller_never_performs_app_lifecycle_cleanup(self):
+        from pydantic import SecretStr
+
+        from spectra_api.bootstrap import lifespan as lifespan_mod
+
+        controller = MagicMock(available=True, is_remote=True)
+        fake_settings = MagicMock(
+            SANDBOX_ORCHESTRATOR_URL="http://scheduler:5011",
+            SANDBOX_ORCHESTRATOR_TIMEOUT=30,
+            SANDBOX_ORCHESTRATOR_API_KEY=SecretStr("api-key"),
+            SERVICE_AUTH_SECRET=SecretStr("service-secret"),
+        )
+        with (
+            patch.object(lifespan_mod, "settings", fake_settings),
+            patch("spectra_ai_core.gateway.sandbox_orchestrator.SandboxOrchestratorClient", return_value=controller) as client_cls,
+            patch("spectra_tools.sandbox.set_sandbox_pool") as set_pool,
+            patch("spectra_tools.sandbox.SandboxPool") as local_pool_cls,
+        ):
+            await lifespan_mod._initialize_sandbox()
+
+        client_cls.assert_called_once_with(
+            "http://scheduler:5011",
+            timeout=30,
+            api_key="api-key",
+            service_auth="service-secret",
+        )
+        set_pool.assert_called_once_with(controller)
+        local_pool_cls.assert_not_called()
+        controller.cleanup_all.assert_not_called()
+
+
 class TestAddRemoveSystemOperation:
     @pytest.mark.asyncio
     async def test_add_system_operation(self):
@@ -137,6 +170,7 @@ class TestLifespanContextManager:
 
         mock_settings.DEBUG = True  # Skip production security checks
         mock_settings.SERVICE_MODE = "api"
+        mock_settings.SANDBOX_ORCHESTRATOR_URL = None
         mock_events.emit = AsyncMock()
         mock_engine.dispose = AsyncMock()
 

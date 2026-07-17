@@ -49,11 +49,11 @@ async def test_cleanup_orphaned_sandboxes_finds_orphans():
 
     pool = MagicMock()
     pool.available = True
-    pool.cleanup_all = AsyncMock(return_value=3)
+    pool.reconcile_orphans = AsyncMock(return_value=3)
 
     count = await cleanup_orphaned_sandboxes(pool)
     assert count == 3
-    pool.cleanup_all.assert_awaited_once()
+    pool.reconcile_orphans.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -72,6 +72,19 @@ async def test_cleanup_orphaned_sandboxes_skips_when_no_pool():
     from spectra_system.maintenance_cleanup import cleanup_orphaned_sandboxes
 
     count = await cleanup_orphaned_sandboxes(None)
+    assert count == 0
+
+
+@pytest.mark.asyncio
+async def test_cleanup_orphaned_sandboxes_leaves_remote_controller_to_scheduler():
+    from spectra_system.maintenance_cleanup import cleanup_orphaned_sandboxes
+
+    pool = MagicMock()
+    pool.available = True
+    pool.is_remote = True
+
+    count = await cleanup_orphaned_sandboxes(pool)
+
     assert count == 0
 
 
@@ -109,7 +122,7 @@ async def test_run_all_cleanup_calls_all_functions():
 
     mock_pool = MagicMock()
     mock_pool.available = True
-    mock_pool.cleanup_all = AsyncMock(return_value=2)
+    mock_pool.reconcile_orphans = AsyncMock(return_value=2)
 
     mock_storage = MagicMock()
     mock_storage.list_objects = AsyncMock(return_value=[])

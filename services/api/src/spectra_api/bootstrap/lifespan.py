@@ -16,12 +16,6 @@ from urllib.parse import urlparse
 
 from fastapi import FastAPI
 from pydantic import SecretStr
-
-try:
-    from docker.errors import DockerException
-except ImportError:
-    DockerException = OSError  # Fallback when docker SDK not installed
-
 from sqlalchemy.exc import SQLAlchemyError
 
 from spectra_billing.seed_plans import seed_default_plans
@@ -36,8 +30,7 @@ from spectra_infra.system_status import (
     set_system_status,
 )
 from spectra_observability.telemetry import telemetry
-from spectra_persistence.advisory_locks import advisory_lock_owner, stable_lock_id
-from spectra_persistence.database import advisory_lock_connection, async_session_maker, engine
+from spectra_persistence.database import async_session_maker, engine
 from spectra_system.runtime_settings import hydrate_runtime_settings_from_db
 
 logger = logging.getLogger(__name__)
@@ -251,71 +244,37 @@ async def _seed_default_data() -> None:
 
 
 async def _initialize_sandbox() -> None:
-    """Initialize sandbox pool, warm pool manager, and golden image builder."""
+    """Initialize the local or scheduler-owned sandbox controller.
+
+    Application replicas never destroy sandbox containers during their own
+    lifecycle. Production routes Docker-capable work to the scheduler service;
+    the local implementation remains useful only for a deliberately local dev
+    process with a Docker socket.
+    """
     try:
         from spectra_tools.sandbox import SandboxPool, set_sandbox_pool
 
-        sandbox_pool = SandboxPool()
+        if settings.SANDBOX_ORCHESTRATOR_URL:
+            from spectra_ai_core.gateway.sandbox_orchestrator import SandboxOrchestratorClient
+
+            sandbox_pool = SandboxOrchestratorClient(
+                settings.SANDBOX_ORCHESTRATOR_URL,
+                timeout=settings.SANDBOX_ORCHESTRATOR_TIMEOUT,
+                api_key=settings.SANDBOX_ORCHESTRATOR_API_KEY.get_secret_value(),
+                service_auth=settings.SERVICE_AUTH_SECRET.get_secret_value(),
+            )
+            logger.info("[OK] Remote sandbox controller configured at %s", settings.SANDBOX_ORCHESTRATOR_URL)
+        else:
+            sandbox_pool = SandboxPool()
+            logger.warning("[WARN] Using local sandbox controller; configure SANDBOX_ORCHESTRATOR_URL for production")
         set_sandbox_pool(sandbox_pool)
         if sandbox_pool.available:
-            orphans = await sandbox_pool.cleanup_all()
-            if orphans:
-                logger.info("[OK] Cleaned %d orphaned sandbox containers", orphans)
-            logger.info("[OK] Sandbox pool initialized")
+            logger.info("[OK] Sandbox controller initialized")
             logger.info("[SKIP] sandbox_watchdog deferred to scheduler service")
-
-            # Initialize warm pool manager
-            from spectra_tools.sandbox import WarmPoolManager, set_warm_pool_manager
-
-            warm_manager = WarmPoolManager(sandbox_pool)
-            set_warm_pool_manager(warm_manager)
-
-            async def maintain_warm_pool() -> None:
-                """Maintain the pool once while holding a dedicated advisory lock."""
-                lock_id = stable_lock_id("spectra_warm_pool")
-                async with advisory_lock_owner(
-                    lock_id,
-                    connection_factory=advisory_lock_connection,
-                ) as lock_connection:
-                    if lock_connection is None:
-                        return
-                    await warm_manager.maintain()
-
-            async def warm_pool_maintain_loop():
-                while True:
-                    try:
-                        await asyncio.sleep(30)
-                        await maintain_warm_pool()
-                    except asyncio.CancelledError:
-                        break
-                    except (OSError, RuntimeError, SQLAlchemyError) as e:
-                        logger.error("Warm pool maintain error: %s", e)
-
-            create_safe_task(warm_pool_maintain_loop(), name="warm_pool_maintain")
-            create_safe_task(maintain_warm_pool(), name="warm_pool_initial")
-            from spectra_tools.sandbox.warm_pool import WARM_POOL_SINGLE_NODE_FALLBACK
-
-            logger.info(
-                "[OK] Warm pool manager initialized (target = active sandbox_worker nodes, max 10, fallback=%d)",
-                WARM_POOL_SINGLE_NODE_FALLBACK,
-            )
-
-            # Golden image rebuild on plugin changes — platform behaviour (not optional).
-            from spectra_tools.sandbox import GoldenImageBuilder, set_image_builder
-
-            builder = GoldenImageBuilder()
-            set_image_builder(builder)
-
-            async def on_plugin_change(**kwargs: Any) -> None:
-                """Trigger golden image rebuild when plugins change."""
-                create_safe_task(builder.build(), name="golden_image_build")
-
-            events.subscribe(EventType.PLUGIN_UPDATED, on_plugin_change)
-            logger.info("[OK] Golden image builder initialized (rebuild on PLUGIN_UPDATED)")
         else:
-            logger.warning("[WARN] Sandbox pool unavailable — Docker not accessible")
-    except (DockerException, OSError) as e:
-        logger.warning("Sandbox pool init failed: %s", e)
+            logger.warning("[WARN] Sandbox controller unavailable")
+    except (OSError, RuntimeError, ValueError) as e:
+        logger.warning("Sandbox controller init failed: %s", e)
 
 
 async def _initialize_scaling() -> None:
@@ -569,26 +528,17 @@ async def _shutdown_services() -> None:
     except (OSError, RuntimeError) as e:
         logger.warning("Server pool shutdown error: %s", e)
 
-    # Clean up warm pool first
+    # App replicas do not own sandbox lifecycles. Close only their remote client;
+    # the scheduler preserves running sandboxes across app restarts.
     try:
-        from spectra_tools.sandbox import get_warm_pool_manager
-
-        wm = get_warm_pool_manager()
-        if wm:
-            await wm.cleanup()
-    except (OSError, RuntimeError) as e:
-        logger.warning("Warm pool cleanup error: %s", e)
-
-    # Clean up sandbox containers (before cancelling tasks)
-    try:
-        from spectra_tools.sandbox import get_sandbox_pool
+        from spectra_tools.sandbox import get_sandbox_pool, set_sandbox_pool
 
         pool = get_sandbox_pool()
-        if pool and pool.available:
-            cleaned = await pool.cleanup_all()
-            logger.info("[OK] Cleaned up %d sandbox containers", cleaned)
+        if pool and getattr(pool, "is_remote", False):
+            await pool.close()
+        set_sandbox_pool(None)
     except (OSError, RuntimeError) as e:
-        logger.warning("Sandbox cleanup error: %s", e)
+        logger.warning("Sandbox controller shutdown error: %s", e)
 
     try:
         # Cancel background tasks

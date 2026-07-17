@@ -219,30 +219,49 @@ _POOL_PY = Path(__file__).resolve().parents[3] / "packages/tools/src/spectra_too
 
 
 class TestSandboxPoolVolumes:
-    """Tests for sandbox container volume and environment configuration."""
+    """Tests for sandbox container isolation and environment configuration."""
 
     def test_sandbox_environment_includes_required_keys(self):
-        """Verify sandbox container gets safe env vars but NOT sensitive credentials."""
+        """Verify sandbox receives only its per-mission queue credential."""
         source = _POOL_PY.read_text()
         assert '"QUEUE_NAME"' in source
         assert '"IS_TOOLS_CONTAINER"' in source
-        # Sandbox workers need DB access for mission queues, but must not receive auth secrets.
-        assert '"DATABASE_URL"' in source
+        assert "_provision_database_access" in source
+        assert "sandbox_database_role_name" in source
         assert '"JWT_SECRET_KEY"' not in source
 
-    def test_sandbox_mounts_data_and_tools_volumes(self):
-        """Verify sandbox uses named Docker volumes for data and tools."""
+    def test_sandbox_uses_ephemeral_writable_state_not_shared_platform_volumes(self):
+        """Untrusted sandboxes cannot mutate shared app data or tool binaries."""
         source = _POOL_PY.read_text()
-        assert "spectra_data" in source
-        assert "spectra_tools_data" in source
         assert "/app/data" in source
-        assert "/opt/spectra_tools" in source
-
-    def test_sandbox_mounts_plugins_readonly(self):
-        """Verify sandbox mounts plugins as read-only."""
-        source = _POOL_PY.read_text()
-        assert "/app/plugins" in source
         assert "read_only=True" in source
+        assert '"/app/data": "rw,noexec,nosuid,nodev,size=512m"' in source
+
+    def test_sandbox_uses_plugins_baked_into_the_promoted_image(self):
+        """Untrusted sandboxes must not receive a mutable shared plugin mount."""
+        source = _POOL_PY.read_text()
+        assert 'target="/app/plugins"' not in source
+        assert "SANDBOX_PLUGINS_VOLUME" not in source
+
+
+def test_per_mission_database_credentials_are_safe_and_do_not_reuse_admin_password():
+    from spectra_tools.sandbox._utils import sandbox_database_role_name, sandbox_database_url
+
+    mission_id = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    role_name = sandbox_database_role_name(mission_id)
+    assert role_name == "spectra_sandbox_a1b2c3d4e5f67890abcdef1234567890"
+
+    sandbox_url = sandbox_database_url(
+        "postgresql+asyncpg://admin:admin-password@db:5432/spectra",
+        role_name=role_name,
+        password="sandbox-password",
+    )
+    assert "admin-password" not in sandbox_url
+    assert role_name in sandbox_url
+    assert "sandbox-password" in sandbox_url
+
+    with pytest.raises(ValueError, match="UUID"):
+        sandbox_database_role_name("not-a-uuid")
 
 
 # --- Module-level singleton tests ---

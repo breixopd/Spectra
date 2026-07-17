@@ -8,14 +8,30 @@ controls would block CI. Calling registered handlers matches patterns in
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
+from uuid import uuid4
 
 import pytest
 from fastapi import Response
 
 import spectra_scheduler.routes as scheduler_routes
 import spectra_scheduler.state as scheduler_state
+
+
+def _sandbox_info(mission_id: str):
+    from spectra_tools.sandbox.models import SandboxInfo
+
+    return SandboxInfo(
+        container_id="sandbox-1",
+        container_name="spectra-sandbox-1",
+        mission_id=mission_id,
+        queue_name="mission_12345678",
+        status="running",
+        image="spectra-tools",
+        created_at=datetime.now(UTC),
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -38,6 +54,31 @@ async def test_health_returns_starting_when_scheduler_not_started():
     body = await scheduler_routes.health(response)
     assert response.status_code == 200
     assert body == {"status": "starting", "service": "scheduler"}
+
+
+@pytest.mark.asyncio
+async def test_create_sandbox_is_scheduler_owned_and_returns_safe_payload(monkeypatch):
+    mission_id = str(uuid4())
+    user_id = str(uuid4())
+    pool = SimpleNamespace(available=True, create=AsyncMock(return_value=_sandbox_info(mission_id)))
+    monkeypatch.setattr(scheduler_routes, "get_sandbox_pool", lambda: pool)
+
+    result = await scheduler_routes.create_sandbox(
+        scheduler_routes.SandboxCreateRequest(mission_id=mission_id, resource_tier="light", user_id=user_id),
+    )
+
+    assert result["container_name"] == "spectra-sandbox-1"
+    assert result["queue_name"] == "mission_12345678"
+    pool.create.assert_awaited_once_with(mission_id, resource_tier="light", user_id=user_id, vpn_config_path=None)
+
+
+@pytest.mark.asyncio
+async def test_create_sandbox_rejects_unavailable_controller(monkeypatch):
+    from fastapi import HTTPException
+
+    monkeypatch.setattr(scheduler_routes, "get_sandbox_pool", lambda: None)
+    with pytest.raises(HTTPException, match="Sandbox controller unavailable"):
+        await scheduler_routes.create_sandbox(scheduler_routes.SandboxCreateRequest(mission_id=str(uuid4())))
 
 
 def test_task_health_details_reports_recovering_scheduler_loop():

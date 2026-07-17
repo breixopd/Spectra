@@ -5,20 +5,22 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
+import secrets
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 try:
     from docker.errors import APIError, ContainerError, DockerException, ImageNotFound, NotFound
 except ImportError:
     DockerException = APIError = ContainerError = ImageNotFound = NotFound = OSError  # type: ignore[assignment,misc]
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 
 from spectra_common.config import get_settings
 from spectra_persistence.database import async_session_maker
 from spectra_persistence.models.infrastructure import Sandbox
-from spectra_tools.sandbox._utils import sandbox_database_url as _sandbox_database_url
+from spectra_tools.sandbox._utils import sandbox_database_role_name, sandbox_database_url
 from spectra_tools.sandbox.models import SandboxInfo
 
 logger = logging.getLogger(__name__)
@@ -63,25 +65,6 @@ class SandboxPool:
             logger.debug("Failed to enumerate docker networks when resolving %s", preferred_name)
         return preferred_name
 
-    def _resolve_volume_name(self, preferred_name: str) -> str:
-        """Resolve compose-prefixed named volumes for ad hoc sandbox containers."""
-        if not self.available:
-            return preferred_name
-        try:
-            self._client.volumes.get(preferred_name)
-            return preferred_name
-        except (APIError, NotFound):
-            pass
-
-        try:
-            for volume in self._client.volumes.list():
-                name = getattr(volume, "name", "")
-                if name == preferred_name or name.endswith(f"_{preferred_name}"):
-                    return name
-        except (APIError, DockerException):
-            logger.debug("Failed to enumerate docker volumes when resolving %s", preferred_name)
-        return preferred_name
-
     @staticmethod
     def get_tier_limits(tier_name: str) -> tuple[str, int]:
         """Parse SANDBOX_RESOURCE_TIERS and return (memory_limit, cpu_shares) for the given tier."""
@@ -110,6 +93,8 @@ class SandboxPool:
             raise RuntimeError("Docker is not available — cannot create sandbox")
 
         settings = get_settings()
+        if not settings.SANDBOX_NETWORK_ISOLATION:
+            raise RuntimeError("SANDBOX_NETWORK_ISOLATION must remain enabled")
 
         # Per-user sandbox limit check
         if user_id and settings.SANDBOX_PER_USER_LIMIT > 0:
@@ -135,7 +120,11 @@ class SandboxPool:
             )
 
         queue_name = SandboxInfo.make_queue_name(mission_id)
-        container_name = f"spectra-sandbox-{mission_id[:8]}"
+        # The full UUID prevents collisions once the platform has run more
+        # than a modest number of missions (the first eight characters do
+        # not provide enough uniqueness for long-lived deployments).
+        sandbox_name_suffix = mission_id.replace("-", "")
+        container_name = f"spectra-sandbox-{sandbox_name_suffix}"
         sandbox_id = str(uuid.uuid4())
 
         memory_limit, cpu_shares = self.get_tier_limits(resource_tier)
@@ -156,50 +145,35 @@ class SandboxPool:
             session.add(row)
             await session.commit()
 
-        # Mission sandboxes must share the live DB config so they can consume
-        # their mission-specific PostgreSQL queues.
+        sandbox_role_name = sandbox_database_role_name(mission_id)
+        try:
+            sandbox_dsn = await self._provision_database_access(sandbox_role_name)
+        except RuntimeError as exc:
+            async with async_session_maker() as session:
+                await session.execute(
+                    update(Sandbox).where(Sandbox.id == sandbox_id).values(status="error", error=str(exc)[:500])
+                )
+                await session.commit()
+            raise
+
+        # Mission sandboxes receive only their dedicated least-privilege queue
+        # credential; the platform's primary database secret never crosses this
+        # trust boundary.
         environment = {
             "QUEUE_NAME": queue_name,
             "IS_TOOLS_CONTAINER": "true",
             "CONNECT_BACK_HOST": settings.CONNECT_BACK_HOST,
-            "DATABASE_URL": _sandbox_database_url(settings.DATABASE_URL.get_secret_value()),
+            "DATABASE_URL": sandbox_dsn,
             "DATA_ROOT": "/app/data",
         }
 
-        # Build volume mounts
-        # Use Docker mount objects for both named volumes and bind mounts
+        # Sandboxes execute target-facing tools. Keep their writable state
+        # ephemeral instead of exposing global app-data, tool-binary, or
+        # plugin volumes. The promoted worker image already contains the
+        # approved plugin definitions it needs.
         import docker.types
 
-        mounts = [
-            # Shared data volume (named Docker volume)
-            docker.types.Mount(target="/app/data", source=self._resolve_volume_name("spectra_data"), type="volume"),
-            # Tools data volume (named Docker volume — shared tool binaries)
-            docker.types.Mount(
-                target="/opt/spectra_tools",
-                source=self._resolve_volume_name("spectra_tools_data"),
-                type="volume",
-            ),
-        ]
-
-        # Mount plugins: prefer named volume (works in DinD), fall back to bind mount (host dev)
-        import pathlib
-
-        plugins_volume = getattr(settings, "SANDBOX_PLUGINS_VOLUME", "spectra_plugins")
-        app_root = pathlib.Path(__file__).resolve().parents[4]
-        plugins_dir = app_root / "plugins"
-        if plugins_volume:
-            mounts.append(
-                docker.types.Mount(
-                    target="/app/plugins",
-                    source=self._resolve_volume_name(plugins_volume),
-                    type="volume",
-                    read_only=True,
-                )
-            )
-        elif plugins_dir.is_dir():
-            mounts.append(
-                docker.types.Mount(target="/app/plugins", source=str(plugins_dir), type="bind", read_only=True)
-            )
+        mounts: list[Any] = []
 
         # Mount VPN config if provided
         if vpn_config_path:
@@ -209,34 +183,50 @@ class SandboxPool:
                 )
             )
 
-        # Create isolated network if enabled
+        # A sandbox needs a private egress network for targets plus the small,
+        # internal database-only network configured above. Joining the general
+        # application backend would expose Redis, internal APIs, and storage
+        # credentials to target-facing code.
         sandbox_network_id: str | None = None
         shared_network_name = self._resolve_shared_network_name(settings.SANDBOX_NETWORK)
-        container_network = shared_network_name
 
-        if settings.SANDBOX_NETWORK_ISOLATION:
-            net_name = f"spectra-sandbox-{mission_id[:8]}"
-            net_labels = {"spectra.sandbox": "true", "spectra.mission_id": mission_id}
-            try:
-                net = await asyncio.to_thread(
-                    self._client.networks.create,
-                    net_name,
-                    driver="bridge",
-                    labels=net_labels,
-                )
-                sandbox_network_id = net.id
-                container_network = net_name
-                logger.info("Created isolated network %s for mission %s", net_name, mission_id[:8])
-            except (APIError, DockerException) as exc:
-                logger.error("Failed to create isolated network for mission %s: %s", mission_id[:8], exc)
-                raise RuntimeError(f"Sandbox network creation failed: {exc}") from exc
-
+        net_name = f"spectra-sandbox-{sandbox_name_suffix}"
+        net_labels = {"spectra.sandbox": "true", "spectra.mission_id": mission_id}
         try:
-            container = self._client.containers.run(
+            net = await asyncio.to_thread(
+                self._client.networks.create,
+                net_name,
+                driver="bridge",
+                labels=net_labels,
+            )
+            sandbox_network_id = net.id
+            logger.info("Created isolated network %s for mission %s", net_name, mission_id[:8])
+        except (APIError, DockerException, OSError) as exc:
+            logger.error("Failed to create isolated network for mission %s: %s", mission_id[:8], exc)
+            async with async_session_maker() as session:
+                await session.execute(
+                    update(Sandbox).where(Sandbox.id == sandbox_id).values(status="error", error=str(exc)[:500])
+                )
+                await session.commit()
+            await self._revoke_database_access(sandbox_role_name)
+            raise RuntimeError(f"Sandbox network creation failed: {exc}") from exc
+
+        container: Any | None = None
+        try:
+            capabilities: list[str] = []
+            devices: list[str] = []
+            if vpn_config_path:
+                capabilities = ["NET_ADMIN", "NET_RAW"]
+                devices = ["/dev/net/tun"]
+            elif settings.SANDBOX_ALLOW_RAW_NETWORK:
+                capabilities = ["NET_RAW"]
+
+            container = await asyncio.to_thread(
+                self._client.containers.run,
                 image=settings.SANDBOX_IMAGE,
                 name=container_name,
                 detach=True,
-                network=container_network,
+                network=net_name,
                 environment=environment,
                 mounts=mounts,
                 mem_limit=memory_limit,
@@ -247,24 +237,27 @@ class SandboxPool:
                     "spectra.mission_id": mission_id,
                     "spectra.queue_name": queue_name,
                 },
-                # Security hardening
-                cap_add=["NET_ADMIN", "NET_RAW"],
+                cap_add=capabilities,
                 cap_drop=["ALL"],
                 pids_limit=256,
-                read_only=False,  # Tools need to write to /tmp, /opt, etc.
-                tmpfs={"/tmp": "size=2G"},
-                devices=["/dev/net/tun"],
+                read_only=True,
+                security_opt=["no-new-privileges:true"],
+                tmpfs={
+                    "/tmp": "rw,noexec,nosuid,nodev,size=2G",
+                    "/var/tmp": "rw,noexec,nosuid,nodev,size=512m",
+                    "/app/data": "rw,noexec,nosuid,nodev,size=512m",
+                },
+                devices=devices,
                 restart_policy={"Name": "no"},
             )
+            if container is None:
+                raise RuntimeError("Docker did not return a sandbox container")
 
-            # Connect to shared network for DB access if using isolated network
-            if settings.SANDBOX_NETWORK_ISOLATION and sandbox_network_id:
-                try:
-                    shared_net = self._client.networks.get(shared_network_name)
-                    await asyncio.to_thread(shared_net.connect, container)
-                    logger.debug("Connected sandbox %s to shared network %s", container_name, shared_network_name)
-                except (APIError, NotFound) as exc:
-                    logger.warning("Failed to connect sandbox to shared network: %s", exc)
+            # The dedicated database network must be available. Continuing
+            # without it would create a sandbox that cannot process its queue.
+            shared_net = await asyncio.to_thread(self._client.networks.get, shared_network_name)
+            await asyncio.to_thread(shared_net.connect, container)
+            logger.debug("Connected sandbox %s to database network %s", container_name, shared_network_name)
 
             # Update DB with actual container ID and network ID
             async with async_session_maker() as session:
@@ -294,7 +287,12 @@ class SandboxPool:
             )
             return info
 
-        except (APIError, ContainerError, ImageNotFound) as exc:
+        except (APIError, ContainerError, ImageNotFound, DockerException, OSError, RuntimeError) as exc:
+            if container is not None:
+                try:
+                    await asyncio.to_thread(container.remove, force=True)
+                except (APIError, DockerException, OSError):
+                    logger.debug("Failed to remove sandbox after creation failure", exc_info=True)
             # Cleanup isolated network on failure
             if sandbox_network_id:
                 try:
@@ -309,6 +307,7 @@ class SandboxPool:
                     update(Sandbox).where(Sandbox.id == sandbox_id).values(status="error", error=str(exc)[:500])
                 )
                 await session.commit()
+            await self._revoke_database_access(sandbox_role_name)
             logger.error("Failed to create sandbox for mission %s: %s", mission_id[:8], exc)
             raise RuntimeError(f"Sandbox creation failed: {exc}") from exc
 
@@ -332,6 +331,8 @@ class SandboxPool:
         # Remove isolated network if present
         if row.network_id:
             await self._remove_network(row.network_id, row.container_name)
+
+        await self._revoke_database_access(sandbox_database_role_name(mission_id))
 
         async with async_session_maker() as session:
             await session.execute(
@@ -362,59 +363,91 @@ class SandboxPool:
             queue_name=row.queue_name,
             status=row.status,
             image=row.image,
+            resource_tier=row.resource_tier or "medium",
             network_id=row.network_id,
             created_at=row.created_at,
         )
 
-    async def cleanup_all(self) -> int:
-        """Remove all sandbox containers. Called on startup/shutdown for orphan recovery."""
-        count = 0
+    async def reconcile_orphans(self) -> int:
+        """Remove only labelled Docker resources without an active sandbox record.
 
-        if self.available:
-            try:
-                containers = self._client.containers.list(all=True, filters={"label": "spectra.sandbox=true"})
-                for c in containers:
-                    try:
-                        c.stop(timeout=5)
-                    except OSError:
-                        logger.debug("Failed to stop container %s during cleanup", getattr(c, "name", "unknown"))
-                    try:
-                        c.remove(force=True)
-                    except OSError:
-                        logger.debug("Failed to remove container %s during cleanup", getattr(c, "name", "unknown"))
-                    count += 1
-
-                # Clean up orphaned sandbox networks
-                networks = self._client.networks.list(filters={"label": "spectra.sandbox=true"})
-                for net in networks:
-                    try:
-                        net.remove()
-                    except OSError:
-                        logger.debug("Failed to remove orphaned network %s", getattr(net, "name", "unknown"))
-                if networks:
-                    logger.info("Cleaned up %d orphaned sandbox networks", len(networks))
-            except (APIError, DockerException) as exc:
-                logger.warning("Docker cleanup error: %s", exc)
-
-        # Mark all non-destroyed rows as destroyed in DB
+        This is safe to run from periodic maintenance and service startup. In
+        particular, it never stops a sandbox merely because a control-plane
+        replica restarted; active database rows remain the ownership source of
+        truth until their normal lifecycle or watchdog cleanup completes.
+        """
+        creation_cutoff = datetime.now(UTC) - timedelta(minutes=5)
         async with async_session_maker() as session:
-            await session.execute(
-                update(Sandbox)
-                .where(Sandbox.status.in_(["creating", "running", "stopping"]))
-                .values(status="destroyed", destroyed_at=datetime.now(UTC))
+            stale_rows = await session.execute(
+                select(Sandbox).where(
+                    Sandbox.status == "creating",
+                    Sandbox.created_at < creation_cutoff,
+                )
             )
-            await session.commit()
+            stale_creations = list(stale_rows.scalars().all())
+            for stale in stale_creations:
+                stale.status = "error"
+                stale.error = "Sandbox creation did not complete within five minutes"
+            if stale_creations:
+                await session.commit()
 
-        if count:
-            logger.info("Cleaned up %d orphaned sandbox containers", count)
-        return count
+            rows = await session.execute(
+                select(Sandbox.mission_id, Sandbox.container_id, Sandbox.network_id).where(
+                    Sandbox.status.in_(["creating", "running", "stopping"])
+                )
+            )
+            active_rows = rows.all()
+            active_container_ids = {container_id for _mission_id, container_id, _network_id in active_rows if container_id}
+            active_network_ids = {network_id for _mission_id, _container_id, network_id in active_rows if network_id}
+            active_role_names = {
+                sandbox_database_role_name(str(mission_id))
+                for mission_id, _container_id, _network_id in active_rows
+            }
+
+        revoked_roles = await self._reconcile_database_roles(active_role_names)
+        if not self.available:
+            return revoked_roles
+
+        def _reconcile() -> int:
+            removed = 0
+            containers = self._client.containers.list(all=True, filters={"label": "spectra.sandbox=true"})
+            for container in containers:
+                if container.id in active_container_ids:
+                    continue
+                container.remove(force=True)
+                removed += 1
+
+            networks = self._client.networks.list(filters={"label": "spectra.sandbox=true"})
+            for network in networks:
+                if network.id in active_network_ids:
+                    continue
+                network.reload()
+                if network.attrs.get("Containers"):
+                    continue
+                network.remove()
+            return removed
+
+        try:
+            removed = await asyncio.to_thread(_reconcile)
+        except (APIError, DockerException, OSError) as exc:
+            logger.warning("Sandbox orphan reconciliation failed: %s", exc)
+            return revoked_roles
+        if removed:
+            logger.info("Removed %d untracked sandbox containers", removed)
+        return removed + revoked_roles
 
     async def health_check(self) -> dict[str, Any]:
         """Check health of all running sandboxes. Reap expired ones."""
         settings = get_settings()
-        result: dict[str, Any] = {"available": self.available, "sandboxes": {}}
+        configured = bool(settings.DATABASE_URL.get_secret_value())
+        result: dict[str, Any] = {
+            "available": self.available,
+            "configured": configured,
+            "status": "healthy" if self.available and configured else "degraded",
+            "sandboxes": {},
+        }
 
-        if not self.available:
+        if not self.available or not configured:
             return result
 
         async with async_session_maker() as session:
@@ -440,6 +473,93 @@ class SandboxPool:
                 result["sandboxes"][row.mission_id] = "healthy"
 
         return result
+
+    async def _provision_database_access(self, role_name: str) -> str:
+        """Create a one-mission database role limited to its queue rows."""
+        settings = get_settings()
+        admin_url = settings.DATABASE_URL.get_secret_value()
+        password = secrets.token_urlsafe(32)
+        sandbox_dsn = sandbox_database_url(admin_url, role_name=role_name, password=password)
+
+        try:
+            async with async_session_maker() as session:
+                create_role_sql = (
+                    await session.execute(
+                        text(
+                            f"""
+                            SELECT format(
+                                'CREATE ROLE {role_name} LOGIN PASSWORD %L '
+                                'NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION '
+                                'CONNECTION LIMIT 1',
+                                CAST(:password AS text)
+                            )
+                            """
+                        ),
+                        {"password": password},
+                    )
+                ).scalar_one()
+                await session.execute(
+                    text(
+                        create_role_sql
+                    )
+                )
+                await session.execute(text(f"GRANT USAGE ON SCHEMA public TO {role_name}"))
+                await session.execute(text(f"GRANT SELECT, UPDATE ON TABLE job_queue TO {role_name}"))
+                await session.commit()
+        except Exception as exc:
+            logger.error("Failed to provision sandbox database role %s: %s", role_name, exc)
+            raise RuntimeError("Sandbox database role provisioning failed") from exc
+
+        return sandbox_dsn
+
+    async def _reconcile_database_roles(self, active_role_names: set[str]) -> int:
+        """Remove credentials left by a process crash after sandbox shutdown."""
+        try:
+            async with async_session_maker() as session:
+                rows = await session.execute(
+                    text("SELECT rolname FROM pg_roles WHERE rolname LIKE 'spectra_sandbox_%'")
+                )
+                role_names = list(rows.scalars().all())
+        except Exception:
+            logger.warning("Failed to enumerate sandbox database roles", exc_info=True)
+            return 0
+
+        revoked = 0
+        for role_name in role_names:
+            if not re.fullmatch(r"spectra_sandbox_[0-9a-f]{32}", role_name):
+                continue
+            if role_name in active_role_names:
+                continue
+            if await self._revoke_database_access(role_name):
+                revoked += 1
+        if revoked:
+            logger.info("Revoked %d stale sandbox database role(s)", revoked)
+        return revoked
+
+    async def _revoke_database_access(self, role_name: str) -> bool:
+        """Drop a sandbox role after its container has been removed."""
+        try:
+            async with async_session_maker() as session:
+                # PostgreSQL will not drop a role while grants still depend on
+                # it. Revoke first and commit that safety boundary even if an
+                # active connection temporarily prevents the final DROP.
+                await session.execute(text(f"REVOKE ALL PRIVILEGES ON TABLE job_queue FROM {role_name}"))
+                await session.execute(text(f"REVOKE USAGE ON SCHEMA public FROM {role_name}"))
+                await session.commit()
+                try:
+                    await session.execute(text(f"DROP ROLE IF EXISTS {role_name}"))
+                    await session.commit()
+                    return True
+                except Exception:
+                    await session.rollback()
+                    # A lingering TCP connection must not keep a former
+                    # sandbox credential usable while the next cleanup retry
+                    # waits for PostgreSQL to release it.
+                    await session.execute(text(f"ALTER ROLE {role_name} NOLOGIN"))
+                    await session.commit()
+        except Exception:
+            logger.warning("Failed to revoke sandbox database role %s", role_name, exc_info=True)
+        return False
 
     # -- Private helpers --
 

@@ -89,7 +89,6 @@ class SettingsUpdate(BaseModel):
 
     # Sandbox Features
     sandbox_resource_tiers: str | None = None  # JSON string of tier definitions
-    sandbox_network_isolation: bool | None = None
     sandbox_idle_timeout: int | None = Field(None, ge=60, le=7200)
     sandbox_heartbeat_interval: int | None = Field(None, ge=5, le=300)
     sandbox_per_user_limit: int | None = Field(None, ge=0, le=20)

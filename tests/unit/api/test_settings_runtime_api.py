@@ -31,7 +31,6 @@ def _make_settings_stub() -> SimpleNamespace:
         SANDBOX_CPU_SHARES=512,
         SANDBOX_MAX_LIFETIME=7200,
         SANDBOX_RESOURCE_TIERS='{"light": {"memory": "512m", "cpu_shares": 256}}',
-        SANDBOX_NETWORK_ISOLATION=True,
         SANDBOX_IDLE_TIMEOUT=600,
         SANDBOX_HEARTBEAT_INTERVAL=30,
         SANDBOX_PER_USER_LIMIT=3,
@@ -122,7 +121,7 @@ async def test_get_settings_includes_sandbox_fields(test_app):
     assert data["sandbox_memory_limit"] == "2g"
     assert data["sandbox_cpu_shares"] == 512
     assert data["sandbox_max_lifetime"] == 7200
-    assert data["sandbox_network_isolation"] is True
+    assert "sandbox_network_isolation" not in data
     assert data["sandbox_idle_timeout"] == 600
 
 

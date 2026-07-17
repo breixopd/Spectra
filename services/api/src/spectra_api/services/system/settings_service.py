@@ -47,7 +47,6 @@ _GENERAL_DB_FIELD_SPECS: tuple[GeneralDbFieldSpec, ...] = (
     ("sandbox_cpu_shares", "SANDBOX_CPU_SHARES", "int", False),
     ("sandbox_max_lifetime", "SANDBOX_MAX_LIFETIME", "int", False),
     ("sandbox_resource_tiers", "SANDBOX_RESOURCE_TIERS", "str", False),
-    ("sandbox_network_isolation", "SANDBOX_NETWORK_ISOLATION", "bool", False),
     ("sandbox_idle_timeout", "SANDBOX_IDLE_TIMEOUT", "int", False),
     ("sandbox_heartbeat_interval", "SANDBOX_HEARTBEAT_INTERVAL", "int", False),
     ("sandbox_per_user_limit", "SANDBOX_PER_USER_LIMIT", "int", False),
@@ -107,7 +106,6 @@ _SETTINGS_SNAPSHOT_FIELDS_BEFORE_SANDBOX_STATUS: tuple[SettingsSnapshotSpec, ...
 
 _SETTINGS_SNAPSHOT_FIELDS_AFTER_SANDBOX_STATUS: tuple[SettingsSnapshotSpec, ...] = (
     ("sandbox_resource_tiers", "SANDBOX_RESOURCE_TIERS", None),
-    ("sandbox_network_isolation", "SANDBOX_NETWORK_ISOLATION", None),
     ("sandbox_idle_timeout", "SANDBOX_IDLE_TIMEOUT", None),
     ("sandbox_heartbeat_interval", "SANDBOX_HEARTBEAT_INTERVAL", None),
     ("sandbox_per_user_limit", "SANDBOX_PER_USER_LIMIT", None),

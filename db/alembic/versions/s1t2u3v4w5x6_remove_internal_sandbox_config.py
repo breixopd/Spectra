@@ -16,7 +16,11 @@ down_revision: str | Sequence[str] | None = "r0s1t2u3v4w5"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-_INTERNAL_KEYS = ("SANDBOX_IMAGE", "SANDBOX_NETWORK", "SANDBOX_PLUGINS_VOLUME")
+_INTERNAL_KEYS = (
+    "SANDBOX_IMAGE",
+    "SANDBOX_NETWORK",
+    "SANDBOX_NETWORK_ISOLATION",
+)
 
 
 def upgrade() -> None:
@@ -35,8 +39,7 @@ def downgrade() -> None:
     conn = op.get_bind()
     defaults = {
         "SANDBOX_IMAGE": ("spectra-tools", "Sandbox Docker image name"),
-        "SANDBOX_NETWORK": ("spectra-network", "Sandbox Docker network name"),
-        "SANDBOX_PLUGINS_VOLUME": ("spectra_plugins", "Sandbox plugins Docker volume"),
+        "SANDBOX_NETWORK": ("sandbox", "Sandbox database Docker network name"),
     }
     for key, (value, description) in defaults.items():
         conn.exec_driver_sql(

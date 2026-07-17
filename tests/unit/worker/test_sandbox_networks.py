@@ -36,16 +36,17 @@ class TestNetworkIsolation:
 
         assert hasattr(Sandbox, "network_id")
 
-    def test_config_has_network_isolation_setting(self):
+    def test_config_rejects_disabling_network_isolation(self):
+        import pytest
         from pydantic import SecretStr
 
         from spectra_common.config import Settings
 
-        s = Settings(
-            DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"),
-            SANDBOX_NETWORK_ISOLATION=False,
-        )
-        assert s.SANDBOX_NETWORK_ISOLATION is False
+        with pytest.raises(ValueError, match="SANDBOX_NETWORK_ISOLATION must remain enabled"):
+            Settings(
+                DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"),
+                SANDBOX_NETWORK_ISOLATION=False,
+            )
 
     def test_config_network_isolation_default_true(self):
         from pydantic import SecretStr

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import logging
 import shutil
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
+from typing import cast
 
 from sqlalchemy import delete, select
 
@@ -28,11 +30,20 @@ async def cleanup_expired_cache(session) -> int:
 
 
 async def cleanup_orphaned_sandboxes(sandbox_pool) -> int:
-    """Find and remove sandbox containers that escaped normal cleanup."""
+    """Reconcile only untracked sandboxes; never remove active work."""
     if not sandbox_pool or not sandbox_pool.available:
         return 0
+    if getattr(sandbox_pool, "is_remote", False) is True:
+        # API replicas hold a remote sandbox controller. Scheduler owns the
+        # Docker reconciler, so never make an implicit maintenance request from
+        # a replica restart path.
+        return 0
 
-    cleaned = await sandbox_pool.cleanup_all()
+    reconcile_orphans = getattr(sandbox_pool, "reconcile_orphans", None)
+    if not callable(reconcile_orphans):
+        return 0
+
+    cleaned = await cast(Callable[[], Awaitable[int]], reconcile_orphans)()
     if cleaned:
         logger.info("Cleaned up %d orphaned sandboxes", cleaned)
     return cleaned

@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 import uuid
 from contextlib import asynccontextmanager, suppress
 from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
 
-from fastapi import FastAPI, Request, Response, status
+from fastapi import FastAPI, HTTPException, Request, Response, status
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 from spectra_auth.rate_limit import RateLimits, limiter
@@ -19,8 +22,20 @@ from spectra_scheduler import state as scheduler_state
 from spectra_scheduler.leader import leader_election_loop
 from spectra_scheduler.locks import _SCHEDULER_TASK_SPECS
 from spectra_scheduler.service import SchedulerService
+from spectra_tools.sandbox import get_sandbox_pool, set_sandbox_pool
 
 logger = logging.getLogger("spectra_scheduler")
+
+_VPN_CONFIG_NAME_PATTERN = r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,159}$"
+
+
+class SandboxCreateRequest(BaseModel):
+    """Authenticated API request for scheduler-owned sandbox creation."""
+
+    mission_id: UUID
+    resource_tier: str = Field(default="medium", min_length=1, max_length=64, pattern=r"^[a-zA-Z][a-zA-Z0-9_-]*$")
+    user_id: UUID | None = None
+    vpn_config_name: str | None = Field(default=None, pattern=_VPN_CONFIG_NAME_PATTERN)
 
 
 def latency_ms(start: float) -> float:
@@ -53,6 +68,36 @@ def task_health_details(scheduler: SchedulerService) -> tuple[dict[str, dict[str
     return details, degraded
 
 
+def sandbox_payload(info: Any) -> dict[str, Any]:
+    """Serialize a sandbox handle without exposing Docker internals."""
+    created_at = getattr(info, "created_at", None)
+    return {
+        "container_id": info.container_id,
+        "container_name": info.container_name,
+        "mission_id": info.mission_id,
+        "queue_name": info.queue_name,
+        "status": info.status,
+        "image": info.image,
+        "resource_tier": info.resource_tier,
+        "network_id": info.network_id,
+        "created_at": created_at.isoformat() if created_at else None,
+    }
+
+
+async def _vpn_config_path(config_name: str | None) -> str | None:
+    """Resolve a validated VPN config name locally on the scheduler host."""
+    if not config_name:
+        return None
+    if not re.fullmatch(_VPN_CONFIG_NAME_PATTERN, config_name):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid VPN config name")
+    from spectra_tools.vpn import VPNManager
+
+    local_path = await VPNManager()._download_to_local(config_name)
+    if local_path is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="VPN config not found")
+    return str(local_path)
+
+
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI):
     try:
@@ -64,11 +109,25 @@ async def lifespan(fastapi_app: FastAPI):
     except Exception:
         logger.warning("Failed to auto-register local node — continuing", exc_info=True)
 
+    try:
+        from spectra_tools.sandbox import SandboxPool
+
+        sandbox_pool = SandboxPool()
+        set_sandbox_pool(sandbox_pool)
+        if sandbox_pool.available:
+            reconciled = await sandbox_pool.reconcile_orphans()
+            logger.info("Scheduler sandbox controller ready (reconciled=%d)", reconciled)
+        else:
+            logger.warning("Scheduler sandbox controller unavailable: Docker not accessible")
+    except (OSError, RuntimeError) as exc:
+        logger.warning("Scheduler sandbox controller initialization failed: %s", exc)
+
     sched = SchedulerService()
     scheduler_state._scheduler_instance = sched
     task = create_safe_task(leader_election_loop(sched), name="leader_election")
     yield
     await sched.stop()
+    set_sandbox_pool(None)
     scheduler_state._scheduler_instance = None
     task.cancel()
     with suppress(asyncio.CancelledError):
@@ -98,6 +157,59 @@ async def health(response: Response):
     if result.get("status") == "degraded":
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return result
+
+
+@app.get("/v1/sandboxes/health")
+async def sandbox_health():
+    """Return scheduler-owned sandbox controller health (service-auth protected)."""
+    pool = get_sandbox_pool()
+    if pool is None or not pool.available:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Sandbox controller unavailable")
+    return await pool.health_check()
+
+
+@app.post("/v1/sandboxes", status_code=status.HTTP_201_CREATED)
+async def create_sandbox(payload: SandboxCreateRequest):
+    """Create an isolated mission sandbox on the only Docker-capable service."""
+    pool = get_sandbox_pool()
+    if pool is None or not pool.available:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Sandbox controller unavailable")
+    mission_id = str(payload.mission_id)
+    try:
+        info = await pool.create(
+            mission_id,
+            resource_tier=payload.resource_tier,
+            user_id=str(payload.user_id) if payload.user_id else None,
+            vpn_config_path=await _vpn_config_path(payload.vpn_config_name),
+        )
+    except HTTPException:
+        raise
+    except (OSError, RuntimeError, ValueError) as exc:
+        logger.warning("Scheduler sandbox creation rejected for mission %s: %s", mission_id[:8], exc)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Sandbox creation unavailable") from exc
+    return sandbox_payload(info)
+
+
+@app.get("/v1/sandboxes/{mission_id}")
+async def get_sandbox(mission_id: UUID):
+    """Return a mission sandbox state from the scheduler control plane."""
+    pool = get_sandbox_pool()
+    if pool is None or not pool.available:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Sandbox controller unavailable")
+    info = await pool.get(str(mission_id))
+    if info is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sandbox not found")
+    return sandbox_payload(info)
+
+
+@app.delete("/v1/sandboxes/{mission_id}")
+async def destroy_sandbox(mission_id: UUID):
+    """Destroy one mission sandbox through the scheduler control plane."""
+    pool = get_sandbox_pool()
+    if pool is None or not pool.available:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Sandbox controller unavailable")
+    await pool.destroy(str(mission_id))
+    return {"status": "destroyed", "mission_id": str(mission_id)}
 
 
 @app.get("/health/deep")
