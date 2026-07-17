@@ -32,6 +32,7 @@ from spectra_common.constants import (
 from spectra_domain.jobs import WorkerJobName
 from spectra_tools.consensus import perform_consensus_check
 from spectra_tools.dispatch import build_execution_request, dispatch_and_process_result
+from spectra_tools.interfaces import ToolExecutionMission
 from spectra_tools.output import (
     create_error_result,
     normalize_tool_name,
@@ -139,7 +140,7 @@ class ToolExecutionService:
 
     async def execute_custom_script(
         self,
-        mission: Mission,
+        mission: ToolExecutionMission,
         script_content: str,
         language: str,
         target: str,

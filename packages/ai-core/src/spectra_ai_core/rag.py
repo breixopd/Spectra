@@ -33,12 +33,12 @@ class Document(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     # For CVEs
-    cve_id: str | None = Field(None, description="CVE identifier if applicable")
-    severity: str | None = Field(None, description="Severity level")
+    cve_id: str | None = None
+    severity: str | None = None
 
     # For findings
-    target: str | None = Field(None, description="Target this relates to")
-    session_id: str | None = Field(None, description="Session ID if from a finding")
+    target: str | None = None
+    session_id: str | None = None
 
 
 class SearchResult(BaseModel):

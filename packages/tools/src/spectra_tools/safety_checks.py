@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 from spectra_ai_core.agents.base import AgentContext
 from spectra_ai_core.agents.safety import SafetyAction, SafetyInput
 from spectra_tools_core.models import ToolExecutionRequest
+from spectra_tools.interfaces import ToolExecutionMission
 
 if TYPE_CHECKING:
     from spectra_ai_core.agents.safety import SafetySupervisorAgent
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 async def perform_safety_check(
-    mission: Mission,
+    mission: ToolExecutionMission,
     command: str,
     tool_name: str,
     target: str,
@@ -66,7 +67,7 @@ async def perform_safety_check(
 
 
 async def perform_safety_check_with_retry(
-    mission: Mission,
+    mission: ToolExecutionMission,
     command: str,
     tool_name: str,
     target: str,
@@ -123,7 +124,7 @@ async def perform_safety_check_with_retry(
 
 
 async def _try_fix_command(
-    mission: Mission,
+    mission: ToolExecutionMission,
     tool_name: str,
     target: str,
     args: dict[str, Any] | None,

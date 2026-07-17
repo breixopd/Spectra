@@ -83,8 +83,9 @@ class RAGFacade:
         return await self._rag.get_context_for_prompt(
             query=query,
             doc_types=doc_types,
-            top_k=top_k,
-            max_chars=max_chars,
+            # The core RAG service controls retrieval breadth itself and
+            # exposes a token budget rather than a character limit.
+            max_tokens=max(1, max_chars // self._rag.CHARS_PER_TOKEN),
         )
 
     async def index_document(

@@ -5,9 +5,10 @@ Orchestrates the creation and verification of custom POCs.
 """
 
 import logging
+from typing import cast
 
 from spectra_ai_core.agents.base import AgentContext
-from spectra_ai_core.agents.poc_developer import POCDeveloperAgent, POCDeveloperInput
+from spectra_ai_core.agents.poc_developer import POCDeveloperAgent, POCDeveloperInput, POCDeveloperOutput
 from spectra_ai_core.capabilities import Capability, CapabilityRequest, require_capability
 from spectra_ai_core.consensus import QualityGate, VotingSystem
 from spectra_ai_core.llm import LLMClient
@@ -74,7 +75,7 @@ class POCService:
             callback_host = settings.CONNECT_BACK_HOST
 
             callback_port = await shell_relay_client.start_listener(
-                session_id=context.session_id,
+                session_id=context.session_id or context.mission_id,
                 target=request.target,
                 mission_id=context.mission_id,
                 port=0,
@@ -94,7 +95,7 @@ class POCService:
             if not result.success or not result.action:
                 return POCResult(success=False, error=result.error or "Agent failed")
 
-            poc_output = result.action  # POCDeveloperOutput
+            poc_output = cast(POCDeveloperOutput, result.action)
 
             # 3. Consensus / Quality Gate
             vote_result = await self.consensus.validate_at_gate(

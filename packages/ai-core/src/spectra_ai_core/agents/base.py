@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, ClassVar, Generic, TypeVar
+from typing import Any, ClassVar, Generic, TypeVar, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -60,14 +60,14 @@ class AgentContext(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     mission_id: str = Field(..., description="Current mission ID")
-    session_id: str | None = Field(None, description="Current session ID (optional)")
-    user_id: str | None = Field(None, description="Owning user ID for scoped memory and data access")
-    user_role: str | None = Field(None, description="Server-derived user role for capability policy")
+    session_id: str | None = None
+    user_id: str | None = None
+    user_role: str | None = None
     plan_features: dict[str, Any] = Field(default_factory=dict, description="Server-derived plan features")
     tenant_quotas: dict[str, Any] = Field(default_factory=dict, description="Server-derived tenant quota snapshot")
-    target: str | None = Field(None, description="Current target (IP/domain)")
-    mission: str | None = Field(None, description="High-level mission directive")
-    phase: str = Field("discovery", description="Current assessment phase")
+    target: str | None = None
+    mission: str | None = None
+    phase: str = "discovery"
 
     # State from previous actions
     previous_findings: list[dict[str, Any]] = Field(default_factory=list)
@@ -75,14 +75,14 @@ class AgentContext(BaseModel):
     available_tools: list[str] = Field(default_factory=list)
 
     # Constraints
-    stealth_mode: bool = Field(False, description="Minimize detection")
-    max_concurrency: int = Field(3, description="Max parallel operations")
+    stealth_mode: bool = False
+    max_concurrency: int = 3
 
     # Extra context from blackboard/intelligence
-    extra_context: str = Field("", description="Additional context from blackboard")
+    extra_context: str = ""
 
     # Cost tracking (excluded from serialization)
-    cost_tracker: CostTracker | None = Field(None, description="CostTracker instance", exclude=True)
+    cost_tracker: CostTracker | None = None
 
 
 # --- Action Models ---
@@ -300,7 +300,9 @@ class Agent(ABC, Generic[InputT, OutputT]):
             if not result.success or not result.action:
                 return result
 
-            quality, feedback = await self._reflect(context, result.action)
+            # ``execute`` is the subclass contract for this agent's OutputT;
+            # AgentResult stores the common base type for cross-agent callers.
+            quality, feedback = await self._reflect(context, cast(OutputT, result.action))
 
             self.broadcast_thought(f"[Reflection #{iteration + 1}] Quality: {quality:.2f} — {feedback}")
 

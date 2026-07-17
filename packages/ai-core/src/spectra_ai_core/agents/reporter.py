@@ -67,7 +67,7 @@ class ReportOutput(AgentAction):
     target: str = Field(..., description="Target assessed")
 
     # Report file path when saved
-    report_path: str | None = Field(None, description="Path to saved report file")
+    report_path: str | None = None
 
 
 # --- Reporter Agent ---

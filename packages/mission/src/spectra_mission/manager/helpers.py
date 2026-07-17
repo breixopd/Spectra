@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from spectra_ai_core.agents.base import AgentContext, SteeringAction
 from spectra_ai_core.agents.mission_controller import (
@@ -37,7 +37,7 @@ async def run_debrief(
 ) -> None:
     """Run AI debrief analysis after mission completion."""
     try:
-        from spectra_ai_core.agents.debrief import DebriefAgent, DebriefInput
+        from spectra_ai_core.agents.debrief import DebriefAgent, DebriefInput, DebriefOutput
 
         if not mission_controller:
             return
@@ -49,12 +49,12 @@ async def run_debrief(
             findings=mission.findings[:DEBRIEF_MAX_FINDINGS],
             tools_run=mission.tools_run,
             logs=mission.logs[-DEBRIEF_MAX_LOGS:],
-            attack_surface_summary=mission.attack_surface.get_summary(),
+            attack_surface_summary=dict(mission.attack_surface.get_summary()),
         )
 
         result = await debrief.execute(context, debrief_input)
         if result.success and result.action:
-            action = result.action
+            action = cast(DebriefOutput, result.action)
             mission.log(f"[DEBRIEF] Risk: {action.risk_rating.upper()}")
             mission.log(f"[DEBRIEF] {action.executive_summary[:DEBRIEF_SUMMARY_LOG_CHARS]}")
             for lesson in action.lessons_learned[:3]:
@@ -498,7 +498,14 @@ async def execute_mission_tasks(
             )
 
             for position, ((_, task), result) in enumerate(zip(independent, results, strict=False)):
-                task_result = result if isinstance(result, Exception) else None
+                if isinstance(result, asyncio.CancelledError):
+                    raise result
+                if isinstance(result, Exception):
+                    task_result: Exception | None = result
+                elif isinstance(result, BaseException):
+                    task_result = RuntimeError(f"Task interrupted by {type(result).__name__}: {result}")
+                else:
+                    task_result = None
                 effective_idx = global_task_counter + position
                 last_findings_count, last_adaptation_index = await _handle_task_execution_result(
                     mission,
@@ -532,14 +539,14 @@ async def execute_mission_tasks(
                     copy_context=False,
                 )
             except Exception as e:
-                result: Exception | None = e
+                dependent_result: Exception | None = e
             else:
-                result = None
+                dependent_result = None
 
             last_findings_count, last_adaptation_index = await _handle_task_execution_result(
                 mission,
                 task,
-                result,
+                dependent_result,
                 context,
                 mission_controller,
                 consensus,

@@ -60,9 +60,9 @@ class MissionInput(BaseModel):
     """Input for the MissionController."""
 
     directive: str = Field(..., description="User's high-level directive")
-    requirements: str | None = Field(None, description="Additional mission constraints")
-    is_steering: bool = Field(False, description="Is this a mid-mission steering command?")
-    force_phase: AssessmentPhase | None = Field(None, description="Force transition to phase")
+    requirements: str | None = None
+    is_steering: bool = False
+    force_phase: AssessmentPhase | None = None
 
 
 class Task(BaseModel):
