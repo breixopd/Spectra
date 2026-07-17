@@ -157,7 +157,7 @@ async def test_create_backup_returns_failure_when_upload_fails(backup_svc):
 
 
 @pytest.mark.asyncio
-async def test_restore_backup_returns_success_when_pg_restore_only_warns(backup_svc):
+async def test_restore_backup_fails_on_any_nonzero_pg_restore_exit(backup_svc):
     mock_storage = MagicMock()
     mock_storage.exists = AsyncMock(return_value=True)
     mock_storage.download_file = AsyncMock()
@@ -188,8 +188,7 @@ async def test_restore_backup_returns_success_when_pg_restore_only_warns(backup_
     ):
         result = await backup_svc.restore_backup("backup_20260329_130000")
 
-    assert result["status"] == "success"
-    assert result["restored_from"].endswith("backups/backup_20260329_130000.dump")
+    assert result == {"status": "failed", "error": "warning only"}
     assert timeouts == [600]
     assert temp_dirs == [backup_svc._test_temp_root]
     mock_proc.communicate.assert_awaited_once()

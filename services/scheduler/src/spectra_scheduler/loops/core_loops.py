@@ -155,11 +155,8 @@ class SchedulerCoreLoopsMixin:
                     result = await svc.create_backup()
                     logger.info("Scheduled backup: %s", result.get("status"))
 
-                    from spectra_infra.cache import get_cache as _get_cache
-
-                    _cache = _get_cache()
-                    if _cache:
-                        await _cache.set(
+                    if result.get("status") == "success" and cache:
+                        await cache.set(
                             "last_backup_timestamp",
                             datetime.now(UTC).isoformat(),
                             ttl=int(settings.BACKUP_SCHEDULE_HOURS * SECONDS_PER_HOUR * 2),

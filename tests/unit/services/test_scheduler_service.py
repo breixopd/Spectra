@@ -492,6 +492,48 @@ async def test_backup_scheduler_handles_backup_errors():
 
 
 @pytest.mark.asyncio
+async def test_backup_scheduler_does_not_record_failed_backup_timestamp():
+    import spectra_scheduler.main as scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+    settings = SimpleNamespace(BACKUP_ENABLED=True, BACKUP_SCHEDULE_HOURS=0)
+    cache = SimpleNamespace(get=AsyncMock(return_value=None), set=AsyncMock())
+
+    async def create_backup():
+        service.running = False
+        return {"status": "failed", "error": "pg_dump missing"}
+
+    backup_service = SimpleNamespace(create_backup=AsyncMock(side_effect=create_backup))
+
+    @asynccontextmanager
+    async def fake_lock_owner(lock_id, *, connection_factory):
+        yield object()
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(
+            sys.modules,
+            "spectra_common.config",
+            make_module("spectra_common.config", get_settings=lambda: settings),
+        )
+        mp.setitem(
+            sys.modules,
+            "spectra_scaling.infrastructure_services.backup",
+            make_module("spectra_scaling.infrastructure_services.backup", BackupService=lambda: backup_service),
+        )
+        mp.setitem(
+            sys.modules,
+            "spectra_infra.cache",
+            make_module("spectra_infra.cache", get_cache=lambda: cache),
+        )
+        mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
+        await service._backup_scheduler()
+
+    cache.set.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_image_update_check_skips_registry_when_auto_update_disabled():
     import spectra_scheduler.main as scheduler_service
 

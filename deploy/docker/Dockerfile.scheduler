@@ -30,7 +30,7 @@ LABEL org.opencontainers.image.title="Spectra Scheduler" \
 WORKDIR /app
 RUN printf '%s' "${BUILD_VERSION}" > /app/.build-version
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl libpq5 libcairo2 netcat-openbsd openssh-client \
+    ca-certificates curl libpq5 libcairo2 netcat-openbsd openssh-client postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/venv /opt/venv

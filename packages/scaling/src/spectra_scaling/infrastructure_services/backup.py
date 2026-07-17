@@ -155,9 +155,8 @@ class BackupService:
 
                 if proc.returncode != 0:
                     error_msg = stderr.decode() if stderr else "Unknown error"
-                    if "ERROR" in error_msg:
-                        return {"status": "failed", "error": error_msg}
-                    logger.warning("pg_restore warnings: %s", error_msg)
+                    logger.error("pg_restore failed: %s", error_msg)
+                    return {"status": "failed", "error": error_msg}
 
                 logger.info("Database restored from s3://%s/%s", self._bucket, s3_key)
                 return {"status": "success", "restored_from": f"s3://{self._bucket}/{s3_key}"}
