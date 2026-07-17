@@ -97,8 +97,17 @@ MCP_TOOLS = [
                     "type": "string",
                     "description": "ID of the user initiating the mission",
                 },
+                "authorization_confirmed": {
+                    "type": "boolean",
+                    "description": "Confirm ownership or explicit written authorization for the target",
+                },
+                "requires_approval": {
+                    "type": "boolean",
+                    "description": "Require operator approval for high-risk actions (defaults to true)",
+                    "default": True,
+                },
             },
-            "required": ["target", "directive", "user_id"],
+            "required": ["target", "directive", "authorization_confirmed"],
         },
     },
     {
@@ -215,7 +224,7 @@ async def handle_mcp_request(
             tool_name = params.get("name", "")
             arguments = params.get("arguments", {})
 
-            result = await _execute_mcp_tool(tool_name, arguments, session)
+            result = await _execute_mcp_tool(tool_name, arguments, session, request=request)
             return MCPResponse(
                 id=body.id,
                 result={
@@ -243,18 +252,30 @@ async def handle_mcp_request(
         )
 
 
-async def _execute_mcp_tool(tool_name: str, arguments: dict, session: AsyncSession) -> dict:
+async def _execute_mcp_tool(
+    tool_name: str,
+    arguments: dict,
+    session: AsyncSession,
+    *,
+    request: Request,
+) -> dict:
     """Execute an MCP tool and return results."""
     # Enforce server-side user scoping: override any user-supplied user_id
     # with the configured MCP_USER_ID to prevent impersonation.
-    _USER_SCOPED_TOOLS = {"start_mission", "get_mission_status", "get_findings", "list_targets"}
+    _USER_SCOPED_TOOLS = {
+        "start_mission",
+        "get_mission_status",
+        "get_findings",
+        "list_targets",
+        "search_knowledge_base",
+    }
     if tool_name in _USER_SCOPED_TOOLS:
         if not settings.MCP_USER_ID:
             raise ValueError("MCP_USER_ID is not configured; user-scoped operations are unavailable")
         arguments = {**arguments, "user_id": settings.MCP_USER_ID}
 
     if tool_name == "start_mission":
-        return await _tool_start_mission(arguments, session)
+        return await _tool_start_mission(arguments, session, request=request)
 
     elif tool_name == "get_mission_status":
         return await _tool_get_mission_status(arguments, session)
@@ -275,9 +296,15 @@ async def _execute_mcp_tool(tool_name: str, arguments: dict, session: AsyncSessi
         raise ValueError(f"Unknown tool: {tool_name}")
 
 
-async def _tool_start_mission(arguments: dict, session: AsyncSession) -> dict:
+async def _tool_start_mission(
+    arguments: dict,
+    session: AsyncSession,
+    *,
+    request: Request,
+) -> dict:
     """Start a new pentesting mission."""
-    from spectra_mission.manager import mission_manager
+    from spectra_api.api.routers.missions.core import launch_mission_for_user
+    from spectra_api.api.schemas.mission import StartMissionRequest
     from spectra_persistence.models.user import User
 
     target = arguments.get("target", "")
@@ -288,21 +315,27 @@ async def _tool_start_mission(arguments: dict, session: AsyncSession) -> dict:
         raise ValueError("Both 'target' and 'directive' are required")
     if not user_id:
         raise ValueError("'user_id' is required")
+    if arguments.get("authorization_confirmed") is not True:
+        raise ValueError("Explicit target authorization confirmation is required")
 
     user = await session.get(User, user_id)
     if not user or not user.is_active:
         raise ValueError(f"Invalid or inactive user: {user_id}")
 
-    mission_id = await mission_manager.start_mission(
+    launch_request = StartMissionRequest(
         target=target,
         directive=directive,
-        user_id=user_id,
+        requirements=arguments.get("requirements"),
+        authorization_confirmed=True,
+        requires_approval=arguments.get("requires_approval", True),
+        scan_mode=arguments.get("scan_mode"),
     )
+    mission = await launch_mission_for_user(request, launch_request, session, user)
 
     return {
-        "mission_id": mission_id,
-        "status": "created",
-        "target": target,
+        "mission_id": str(mission.id),
+        "status": mission.status,
+        "target": mission.target,
         "message": f"Mission started against {target}",
     }
 
@@ -404,12 +437,15 @@ async def _tool_search_knowledge_base(arguments: dict) -> dict:
 
     query = arguments.get("query", "")
     limit = min(arguments.get("limit", 5), 20)
+    user_id = arguments.get("user_id", "")
 
     if not query:
         raise ValueError("'query' is required")
+    if not user_id:
+        raise ValueError("'user_id' is required")
 
     gateway = get_ai_gateway()
-    results = await gateway.rag_search(query=query, top_k=limit)
+    results = await gateway.rag_search(query=query, top_k=limit, user_id=user_id)
 
     return {
         "query": query,

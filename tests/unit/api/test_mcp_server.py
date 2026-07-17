@@ -97,7 +97,7 @@ async def test_mcp_tool_call_unknown_tool():
 
 
 async def test_mcp_tool_start_mission():
-    """MCP start_mission tool delegates to MissionManager with server-side user_id."""
+    """MCP start_mission uses the canonical launch policy with a server-bound user."""
     from spectra_api.api.mcp import MCPRequest, handle_mcp_request
 
     req = MCPRequest(
@@ -105,19 +105,27 @@ async def test_mcp_tool_start_mission():
         id=6,
         params={
             "name": "start_mission",
-            "arguments": {"target": "192.168.1.1", "directive": "Scan for open ports", "user_id": "ignored-client-id"},
+            "arguments": {
+                "target": "192.168.1.1",
+                "directive": "Scan for open ports",
+                "authorization_confirmed": True,
+                "user_id": "ignored-client-id",
+            },
         },
     )
-
-    mock_manager = AsyncMock()
-    mock_manager.start_mission.return_value = "test-mission-id-123"
-    mock_manager.get_mission.return_value = None
 
     mock_session = AsyncMock()
     mock_user = MagicMock(is_active=True)
     mock_session.get.return_value = mock_user
+    launched = MagicMock()
+    launched.id = "test-mission-id-123"
+    launched.status = "created"
+    launched.target = "192.168.1.1"
 
-    with patch("spectra_mission.manager.mission_manager", mock_manager):
+    with patch(
+        "spectra_api.api.routers.missions.core.launch_mission_for_user",
+        new=AsyncMock(return_value=launched),
+    ) as launch:
         with patch("spectra_api.api.mcp.settings") as mock_settings:
             mock_settings.MCP_USER_ID = "server-bound-user"
             mock_settings.MCP_API_KEY = "test-key"
@@ -134,6 +142,12 @@ async def test_mcp_tool_start_mission():
     mock_session.get.assert_called_once()
     call_args = mock_session.get.call_args
     assert call_args[0][1] == "server-bound-user"
+    launch.assert_awaited_once()
+    launch_request = launch.await_args.args[1]
+    launch_user = launch.await_args.args[3]
+    assert launch_request.authorization_confirmed is True
+    assert launch_request.requires_approval is True
+    assert launch_user is mock_user
 
 
 async def test_mcp_tool_start_mission_missing_fields():
@@ -153,6 +167,66 @@ async def test_mcp_tool_start_mission_missing_fields():
     assert result.error is not None
     assert result.error["code"] == -32603
     assert result.error["message"] == "Internal tool execution error"
+
+
+async def test_mcp_tool_start_mission_requires_explicit_authorization_confirmation():
+    """MCP cannot bypass the product's written-authorization confirmation gate."""
+    from spectra_api.api.mcp import MCPRequest, handle_mcp_request
+
+    req = MCPRequest(
+        method="tools/call",
+        id=8,
+        params={
+            "name": "start_mission",
+            "arguments": {"target": "192.168.1.1", "directive": "Scan"},
+        },
+    )
+
+    with (
+        patch("spectra_api.api.mcp.settings") as mock_settings,
+        patch(
+            "spectra_api.api.routers.missions.core.launch_mission_for_user",
+            new=AsyncMock(),
+        ) as launch,
+    ):
+        mock_settings.MCP_USER_ID = "server-bound-user"
+        mock_settings.MCP_API_KEY = "test-key"
+        result = await handle_mcp_request(
+            _mock_http_request(),
+            body=req,
+            api_key="test-key",
+            session=AsyncMock(),
+        )
+
+    assert result.error is not None
+    launch.assert_not_awaited()
+
+
+async def test_mcp_knowledge_search_is_tenant_scoped():
+    """MCP RAG retrieval always carries the configured user's tenant scope."""
+    from spectra_api.api.mcp import _execute_mcp_tool
+
+    gateway = MagicMock()
+    gateway.rag_search = AsyncMock(return_value=[])
+
+    with (
+        patch("spectra_api.api.mcp.settings") as mock_settings,
+        patch("spectra_ai_core.gateway.ai_gateway.get_ai_gateway", return_value=gateway),
+    ):
+        mock_settings.MCP_USER_ID = "tenant-user"
+        result = await _execute_mcp_tool(
+            "search_knowledge_base",
+            {"query": "prior mission"},
+            AsyncMock(),
+            request=_mock_http_request(),
+        )
+
+    assert result["count"] == 0
+    gateway.rag_search.assert_awaited_once_with(
+        query="prior mission",
+        top_k=5,
+        user_id="tenant-user",
+    )
 
 
 async def test_mcp_request_model_defaults():

@@ -85,24 +85,17 @@ async def _resolved_launch_prefs(
     return effective_approval, effective_scan
 
 
-@router.post(
-    "",
-    response_model=MissionResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Start mission",
-    description="Create and start a new security assessment mission against specified targets.",
-)
-@limiter.limit(RateLimits.MISSION_START)
-async def start_mission(
+async def launch_mission_for_user(
     request: Request,
-    response: Response,
     mission_request: StartMissionRequest,
-    db: AsyncSession = Depends(get_async_session),
-    _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
+    db: AsyncSession,
+    _current_user: User,
 ) -> MissionResponse:
-    """Start a new mission.
+    """Apply the canonical launch policy and start a mission for ``_current_user``.
 
-    Rate limited to 5 missions per minute per user.
+    Every transport (HTTP, MCP, future automation) must call this application
+    boundary so authorization confirmation, abuse controls, entitlements,
+    quotas, preferences, RoE persistence, and audit logging stay identical.
     """
     await verify_api_quota_for_user(_current_user)
 
@@ -221,6 +214,26 @@ async def start_mission(
             pentest_framework=getattr(mission, "pentest_framework", None),
         ),
     )
+
+
+@router.post(
+    "",
+    response_model=MissionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Start mission",
+    description="Create and start a new security assessment mission against specified targets.",
+)
+@limiter.limit(RateLimits.MISSION_START)
+async def start_mission(
+    request: Request,
+    response: Response,
+    mission_request: StartMissionRequest,
+    db: AsyncSession = Depends(get_async_session),
+    _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
+) -> MissionResponse:
+    """Start a mission through the rate-limited HTTP transport."""
+    _ = response
+    return await launch_mission_for_user(request, mission_request, db, _current_user)
 
 
 @router.get(
@@ -450,7 +463,9 @@ async def get_mission_milestones(
 
     check_resource_owner(mission, _current_user, "mission")
 
-    stored = mission.milestones or []
+    # Runtime missions keep milestone state in-memory; persisted mission rows
+    # created before that field existed legitimately do not expose it.
+    stored = getattr(mission, "milestones", None) or []
     stored_map = {m.get("milestone"): m for m in stored if m.get("milestone")}
 
     result = []
