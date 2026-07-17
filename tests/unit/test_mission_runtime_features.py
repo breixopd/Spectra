@@ -51,13 +51,29 @@ class TestMissionCheckpoint:
         assert checkpoint["replan_count"] == 0
 
     def test_from_checkpoint_reconstructs_mission(self):
-        mission = Mission("10.0.0.1", "Network assessment")
+        mission = Mission(
+            "10.0.0.1",
+            "Network assessment",
+            requirements="Only TCP services",
+            vpn_config="lab-vpn",
+            user_id="owner-1",
+            requires_approval=True,
+            record_demo=True,
+            playbook_id="web-assessment",
+            scan_mode="guided",
+            pentest_framework="owasp",
+            training_opt_in=True,
+            training_discount_pct=15.0,
+        )
         mission.status = "running"
         mission.current_task_index = 3
         mission.add_finding({"name": "Open port", "host": "10.0.0.1", "port": 22})
         mission.record_tool_run("nmap")
         mission.skipped_phases.add("exploitation")
         mission.replan_count = 2
+        mission.logs.append("checkpoint log")
+        mission.report_path = "reports/mission.html"
+        mission.blackboard.write("recon", "host_os", "linux")
 
         checkpoint = mission.save_checkpoint()
         restored = Mission.from_checkpoint(checkpoint)
@@ -65,20 +81,43 @@ class TestMissionCheckpoint:
         assert restored.id == mission.id
         assert restored.target == "10.0.0.1"
         assert restored.directive == "Network assessment"
+        assert restored.requirements == "Only TCP services"
+        assert restored.vpn_config == "lab-vpn"
+        assert restored.user_id == "owner-1"
+        assert restored.requires_approval is True
+        assert restored.record_demo is True
+        assert restored.playbook_id == "web-assessment"
+        assert restored.scan_mode == "guided"
+        assert restored.pentest_framework == "owasp"
+        assert restored.training_opt_in is True
+        assert restored.training_discount_pct == 15.0
         assert restored.current_task_index == 3
         assert len(restored.findings) == 1
         assert "nmap" in restored.tools_run
         assert "exploitation" in restored.skipped_phases
         assert restored.replan_count == 2
+        assert restored.logs == ["checkpoint log"]
+        assert restored.report_path == "reports/mission.html"
+        assert restored.blackboard.read("host_os") == "linux"
 
     def test_checkpoint_with_empty_mission(self):
-        mission = Mission("example.com", "Recon")
+        mission = Mission("example.com", "Recon", user_id="owner-1")
         checkpoint = mission.save_checkpoint()
         restored = Mission.from_checkpoint(checkpoint)
 
         assert restored.id == mission.id
         assert restored.findings == []
         assert restored.tools_run == []
+
+    def test_checkpoint_rejects_legacy_data_without_security_context(self):
+        with pytest.raises(ValueError, match="checkpoint_version"):
+            Mission.from_checkpoint(
+                {
+                    "id": "legacy",
+                    "target": "example.com",
+                    "directive": "Recon",
+                }
+            )
 
 
 # --- MISSION-003: Concurrent Mission Isolation ---

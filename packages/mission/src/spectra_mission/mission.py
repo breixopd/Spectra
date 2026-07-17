@@ -46,6 +46,21 @@ _SCAN_MODE_AUTOMATION: dict[str, str] = {
     "guided": "semi_auto",
     "manual": "manual",
 }
+_CHECKPOINT_VERSION = 2
+_CHECKPOINT_REQUIRED_FIELDS = frozenset(
+    {
+        "id",
+        "target",
+        "directive",
+        "user_id",
+        "vpn_config",
+        "requires_approval",
+        "record_demo",
+        "scan_mode",
+        "training_opt_in",
+        "training_discount_pct",
+    }
+)
 
 
 class Mission:
@@ -516,10 +531,19 @@ class Mission:
                 plan_data = None
 
         return {
+            "checkpoint_version": _CHECKPOINT_VERSION,
             "id": self.id,
             "target": self.target,
             "directive": self.directive,
             "requirements": self.requirements,
+            "vpn_config": self.vpn_config,
+            "user_id": self.user_id,
+            "requires_approval": self.requires_approval,
+            "record_demo": self.record_demo,
+            "playbook_id": self.playbook_id,
+            "scan_mode": self.scan_mode,
+            "training_opt_in": self.training_opt_in,
+            "training_discount_pct": self.training_discount_pct,
             "status": self.status,
             "pentest_framework": getattr(self, "pentest_framework", "ptes"),
             "start_time": self.start_time.isoformat(),
@@ -533,32 +557,70 @@ class Mission:
             "attack_surface": self.attack_surface.model_dump(),
             "replan_count": getattr(self, "replan_count", 0),
             "task_tree": self.task_tree.to_dict(),
+            "logs": list(self.logs),
+            "report_path": self.report_path,
+            "exploitation_phase_complete": self.exploitation_phase_complete,
+            "blackboard": self.blackboard.read_all(),
         }
 
     @classmethod
     def from_checkpoint(cls, data: dict[str, Any]) -> "Mission":
-        """Reconstruct a Mission from checkpoint data."""
+        """Reconstruct a Mission from a complete, versioned checkpoint.
+
+        Resuming a checkpoint without ownership and consent context is unsafe:
+        it can turn a restricted assessment into an unowned autonomous one.
+        Legacy checkpoints are therefore deliberately rejected instead of
+        silently substituting permissive defaults.
+        """
+        if data.get("checkpoint_version") != _CHECKPOINT_VERSION:
+            raise ValueError("Unsupported or missing checkpoint_version")
+        missing = _CHECKPOINT_REQUIRED_FIELDS.difference(data)
+        if missing:
+            raise ValueError(f"Checkpoint is missing required fields: {', '.join(sorted(missing))}")
+        user_id = data["user_id"]
+        if not isinstance(user_id, str) or not user_id:
+            raise ValueError("Checkpoint user_id must be a non-empty string")
+        scan_mode = data["scan_mode"]
+        if scan_mode not in _SCAN_MODE_AUTOMATION:
+            raise ValueError(f"Checkpoint has invalid scan_mode: {scan_mode!r}")
+
         mission = cls(
             target=data["target"],
             directive=data["directive"],
             requirements=data.get("requirements"),
+            vpn_config=data["vpn_config"],
+            user_id=user_id,
+            requires_approval=bool(data["requires_approval"]),
+            record_demo=bool(data["record_demo"]),
+            playbook_id=data.get("playbook_id"),
+            scan_mode=scan_mode,
+            pentest_framework=data.get("pentest_framework", "ptes"),
+            training_opt_in=bool(data["training_opt_in"]),
+            training_discount_pct=float(data["training_discount_pct"]),
         )
         mission.id = data["id"]
         mission.status = data.get("status", "created")
+        if start_time := data.get("start_time"):
+            try:
+                mission.start_time = datetime.fromisoformat(start_time)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("Checkpoint has invalid start_time") from exc
         mission.current_task_index = data.get("current_task_index", 0)
         mission.findings = data.get("findings", [])
         mission.tools_run = data.get("tools_run", [])
         mission.tool_executions = data.get("tool_executions", [])
         mission.skipped_phases = set(data.get("skipped_phases", []))
         mission.replan_count = data.get("replan_count", 0)
-        mission.pentest_framework = data.get("pentest_framework", getattr(mission, "pentest_framework", "ptes"))
+        mission.logs = data.get("logs", [])
+        mission.report_path = data.get("report_path")
+        mission.exploitation_phase_complete = bool(data.get("exploitation_phase_complete", False))
 
         # Restore attack surface
         if data.get("attack_surface"):
             try:
                 mission.attack_surface = AttackSurface.model_validate(data["attack_surface"])
-            except (ValueError, TypeError, KeyError) as e:
-                logger.warning("Failed to restore attack surface: %s", e)
+            except (ValueError, TypeError, KeyError) as exc:
+                raise ValueError("Checkpoint has invalid attack_surface") from exc
 
         # Restore plan
         if data.get("plan"):
@@ -566,14 +628,22 @@ class Mission:
                 from spectra_ai_core.agents.mission_controller import MissionPlan
 
                 mission.plan = MissionPlan.model_validate(data["plan"])
-            except (ValueError, TypeError, KeyError) as e:
-                logger.warning("Failed to restore plan: %s", e)
+            except (ValueError, TypeError, KeyError) as exc:
+                raise ValueError("Checkpoint has invalid plan") from exc
 
         # Restore task tree
         if data.get("task_tree"):
             try:
                 mission.task_tree = PentestTaskTree.from_dict(data["task_tree"])
-            except (ValueError, TypeError, KeyError) as e:
-                logger.warning("Failed to restore task tree: %s", e)
+            except (ValueError, TypeError, KeyError) as exc:
+                raise ValueError("Checkpoint has invalid task_tree") from exc
+
+        blackboard = data.get("blackboard", {})
+        if not isinstance(blackboard, dict):
+            raise ValueError("Checkpoint has invalid blackboard")
+        for key, value in blackboard.items():
+            if not isinstance(key, str):
+                raise ValueError("Checkpoint blackboard keys must be strings")
+            mission.blackboard.write("checkpoint", key, value)
 
         return mission

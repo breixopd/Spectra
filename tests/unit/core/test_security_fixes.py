@@ -298,7 +298,7 @@ class TestMissionBlackboardWired:
     def test_mission_has_blackboard(self, _ws):
         from spectra_mission.mission import Mission
 
-        m = Mission("10.0.0.1", "test")
+        m = Mission("10.0.0.1", "test", user_id="owner-1")
         assert m.blackboard is not None
         assert m.blackboard.mission_id == m.id
 
@@ -323,7 +323,7 @@ class TestMissionBlackboardWired:
     def test_save_checkpoint_includes_task_tree(self, _ws):
         from spectra_mission.mission import Mission
 
-        m = Mission("10.0.0.1", "test")
+        m = Mission("10.0.0.1", "test", user_id="owner-1")
         m.task_tree.add_task("scan-1", "Port Scan", "recon/port_scan")
         cp = m.save_checkpoint()
         assert "task_tree" in cp
@@ -333,7 +333,7 @@ class TestMissionBlackboardWired:
     def test_from_checkpoint_restores_task_tree(self, _ws):
         from spectra_mission.mission import Mission
 
-        m = Mission("10.0.0.1", "test")
+        m = Mission("10.0.0.1", "test", user_id="owner-1")
         m.task_tree.add_task("scan-1", "Port Scan", "recon/port_scan")
         cp = m.save_checkpoint()
 
