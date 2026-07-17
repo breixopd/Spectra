@@ -145,6 +145,12 @@ class TestSchemaValidation:
         t = TargetCreate(address="192.168.1.1")
         assert t.address == "192.168.1.1"
 
+    def test_target_create_normalizes_network_and_hostname_identity(self):
+        from spectra_api.api.schemas.mission import TargetCreate
+
+        assert TargetCreate(address="2001:0DB8::1").address == "2001:db8::1"
+        assert TargetCreate(address="Example.COM").address == "example.com"
+
     def test_target_create_empty_address_rejected(self):
         from spectra_api.api.schemas.mission import TargetCreate
 

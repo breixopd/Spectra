@@ -244,3 +244,51 @@ class TestTargetFindings:
         mock_find.assert_awaited_once()
         assert mock_find.await_args.kwargs["target_id"] == "00000000-0000-4000-a000-100000000001"
         assert mock_find.await_args.kwargs["user_id"] is None
+
+
+@pytest.mark.asyncio
+class TestBulkTargetImport:
+    async def test_bulk_import_uses_target_validation(self, client):
+        ac, _session, _user = client
+
+        response = await ac.post(
+            "/api/v1/targets/bulk-import",
+            json={"targets": [{"address": "https://outside.example"}]},
+        )
+
+        assert response.status_code == 422
+
+    async def test_bulk_import_deduplicates_normalized_payload_and_reserves_quota(self, client):
+        ac, _session, _user = client
+        from spectra_persistence.repositories.target import TargetRepository
+
+        existing_addresses = AsyncMock(return_value={"existing.example"})
+        create_many = AsyncMock(return_value=[])
+        target_limit = AsyncMock()
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(TargetRepository, "get_existing_addresses", existing_addresses, raising=False)
+            mp.setattr(TargetRepository, "create_many", create_many, raising=False)
+            mp.setattr("spectra_api.api.routers.targets.check_target_limit", target_limit)
+            response = await ac.post(
+                "/api/v1/targets/bulk-import",
+                json={
+                    "targets": [
+                        {"address": "New.Example.com", "description": "first"},
+                        {"address": "new.example.com", "description": "duplicate"},
+                        {"address": "existing.example"},
+                    ]
+                },
+            )
+
+        assert response.status_code == 200
+        assert response.json() == {"imported": 1, "skipped": 2, "errors": []}
+        target_limit.assert_awaited_once_with(_user, _session, requested=1)
+        assert create_many.await_args.args[0] == [
+            {
+                "address": "new.example.com",
+                "description": "first",
+                "status": "pending",
+                "os": None,
+                "user_id": str(_user.id),
+            }
+        ]

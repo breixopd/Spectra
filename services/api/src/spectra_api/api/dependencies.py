@@ -338,8 +338,10 @@ async def check_storage_limit(user: User, session: AsyncSession) -> None:
         )
 
 
-async def check_target_limit(user: User, session: AsyncSession) -> None:
-    """Raise 429 if user has hit their plan's target limit."""
+async def check_target_limit(user: User, session: AsyncSession, *, requested: int = 1) -> None:
+    """Raise 429 if adding ``requested`` targets would exceed the plan limit."""
+    if requested < 1:
+        return
     if _is_admin_user(user):
         return
     plan = await _get_user_plan(user, session)
@@ -350,7 +352,7 @@ async def check_target_limit(user: User, session: AsyncSession) -> None:
     from spectra_persistence.models.target import Target
 
     count = (await session.execute(select(func.count(Target.id)).where(Target.user_id == str(user.id)))).scalar() or 0
-    if count >= plan.max_targets:
+    if count + requested > plan.max_targets:
         raise HTTPException(
             status_code=429,
             detail=f"Plan limit reached: max {plan.max_targets} targets",

@@ -17,7 +17,7 @@ class TargetCreate(BaseModel):
         ...,
         min_length=3,
         max_length=255,
-        description="IP address, CIDR, domain, or URL",
+        description="IP address, CIDR, hostname, or domain",
     )
     description: str | None = Field(None, max_length=1000)
     os: str | None = Field(None, max_length=100)
@@ -33,15 +33,13 @@ class TargetCreate(BaseModel):
 
         # Try to validate as IP address (IPv4 or IPv6)
         try:
-            ipaddress.ip_address(address)
-            return address
+            return str(ipaddress.ip_address(address))
         except ValueError:
             pass
 
         # Try to validate as CIDR (e.g., 192.168.1.0/24)
         try:
-            ipaddress.ip_network(address, strict=False)
-            return address
+            return str(ipaddress.ip_network(address, strict=False))
         except ValueError:
             pass
 
@@ -50,7 +48,7 @@ class TargetCreate(BaseModel):
             raise ValueError("Invalid address format. Must be a valid IP, CIDR, hostname, or domain")
         if len(address) > 253:
             raise ValueError("Address too long (max 253 characters)")
-        return address
+        return address.lower()
 
 
 class TargetResponse(BaseModel):

@@ -5,10 +5,10 @@ Endpoints for managing assessment targets (IPs, domains, URLs).
 Provides CRUD operations and finding associations.
 """
 
-import logging
-
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -25,6 +25,7 @@ from spectra_api.authz import Permission, require_permission
 from spectra_auth.rate_limit import RateLimits, limiter
 from spectra_common.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from spectra_common.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
+from spectra_persistence.advisory_locks import stable_lock_id
 from spectra_persistence.database import get_async_session
 from spectra_persistence.models.audit_log import AuditEventType
 from spectra_persistence.models.finding import Finding
@@ -32,8 +33,6 @@ from spectra_persistence.models.user import User
 from spectra_persistence.repositories.finding import FindingRepository
 from spectra_persistence.repositories.target import TargetRepository
 from spectra_system.audit import log_event as audit_log_event
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/targets", tags=["Targets"])
 
@@ -57,6 +56,14 @@ def _target_scope_filters(current_user: User) -> dict[str, str]:
 
 def _target_audit_details(target) -> dict[str, str]:
     return {"target_id": target.id, "address": target.address}
+
+
+async def _lock_target_mutations(db: AsyncSession, user_id: str) -> None:
+    """Serialize one user's target writes until the current transaction commits."""
+    await db.execute(
+        text("SELECT pg_advisory_xact_lock(:lock_id)"),
+        {"lock_id": stable_lock_id(f"spectra_target_mutations:{user_id}")},
+    )
 
 
 async def _get_target_or_404(repo: TargetRepository, target_id: str):
@@ -94,6 +101,7 @@ async def create_target(
     _current_user: User = require_permission(Permission.MANAGE_TARGETS),
 ) -> TargetResponse:
     """Create a new target."""
+    await _lock_target_mutations(db, str(_current_user.id))
     await check_target_limit(_current_user, db)
 
     repo = TargetRepository(db)
@@ -106,14 +114,21 @@ async def create_target(
             detail="Target with this address already exists",
         )
 
-    target = await repo.create(
-        address=target_in.address,
-        description=target_in.description,
-        status=target_in.status,
-        os=target_in.os,
-        user_id=str(_current_user.id),
-    )
-    await db.commit()
+    try:
+        target = await repo.create(
+            address=target_in.address,
+            description=target_in.description,
+            status=target_in.status,
+            os=target_in.os,
+            user_id=str(_current_user.id),
+        )
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Target with this address already exists",
+        ) from exc
 
     await audit_log_event(
         db,
@@ -295,17 +310,14 @@ async def get_target_findings(
     return [finding_to_response(finding) for finding in findings]
 
 
-class BulkTargetItem(BaseModel):
-    """Single target in a bulk import."""
-
-    address: str
-    description: str = ""
+class BulkTargetItem(TargetCreate):
+    """Target input for bulk import, with the same validation as single creation."""
 
 
 class BulkImportRequest(BaseModel):
     """Request body for bulk importing targets (max 500)."""
 
-    targets: list[BulkTargetItem] = Field(..., max_length=500)
+    targets: list[BulkTargetItem] = Field(..., min_length=1, max_length=500)
 
 
 class BulkImportResponse(BaseModel):
@@ -331,32 +343,42 @@ async def bulk_import_targets(
 ) -> BulkImportResponse:
     """Import multiple targets at once."""
     repo = TargetRepository(db)
-    imported = 0
+    user_id = str(_current_user.id)
+    await _lock_target_mutations(db, user_id)
+
+    unique_items: dict[str, BulkTargetItem] = {}
     skipped = 0
-    errors: list[str] = []
-
     for item in payload.targets:
-        addr = item.address.strip()
-        if not addr:
+        if item.address in unique_items:
+            skipped += 1
             continue
-        try:
-            existing = await repo.find_one_by(address=addr, user_id=str(_current_user.id))
-            if existing:
-                skipped += 1
-                continue
-            await repo.create(
-                address=addr,
-                description=item.description,
-                status="pending",
-                os="Unknown",
-                user_id=str(_current_user.id),
-            )
-            imported += 1
-        except (OSError, RuntimeError, ValueError) as e:
-            logger.error("Bulk import failed for target %s: %s", addr, e)
-            errors.append(f"{addr}: invalid data format")
+        unique_items[item.address] = item
 
-    await db.commit()
+    existing_addresses = await repo.get_existing_addresses(user_id, set(unique_items))
+    skipped += len(existing_addresses)
+    values = [
+        {
+            "address": item.address,
+            "description": item.description,
+            "status": item.status,
+            "os": item.os,
+            "user_id": user_id,
+        }
+        for address, item in unique_items.items()
+        if address not in existing_addresses
+    ]
+    await check_target_limit(_current_user, db, requested=len(values))
+    try:
+        await repo.create_many(values)
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Target import conflicted with another write; retry the request",
+        ) from exc
+
+    imported = len(values)
     if imported:
         await audit_log_event(
             db,
@@ -365,7 +387,7 @@ async def bulk_import_targets(
             details={"action": "bulk_import_targets", "imported": imported, "skipped": skipped},
             request=request,
         )
-    return BulkImportResponse(imported=imported, skipped=skipped, errors=errors)
+    return BulkImportResponse(imported=imported, skipped=skipped, errors=[])
 
 
 class BulkDeleteRequest(BaseModel):

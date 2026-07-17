@@ -172,6 +172,22 @@ class TestCheckTargetLimit:
         assert exc_info.value.status_code == 429
         assert "max 3" in exc_info.value.detail
 
+    async def test_requested_batch_cannot_cross_limit(self):
+        from spectra_api.api.dependencies import check_target_limit
+
+        plan = _make_plan(max_targets=3)
+        user = _make_user(plan_id="plan-1")
+        session = AsyncMock()
+        count_result = MagicMock()
+        count_result.scalar.return_value = 2
+        session.execute = AsyncMock(return_value=count_result)
+
+        with patch("spectra_api.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+            with pytest.raises(HTTPException) as exc_info:
+                await check_target_limit(user, session, requested=2)
+
+        assert exc_info.value.status_code == 429
+
     async def test_plan_without_target_cap_not_blocked(self):
         from spectra_api.api.dependencies import check_target_limit
 

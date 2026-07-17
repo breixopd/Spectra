@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import ForeignKey, Index, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -48,6 +48,16 @@ class Target(Base):
         index=True,
     )
     os: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    __table_args__ = (
+        Index(
+            "uq_targets_user_address_ci",
+            "user_id",
+            func.lower(address),
+            unique=True,
+            postgresql_where=user_id.is_not(None),
+        ),
+    )
 
     # Relationships
     findings: Mapped[list[Finding]] = relationship(

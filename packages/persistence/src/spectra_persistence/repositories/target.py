@@ -4,6 +4,7 @@ Target Repository for managing scan targets.
 
 from collections.abc import Sequence
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_persistence.models.target import Target, TargetStatus
@@ -26,6 +27,22 @@ class TargetRepository(BaseRepository[Target]):
     async def get_by_address(self, address: str, user_id: str | None = None) -> Target | None:
         """Find target by address (alias for find_by_address)."""
         return await self.find_by_address(address, user_id=user_id)
+
+    async def get_existing_addresses(self, user_id: str, addresses: set[str]) -> set[str]:
+        """Return the already registered addresses for one user in a single query."""
+        if not addresses:
+            return set()
+        result = await self.session.execute(
+            select(Target.address).where(Target.user_id == user_id, Target.address.in_(addresses))
+        )
+        return set(result.scalars().all())
+
+    async def create_many(self, values: list[dict]) -> list[Target]:
+        """Create multiple targets atomically using the caller's active transaction."""
+        targets = [Target(**item) for item in values]
+        self.session.add_all(targets)
+        await self.session.flush()
+        return targets
 
     async def find_by_status(
         self,
