@@ -2,8 +2,9 @@
 
 import hmac
 
-from fastapi import HTTPException, Request
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 
 class ServiceAuthMiddleware(BaseHTTPMiddleware):
@@ -23,10 +24,10 @@ class ServiceAuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         if not self.secret:
-            raise HTTPException(status_code=401, detail="Service authentication not configured")
+            return JSONResponse(status_code=401, content={"detail": "Service authentication not configured"})
 
         provided = request.headers.get("X-Service-Auth", "")
         if not hmac.compare_digest(provided, self.secret):
-            raise HTTPException(status_code=401, detail="Invalid service auth")
+            return JSONResponse(status_code=401, content={"detail": "Invalid service auth"})
 
         return await call_next(request)
