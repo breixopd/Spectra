@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import {
@@ -18,6 +19,7 @@ interface CommandPaletteProps {
 }
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -31,20 +33,31 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     return haystack.includes(query.toLowerCase());
   });
 
+  function goTo(href: string) {
+    onOpenChange(false);
+    void navigate({ to: href });
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl gap-0 overflow-hidden p-0">
         <DialogHeader className="border-b border-border px-4 py-3">
           <DialogTitle className="text-base">Command palette</DialogTitle>
-          <DialogDescription>Jump to a workspace section. Full search arrives in a later milestone.</DialogDescription>
+          <DialogDescription>Jump to any workspace section.</DialogDescription>
         </DialogHeader>
         <div className="border-b border-border px-4 py-2">
           <Input
             autoFocus
-            placeholder="Type a command..."
+            placeholder="Type a destination…"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             className="border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && filtered[0]) {
+                event.preventDefault();
+                goTo(filtered[0].href);
+              }
+            }}
           />
         </div>
         <ScrollArea className="max-h-72">
@@ -58,7 +71,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                   className={cn(
                     "flex w-full items-start gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-accent",
                   )}
-                  onClick={() => onOpenChange(false)}
+                  onClick={() => goTo(item.href)}
                 >
                   <Icon className="mt-0.5 h-4 w-4 text-muted-foreground" />
                   <span>
@@ -71,7 +84,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
               );
             })}
             {filtered.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-muted-foreground">No matching commands.</p>
+              <p className="px-3 py-6 text-center text-sm text-muted-foreground">No matching destinations.</p>
             ) : null}
           </div>
         </ScrollArea>

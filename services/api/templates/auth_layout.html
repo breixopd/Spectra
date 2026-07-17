@@ -1,16 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    {% include "partials/head.html" %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Spectra{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/output.css">
-    <link rel="stylesheet" href="/static/css/auth.css">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="theme-color" content="#0b0e13">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="/static/vendor/css/fonts.css?v=20260612">
+    <link rel="stylesheet" href="/static/css/auth.css?v=20260612">
     {% block extra_head %}{% endblock %}
 </head>
 <body>
     {% block auth_body %}{% endblock %}
     <script src="/static/vendor/js/lucide.min.js"></script>
-    <script nonce="{{ request.state.csp_nonce }}">lucide.createIcons();</script>
+    <script nonce="{{ request.state.csp_nonce }}">document.addEventListener('DOMContentLoaded', () => { if (typeof lucide !== 'undefined') lucide.createIcons(); });</script>
     {% block auth_scripts %}{% endblock %}
 </body>
 </html>

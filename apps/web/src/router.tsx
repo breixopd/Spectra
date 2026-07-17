@@ -2,13 +2,13 @@ import {
   createRootRouteWithContext,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   Navigate,
   Outlet,
   redirect,
 } from "@tanstack/react-router";
 
 import { AppShell } from "@/components/layout/AppShell";
-import { AttackGraphPage } from "@/pages/AttackGraphPage";
 import { EvidencePage } from "@/pages/EvidencePage";
 import { ReportsPage } from "@/pages/ReportsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
@@ -83,10 +83,11 @@ const findingDetailRoute = createRoute({
   component: FindingDetailPage,
 });
 
+// Lazy: the attack graph pulls in elkjs (~1.4 MB), keep it out of the main chunk.
 const attackGraphRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/attack-graph",
-  component: AttackGraphPage,
+  component: lazyRouteComponent(() => import("@/pages/AttackGraphPage"), "AttackGraphPage"),
 });
 
 const evidenceRoute = createRoute({

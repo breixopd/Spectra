@@ -3,6 +3,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { ErrorState, LoadingState } from "@/components/common/StateViews";
+import { BillingPanel } from "@/components/settings/BillingPanel";
 import { ApiKeysPanel } from "@/components/settings/ApiKeysPanel";
 import { SystemStatusPanel } from "@/components/settings/SystemStatusPanel";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ export function SettingsPage() {
       <Tabs defaultValue="preferences" className="space-y-4">
         <TabsList>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
+          <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
           <TabsTrigger value="api-keys">API keys</TabsTrigger>
         </TabsList>
@@ -124,6 +126,10 @@ export function SettingsPage() {
               </CardContent>
             </Card>
           ) : null}
+        </TabsContent>
+
+        <TabsContent value="billing">
+          <BillingPanel />
         </TabsContent>
 
         <TabsContent value="system">

@@ -18,12 +18,12 @@
             {% if entry.content is mapping %}
                 {% for section, items in entry.content.items() %}
                 <div class="mb-3">
-                    <h3 class="text-sm font-semibold text-violet-400 uppercase tracking-wider mb-1">{{ section }}</h3>
+                    <h3 class="text-sm font-semibold text-emerald-400 uppercase tracking-wider mb-1">{{ section }}</h3>
                     {% if items is iterable and items is not string %}
                     <ul class="space-y-1">
                         {% for item in items %}
                         <li class="text-sm text-slate-300 flex items-start gap-2">
-                            <span class="text-violet-500 mt-1">•</span>
+                            <span class="text-emerald-500 mt-1">•</span>
                             <span>{{ item }}</span>
                         </li>
                         {% endfor %}

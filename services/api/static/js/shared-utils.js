@@ -41,7 +41,7 @@ window.colorizeOutput = function(text) {
         .replace(/(\[(WARNING|WARN|\*)\])/gi, '<span class="text-amber-400">$1</span>')
         .replace(/(\[(INFO|i)\])/gi, '<span class="text-blue-400">$1</span>')
         .replace(/(CVE-\d{4}-\d+)/g, '<span class="text-rose-300 font-medium">$1</span>')
-        .replace(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/g, '<span class="text-violet-300">$1</span>');
+        .replace(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/g, '<span class="text-emerald-300">$1</span>');
 };
 
 window.escapeAttr = function(s) {

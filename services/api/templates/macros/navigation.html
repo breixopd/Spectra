@@ -1,7 +1,0 @@
-{% macro nav_item(href, icon, label, badge_count=None, active=False, tooltip=None, entitlement_gate=None, test_id=None, is_hidden=False) %}
-<a href="{{ href }}" {% if test_id %}id="{{ test_id }}" data-testid="{{ test_id }}"{% endif %} {% if is_hidden %}class="hidden {% if active %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg transition-colors group"{% else %}class="{% if active %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg transition-colors group"{% endif %} {% if entitlement_gate %}data-entitlement-gate="{{ entitlement_gate }}"{% endif %} data-tooltip="{{ tooltip or label }}" data-tooltip-pos="right">
-    <i data-lucide="{{ icon }}" class="w-4 h-4"></i>
-    <span class="ml-3 text-sm font-medium">{{ label }}</span>
-    {% if badge_count is not none %}<span class="ml-auto bg-violet-500/20 text-violet-400 text-xs px-2 py-0.5 rounded-full">{{ badge_count }}</span>{% endif %}
-</a>
-{% endmacro %}

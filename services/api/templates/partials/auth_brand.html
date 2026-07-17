@@ -1,0 +1,14 @@
+<div class="auth-brand">
+    <div>
+        <div class="brand-logo">
+            {% include 'partials/shield_svg.html' %}
+            <div>
+                <span>Spectra</span>
+                <p class="brand-kicker">Mission control</p>
+            </div>
+        </div>
+        <h2>{{ brand_title | default("Evidence-first autonomous assessments for security teams") }}</h2>
+        <p>{{ brand_body | default("Coordinate specialist agents, sandboxed tool execution, and consensus-checked decisions — with proof bundles for every finding.") }}</p>
+    </div>
+    <p class="brand-foot">Self-hosted · Your infrastructure · Your data</p>
+</div>

@@ -2,9 +2,9 @@
 
 {% block content %}
 <div class="w-full py-8">
-    <div class="glass-panel p-8 rounded-2xl w-full max-w-4xl mx-auto max-h-[88vh] overflow-y-auto animate-fade-in-up shadow-2xl shadow-violet-500/5">
+    <div class="glass-panel p-8 rounded-2xl w-full max-w-4xl mx-auto max-h-[88vh] overflow-y-auto animate-fade-in-up shadow-2xl shadow-emerald-500/5">
         <div class="text-center mb-8">
-            <div class="w-16 h-16 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center mx-auto mb-4">
+            <div class="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-4">
                 <i data-lucide="shield" class="w-10 h-10 inline-block"></i>
             </div>
             <h1 class="text-2xl font-bold text-white">System Setup</h1>
@@ -27,21 +27,21 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-400 mb-1">Username</label>
-                        <input type="text" name="username" maxlength="255" autocomplete="username" {% if not has_users %}required aria-required="true"{% endif %} class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors" value="{{ admin_username }}">
+                        <input type="text" name="username" maxlength="255" autocomplete="username" {% if not has_users %}required aria-required="true"{% endif %} class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none transition-colors" value="{{ admin_username }}">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-400 mb-1">Email</label>
-                        <input type="email" name="email" maxlength="255" autocomplete="email" {% if not has_users %}required aria-required="true"{% endif %} class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors" value="{{ admin_email }}">
+                        <input type="email" name="email" maxlength="255" autocomplete="email" {% if not has_users %}required aria-required="true"{% endif %} class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none transition-colors" value="{{ admin_email }}">
                     </div>
                 </div>
                 <div>
                     <label for="password" class="block text-sm font-medium text-gray-400 mb-1">Password {% if has_users %}<span class="text-xs text-gray-500">(only for first-time setup)</span>{% endif %}</label>
-                    <input type="password" name="password" id="password" {% if not has_users %}required{% endif %} minlength="8" maxlength="128" autocomplete="new-password" {% if not has_users %}aria-required="true"{% endif %} class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                    <input type="password" name="password" id="password" {% if not has_users %}required{% endif %} minlength="8" maxlength="128" autocomplete="new-password" {% if not has_users %}aria-required="true"{% endif %} class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none transition-colors">
                     <p class="text-xs text-gray-500 mt-1">Min 8 characters, with uppercase, lowercase, and a digit</p>
                 </div>
                 <div>
                     <label for="confirm-password" class="block text-sm font-medium text-gray-400 mb-1">Confirm Password</label>
-                    <input type="password" id="confirm-password" {% if not has_users %}required{% endif %} minlength="8" maxlength="128" autocomplete="new-password" {% if not has_users %}aria-required="true"{% endif %} class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors" placeholder="Confirm password">
+                    <input type="password" id="confirm-password" {% if not has_users %}required{% endif %} minlength="8" maxlength="128" autocomplete="new-password" {% if not has_users %}aria-required="true"{% endif %} class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none transition-colors" placeholder="Confirm password">
                 </div>
             </div>
 
@@ -53,26 +53,26 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-400 mb-1">Platform Domain / URL</label>
-                        <input type="url" name="platform_base_url" value="{{ prefill.platform_base_url }}" placeholder="https://spectra.example.com" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                        <input type="url" name="platform_base_url" value="{{ prefill.platform_base_url }}" placeholder="https://spectra.example.com" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none transition-colors">
                         <p class="text-xs text-gray-500 mt-1">Used for email links, callbacks, and report URLs</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-400 mb-1">Platform Name</label>
-                        <input type="text" name="app_name" value="{{ prefill.app_name }}" maxlength="50" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                        <input type="text" name="app_name" value="{{ prefill.app_name }}" maxlength="50" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none transition-colors">
                         <p class="text-xs text-gray-500 mt-1">Displayed in emails and reports</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-400 mb-1">Contact Email</label>
-                        <input type="email" name="contact_email" value="{{ prefill.contact_email }}" placeholder="security@example.com" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                        <input type="email" name="contact_email" value="{{ prefill.contact_email }}" placeholder="security@example.com" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none transition-colors">
                         <p class="text-xs text-gray-500 mt-1">For system notifications and password resets</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-400 mb-1">Public Registration</label>
                         <div class="flex items-center gap-3 mt-2">
                             <label class="inline-flex items-center gap-2">
-                                <input type="checkbox" name="allow_registration" class="rounded bg-black/30 border-white/20 text-violet-500 focus:ring-violet-500" {% if prefill.allow_registration %}checked{% endif %}>
+                                <input type="checkbox" name="allow_registration" class="rounded bg-black/30 border-white/20 text-emerald-500 focus:ring-emerald-500" {% if prefill.allow_registration %}checked{% endif %}>
                                 <span class="text-sm text-gray-300">Allow new users to register</span>
                             </label>
                         </div>
@@ -97,20 +97,20 @@
                     <div class="rounded-xl border border-white/10 bg-black/20 p-4 space-y-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-400 mb-1">TensorZero Gateway URL</label>
-                            <input type="text" name="tensorzero_gateway_url" id="tensorzero_gateway_url" value="{{ prefill.tensorzero_gateway_url }}" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                            <input type="text" name="tensorzero_gateway_url" id="tensorzero_gateway_url" value="{{ prefill.tensorzero_gateway_url }}" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-emerald-500 focus:outline-none transition-colors">
                             <p class="text-xs text-gray-500 mt-1">The URL of the TensorZero gateway container</p>
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-400 mb-1">Embedding Model</label>
-                            <input type="text" name="embedding_model" value="{{ prefill.embedding_model }}" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
-                            <p class="text-xs text-gray-500 mt-1">Prefix with <code class="text-violet-400">local/</code> for free offline embeddings</p>
+                            <input type="text" name="embedding_model" value="{{ prefill.embedding_model }}" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-emerald-500 focus:outline-none transition-colors">
+                            <p class="text-xs text-gray-500 mt-1">Prefix with <code class="text-emerald-400">local/</code> for free offline embeddings</p>
                         </div>
                     </div>
 
-                    <div class="rounded-xl border border-white/10 bg-gradient-to-br from-violet-500/10 to-cyan-500/5 p-4 space-y-3">
+                    <div class="rounded-xl border border-white/10 bg-gradient-to-br from-emerald-500/10 to-cyan-500/5 p-4 space-y-3">
                         <p class="text-sm font-medium text-white">How it works</p>
-                        <p class="text-xs text-gray-400">All AI calls route through TensorZero. Models and providers are configured in <code class="text-violet-400">config/tensorzero.toml</code>.</p>
-                        <p class="text-xs text-gray-400">Set <code class="text-violet-400">OPENAI_API_KEY</code> in the TensorZero container's environment to use OpenRouter or any OpenAI-compatible provider.</p>
+                        <p class="text-xs text-gray-400">All AI calls route through TensorZero. Models and providers are configured in <code class="text-emerald-400">config/tensorzero.toml</code>.</p>
+                        <p class="text-xs text-gray-400">Set <code class="text-emerald-400">OPENAI_API_KEY</code> in the TensorZero container's environment to use OpenRouter or any OpenAI-compatible provider.</p>
                         <p class="text-xs text-gray-400">Model tiers (fast/balanced/capable) can be changed in the Admin UI after setup.</p>
                         <div id="test-status" class="text-xs text-gray-500 pt-2 border-t border-white/10">Gateway connection will be tested when you click "Test Gateway".</div>
                     </div>
@@ -119,8 +119,8 @@
                 <!-- Optional: Customize AI Models -->
                 <div class="mt-4">
                     <label class="flex items-center gap-2 cursor-pointer group">
-                            <input type="checkbox" id="customize-ai" class="rounded border-white/20 bg-black/30 text-violet-500 focus:ring-violet-500" data-on-change="toggleAiCustomPanel" {% if has_users %}checked{% endif %}>
-                        <span class="text-sm text-gray-300 group-hover:text-violet-300 transition-colors">Customize AI model configuration</span>
+                            <input type="checkbox" id="customize-ai" class="rounded border-white/20 bg-black/30 text-emerald-500 focus:ring-emerald-500" data-on-change="toggleAiCustomPanel" {% if has_users %}checked{% endif %}>
+                        <span class="text-sm text-gray-300 group-hover:text-emerald-300 transition-colors">Customize AI model configuration</span>
                     </label>
                     <p class="text-xs text-gray-500 mt-1 ml-6">Leave unchecked to use optimized defaults (recommended for first setup)</p>
                 </div>
@@ -129,7 +129,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-400 mb-1">Provider Type</label>
-                            <select id="ai-provider-type" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none">
+                            <select id="ai-provider-type" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-emerald-500 focus:outline-none">
                                 <option value="openai" selected>OpenAI-Compatible (OpenRouter, vLLM, Ollama)</option>
                                 <option value="anthropic">Anthropic</option>
                                 <option value="google_ai_studio_gemini">Google Gemini</option>
@@ -141,11 +141,11 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Primary Model</label>
-                            <input type="text" id="ai-fast-primary" value="nvidia/nemotron-3-nano-30b-a3b:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
+                            <input type="text" id="ai-fast-primary" value="nvidia/nemotron-3-nano-30b-a3b:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-emerald-500 focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Fallback Model</label>
-                            <input type="text" id="ai-fast-fallback" value="google/gemma-3-12b-it:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
+                            <input type="text" id="ai-fast-fallback" value="google/gemma-3-12b-it:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-emerald-500 focus:outline-none">
                         </div>
                     </div>
 
@@ -153,11 +153,11 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Primary Model</label>
-                            <input type="text" id="ai-balanced-primary" value="nvidia/nemotron-3-super-120b-a12b:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
+                            <input type="text" id="ai-balanced-primary" value="nvidia/nemotron-3-super-120b-a12b:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-emerald-500 focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Fallback Model</label>
-                            <input type="text" id="ai-balanced-fallback" value="z-ai/glm-4.5-air:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
+                            <input type="text" id="ai-balanced-fallback" value="z-ai/glm-4.5-air:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-emerald-500 focus:outline-none">
                         </div>
                     </div>
 
@@ -165,11 +165,11 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Primary Model</label>
-                            <input type="text" id="ai-capable-primary" value="minimax/minimax-m2.5:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
+                            <input type="text" id="ai-capable-primary" value="minimax/minimax-m2.5:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-emerald-500 focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Fallback Model</label>
-                            <input type="text" id="ai-capable-fallback" value="stepfun/step-3.5-flash:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
+                            <input type="text" id="ai-capable-fallback" value="stepfun/step-3.5-flash:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-emerald-500 focus:outline-none">
                         </div>
                     </div>
                 </div>
@@ -180,7 +180,7 @@
                     <h2 class="text-lg font-semibold text-white flex items-center gap-2">
                         <i data-lucide="settings" class="w-5 h-5 inline-block"></i> Infrastructure (Advanced)
                     </h2>
-                    <button type="button" id="toggle-infra" class="text-sm text-violet-400 hover:text-violet-300">
+                    <button type="button" id="toggle-infra" class="text-sm text-emerald-400 hover:text-emerald-300">
                         Show Options
                     </button>
                 </div>
@@ -190,7 +190,7 @@
                     <div class="p-4 rounded-lg bg-black/20 border border-white/5 space-y-3">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
-                                <input type="checkbox" id="use-external-sandbox" class="rounded bg-black/30 border-white/20 text-violet-500 focus:ring-violet-500">
+                                <input type="checkbox" id="use-external-sandbox" class="rounded bg-black/30 border-white/20 text-emerald-500 focus:ring-emerald-500">
                                 <label for="use-external-sandbox" class="text-sm text-gray-300">Use external Sandbox Orchestrator</label>
                             </div>
                             <span id="sandbox-status-dot" class="flex items-center gap-1.5 text-xs text-gray-500">
@@ -199,10 +199,10 @@
                         </div>
                         <div id="sandbox-fields" class="space-y-3 hidden">
                             <p class="text-xs text-gray-500">For Kubernetes or multi-node Docker sandbox management.</p>
-                            <input type="text" id="sandbox_orchestrator_url" name="sandbox_orchestrator_url" value="{{ prefill.sandbox_orchestrator_url }}" placeholder="http://orchestrator:8084" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                            <input type="text" id="sandbox_orchestrator_url" name="sandbox_orchestrator_url" value="{{ prefill.sandbox_orchestrator_url }}" placeholder="http://orchestrator:8084" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-emerald-500 focus:outline-none transition-colors">
                             <div>
                                 <label class="block text-xs font-medium text-gray-400 mb-1">API Key</label>
-                                <input type="password" id="sandbox_orchestrator_api_key" name="sandbox_orchestrator_api_key" placeholder="Orchestrator API key" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                                <input type="password" id="sandbox_orchestrator_api_key" name="sandbox_orchestrator_api_key" placeholder="Orchestrator API key" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-emerald-500 focus:outline-none transition-colors">
                             </div>
                         </div>
                     </div>
@@ -210,7 +210,7 @@
                 </div>
             </div>
 
-            <button type="submit" class="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold transition-colors mt-6 shadow-lg shadow-violet-500/20">
+            <button type="submit" class="w-full py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-colors mt-6 shadow-lg shadow-emerald-500/20">
                 {% if has_users %}Save platform / AI settings{% else %}Complete Setup{% endif %}
             </button>
         </form>

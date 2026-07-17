@@ -4,20 +4,7 @@
 {% block title %}Register — Spectra{% endblock %}
 
 {% block auth_body %}
-<div class="auth-brand">
-    <div class="brand-logo">
-        {% include 'partials/shield_svg.html' %}
-        <span>Spectra</span>
-    </div>
-    <h2>AI-Powered Security Assessments</h2>
-    <p>Join security professionals using autonomous AI agents for comprehensive penetration testing.</p>
-    <ul class="brand-features">
-        <li>Automated reconnaissance &amp; exploitation</li>
-        <li>25+ security tools orchestrated by AI</li>
-        <li>Real-time monitoring &amp; detailed reports</li>
-        <li>Sandboxed execution environment</li>
-    </ul>
-</div>
+{% include 'partials/auth_brand.html' %}
 <div class="auth-form-panel">
 <div class="card">
     <div class="logo">
@@ -26,8 +13,8 @@
             Spectra
         </a>
     </div>
-    <h1>Create Account</h1>
-    <p class="subtitle">Get started with Spectra security assessments.</p>
+    <h1>Create account</h1>
+    <p class="subtitle">Start a workspace on this Spectra instance. Your admin controls registration and billing.</p>
 
     <form id="registerForm" autocomplete="on" aria-label="Create account">
         <div class="field">

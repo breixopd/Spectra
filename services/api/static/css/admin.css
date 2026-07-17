@@ -5,9 +5,9 @@
 .admin-sidebar button[role="tab"] { transition: all 0.2s ease; }
 .admin-sidebar a.active,
 .admin-sidebar button[role="tab"].active {
-  background: rgba(139,92,246,0.15);
+  background: hsl(152 52% 44% / 0.12);
   color: white;
-  border-left: 3px solid #8b5cf6;
+  border-left: 3px solid hsl(152 52% 44%);
 }
 .admin-sidebar a:hover:not(.active),
 .admin-sidebar button[role="tab"]:hover:not(.active) { background: rgba(255,255,255,0.04); }
@@ -34,7 +34,7 @@
 .toast-error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #f87171; }
 
 .form-input { background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; padding: 0.5rem 0.75rem; color: white; font-size: 0.875rem; width: 100%; transition: border-color 0.2s; }
-.form-input:focus { outline: none; border-color: rgba(139,92,246,0.5); }
+.form-input:focus { outline: none; border-color: hsl(152 52% 44% / 0.5); }
 .form-label { font-size: 0.8rem; font-weight: 500; color: #94a3b8; margin-bottom: 0.25rem; display: block; }
 .form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.75rem center; padding-right: 2rem; }
 
@@ -56,5 +56,5 @@
 .badge-local { background: rgba(16,185,129,0.15); color: #34d399; }
 .badge-remote { background: rgba(59,130,246,0.15); color: #60a5fa; }
 .badge-disabled { background: rgba(107,114,128,0.15); color: #9ca3af; }
-.svc-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #8b5cf6; border-radius: 50%; animation: spin 0.6s linear infinite; }
+.svc-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.2); border-top-color: hsl(152 52% 44%); border-radius: 50%; animation: spin 0.6s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

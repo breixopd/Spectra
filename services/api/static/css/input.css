@@ -12,7 +12,7 @@
   /* Borders */
   --border-subtle: rgba(255, 255, 255, 0.05);
   --border-hover: rgba(255, 255, 255, 0.08);
-  --border-focus: rgba(139, 92, 246, 0.4);
+  --border-focus: hsl(152 52% 44% / 0.35);
 
   /* Text */
   --text-primary: #ffffff;
@@ -21,9 +21,9 @@
   --text-disabled: #475569;
 
   /* Brand */
-  --brand-primary: #8b5cf6;
-  --brand-primary-hover: #a78bfa;
-  --brand-primary-glow: rgba(139, 92, 246, 0.2);
+  --brand-primary: hsl(152 52% 44%);
+  --brand-primary-hover: hsl(152 55% 50%);
+  --brand-primary-glow: hsl(152 52% 44% / 0.22);
 
   /* Severity */
   --severity-critical: #f43f5e;
@@ -59,7 +59,7 @@
 @layer components {
   /* Buttons */
   .btn-primary {
-    @apply px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-all shadow-lg shadow-violet-500/20;
+    @apply px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-all shadow-lg shadow-emerald-500/20;
   }
   .btn-danger {
     @apply px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold transition-all;

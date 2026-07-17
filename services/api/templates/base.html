@@ -3,137 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}{{ title | default(app_name + " | Dashboard") }}{% endblock %}</title>
+    <title>{% block title %}{{ title | default(app_name | default("Spectra")) }}{% endblock %}</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="manifest" href="/static/manifest.json">
-    <meta name="theme-color" content="#8b5cf6">
+    <meta name="theme-color" content="#0b0e13">
     <meta name="robots" content="noindex, nofollow">
     <meta name="csrf-token" content="{{ request.cookies.get('csrf_token', '') }}">
-    <meta property="og:image" content="/static/og-image.svg">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:type" content="website">
 
     <!-- Tailwind CSS (compiled) -->
-    <link rel="stylesheet" href="/static/css/output.css?v=20260530">
-
+    <link rel="stylesheet" href="/static/css/output.css?v=20260612">
     <!-- Design tokens (single source of truth) -->
-    <link rel="stylesheet" href="/static/css/tokens.css?v=20260530">
-
+    <link rel="stylesheet" href="/static/css/tokens.css?v=20260612">
     <!-- Fonts (local) -->
-    <link rel="stylesheet" href="/static/vendor/css/fonts.css?v=20260530">
-    
-    <link rel="stylesheet" href="/static/css/base.css?v=20260530">
+    <link rel="stylesheet" href="/static/vendor/css/fonts.css?v=20260612">
+    <link rel="stylesheet" href="/static/css/base.css?v=20260612">
     {% block extra_css %}{% endblock %}
     <!-- Centralized API client (must load before confirm bootstrap) -->
-    <script src="/static/js/api.js?v=20260530"></script>
+    <script src="/static/js/api.js?v=20260612"></script>
     <script nonce="{{ request.state.csp_nonce }}">window.escapeHtml=function(s){var d=document.createElement('div');d.textContent=String(s);return d.innerHTML};</script>
-    <script src="/static/js/shared-utils.js?v=20260530"></script>
-    <script src="/static/js/confirm.js?v=20260530" nonce="{{ request.state.csp_nonce }}"></script>
+    <script src="/static/js/shared-utils.js?v=20260612"></script>
+    <script src="/static/js/confirm.js?v=20260612" nonce="{{ request.state.csp_nonce }}"></script>
 </head>
-<body class="bg-[#0a0e1a] text-slate-300 font-sans antialiased min-h-screen md:overflow-hidden selection:bg-violet-500/30 selection:text-violet-200">
-    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-violet-600 focus:text-white">Skip to content</a>
-    <!-- Global system status bar -->
-    <div id="global-status-bar" class="hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-violet-900/90 via-indigo-900/90 to-violet-900/90 backdrop-blur-md border-b border-violet-500/20 px-4 py-2 text-center text-sm text-white shadow-lg">
+<body class="bg-[#0b0e13] text-slate-300 font-sans antialiased min-h-screen selection:bg-emerald-500/30 selection:text-emerald-100">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-emerald-600 focus:text-white">Skip to content</a>
+
+    <!-- Global system status bar (authed shell only) -->
+    {% if not is_public_page %}
+    <div id="global-status-bar" class="hidden fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-emerald-500/20 px-4 py-2 text-center text-sm text-white shadow-lg">
         <div class="flex items-center justify-center gap-3 max-w-4xl mx-auto">
-            <svg class="animate-spin h-4 w-4 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+            <svg class="animate-spin h-4 w-4 text-emerald-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
             <span id="status-message">System initializing...</span>
-            <span id="status-details" class="text-violet-300/70 text-xs"></span>
+            <span id="status-details" class="text-emerald-300/70 text-xs"></span>
         </div>
         <div id="status-progress" class="hidden mt-1 mx-auto max-w-xs h-1 bg-white/10 rounded-full overflow-hidden">
-            <div id="progress-bar" class="h-full bg-violet-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+            <div id="progress-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-500" style="width: 0%"></div>
         </div>
     </div>
-    <div class="app-layout">
-        {% if not is_public_page %}
-        <!-- Mobile header -->
-        <div class="mobile-header">
-            <button class="hamburger-btn" data-action="toggleSidebar" aria-label="Toggle navigation" aria-expanded="false">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-            </button>
-            <span class="text-white font-semibold text-lg">Spectra</span>
-        </div>
-        <aside id="sidebar" class="sidebar" data-testid="sidebar" aria-label="Main navigation">
-            <div class="p-4 h-full flex flex-col">
-                <!-- Logo -->
-                <div class="flex items-center gap-3 px-3 mb-8">
-                    <a href="/dashboard" class="flex items-center gap-3 text-xl font-bold text-white hover:text-violet-400 transition-colors">
-                        {% include 'partials/shield_svg.html' %}
-                        <span>Spectra</span>
-                    </a>
-                </div>
+    {% endif %}
 
-                <!-- Navigation -->
-                {% from "macros/navigation.html" import nav_item %}
-                <nav class="flex flex-col gap-1">
-                    <div class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Main</div>
-                    {{ nav_item("/dashboard", "layout-dashboard", "Dashboard", active=(request.url.path == '/dashboard')) }}
-                    {{ nav_item("/history", "history", "History", active=(request.url.path == '/history')) }}
-                    
-                    <div class="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Assessment</div>
-                    {{ nav_item("/targets", "target", "Targets", active=(request.url.path == '/targets')) }}
-                    {{ nav_item("/toolbox", "package", "Toolbox", active=(request.url.path == '/toolbox' or request.url.path.startswith('/toolbox/'))) }}
-                    {{ nav_item("/manual", "terminal-square", "Manual Tools", active=(request.url.path == '/manual')) }}
-                    {{ nav_item("/overseer", "bot", "Agents", active=(request.url.path == '/overseer')) }}
-                    {{ nav_item("/reports", "file-text", "Reports", active=(request.url.path == '/reports')) }}
-                    
-                    <div class="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Settings</div>
-                    {{ nav_item("/profile", "user-circle", "Account", active=(request.url.path == '/profile')) }}
-                    {{ nav_item("/settings", "settings-2", "Settings", active=(request.url.path == '/settings')) }}
-                    
-                    <div class="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Advanced</div>
-                    {{ nav_item("/docs/api", "book-open", "Documentation", active=(request.url.path == '/docs/api')) }}
-                    {{ nav_item("/help", "help-circle", "Help Center", active=(request.url.path == '/help')) }}
-                    <a id="observability-nav-link" href="/observability" data-testid="observability-nav-link" class="hidden {% if request.url.path == '/observability' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg transition-colors group">
-                        <i data-lucide="line-chart" class="w-4 h-4"></i>
-                        <span class="ml-3 text-sm font-medium">Observability</span>
-                    </a>
-                    <a id="admin-nav-link" href="/admin" data-testid="admin-nav-link" class="hidden {% if request.url.path == '/admin' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg transition-colors group">
-                        <i data-lucide="shield-check" class="w-4 h-4"></i>
-                        <span class="ml-3 text-sm font-medium">Admin</span>
-                    </a>
-                </nav>
-
-                <!-- User Status -->
-                <div class="mt-auto px-3">
-                    <div class="bg-black/20 rounded-xl p-3 border border-white/5">
-                        <div class="flex items-center">
-                            <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-xs text-slate-400 border border-white/5">
-                                <i data-lucide="user" class="w-4 h-4"></i>
-                            </div>
-                            <div class="ml-3">
-                                <p id="sidebar-username" class="text-xs font-medium text-white">User</p>
-                                <p class="text-xs text-emerald-400 flex items-center mt-0.5">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
-                                    Connected
-                                </p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2 mt-3">
-                            <a href="/changelog" class="text-xs text-slate-500 hover:text-violet-400 transition-colors cursor-pointer" title="View changelog">v{{ version }}</a>
-                            <button id="sidebar-signout-btn" type="button" class="w-7 h-7 rounded bg-slate-800 hover:bg-rose-500/20 flex items-center justify-center text-slate-500 hover:text-rose-400 border border-white/5 transition-all" title="Sign out" aria-label="Sign out">
-                                <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
+    <!-- Slim header -->
+    <header class="sticky top-0 z-40 border-b border-white/5 bg-[#0b0e13]/90 backdrop-blur">
+        <div class="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
+            <a href="{{ '/dashboard' if not is_public_page else '/' }}" class="flex items-center gap-2.5 text-base font-semibold text-white hover:text-emerald-400 transition-colors">
+                {% include 'partials/shield_svg.html' %}
+                <span>Spectra{% if not is_public_page %} <span class="text-slate-500 font-normal">Admin</span>{% endif %}</span>
+            </a>
+            <div class="flex items-center gap-2">
+                {% if is_public_page %}
+                <a href="/login" class="px-3 py-1.5 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors">Sign in</a>
+                {% else %}
+                <a href="/dashboard" class="px-3 py-1.5 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors">Open app</a>
+                <button id="header-signout-btn" type="button" class="px-3 py-1.5 rounded-lg text-sm text-slate-300 hover:text-rose-300 hover:bg-rose-500/10 transition-colors">Sign out</button>
+                {% endif %}
             </div>
-        </aside>
-        <!-- Sidebar overlay for mobile -->
-        <div id="sidebar-overlay" class="sidebar-overlay" data-action="toggleSidebar"></div>
-        {% endif %}
+        </div>
+    </header>
 
-        <!-- Main Content -->
-        <main id="main-content" tabindex="-1" class="{% if is_public_page %}w-full max-w-lg px-4{% else %}main-content flex-1 p-4 md:p-6 h-full overflow-y-auto overflow-x-hidden flex flex-col{% endif %}">
-            <!-- Live region for dynamic content announcements -->
-            <div id="live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
-            {% block breadcrumbs %}{% endblock %}
-            {% block content %}{% endblock %}
-        </main>
-    </div>
-    <!-- Native WebSocket (for real-time updates) -->
+    <!-- Main Content -->
+    <main id="main-content" tabindex="-1" class="mx-auto w-full {% if page_width == 'wide' %}max-w-5xl{% elif is_public_page %}max-w-lg{% else %}max-w-7xl{% endif %} px-4 sm:px-6 py-6 flex flex-col">
+        <!-- Live region for dynamic content announcements -->
+        <div id="live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+        {% block breadcrumbs %}{% endblock %}
+        {% block content %}{% endblock %}
+    </main>
+
     {% if not is_public_page %}
-    <script src="/static/js/reconnecting-ws.js?v=20260530"></script>
+    <!-- Native WebSocket (for real-time updates) -->
+    <script src="/static/js/reconnecting-ws.js?v=20260612"></script>
     <script nonce="{{ request.state.csp_nonce }}">
         function clearSpectraLocalStorage() {
             try {
@@ -163,7 +99,7 @@
             window.location.href = '/login';
         }
 
-        document.getElementById('sidebar-signout-btn')?.addEventListener('click', logoutFromSpectra);
+        document.getElementById('header-signout-btn')?.addEventListener('click', logoutFromSpectra);
 
         // Use ReconnectingWebSocket for automatic reconnection
         const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -174,11 +110,6 @@
             maxDelay: 30000,
             onMessage: function(event) {
                 try {
-                    // Legacy callback support
-                    if (window.onSocketMessage) {
-                        window.onSocketMessage(event.data);
-                    }
-                    // Modern event-based API — allows multiple listeners without chaining
                     document.dispatchEvent(new CustomEvent('spectra:ws-message', { detail: event.data }));
                 } catch (e) {
                     console.error('[ws] parse error', e);
@@ -186,7 +117,6 @@
             },
             onOpen: function() {
                 console.log('[ws] Connected');
-                if (window.onSocketConnect) window.onSocketConnect();
             },
             onClose: function(event) {
                 if (event.code === 4001) {
@@ -310,7 +240,7 @@
                 if (error) {
                     if (status === 429) {
                         statusRetryMs = STATUS_GIVEUP_MS;
-                        showStatusBanner('Rate limited \u2014 retrying shortly', 'warning');
+                        showStatusBanner('Rate limited - retrying shortly', 'warning');
                         return;
                     }
                     if (status === 401) {
@@ -336,7 +266,7 @@
                 statusFailCount++;
                 if (statusFailCount >= STATUS_GIVEUP_AFTER) {
                     statusRetryMs = STATUS_GIVEUP_MS;
-                    showStatusBanner('Connection lost \u2014 retrying every 2 min', 'error');
+                    showStatusBanner('Connection lost - retrying every 2 min', 'error');
                 } else {
                     statusRetryMs = Math.min(
                         STATUS_BACKOFF_BASE * Math.pow(2, statusFailCount - 1),

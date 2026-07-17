@@ -3,11 +3,11 @@ let currentContentType = 'review';
 function switchContentType(type, el) {
     currentContentType = type;
     document.querySelectorAll('.content-type-btn').forEach(b => {
-        b.classList.remove('active', 'bg-violet-600/20', 'text-violet-300', 'border-violet-500/30');
+        b.classList.remove('active', 'bg-emerald-600/20', 'text-emerald-300', 'border-emerald-500/30');
         b.classList.add('bg-white/5', 'text-slate-400', 'border-white/10');
     });
     if (el) {
-        el.classList.add('active', 'bg-violet-600/20', 'text-violet-300', 'border-violet-500/30');
+        el.classList.add('active', 'bg-emerald-600/20', 'text-emerald-300', 'border-emerald-500/30');
         el.classList.remove('bg-white/5', 'text-slate-400', 'border-white/10');
     }
     loadContent();
@@ -27,7 +27,7 @@ async function loadContent() {
                     <span class="text-xs ${item.is_active ? 'text-emerald-400' : 'text-slate-500'}">${item.is_active ? 'Active' : 'Inactive'}</span>
                 </div>
                 <div class="flex gap-2">
-                    <button data-action="editContent" data-value="${item.id}" class="text-xs text-violet-400 hover:text-violet-300"><i data-lucide="edit" class="w-3.5 h-3.5 inline-block"></i></button>
+                    <button data-action="editContent" data-value="${item.id}" class="text-xs text-emerald-400 hover:text-emerald-300"><i data-lucide="edit" class="w-3.5 h-3.5 inline-block"></i></button>
                     <button data-action="deleteContent" data-value="${item.id}" class="text-xs text-red-400 hover:text-red-300"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block"></i></button>
                 </div>
             </div>

@@ -128,10 +128,6 @@ export function ReportsPage() {
     }
   }
 
-  function exportMarkdownStub() {
-    toast.info("Markdown export is not yet available — use PDF or JSON");
-  }
-
   return (
     <>
       <PageHeader
@@ -147,9 +143,6 @@ export function ReportsPage() {
               <Button size="sm" variant="outline" onClick={() => void exportJson()}>
                 <Download className="mr-1.5 h-3.5 w-3.5" />
                 JSON
-              </Button>
-              <Button size="sm" variant="ghost" onClick={exportMarkdownStub}>
-                Markdown
               </Button>
             </div>
           ) : null

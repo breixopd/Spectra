@@ -2,7 +2,7 @@
 // Extracted from base.html inline script
 
 // Public paths constant (shared with api.js)
-window.PUBLIC_PATHS = ['/login', '/setup', '/register', '/landing', '/forgot-password', '/reset-password', '/verify-email', '/status', '/legal/terms', '/legal/privacy', '/legal/cookies', '/security', '/changelog'];
+window.PUBLIC_PATHS = ['/login', '/setup', '/register', '/forgot-password', '/reset-password', '/verify-email', '/status', '/legal/terms', '/legal/privacy', '/legal/cookies', '/security', '/changelog'];
 
 // Global showToast — stub queues until modules/toast.js (ESM) loads and replaces window.showToast
 window.showToast = function showToastStub(msg, type) {
@@ -58,7 +58,7 @@ function _spectraPrompt(msg, onSubmit, opts) {
     var inp = document.createElement('input');
     inp.id = 'spectra-gc-input';
     inp.type = opts.inputType || 'text';
-    inp.className = 'w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none';
+    inp.className = 'w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none';
     inp.placeholder = opts.placeholder || '';
     inp.autocomplete = 'off';
     inputArea.appendChild(inp);
@@ -126,9 +126,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Add upgrade link after the gated element
                         if (el.parentNode && !el.parentNode.querySelector('[data-upgrade-link-for="' + feat + '"]')) {
                             var upgrade = document.createElement('span');
-                            upgrade.className = 'text-xs text-violet-400 ml-1';
+                            upgrade.className = 'text-xs text-emerald-400 ml-1';
                             upgrade.dataset.upgradeLinkFor = feat;
-                            upgrade.innerHTML = '<a href="/profile#plan" class="hover:text-violet-300 transition-colors pointer-events-auto">Upgrade</a>';
+                            upgrade.innerHTML = '<a href="/settings" class="hover:text-emerald-300 transition-colors pointer-events-auto">Upgrade</a>';
                             el.parentNode.appendChild(upgrade);
                         }
                     }

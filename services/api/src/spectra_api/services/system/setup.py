@@ -78,6 +78,7 @@ class SystemSetupService:
             hashed_password=get_password_hash(setup_in.user.password),
             is_active=True,
             is_superuser=True,
+            role="admin",
         )
         self.session.add(user)
         return user

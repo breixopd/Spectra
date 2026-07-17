@@ -6,14 +6,14 @@ WELCOME = """
 <h1 style="color:#fff;font-size:22px;margin:0 0 16px;">Welcome to Spectra</h1>
 <p>Hi {username},</p>
 <p>Your account has been created. You can log in at
-<a href="{login_url}" style="color:#8b5cf6;">{login_url}</a>.</p>
+<a href="{login_url}" style="color:#3dd68c;">{login_url}</a>.</p>
 """
 
 PASSWORD_RESET = """
 <h1 style="color:#fff;font-size:22px;margin:0 0 16px;">Password Reset</h1>
 <p>Hi {username},</p>
 <p>Click the link below to reset your password. This link expires in 1 hour.</p>
-<p><a href="{reset_url}" style="color:#8b5cf6;">{reset_url}</a></p>
+<p><a href="{reset_url}" style="color:#3dd68c;">{reset_url}</a></p>
 <p>If you didn't request this, you can safely ignore this email.</p>
 """
 
@@ -25,7 +25,7 @@ MISSION_COMPLETE = """
   <li>Status: {status}</li>
   <li>Findings: {finding_count}</li>
 </ul>
-<p><a href="{report_url}" style="color:#8b5cf6;">View full report</a></p>
+<p><a href="{report_url}" style="color:#3dd68c;">View full report</a></p>
 """
 
 ALERT = """
@@ -43,14 +43,14 @@ SUBSCRIPTION = """
   <li>Plan: <strong>{plan_name}</strong></li>
   <li>Status: {status}</li>
 </ul>
-<p><a href="{dashboard_url}" style="color:#8b5cf6;">Go to Dashboard</a></p>
+<p><a href="{dashboard_url}" style="color:#3dd68c;">Go to Dashboard</a></p>
 """
 
 EMAIL_VERIFICATION = """
 <h1 style="color:#fff;font-size:22px;margin:0 0 16px;">Verify Your Email</h1>
 <p>Hi {username},</p>
 <p>Please verify your email address by clicking the link below. This link expires in 24 hours.</p>
-<p><a href="{verify_url}" style="color:#8b5cf6;">{verify_url}</a></p>
+<p><a href="{verify_url}" style="color:#3dd68c;">{verify_url}</a></p>
 <p>If you didn't create this account, you can safely ignore this email.</p>
 """
 
@@ -71,9 +71,9 @@ TEMPLATES: dict[str, str] = {
 def wrap_email(content: str, unsubscribe_url: str | None = None) -> str:
     """Wrap template content in the branded Spectra email layout."""
     if unsubscribe_url:
-        unsub_link = f'<a href="{unsubscribe_url}" style="color:#8b5cf6;">Unsubscribe</a>'
+        unsub_link = f'<a href="{unsubscribe_url}" style="color:#3dd68c;">Unsubscribe</a>'
     else:
-        unsub_link = '<a href="#" style="color:#8b5cf6;">Unsubscribe</a>'
+        unsub_link = '<a href="#" style="color:#3dd68c;">Unsubscribe</a>'
     return (
         "<!DOCTYPE html>"
         '<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>'

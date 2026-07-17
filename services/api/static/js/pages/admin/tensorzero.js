@@ -28,7 +28,7 @@ async function loadTZInferences() {
     container.innerHTML = data.inferences.map(inf => `
         <div class="flex items-center justify-between p-2 rounded-lg bg-black/20 border border-white/5 text-xs">
             <div class="flex items-center gap-2">
-                <span class="text-violet-400 font-mono">${escapeHtml(inf.function_name)}</span>
+                <span class="text-emerald-400 font-mono">${escapeHtml(inf.function_name)}</span>
                 <span class="text-slate-500">${escapeHtml(inf.variant_name || '')}</span>
             </div>
             <div class="flex items-center gap-3">
@@ -51,7 +51,7 @@ async function loadTZFunctionStats() {
             <span class="text-white font-medium">${escapeHtml(fn.name)}</span>
             <div class="flex items-center gap-3">
                 <span class="text-slate-400">${fn.variant_count ?? 0} variant${fn.variant_count !== 1 ? 's' : ''}</span>
-                <span class="px-1.5 py-0.5 rounded text-xs ${fn.type === 'chat' ? 'bg-violet-500/15 text-violet-400' : 'bg-cyan-500/15 text-cyan-400'}">${escapeHtml(fn.type)}</span>
+                <span class="px-1.5 py-0.5 rounded text-xs ${fn.type === 'chat' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-cyan-500/15 text-cyan-400'}">${escapeHtml(fn.type)}</span>
             </div>
         </div>
     `).join('');

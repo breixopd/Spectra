@@ -27,7 +27,7 @@ async function loadUsers() {
                     <td class="px-4 py-3"><span class="badge ${u.is_active ? 'badge-active' : 'badge-inactive'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
                     <td class="px-4 py-3 text-slate-500 text-xs">${formatDate(u.created_at)}</td>
                     <td class="px-4 py-3 text-right">
-                        <button type="button" data-user-action="edit" data-user-index="${index}" class="text-slate-400 hover:text-violet-400 mr-2" title="Edit"><i data-lucide="edit" class="w-4 h-4 inline-block"></i></button>
+                        <button type="button" data-user-action="edit" data-user-index="${index}" class="text-slate-400 hover:text-emerald-400 mr-2" title="Edit"><i data-lucide="edit" class="w-4 h-4 inline-block"></i></button>
                         <button type="button" data-user-action="reset" data-user-index="${index}" class="text-slate-400 hover:text-amber-400 mr-2" title="Reset password"><i data-lucide="key" class="w-4 h-4 inline-block"></i></button>
                         <button type="button" data-user-action="deactivate" data-user-index="${index}" class="text-slate-400 hover:text-red-400" title="Deactivate"><i data-lucide="user-x" class="w-4 h-4 inline-block"></i></button>
                     </td>

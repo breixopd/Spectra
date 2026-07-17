@@ -28,7 +28,7 @@ function renderPlans() {
                 </div>
                 <div class="flex items-center gap-1 flex-wrap justify-end">
                     ${tierBadge}
-                    ${p.is_default ? '<span class="badge bg-violet-500/20 text-violet-300">Default</span>' : ''}
+                    ${p.is_default ? '<span class="badge bg-emerald-500/20 text-emerald-300">Default</span>' : ''}
                     ${p.allow_self_service_registration ? '<span class="badge bg-emerald-500/20 text-emerald-300">Self-service signup</span>' : ''}
                     <span class="badge ${p.is_active ? 'badge-active' : 'badge-inactive'}">${p.is_active ? 'Active' : 'Inactive'}</span>
                 </div>
@@ -44,7 +44,7 @@ function renderPlans() {
                 <div class="flex justify-between"><span class="text-slate-500">Sandboxes</span><span class="text-white">${p.sandbox_max_containers}</span></div>
             </div>
             <div class="flex justify-end gap-2 pt-2 border-t border-white/5">
-                <button data-action="openEditPlanModal" data-value='${JSON.stringify(p).replace(/'/g,"&#39;")}' class="text-xs text-slate-400 hover:text-violet-400 transition-colors"><i data-lucide="edit" class="w-3.5 h-3.5 inline-block mr-1"></i>Edit</button>
+                <button data-action="openEditPlanModal" data-value='${JSON.stringify(p).replace(/'/g,"&#39;")}' class="text-xs text-slate-400 hover:text-emerald-400 transition-colors"><i data-lucide="edit" class="w-3.5 h-3.5 inline-block mr-1"></i>Edit</button>
                 ${p.is_active ? `<button data-action="deactivatePlan" data-value="${p.id}" data-plan-name="${escapeHtml(p.name)}" class="text-xs text-slate-400 hover:text-red-400 transition-colors"><i data-lucide="ban" class="w-3.5 h-3.5 inline-block mr-1"></i>Deactivate</button>` : `<button data-action="activatePlan" data-value="${p.id}" data-plan-name="${escapeHtml(p.name)}" class="text-xs text-slate-400 hover:text-emerald-400 transition-colors"><i data-lucide="check-circle" class="w-3.5 h-3.5 inline-block mr-1"></i>Activate</button>`}
             </div>
         </div>`;

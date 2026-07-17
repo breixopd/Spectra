@@ -27,4 +27,12 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  .bg-grid-fade {
+    background-image:
+      linear-gradient(to right, hsl(var(--border) / 0.35) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border) / 0.35) 1px, transparent 1px);
+    background-size: 24px 24px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, black, transparent);
+  }
 }

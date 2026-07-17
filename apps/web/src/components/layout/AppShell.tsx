@@ -16,12 +16,13 @@ export function AppShell() {
   const { open, setOpen } = useCommandPalette();
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="relative flex min-h-screen flex-col bg-background">
+      <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-60" aria-hidden />
       <TopBar onOpenCommandPalette={() => setOpen(true)} onOpenMobileNav={() => setMobileNavOpen(true)} />
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((value) => !value)} />
         <main className="min-w-0 flex-1">
-          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
             <Outlet />
           </div>
         </main>
@@ -40,11 +41,16 @@ export function AppShell() {
                   <Link
                     key={item.href}
                     to={item.href}
-                    className={cn("flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-accent")}
+                    className={cn("flex items-center gap-3 rounded-md px-3 py-2.5 text-sm hover:bg-accent")}
                     onClick={() => setMobileNavOpen(false)}
                   >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
+                    <Icon className="h-4 w-4 text-primary" />
+                    <div>
+                      <p className="font-medium">{item.label}</p>
+                      {item.description ? (
+                        <p className="text-2xs text-muted-foreground">{item.description}</p>
+                      ) : null}
+                    </div>
                   </Link>
                 );
               })}

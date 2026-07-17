@@ -75,23 +75,38 @@
 <!-- Hero -->
 <section class="hero">
     <div class="wrap hero-inner">
-        <div>
-            <h1>Autonomous pentesting with <em>evidence</em> for every finding</h1>
+        <div class="hero-copy">
+            <p class="hero-eyebrow">Autonomous penetration testing platform</p>
+            <h1>Ship findings with <em>proof</em>, not noise</h1>
             <p class="hero-sub">
-                {{ app_name }} plans, runs, and verifies complete assessments with sandboxed
-                tools and consensus-checked AI agents. Findings ship with proof, not guesses.
+                {{ app_name }} runs full assessments in isolated sandboxes — specialist agents,
+                consensus gates, and evidence bundles on every confirmed issue.
             </p>
             <div class="hero-actions">
-                <a href="/register" class="btn btn-primary">Get started</a>
-                <a href="#pricing" class="btn btn-ghost">View pricing</a>
+                <a href="/register" class="btn btn-primary">Start free</a>
+                <a href="#platform" class="btn btn-ghost">Explore platform</a>
             </div>
+            <ul class="hero-trust" aria-label="Trust signals">
+                <li>Self-hosted</li>
+                <li>SOC-ready audit trail</li>
+                <li>BYOK for LLM inference</li>
+            </ul>
         </div>
         <figure class="hero-shot">
             <img src="/static/img/product/mission-control.png"
                  width="1380" height="900"
-                 alt="{{ app_name }} mission control: active assessments, verified findings, and live agent activity"
+                 alt="{{ app_name }} mission control: live assessments, verified findings, agent activity"
                  fetchpriority="high">
         </figure>
+    </div>
+</section>
+
+<section class="trust-strip" aria-label="Integrated toolchain">
+    <div class="wrap trust-inner">
+        <span class="trust-label">Toolchain</span>
+        <ul class="trust-logos">
+            <li>Nmap</li><li>Nuclei</li><li>SQLMap</li><li>Metasploit</li><li>Hydra</li><li>Feroxbuster</li>
+        </ul>
     </div>
 </section>
 

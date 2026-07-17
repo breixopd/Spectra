@@ -12,8 +12,7 @@ module.exports = {
     extend: {
       colors: {
         slate: { 950: '#020617' },
-        emerald: { 400: '#34d399', 500: '#10b981' },
-        violet: { 400: '#a78bfa', 500: '#8b5cf6' },
+        emerald: { 400: '#34d399', 500: '#10b981', 600: '#059669' },
         rose: { 400: '#fb7185', 500: '#f43f5e' },
         amber: { 400: '#fbbf24', 500: '#f59e0b' },
       },

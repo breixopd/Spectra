@@ -22,7 +22,7 @@ async function loadEmailConfig() {
         for (const name of Object.keys(_emailTemplates)) {
             const btn = document.createElement('button');
             btn.className = 'px-3 py-1 rounded-lg text-xs font-medium transition-colors ' +
-                (name === _emailActiveTemplate ? 'bg-violet-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10');
+                (name === _emailActiveTemplate ? 'bg-emerald-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10');
             btn.textContent = name;
             btn.onclick = () => selectEmailTemplate(name);
             tabs.appendChild(btn);
@@ -40,7 +40,7 @@ function selectEmailTemplate(name) {
     document.getElementById('email-template-editor').value = _emailTemplates[name] || '';
     document.querySelectorAll('#email-template-tabs button').forEach(b => {
         b.className = b.textContent === name
-            ? 'px-3 py-1 rounded-lg text-xs font-medium transition-colors bg-violet-600 text-white'
+            ? 'px-3 py-1 rounded-lg text-xs font-medium transition-colors bg-emerald-600 text-white'
             : 'px-3 py-1 rounded-lg text-xs font-medium transition-colors bg-white/5 text-slate-400 hover:bg-white/10';
     });
 }

@@ -5,9 +5,9 @@
 :root {
     /* Color family defaults — overridden by body class */
     --error-from: var(--accent);
-    --error-mid: var(--violet);
-    --error-to: var(--violet);
-    --error-bg-top: var(--violet-dim);
+    --error-mid: var(--accent);
+    --error-to: var(--accent);
+    --error-bg-top: var(--accent-dim);
     --error-bg-bottom: var(--accent-dim);
 }
 
@@ -25,18 +25,18 @@ body {
 body.error-amber {
     --error-from: #f59e0b;
     --error-mid: #fbbf24;
-    --error-to: var(--violet);
+    --error-to: var(--accent);
     --error-bg-top: rgba(245,158,11,0.15);
-    --error-bg-bottom: var(--violet-dim);
+    --error-bg-bottom: var(--accent-dim);
 }
 
 /* --- Rose family: 500 --- */
 body.error-rose {
     --error-from: #f43f5e;
     --error-mid: #ff6b6b;
-    --error-to: var(--violet);
+    --error-to: var(--accent);
     --error-bg-top: rgba(244,63,94,0.15);
-    --error-bg-bottom: var(--violet-dim);
+    --error-bg-bottom: var(--accent-dim);
 }
 
 /* --- Glitch family: 400, 404, 405, 502, 503 --- */

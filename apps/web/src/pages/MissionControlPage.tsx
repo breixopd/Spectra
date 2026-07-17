@@ -95,7 +95,7 @@ export function MissionControlPage() {
         meta={
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Radio className={cn("h-3.5 w-3.5", connected ? "text-success" : "text-muted-foreground")} />
-            {connected ? "Live feed connected" : "Polling fallback — websocket reconnecting"}
+            {connected ? "Live feed connected" : "Reconnecting live feed…"}
           </div>
         }
       />

@@ -80,7 +80,7 @@ function renderServiceCards() {
             <div class="service-card glass-panel rounded-xl p-5">
                 <div class="flex items-start justify-between mb-3">
                     <div class="flex items-center gap-2">
-                        <i data-lucide="${map.icon}" class="w-4 h-4 inline-block text-violet-400"></i>
+                        <i data-lucide="${map.icon}" class="w-4 h-4 inline-block text-emerald-400"></i>
                         <h3 class="text-sm font-semibold text-white">${escapeHtml(map.label)}</h3>
                     </div>
                     <span class="badge badge-${modeBadge}">${modeLabel}</span>
@@ -105,7 +105,7 @@ function renderServiceCards() {
                 </div>
                 <div class="flex justify-end gap-3 pt-2 border-t border-white/5">
                     ${mode === 'remote' ? `<button data-action="deprovisionServer" data-value="${name}" class="text-xs text-red-400 hover:text-red-300 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i>Remove Server</button>` : ''}
-                    <button data-action="openServiceConfigModal" data-value="${name}" class="text-xs text-slate-400 hover:text-violet-400 transition-colors">
+                    <button data-action="openServiceConfigModal" data-value="${name}" class="text-xs text-slate-400 hover:text-emerald-400 transition-colors">
                         <i data-lucide="settings" class="w-3.5 h-3.5 inline-block mr-1"></i>Configure
                     </button>
                 </div>
@@ -440,7 +440,7 @@ async function refreshNodesList() {
                 </div>
                 <div class="flex items-center gap-2">
                     ${n.deployed_services ? `<span class="text-xs text-emerald-400">${(n.deployed_services.length || 0)} services</span>` : ''}
-                    <button data-action="deployToNode" data-value="${n.id}" data-node-name="${escapeHtml(n.name)}" class="px-2 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded text-xs transition-colors">
+                    <button data-action="deployToNode" data-value="${n.id}" data-node-name="${escapeHtml(n.name)}" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs transition-colors">
                         <i data-lucide="rocket" class="w-3.5 h-3.5 inline-block mr-1"></i>Deploy
                     </button>
                     <button data-action="viewNodeLogs" data-value="${n.id}" class="px-2 py-1 text-xs text-slate-400 hover:text-white transition-colors">

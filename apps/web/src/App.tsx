@@ -2,6 +2,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 import { useMemo } from "react";
 
+import { BrandMark } from "@/components/brand/BrandMark";
+import { SetupGate } from "@/components/layout/SetupGate";
 import { Toaster } from "@/components/ui/sonner";
 import { queryClient } from "@/lib/queryClient";
 import { AuthProvider, useAuth } from "@/providers/AuthProvider";
@@ -21,13 +23,18 @@ function RouterWithAuth() {
 
   if (auth.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
-        Loading session...
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+        <BrandMark size="lg" subtitle="Loading session" />
+        <p className="text-sm text-muted-foreground">Restoring your workspace…</p>
       </div>
     );
   }
 
-  return <RouterProvider router={router} context={context} />;
+  return (
+    <SetupGate>
+      <RouterProvider router={router} context={context} />
+    </SetupGate>
+  );
 }
 
 export function App() {

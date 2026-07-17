@@ -1,52 +1,40 @@
-/* Consolidated design tokens - single source of truth for all CSS custom properties */
+/* Design tokens — phosphor green operator console (canonical for Jinja surfaces) */
 
 :root {
     color-scheme: dark;
 
-    /* Colors - Background */
-    --bg: #0a0e1a;
-    --bg-secondary: #020617;
-    --bg-elevated: #111827;
-    --bg-card: rgba(255,255,255,0.03);
-    --bg-card-hover: rgba(255,255,255,0.06);
+    --bg: hsl(222 20% 6%);
+    --bg-secondary: hsl(222 22% 5%);
+    --bg-elevated: hsl(222 18% 9%);
+    --bg-card: hsl(222 18% 9% / 0.85);
+    --bg-card-hover: hsl(222 14% 14% / 0.9);
 
-    /* Colors - Border */
-    --border: rgba(255,255,255,0.1);
-    --border-hover: rgba(255,255,255,0.2);
+    --border: hsl(222 11% 17%);
+    --border-hover: hsl(222 11% 24%);
 
-    /* Colors - Primary (violet) */
-    --violet: #8b5cf6;
-    --violet-hover: #7c3aed;
-    --violet-glow: rgba(139, 92, 246, 0.3);
-    --violet-dim: rgba(139,92,246,0.15);
+    --accent: hsl(152 52% 44%);
+    --accent-hover: hsl(152 55% 50%);
+    --accent-glow: hsl(152 52% 44% / 0.28);
+    --accent-dim: hsl(152 52% 44% / 0.12);
 
-    /* Colors - Accent (green) */
-    --accent: #00ff88;
-    --accent-dim: rgba(0,255,136,0.15);
-    --success: #10b981;
+    --success: hsl(152 48% 40%);
+    --warning: hsl(36 90% 50%);
+    --error: hsl(0 62% 50%);
+    --info: hsl(210 58% 54%);
 
-    /* Colors - Semantic */
-    --warning: #f59e0b;
-    --error: #ef4444;
-    --info: #3b82f6;
+    --text: hsl(210 20% 96%);
+    --text-secondary: hsl(215 10% 68%);
+    --text-muted: hsl(215 10% 58%);
 
-    /* Colors - Text */
-    --text: #e2e8f0;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
-
-    /* Border Radius */
-    --radius-sm: 4px;
+    --radius-sm: 6px;
     --radius-md: 8px;
     --radius-lg: 12px;
     --radius-xl: 16px;
 
-    /* Shadows */
-    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
-    --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
-    --shadow-glow: 0 0 20px var(--violet-glow);
+    --shadow-sm: 0 1px 0 hsl(222 12% 20% / 0.35);
+    --shadow-md: 0 8px 28px hsl(222 24% 2% / 0.45);
+    --shadow-glow: 0 0 24px var(--accent-glow);
 
-    /* Z-index scale */
     --z-sidebar: 40;
     --z-sidebar-overlay: 45;
     --z-global-status: 50;
@@ -56,16 +44,14 @@
     --z-tooltip: 100;
     --z-cookie-consent: 110;
 
-    /* Typography */
-    --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", ui-mono, "SF Mono", Menlo, monospace;
 }
 
 html {
     color-scheme: dark;
 }
 
-/* Loading states for buttons */
 .btn.loading,
 button.loading {
     opacity: 0.7;

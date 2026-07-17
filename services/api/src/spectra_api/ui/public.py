@@ -47,9 +47,19 @@ APP_DIR = api_assets_root()
 
 
 def _plugins_dir() -> Path:
-    for base in (APP_DIR, *APP_DIR.parents):
-        candidate = base / "plugins"
-        if candidate.is_dir():
+    """Resolve plugin JSON directory (repo: ``plugins/``, image: ``/app/plugins``)."""
+    pkg = Path(__file__).resolve().parent
+    candidates: list[Path] = []
+    for base in (APP_DIR, *APP_DIR.parents, pkg, *pkg.parents):
+        candidates.append(base / "plugins")
+    candidates.append(Path("/app/plugins"))
+
+    seen: set[Path] = set()
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        if candidate.is_dir() and any(candidate.glob("*.json")):
             return candidate
     return APP_DIR / "plugins"
 
@@ -307,6 +317,9 @@ async def setup_page(request: Request):
             "prefill": prefill,
             "admin_username": first_user.username if first_user else "",
             "admin_email": first_user.email if first_user else "",
+            # Pre-auth page: public shell (no authed WebSocket/status scripts), wide form layout.
+            "is_public_page": True,
+            "page_width": "wide",
         },
     )
 

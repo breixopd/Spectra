@@ -10,7 +10,7 @@ function trainingBadge(status) {
         preparing: 'bg-blue-500/20 text-blue-300',
         failed: 'bg-rose-500/20 text-rose-300',
         cancelled: 'bg-slate-500/20 text-slate-300',
-        configurable: 'bg-violet-500/20 text-violet-300',
+        configurable: 'bg-emerald-500/20 text-emerald-300',
         available: 'bg-emerald-500/20 text-emerald-300'
     }[key] || 'bg-slate-500/20 text-slate-300';
     return `<span class="badge ${classes}">${escapeHtml(key)}</span>`;
@@ -78,7 +78,7 @@ async function loadTrainingSamples() {
             <td class="px-4 py-3 text-xs text-slate-500 max-w-xs truncate">${escapeHtml(s.input_preview || '')}</td>
             <td class="px-4 py-3 text-right text-xs text-slate-300">${s.quality_score ?? '—'}</td>
             <td class="px-4 py-3 text-right">
-                ${s.is_approved ? trainingBadge('available') : `<button type="button" data-action="approveTrainingSample" data-value="${escapeHtml(s.id)}" class="text-xs text-violet-400 hover:text-violet-300">Approve</button>`}
+                ${s.is_approved ? trainingBadge('available') : `<button type="button" data-action="approveTrainingSample" data-value="${escapeHtml(s.id)}" class="text-xs text-emerald-400 hover:text-emerald-300">Approve</button>`}
             </td>
         </tr>
     `).join('');

@@ -87,7 +87,7 @@ def register_spa(app: FastAPI) -> None:
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa_fallback(request: Request, full_path: str) -> HTMLResponse:
-        if request.method != "GET":
+        if request.method not in ("GET", "HEAD"):
             raise HTTPException(status_code=405)
         path = f"/{full_path}" if full_path else "/"
         if not _is_spa_fallback_path(path):

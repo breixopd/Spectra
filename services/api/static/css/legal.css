@@ -11,7 +11,7 @@ nav {
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
     padding: 0 2rem; height: 64px;
     display: flex; align-items: center; justify-content: space-between;
-    background: rgba(10,10,15,0.95); backdrop-filter: blur(20px);
+    background: hsl(222 20% 6% / 0.95); backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border);
 }
 .nav-logo {
@@ -65,7 +65,7 @@ nav {
 .legal-container table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.875rem; }
 .legal-container th { text-align: left; padding: 0.75rem; border-bottom: 1px solid var(--border); color: #fff; font-weight: 600; }
 .legal-container td { padding: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-muted); }
-.placeholder { color: var(--violet); font-weight: 600; }
+.placeholder { color: var(--accent); font-weight: 600; }
 .cookie-consent {
     position: fixed;
     left: 0;

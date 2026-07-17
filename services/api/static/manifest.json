@@ -1,11 +1,11 @@
 {
   "name": "Spectra — Security Assessment Platform",
   "short_name": "Spectra",
-  "description": "AI-driven autonomous security assessment platform for penetration testing and vulnerability scanning.",
+  "description": "Autonomous penetration testing with evidence for every finding.",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#0a0a0f",
-  "theme_color": "#8b5cf6",
+  "background_color": "#0b0e13",
+  "theme_color": "#3dd68c",
   "icons": [
     {
       "src": "/static/favicon.svg",

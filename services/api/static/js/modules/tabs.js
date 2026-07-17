@@ -53,10 +53,10 @@ export function activateTab(group, tabId) {
 
     // Visual styles
     if (isActive) {
-      tab.classList.add('text-violet-400', 'border-b-2', 'border-violet-500');
+      tab.classList.add('text-emerald-400', 'border-b-2', 'border-emerald-500');
       tab.classList.remove('text-slate-400', 'hover:text-white', 'hover:bg-white/5');
     } else {
-      tab.classList.remove('text-violet-400', 'border-b-2', 'border-violet-500');
+      tab.classList.remove('text-emerald-400', 'border-b-2', 'border-emerald-500');
       tab.classList.add('text-slate-400', 'hover:text-white', 'hover:bg-white/5');
     }
   });
