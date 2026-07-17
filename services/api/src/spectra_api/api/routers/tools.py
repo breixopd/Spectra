@@ -11,6 +11,7 @@ Provides endpoints for:
 import json
 import logging
 import re
+from typing import TypedDict
 
 from fastapi import (
     APIRouter,
@@ -71,6 +72,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/tools", tags=["Tools"])
 
 
+class _ToolDetailStatusFields(TypedDict):
+    """Cached installation state accepted by the detail response schemas."""
+
+    status_message: str | None
+    status_phase: str | None
+    last_updated: str | None
+    install_logs: list[str]
+    last_output: str | None
+
+
+class _ToolStatsStatusFields(TypedDict):
+    """Cached installation state accepted by the statistics response schema."""
+
+    status: str | None
+    status_message: str | None
+    last_updated: str | None
+    install_logs: list[str]
+    error: str | None
+
+
 # --- Dependency ---
 
 
@@ -113,7 +134,15 @@ async def _get_cached_status(tool_id: str) -> dict[str, str | list[str] | None]:
         logger.warning("Tool status lookup failed for %s: %s", tool_id, e)
         return {}
 
-    return payload if isinstance(payload, dict) else {}
+    if not isinstance(payload, dict):
+        return {}
+
+    return {
+        key: value
+        for key, value in payload.items()
+        if isinstance(key, str)
+        and (value is None or isinstance(value, str) or (isinstance(value, list) and all(isinstance(item, str) for item in value)))
+    }
 
 
 def _cached_logs(payload: dict[str, str | list[str] | None]) -> list[str]:
@@ -129,12 +158,13 @@ def _cached_text(
     key: str,
 ) -> str | None:
     """Return a cached scalar field as non-empty text."""
-    return str(payload.get(key) or "") or None
+    value = payload.get(key)
+    return value if isinstance(value, str) and value else None
 
 
 def _tool_detail_status_fields(
     payload: dict[str, str | list[str] | None],
-) -> dict[str, str | list[str] | None]:
+) -> _ToolDetailStatusFields:
     """Map cached status fields onto the tool detail response shape."""
     return {
         "status_message": _cached_text(payload, "message"),
@@ -147,7 +177,7 @@ def _tool_detail_status_fields(
 
 def _tool_stats_status_fields(
     payload: dict[str, str | list[str] | None],
-) -> dict[str, str | list[str] | None]:
+) -> _ToolStatsStatusFields:
     """Map cached status fields onto the tool stats response shape."""
     return {
         "status": _cached_text(payload, "status"),

@@ -25,6 +25,10 @@ logger = logging.getLogger("spectra_scheduler")
 
 
 class SchedulerCoreLoopsMixin:
+    # Supplied by SchedulerService.  Declaring the composed-service contract
+    # here keeps each independently testable mixin type-safe.
+    running: bool
+
     async def _sandbox_watchdog(self):
         """Check for stale sandbox containers and clean them up. Runs every 60s."""
         while self.running:
@@ -265,7 +269,7 @@ class SchedulerCoreLoopsMixin:
                         result = await session.execute(
                             sa_select(ServerNode).where(ServerNode.is_active)
                         )
-                        nodes = result.scalars().all()
+                        nodes = list(result.scalars().all())
 
                     if not nodes:
                         continue

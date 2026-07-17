@@ -13,7 +13,7 @@ from spectra_ai_core.agents.mission_controller import (
     MissionInput,
     MissionPlan,
 )
-from spectra_ai_core.agents.scope import ScopeAgent, ScopeInput
+from spectra_ai_core.agents.scope import ScopeAction, ScopeAgent, ScopeInput
 from spectra_ai_core.consensus import QualityGate, VotingSystem
 from spectra_ai_core.cost_tracker import CostTracker
 from spectra_ai_core.llm import get_global_llm_client
@@ -375,10 +375,11 @@ class MissionExecutionManager:
 
         self._broadcast_state("scope_agent", "idle")
 
-        if not scope_result.success and scope_result.action and not scope_result.action.targets and mission.target:
+        scope_action = cast(ScopeAction | None, scope_result.action)
+        if not scope_result.success and scope_action and not scope_action.targets and mission.target:
             from spectra_ai_core.agents.scope import TargetSpec
 
-            scope_result.action.targets = [
+            scope_action.targets = [
                 TargetSpec(
                     value=mission.target,
                     target_type="hostname",
@@ -390,8 +391,10 @@ class MissionExecutionManager:
 
         if not scope_result.success:
             raise RuntimeError(f"Scoping failed: {scope_result.error}")
+        if scope_action is None:
+            raise RuntimeError("Scoping completed without an action")
 
-        target_count = len(scope_result.action.targets)  # type: ignore
+        target_count = len(scope_action.targets)
         mission.log(f"Scope defined: {target_count} targets")
 
     async def _run_planning_phase(self, mission: Mission, context: AgentContext) -> None:

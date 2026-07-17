@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import threading
+import time
 import uuid
 from datetime import UTC, datetime
 from typing import Any, ClassVar
@@ -103,6 +104,20 @@ class Mission:
         self.user_id = user_id
         self.requires_approval = requires_approval
         self.record_demo = record_demo
+        # Runtime state that is surfaced by mission execution, steering, and
+        # the dashboard.  Keeping it on the entity (rather than attaching
+        # ad-hoc attributes at call sites) makes checkpointing and resumption
+        # predictable and prevents state from disappearing mid-mission.
+        self._demo_recorder: Any | None = None
+        self.demo_url: str | None = None
+        # Initialize at construction so direct/resumed task execution has a
+        # valid timeout baseline even before the execution manager attaches.
+        self._start_wall_time: float = time.time()
+        self._detected_os: str | None = None
+        self._chain_depth: int = 0
+        self.steering_params: dict[str, str] = {}
+        self.skipped_targets: set[str] = set()
+        self.milestones: list[dict[str, Any]] = []
         self.playbook_id = playbook_id
         self.pentest_framework = pentest_framework
         self.scan_mode = scan_mode if scan_mode in {"autonomous", "guided", "manual"} else "autonomous"

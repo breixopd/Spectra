@@ -6,7 +6,7 @@ import asyncio
 import logging
 from datetime import UTC, datetime
 
-from spectra_tools_core.models import ToolStatus
+from spectra_tools_core.models import RegisteredTool, ToolStatus
 
 from .helpers import _is_tool_installed, _sync_tool_status
 
@@ -19,7 +19,7 @@ def _log_startup_banner() -> None:
     logger.info("=" * 60)
 
 
-async def _sync_detected_tool_status(tool: object) -> bool:
+async def _sync_detected_tool_status(tool: RegisteredTool) -> bool:
     tool_id = tool.config.id
     is_installed = _is_tool_installed(tool)
     tool.status = ToolStatus.READY if is_installed else ToolStatus.PENDING
@@ -75,7 +75,7 @@ async def startup() -> None:
     await _auto_install_pending()
 
 
-async def _batch_sync_tool_statuses(tools: list[object]) -> list[str]:
+async def _batch_sync_tool_statuses(tools: list[RegisteredTool]) -> list[str]:
     """Batch sync tool statuses to cache, return list of pending tool IDs."""
     from spectra_common.constants import SECONDS_PER_HOUR
     from spectra_infra.cache import CacheService
@@ -97,7 +97,7 @@ async def _batch_sync_tool_statuses(tools: list[object]) -> list[str]:
     tool_statuses: dict[str, dict[str, object]] = {}
     for tool in tools:
         tool_id = tool.config.id
-        result = {"status": tool.status.value}
+        result: dict[str, object] = {"status": tool.status.value}
         # Get existing status from cache (batch get would be better but requires API change)
         key = f"spectra:tool_status:{tool_id}"
         existing = await cache.get(key)

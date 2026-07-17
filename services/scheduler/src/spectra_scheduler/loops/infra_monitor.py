@@ -14,6 +14,13 @@ logger = logging.getLogger("spectra_scheduler")
 
 
 class SchedulerInfraMonitorMixin:
+    # Supplied by SchedulerService and SchedulerCoreLoopsMixin respectively.
+    running: bool
+
+    async def _send_capacity_alert(self, status: dict) -> None:
+        """Capability supplied by the core scheduler loop mixin."""
+        raise NotImplementedError
+
     async def _send_infra_alert(self, *, event: str, message: str, priority: str = "urgent") -> None:
         """Send infrastructure monitor alerts through the configured notifier."""
         try:

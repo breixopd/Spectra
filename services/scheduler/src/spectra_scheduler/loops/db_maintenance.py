@@ -11,6 +11,9 @@ logger = logging.getLogger("spectra_scheduler")
 
 
 class SchedulerDbMaintenanceMixin:
+    # Supplied by SchedulerService.
+    running: bool
+
     async def _db_maintenance(self):
         """Weekly VACUUM ANALYZE on high-traffic tables."""
         from spectra_common.config import get_settings
