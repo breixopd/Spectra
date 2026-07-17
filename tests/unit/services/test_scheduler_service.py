@@ -64,15 +64,36 @@ async def test_start_schedules_expected_background_tasks():
         await service.start()
 
     assert service.running is True
-    assert set(scheduled_loops) >= {
-        "_sandbox_watchdog",
-        "_quota_reset",
-        "_metrics_collector",
-        "_health_reporter",
-        "_infrastructure_monitor",
-        "_backup_scheduler",
+    assert set(scheduled_loops) == {"_supervise_task"}
+    assert set(service._named_tasks) == {
+        task_name for task_name, _method_name in scheduler_svc_mod._SCHEDULER_TASK_SPECS
     }
     assert service.tasks == tasks
+
+
+@pytest.mark.asyncio
+async def test_supervisor_restarts_an_unexpectedly_returned_loop_with_backoff():
+    service = scheduler_svc_mod.SchedulerService()
+    service.running = True
+    calls = 0
+
+    async def unstable_loop():
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            service.running = False
+
+    service.unstable_loop = unstable_loop
+
+    with pytest.MonkeyPatch.context() as mp:
+        sleep = AsyncMock()
+        mp.setattr(scheduler_async_ops, "sleep", sleep)
+        await service._supervise_task("unstable", "unstable_loop")
+
+    assert calls == 2
+    assert sleep.await_args_list[0].args == (5,)
+    assert service._task_restarts == {"unstable": 1}
+    assert service._task_last_failure == {"unstable": "returned unexpectedly"}
 
 
 @pytest.mark.asyncio
@@ -700,6 +721,21 @@ def test_service_health_degrades_when_any_task_is_dead_or_missing():
     assert result["status"] == "degraded"
     assert result["tasks"]["quota_reset"] == "dead"
     assert result["tasks"]["disk_monitor"] == "missing"
+
+
+def test_service_health_exposes_recovering_loop_failures():
+    service = scheduler_svc_mod.SchedulerService()
+    service.running = True
+    service._named_tasks = {"quota_reset": _HealthTask(done=False)}
+    service._task_restarts = {"quota_reset": 2}
+    service._task_last_failure = {"quota_reset": "RuntimeError: cache unavailable"}
+
+    result = service.health()
+
+    assert result["status"] == "degraded"
+    assert result["tasks"]["quota_reset"] == "recovering"
+    assert result["restart_counts"] == {"quota_reset": 2}
+    assert result["last_failures"] == {"quota_reset": "RuntimeError: cache unavailable"}
 
 
 def test_service_health_is_standby_when_not_running():

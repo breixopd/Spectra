@@ -27,6 +27,32 @@ def latency_ms(start: float) -> float:
     return round((time.monotonic() - start) * 1000, 1)
 
 
+def task_health_details(scheduler: SchedulerService) -> tuple[dict[str, dict[str, Any]], bool]:
+    """Describe scheduler loops, including supervised recovery state."""
+    details: dict[str, dict[str, Any]] = {}
+    degraded = False
+    restart_counts = getattr(scheduler, "_task_restarts", {})
+    last_failures = getattr(scheduler, "_task_last_failure", {})
+    for task_name, _method_name in _SCHEDULER_TASK_SPECS:
+        task = scheduler._named_tasks.get(task_name)
+        if task is None:
+            details[task_name] = {"state": "missing"}
+            degraded = True
+        elif task.done():
+            details[task_name] = {"state": "dead"}
+            degraded = True
+        elif task_name in restart_counts:
+            details[task_name] = {
+                "state": "recovering",
+                "restart_count": restart_counts[task_name],
+                "last_failure": last_failures.get(task_name, "unknown"),
+            }
+            degraded = True
+        else:
+            details[task_name] = {"state": "alive"}
+    return details, degraded
+
+
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI):
     try:
@@ -130,16 +156,9 @@ async def health_deep(response: Response):
 
     task_statuses: dict[str, Any] = {}
     if scheduler_state._scheduler_instance is not None:
-        for task_name, _method_name in _SCHEDULER_TASK_SPECS:
-            task = scheduler_state._scheduler_instance._named_tasks.get(task_name)
-            if task is None:
-                task_statuses[task_name] = {"state": "missing"}
-                overall = "degraded"
-            elif task.done():
-                task_statuses[task_name] = {"state": "dead"}
-                overall = "degraded"
-            else:
-                task_statuses[task_name] = {"state": "alive"}
+        task_statuses, tasks_degraded = task_health_details(scheduler_state._scheduler_instance)
+        if tasks_degraded:
+            overall = "degraded"
 
         start = time.monotonic()
         try:

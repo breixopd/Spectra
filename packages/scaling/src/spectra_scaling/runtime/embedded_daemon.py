@@ -47,7 +47,7 @@ async def embedded_ops_loop(service_label: str, interval_secs: int = 3600) -> No
             )
 
             await prune_containers(filters={"until": ["72h"]})
-            await prune_images(filters={"until": ["240h"]})
+            await prune_images(filters={"dangling": ["true"], "until": ["240h"]})
             last_prune = now
             logger.info("embedded_ops[%s]: light docker prune completed", service_label)
         except Exception as e:

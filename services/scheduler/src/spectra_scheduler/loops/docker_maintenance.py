@@ -11,8 +11,10 @@ logger = logging.getLogger("spectra_scheduler")
 
 
 class SchedulerDockerMaintenanceMixin:
+    running: bool
+
     async def _docker_cleanup(self):
-        """Weekly Docker resource cleanup — prune dangling images and exited containers."""
+        """Conservatively clean Docker resources owned by the scheduler host."""
         from spectra_common.config import get_settings
 
         while self.running:
@@ -35,18 +37,22 @@ class SchedulerDockerMaintenanceMixin:
                         prune_volumes,
                     )
 
-                    # Prune exited containers
+                    # Keep recent stopped containers for diagnosis and only remove
+                    # untagged images. Docker image prune includes non-dangling
+                    # unused images unless ``dangling=true`` is explicit.
                     await prune_containers(filters={"until": ["48h"]})
-                    # Prune dangling images
-                    await prune_images(filters={"until": ["168h"]})
-                    # Prune dangling volumes (only truly orphaned)
-                    await prune_volumes()
-                    # Prune exited Swarm task containers
+                    await prune_images(filters={"dangling": ["true"], "until": ["168h"]})
+                    # Volumes can carry databases, backups, and operator data. They
+                    # are never pruned by default; opt-in only targets project labels.
+                    if settings.DOCKER_PRUNE_VOLUMES:
+                        await prune_volumes(filters={"label": ["spectra.managed=true"]})
+                    # Prune only old exited Swarm task containers.
                     await prune_containers(filters={
                         "label": ["com.docker.swarm.task"],
                         "status": ["exited"],
+                        "until": ["168h"],
                     })
-                    logger.info("Docker cleanup completed: pruned containers, images, volumes, swarm tasks")
+                    logger.info("Docker cleanup completed: pruned safe containers and dangling images")
             except Exception as e:
                 logger.warning("Docker cleanup failed: %s", e)
 

@@ -40,6 +40,22 @@ async def test_health_returns_starting_when_scheduler_not_started():
     assert body == {"status": "starting", "service": "scheduler"}
 
 
+def test_task_health_details_reports_recovering_scheduler_loop():
+    scheduler_state._scheduler_instance = SimpleNamespace(
+        _named_tasks={task_name: SimpleNamespace(done=lambda: False) for task_name, _ in scheduler_routes._SCHEDULER_TASK_SPECS},
+        _task_restarts={"quota_reset": 1},
+        _task_last_failure={"quota_reset": "RuntimeError: cache unavailable"},
+    )
+
+    details, degraded = scheduler_routes.task_health_details(scheduler_state._scheduler_instance)
+
+    assert degraded is True
+    quota = details["quota_reset"]
+    assert quota["state"] == "recovering"
+    assert quota["restart_count"] == 1
+    assert quota["last_failure"] == "RuntimeError: cache unavailable"
+
+
 @pytest.mark.asyncio
 async def test_health_returns_instance_payload_when_scheduler_running():
     scheduler_state._scheduler_instance = SimpleNamespace(

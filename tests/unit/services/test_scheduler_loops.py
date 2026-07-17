@@ -189,7 +189,7 @@ async def test_db_maintenance_handles_engine_creation_errors():
 async def test_docker_cleanup_runs_prune_sequence_when_lock_acquired():
     service = scheduler_service_mod.SchedulerService()
     service.running = True
-    settings_ns = SimpleNamespace(DOCKER_CLEANUP_INTERVAL=0)
+    settings_ns = SimpleNamespace(DOCKER_CLEANUP_INTERVAL=0, DOCKER_PRUNE_VOLUMES=False)
     prune_containers = AsyncMock()
     prune_images = AsyncMock()
     prune_volumes = AsyncMock()
@@ -227,22 +227,63 @@ async def test_docker_cleanup_runs_prune_sequence_when_lock_acquired():
         await service._docker_cleanup()
 
     prune_containers.assert_any_await(filters={"until": ["48h"]})
-    prune_images.assert_awaited_once_with(filters={"until": ["168h"]})
-    prune_volumes.assert_awaited_once()
+    prune_images.assert_awaited_once_with(filters={"dangling": ["true"], "until": ["168h"]})
+    prune_volumes.assert_not_awaited()
     prune_containers.assert_any_await(
         filters={
             "label": ["com.docker.swarm.task"],
             "status": ["exited"],
+            "until": ["168h"],
         }
     )
     assert prune_containers.await_count == 2
 
 
 @pytest.mark.asyncio
+async def test_docker_cleanup_prunes_only_explicitly_managed_volumes_when_enabled():
+    service = scheduler_service_mod.SchedulerService()
+    service.running = True
+    settings_ns = SimpleNamespace(DOCKER_CLEANUP_INTERVAL=0, DOCKER_PRUNE_VOLUMES=True)
+    prune_volumes = AsyncMock()
+
+    @asynccontextmanager
+    async def fake_lock_owner(lock_id, *, connection_factory):
+        yield object()
+
+    async def stop_after_second_sleep(_seconds):
+        if stop_after_second_sleep.calls:
+            service.running = False
+        stop_after_second_sleep.calls += 1
+
+    stop_after_second_sleep.calls = 0
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(
+            sys.modules,
+            "spectra_common.config",
+            make_module("spectra_common.config", get_settings=lambda: settings_ns),
+        )
+        mp.setitem(
+            sys.modules,
+            "spectra_scaling.docker_client",
+            make_module(
+                "spectra_scaling.docker_client",
+                prune_containers=AsyncMock(),
+                prune_images=AsyncMock(),
+                prune_volumes=prune_volumes,
+            ),
+        )
+        mp.setattr(scheduler_locking, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_async_ops, "sleep", AsyncMock(side_effect=stop_after_second_sleep))
+        await service._docker_cleanup()
+
+    prune_volumes.assert_awaited_once_with(filters={"label": ["spectra.managed=true"]})
+
+
+@pytest.mark.asyncio
 async def test_docker_cleanup_skips_when_lock_not_acquired():
     service = scheduler_service_mod.SchedulerService()
     service.running = True
-    settings_ns = SimpleNamespace(DOCKER_CLEANUP_INTERVAL=0)
+    settings_ns = SimpleNamespace(DOCKER_CLEANUP_INTERVAL=0, DOCKER_PRUNE_VOLUMES=False)
     prune_containers = AsyncMock()
 
     @asynccontextmanager
@@ -284,7 +325,7 @@ async def test_docker_cleanup_skips_when_lock_not_acquired():
 async def test_docker_cleanup_handles_prune_errors():
     service = scheduler_service_mod.SchedulerService()
     service.running = True
-    settings_ns = SimpleNamespace(DOCKER_CLEANUP_INTERVAL=0)
+    settings_ns = SimpleNamespace(DOCKER_CLEANUP_INTERVAL=0, DOCKER_PRUNE_VOLUMES=False)
     prune_containers = AsyncMock(side_effect=RuntimeError("docker unavailable"))
 
     @asynccontextmanager

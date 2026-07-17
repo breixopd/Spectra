@@ -579,12 +579,12 @@ async def prune_images(filters: dict | None = None) -> dict:
         return {}
 
 
-async def prune_volumes() -> dict:
-    """Prune orphaned volumes."""
+async def prune_volumes(filters: dict | None = None) -> dict:
+    """Prune unused volumes matching explicit Docker filters only."""
     try:
         client = _get_client()
         try:
-            result = await _run_sync(client.volumes.prune)
+            result = await _run_sync(client.volumes.prune, filters=filters or {})
             return result
         finally:
             client.close()

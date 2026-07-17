@@ -17,8 +17,8 @@ from pathlib import Path
 logger = logging.getLogger("spectra.host_ops")
 
 
-async def run_docker_prune_round() -> int:
-    """Prune exited containers, dangling images, and orphaned volumes (best-effort)."""
+async def run_docker_prune_round(*, include_managed_volumes: bool = False) -> int:
+    """Prune safe Docker resources; volumes require an explicit opt-in."""
     if not Path("/var/run/docker.sock").exists():
         logger.info("host_ops: no /var/run/docker.sock — skipping Docker prune")
         return 0
@@ -30,12 +30,14 @@ async def run_docker_prune_round() -> int:
         )
 
         await prune_containers(filters={"until": ["48h"]})
-        await prune_images(filters={"until": ["168h"]})
-        await prune_volumes()
+        await prune_images(filters={"dangling": ["true"], "until": ["168h"]})
+        if include_managed_volumes:
+            await prune_volumes(filters={"label": ["spectra.managed=true"]})
         await prune_containers(
             filters={
                 "label": ["com.docker.swarm.task"],
                 "status": ["exited"],
+                "until": ["168h"],
             },
         )
         logger.info("host_ops: docker prune round completed")
@@ -51,8 +53,13 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
     )
     parser = argparse.ArgumentParser(description="Spectra pool host Docker maintenance (one-shot).")
-    parser.parse_args(argv)
-    return asyncio.run(run_docker_prune_round())
+    parser.add_argument(
+        "--prune-managed-volumes",
+        action="store_true",
+        help="Prune only unused volumes labelled spectra.managed=true.",
+    )
+    args = parser.parse_args(argv)
+    return asyncio.run(run_docker_prune_round(include_managed_volumes=args.prune_managed_volumes))
 
 
 if __name__ == "__main__":

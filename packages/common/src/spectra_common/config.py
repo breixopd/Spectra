@@ -443,6 +443,10 @@ class Settings(BaseSettings):
     STALE_JOB_RECOVERY_INTERVAL: int = Field(default=300, description="Stale job recovery interval in seconds")
     EXPLOIT_DB_REFRESH_HOURS: int = Field(default=168, description="Exploit DB refresh interval in hours (7 days)")
     DOCKER_CLEANUP_INTERVAL: int = Field(default=604800, description="Docker resource pruning interval in seconds (7 days)")
+    DOCKER_PRUNE_VOLUMES: bool = Field(
+        default=False,
+        description="Allow cleanup to prune only unused volumes labelled spectra.managed=true",
+    )
 
     # --- Image Auto-Update ---
     IMAGE_AUTO_UPDATE: bool = Field(default=False, description="Enable automatic registry polling and rollout when new image digests are found")
