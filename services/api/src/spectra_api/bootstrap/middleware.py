@@ -6,10 +6,93 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.status import HTTP_403_FORBIDDEN
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from spectra_common.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+class _RequestBodyTooLarge(BaseException):
+    """Internal control-flow sentinel that bypasses Starlette's 500 handler."""
+
+
+class RequestBodySizeLimitMiddleware:
+    """Enforce request limits against both declared and streamed body bytes.
+
+    ``Content-Length`` is only an early rejection optimization: clients can
+    omit or lie about it.  The ASGI receive wrapper counts every chunk before
+    application code sees it, so parsers and endpoints cannot be induced to
+    consume an unbounded body.
+    """
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        *,
+        max_request_body_size: int | None = None,
+        max_upload_size: int | None = None,
+    ) -> None:
+        self.app = app
+        self.max_request_body_size = settings.MAX_REQUEST_BODY_SIZE if max_request_body_size is None else max_request_body_size
+        self.max_upload_size = settings.MAX_UPLOAD_SIZE if max_upload_size is None else max_upload_size
+
+    @staticmethod
+    async def _send_error(scope: Scope, receive: Receive, send: Send, message: str, status_code: int) -> None:
+        await Response(
+            message,
+            status_code=status_code,
+            media_type="text/plain",
+            headers={"Connection": "close"},
+        )(scope, receive, send)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        headers = {key.lower(): value for key, value in scope.get("headers", [])}
+        content_type = headers.get(b"content-type", b"").decode("latin-1").lower()
+        max_size = self.max_upload_size if "multipart/form-data" in content_type else self.max_request_body_size
+        content_length = headers.get(b"content-length")
+        if content_length is not None:
+            try:
+                declared_size = int(content_length)
+            except ValueError:
+                await self._send_error(scope, receive, send, "Invalid Content-Length", 400)
+                return
+            if declared_size < 0:
+                await self._send_error(scope, receive, send, "Invalid Content-Length", 400)
+                return
+            if declared_size > max_size:
+                await self._send_error(scope, receive, send, "Request body too large", 413)
+                return
+
+        bytes_received = 0
+        response_started = False
+
+        async def limited_receive() -> Message:
+            nonlocal bytes_received
+            message = await receive()
+            if message["type"] == "http.request":
+                bytes_received += len(message.get("body", b""))
+                if bytes_received > max_size:
+                    raise _RequestBodyTooLarge()
+            return message
+
+        async def tracked_send(message: Message) -> None:
+            nonlocal response_started
+            if message["type"] == "http.response.start":
+                response_started = True
+            await send(message)
+
+        try:
+            await self.app(scope, limited_receive, tracked_send)
+        except _RequestBodyTooLarge:
+            if response_started:
+                logger.warning("Request body limit exceeded after response started for %s", scope.get("path", ""))
+                return
+            await self._send_error(scope, receive, send, "Request body too large", 413)
 
 
 class AdminIPAllowlistMiddleware(BaseHTTPMiddleware):

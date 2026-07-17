@@ -15,7 +15,11 @@ from fastapi.responses import JSONResponse
 from httpx import ASGITransport, AsyncClient
 
 from spectra_api.bootstrap.logging_config import CorrelationIdMiddleware
-from spectra_api.bootstrap.middleware import AdminIPAllowlistMiddleware, SecurityHeadersMiddleware
+from spectra_api.bootstrap.middleware import (
+    AdminIPAllowlistMiddleware,
+    RequestBodySizeLimitMiddleware,
+    SecurityHeadersMiddleware,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -297,38 +301,23 @@ class TestBodySizeLimiterMiddleware:
 
     @pytest_asyncio.fixture
     async def client(self):
-        """Minimal app with only the body-size middleware (no DB/lifespan)."""
+        """Minimal app with the production ASGI body-size middleware."""
         from fastapi import FastAPI, Request
-        from starlette.responses import Response as StarletteResponse
-
-        from spectra_common.config import settings
 
         app = FastAPI()
-
-        @app.middleware("http")
-        async def limit_request_body_size(request: Request, call_next):
-            content_length = request.headers.get("content-length")
-            if content_length:
-                try:
-                    body_size = int(content_length)
-                except ValueError:
-                    return StarletteResponse("Invalid Content-Length", status_code=400)
-                content_type = request.headers.get("content-type", "")
-                max_size = (
-                    settings.MAX_UPLOAD_SIZE
-                    if "multipart/form-data" in content_type
-                    else settings.MAX_REQUEST_BODY_SIZE
-                )
-                if body_size > max_size:
-                    return StarletteResponse("Request body too large", status_code=413)
-            return await call_next(request)
+        app.add_middleware(
+            RequestBodySizeLimitMiddleware,
+            max_request_body_size=32,
+            max_upload_size=64,
+        )
 
         @app.get("/ok")
         async def ok():
             return {"ok": True}
 
         @app.post("/submit")
-        async def submit():
+        async def submit(request: Request):
+            await request.body()
             return {"ok": True}
 
         transport = ASGITransport(app=app)
@@ -338,13 +327,10 @@ class TestBodySizeLimiterMiddleware:
     @pytest.mark.asyncio
     async def test_oversized_body_rejected(self, client):
         """Content-Length exceeding MAX_REQUEST_BODY_SIZE yields 413."""
-        from spectra_common.config import settings
-
-        oversized = settings.MAX_REQUEST_BODY_SIZE + 1
         resp = await client.post(
             "/submit",
             content=b"x",
-            headers={"Content-Length": str(oversized)},
+            headers={"Content-Length": "33"},
         )
         assert resp.status_code == 413
 
@@ -357,20 +343,38 @@ class TestBodySizeLimiterMiddleware:
     @pytest.mark.asyncio
     async def test_exact_limit_passes(self, client):
         """Body at exactly the limit is allowed."""
-        from spectra_common.config import settings
-
         resp = await client.post(
             "/submit",
-            content=b"x",
-            headers={"Content-Length": str(settings.MAX_REQUEST_BODY_SIZE)},
+            content=b"x" * 32,
+            headers={"Content-Length": "32"},
         )
         assert resp.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_no_content_length_passes(self, client):
-        """Requests without Content-Length are not rejected."""
-        resp = await client.get("/ok")
-        assert resp.status_code != 413
+    async def test_actual_stream_size_is_limited_when_content_length_lies(self, client):
+        """The body stream is enforced even if Content-Length understates it."""
+        resp = await client.post(
+            "/submit",
+            content=b"x" * 33,
+            headers={"Content-Length": "0"},
+        )
+        assert resp.status_code == 413
+
+    @pytest.mark.asyncio
+    async def test_multipart_uses_the_larger_upload_limit(self, client):
+        resp = await client.post(
+            "/submit",
+            content=b"x" * 64,
+            headers={"Content-Type": "multipart/form-data; boundary=test", "Content-Length": "64"},
+        )
+        assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_invalid_or_negative_content_length_is_rejected(self, client):
+        invalid = await client.post("/submit", content=b"x", headers={"Content-Length": "invalid"})
+        negative = await client.post("/submit", content=b"x", headers={"Content-Length": "-1"})
+        assert invalid.status_code == 400
+        assert negative.status_code == 400
 
 
 # =========================================================================

@@ -20,7 +20,11 @@ from starlette.responses import Response as StarletteResponse
 
 from spectra_api.bootstrap.lifespan import lifespan
 from spectra_api.bootstrap.logging_config import CorrelationIdMiddleware, configure_logging
-from spectra_api.bootstrap.middleware import AdminIPAllowlistMiddleware, SecurityHeadersMiddleware
+from spectra_api.bootstrap.middleware import (
+    AdminIPAllowlistMiddleware,
+    RequestBodySizeLimitMiddleware,
+    SecurityHeadersMiddleware,
+)
 from spectra_api.errors import register_exception_handlers
 from spectra_api.paths import static_directory
 from spectra_api.routing import CORE_API_FULL_ROUTER_MODES, include_routers
@@ -96,7 +100,7 @@ def create_app() -> FastAPI:
     app.state.limiter = limiter
     app.state.limiter._rate_limit_exceeded_handler = _safe_rate_limit_handler  # type: ignore[attr-defined]
     # type: ignore[arg-type] - FastAPI expects Exception handler, but rate_limit_exceeded_handler_sync takes RateLimitExceeded
-    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler_sync)
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler_sync)  # type: ignore[arg-type]
     app.add_middleware(SlowAPIMiddleware)
 
     register_exception_handlers(app, shared_templates)
@@ -114,6 +118,11 @@ def create_app() -> FastAPI:
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(CorrelationIdMiddleware)
     app.add_middleware(TelemetryMiddleware)
+    app.add_middleware(
+        RequestBodySizeLimitMiddleware,
+        max_request_body_size=settings.MAX_REQUEST_BODY_SIZE,
+        max_upload_size=settings.MAX_UPLOAD_SIZE,
+    )
 
     templates = shared_templates
 
@@ -180,21 +189,6 @@ def create_app() -> FastAPI:
                 {"detail": "Request timeout"},
                 status_code=504,
             )
-
-    @app.middleware("http")
-    async def limit_request_body_size(request: Request, call_next):
-        """Reject bodies over MAX_REQUEST_BODY_SIZE (or MAX_UPLOAD_SIZE for multipart)."""
-        content_length = request.headers.get("content-length")
-        if content_length:
-            try:
-                body_size = int(content_length)
-            except ValueError:
-                return StarletteResponse("Invalid Content-Length", status_code=400)
-            content_type = request.headers.get("content-type", "")
-            max_size = settings.MAX_UPLOAD_SIZE if "multipart/form-data" in content_type else settings.MAX_REQUEST_BODY_SIZE
-            if body_size > max_size:
-                return StarletteResponse("Request body too large", status_code=413)
-        return await call_next(request)
 
     if settings.SERVICE_MODE in CORE_API_FULL_ROUTER_MODES:
         app.mount(
