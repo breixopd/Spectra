@@ -286,13 +286,14 @@ async def setup_page(request: Request):
 
     Excluded from the React SPA fallback — see ``spectra_api.ui.spa._SPA_EXCLUDED_PREFIXES``.
     """
-    first_user: User | None = None
     async with async_session_maker() as session:
         has_row = await session.execute(select(User.id).limit(1))
         has_users = has_row.scalar_one_or_none() is not None
-        if has_users:
-            fu = await session.execute(select(User).order_by(User.id).limit(1))
-            first_user = fu.scalar_one_or_none()
+
+    if has_users:
+        if await _get_user_from_cookie(request):
+            return RedirectResponse(url="/settings", status_code=302)
+        return RedirectResponse(url="/login?next=/settings", status_code=302)
 
     snap = get_current_settings()
     allow_registration = await get_runtime_setting_bool("ALLOW_REGISTRATION", True)
@@ -315,8 +316,8 @@ async def setup_page(request: Request):
             "title": f"{settings.APP_NAME} | Setup",
             "has_users": has_users,
             "prefill": prefill,
-            "admin_username": first_user.username if first_user else "",
-            "admin_email": first_user.email if first_user else "",
+            "admin_username": "",
+            "admin_email": "",
             # Pre-auth page: public shell (no authed WebSocket/status scripts), wide form layout.
             "is_public_page": True,
             "page_width": "wide",
@@ -333,6 +334,8 @@ async def register_page(request: Request):
         superuser_exists = await session.execute(select(User.id).where(User.is_superuser.is_(True)).limit(1))
         if not superuser_exists.scalar_one_or_none():
             return RedirectResponse(url="/setup", status_code=302)
+    if not await get_runtime_setting_bool("ALLOW_REGISTRATION", True):
+        return RedirectResponse(url="/login", status_code=302)
     return templates.TemplateResponse(request, "register.html", {"request": request})
 
 
@@ -544,6 +547,8 @@ def _verify_email_template_response(request: Request, *, success: bool, message:
 async def register_user(request: Request, body: RegisterRequest, response: Response):
     """Self-register a new user account and auto-assign only an enabled self-service default plan."""
     _ = response
+    if not await get_runtime_setting_bool("ALLOW_REGISTRATION", True):
+        raise HTTPException(status_code=403, detail="Self-service registration is disabled")
     email_verification_required = _registration_requires_email_verification()
 
     async with async_session_maker() as session:

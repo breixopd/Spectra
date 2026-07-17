@@ -138,6 +138,43 @@ class TestPricingRedirect:
 
 @pytest.mark.asyncio
 class TestRegisterEndpoint:
+    async def test_register_post_is_blocked_when_runtime_registration_is_disabled(self):
+        from fastapi import HTTPException
+
+        from spectra_api.ui.public import RegisterRequest, register_user
+
+        body = RegisterRequest(
+            username="newuser",
+            email="new@example.com",
+            password="StrongP4ss!",
+        )
+        maker = MagicMock()
+
+        with (
+            patch("spectra_api.ui.public.get_runtime_setting_bool", new=AsyncMock(return_value=False)),
+            patch("spectra_api.ui.public.async_session_maker", maker),
+            pytest.raises(HTTPException) as exc,
+        ):
+            await register_user.__wrapped__(_fake_request(), body, Response())
+
+        assert exc.value.status_code == 403
+        maker.assert_not_called()
+
+    async def test_register_page_redirects_when_runtime_registration_is_disabled(self, client):
+        superuser_result = MagicMock()
+        superuser_result.scalar_one_or_none.return_value = "admin-id"
+        maker, _ = _mock_session_ctx([superuser_result])
+
+        with (
+            patch("spectra_api.ui.public._get_user_from_cookie", return_value=None),
+            patch("spectra_api.ui.public.async_session_maker", maker),
+            patch("spectra_api.ui.public.get_runtime_setting_bool", new=AsyncMock(return_value=False)),
+        ):
+            response = await client.get("/register")
+
+        assert response.status_code == 302
+        assert response.headers["location"] == "/login"
+
     async def test_register_success(self):
         """Call register_user directly to bypass slowapi decorator."""
         from spectra_api.ui.public import RegisterRequest, register_user
@@ -162,6 +199,37 @@ class TestRegisterEndpoint:
         ):
             result = await register_user.__wrapped__(_fake_request(), body, Response())
         assert "created" in result["detail"].lower()
+
+
+@pytest.mark.asyncio
+class TestSetupPagePrivacy:
+    async def test_anonymous_setup_redirects_to_login_after_bootstrap(self, client):
+        has_user_result = MagicMock()
+        has_user_result.scalar_one_or_none.return_value = "user-id"
+        maker, _ = _mock_session_ctx([has_user_result])
+
+        with (
+            patch("spectra_api.ui.public.async_session_maker", maker),
+            patch("spectra_api.ui.public._get_user_from_cookie", return_value=None),
+        ):
+            response = await client.get("/setup")
+
+        assert response.status_code == 302
+        assert response.headers["location"] == "/login?next=/settings"
+
+    async def test_authenticated_setup_redirects_to_settings_after_bootstrap(self, client):
+        has_user_result = MagicMock()
+        has_user_result.scalar_one_or_none.return_value = "user-id"
+        maker, _ = _mock_session_ctx([has_user_result])
+
+        with (
+            patch("spectra_api.ui.public.async_session_maker", maker),
+            patch("spectra_api.ui.public._get_user_from_cookie", return_value={"sub": "admin-id"}),
+        ):
+            response = await client.get("/setup")
+
+        assert response.status_code == 302
+        assert response.headers["location"] == "/settings"
 
     async def test_register_without_self_service_plan_leaves_user_unassigned(self):
         from spectra_api.ui.public import RegisterRequest, register_user

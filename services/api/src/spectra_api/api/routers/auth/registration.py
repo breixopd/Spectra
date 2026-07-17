@@ -3,7 +3,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.schemas.auth import UserResponse
@@ -15,6 +15,8 @@ from spectra_persistence.models.user import User
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+_INITIAL_SETUP_LOCK_ID = 6003372239554597200
 
 
 @router.post("/setup", response_model=UserResponse)
@@ -30,7 +32,15 @@ async def setup_admin_user(
     Only allowed if no users exist in the database.
     """
     _ = request  # Used by rate limiter decorator
-    # Check if any user exists
+    # Serialize the check-and-create transaction across API replicas.  The
+    # transaction-scoped lock is released automatically on commit/rollback.
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(:lock_id)"),
+        {"lock_id": _INITIAL_SETUP_LOCK_ID},
+    )
+
+    # Check for users only after owning the setup lock. A concurrent request
+    # blocks here and observes the first committed administrator.
     stmt = select(User.id).limit(1)
     result = await session.execute(stmt)
     if result.scalar_one_or_none():
