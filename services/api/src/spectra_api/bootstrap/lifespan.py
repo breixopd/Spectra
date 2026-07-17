@@ -36,8 +36,8 @@ from spectra_infra.system_status import (
     set_system_status,
 )
 from spectra_observability.telemetry import telemetry
-from spectra_persistence.advisory_locks import stable_lock_id
-from spectra_persistence.database import async_session_maker, engine
+from spectra_persistence.advisory_locks import advisory_lock_owner, stable_lock_id
+from spectra_persistence.database import advisory_lock_connection, async_session_maker, engine
 from spectra_system.runtime_settings import hydrate_runtime_settings_from_db
 
 logger = logging.getLogger(__name__)
@@ -270,29 +270,29 @@ async def _initialize_sandbox() -> None:
             warm_manager = WarmPoolManager(sandbox_pool)
             set_warm_pool_manager(warm_manager)
 
-            async def warm_pool_maintain_loop():
-                from sqlalchemy import text
+            async def maintain_warm_pool() -> None:
+                """Maintain the pool once while holding a dedicated advisory lock."""
+                lock_id = stable_lock_id("spectra_warm_pool")
+                async with advisory_lock_owner(
+                    lock_id,
+                    connection_factory=advisory_lock_connection,
+                ) as lock_connection:
+                    if lock_connection is None:
+                        return
+                    await warm_manager.maintain()
 
-                _warm_pool_lock_id = stable_lock_id("spectra_warm_pool")
+            async def warm_pool_maintain_loop():
                 while True:
                     try:
                         await asyncio.sleep(30)
-                        # Advisory lock prevents multiple API replicas from conflicting
-                        async with async_session_maker() as session:
-                            result = await session.execute(
-                                text("SELECT pg_try_advisory_lock(:lock_id)"),
-                                {"lock_id": _warm_pool_lock_id},
-                            )
-                            if not result.scalar():
-                                continue
-                        await warm_manager.maintain()
+                        await maintain_warm_pool()
                     except asyncio.CancelledError:
                         break
-                    except (OSError, RuntimeError) as e:
+                    except (OSError, RuntimeError, SQLAlchemyError) as e:
                         logger.error("Warm pool maintain error: %s", e)
 
             create_safe_task(warm_pool_maintain_loop(), name="warm_pool_maintain")
-            create_safe_task(warm_manager.maintain(), name="warm_pool_initial")
+            create_safe_task(maintain_warm_pool(), name="warm_pool_initial")
             from spectra_tools.sandbox.warm_pool import WARM_POOL_SINGLE_NODE_FALLBACK
 
             logger.info(
@@ -462,7 +462,8 @@ async def _config_change_listener() -> None:
     while True:
         try:
             if conn is None or conn.is_closed():
-                conn = await asyncpg.connect(dsn)
+                new_connection = await asyncpg.connect(dsn)
+                conn = new_connection
 
                 def _on_config_notify(
                     connection: asyncpg.Connection,
@@ -472,7 +473,7 @@ async def _config_change_listener() -> None:
                 ) -> None:
                     create_safe_task(_handle_config_change(), name="config_change_handler")
 
-                await conn.add_listener("config_changes", _on_config_notify)
+                await new_connection.add_listener("config_changes", _on_config_notify)
                 logger.info("[OK] Config change listener connected (PG LISTEN)")
 
             # Keep the connection alive; reconnect on failure
@@ -510,7 +511,8 @@ async def _blacklist_change_listener() -> None:
     while True:
         try:
             if conn is None or conn.is_closed():
-                conn = await asyncpg.connect(dsn)
+                new_connection = await asyncpg.connect(dsn)
+                conn = new_connection
 
                 def _on_blacklist_notify(
                     connection: asyncpg.Connection,
@@ -520,7 +522,7 @@ async def _blacklist_change_listener() -> None:
                 ) -> None:
                     create_safe_task(_handle_blacklist_change(), name="blacklist_change_handler")
 
-                await conn.add_listener("token_blacklist_changed", _on_blacklist_notify)
+                await new_connection.add_listener("token_blacklist_changed", _on_blacklist_notify)
                 logger.info("[OK] Blacklist change listener connected (PG LISTEN)")
 
             await asyncio.sleep(5)
@@ -635,8 +637,9 @@ async def _shutdown_services() -> None:
         logger.info("[OK] LLM client closed")
 
         # Dispose database engine
-        await engine.dispose()
-        logger.info("[OK] Database connections closed")
+        if engine is not None:
+            await engine.dispose()
+            logger.info("[OK] Database connections closed")
 
     except (OSError, RuntimeError) as e:
         logger.error("[ERROR] Shutdown error: %s", e)
