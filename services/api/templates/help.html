@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Getting Started — {{ app_name }}{% endblock %}
+
+{% block breadcrumbs %}
+<nav class="mb-6 text-xs text-slate-500" aria-label="Breadcrumb">
+    <a href="/dashboard" class="hover:text-emerald-400 transition-colors">Dashboard</a>
+    <span class="mx-2 text-slate-700">/</span>
+    <span class="text-slate-300">Help</span>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto w-full space-y-8">
+    <header class="page-header flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">Product guide</p>
+            <h1 class="mt-2">Getting Started</h1>
+            <p class="page-description">A quick path from your first target to a defensible security assessment.</p>
+        </div>
+        <a href="/docs/api" class="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 transition-colors hover:border-emerald-400/60 hover:bg-emerald-500/20 hover:text-emerald-200">
+            <i data-lucide="book-open" class="h-4 w-4"></i>
+            API Documentation
+        </a>
+    </header>
+
+    <section class="grid gap-4 md:grid-cols-3" aria-label="Getting started steps">
+        <article class="glass-panel rounded-xl p-5">
+            <div class="mb-4 flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-300">
+                <span class="text-sm font-semibold">01</span>
+            </div>
+            <h2 class="text-base font-semibold text-white">Define a target</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-400">Add an in-scope host, URL, or application from Targets. Keep ownership and authorization details with the assessment record.</p>
+        </article>
+        <article class="glass-panel rounded-xl p-5">
+            <div class="mb-4 flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-300">
+                <span class="text-sm font-semibold">02</span>
+            </div>
+            <h2 class="text-base font-semibold text-white">Run an assessment</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-400">Create a mission, choose the approved tools and scope, then monitor progress from the workspace. Stop a run if scope changes.</p>
+        </article>
+        <article class="glass-panel rounded-xl p-5">
+            <div class="mb-4 flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-300">
+                <span class="text-sm font-semibold">03</span>
+            </div>
+            <h2 class="text-base font-semibold text-white">Review evidence</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-400">Validate findings against captured evidence, assign owners, and export a report that preserves severity, confidence, and remediation context.</p>
+        </article>
+    </section>
+
+    <section class="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <article class="glass-panel rounded-xl p-6">
+            <div class="flex items-center gap-3">
+                <i data-lucide="workflow" class="h-5 w-5 text-emerald-400"></i>
+                <h2 class="text-lg font-semibold text-white">Where to go next</h2>
+            </div>
+            <div class="mt-5 divide-y divide-white/5">
+                <a href="/dashboard" class="group flex items-start gap-4 py-4 first:pt-0">
+                    <i data-lucide="layout-dashboard" class="mt-0.5 h-4 w-4 text-slate-500 group-hover:text-emerald-400"></i>
+                    <span><strong class="text-sm font-medium text-slate-200 group-hover:text-white">Workspace</strong><span class="mt-1 block text-sm text-slate-500">Track missions, findings, and system readiness.</span></span>
+                </a>
+                <a href="/docs/api" class="group flex items-start gap-4 py-4">
+                    <i data-lucide="braces" class="mt-0.5 h-4 w-4 text-slate-500 group-hover:text-emerald-400"></i>
+                    <span><strong class="text-sm font-medium text-slate-200 group-hover:text-white">API Documentation</strong><span class="mt-1 block text-sm text-slate-500">Explore authenticated endpoints and try requests safely.</span></span>
+                </a>
+                <a href="/changelog" class="group flex items-start gap-4 py-4 last:pb-0">
+                    <i data-lucide="scroll-text" class="mt-0.5 h-4 w-4 text-slate-500 group-hover:text-emerald-400"></i>
+                    <span><strong class="text-sm font-medium text-slate-200 group-hover:text-white">Changelog</strong><span class="mt-1 block text-sm text-slate-500">See release notes and operational changes.</span></span>
+                </a>
+            </div>
+        </article>
+
+        <aside class="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-6">
+            <div class="flex items-center gap-3">
+                <i data-lucide="shield-check" class="h-5 w-5 text-amber-300"></i>
+                <h2 class="text-lg font-semibold text-white">Operate responsibly</h2>
+            </div>
+            <p class="mt-4 text-sm leading-6 text-slate-300">Only assess systems you own or have explicit permission to test. Keep scope narrow, document authorization, and treat generated findings as reviewable evidence—not automatic proof.</p>
+            <a href="/security" class="mt-5 inline-flex items-center gap-2 text-sm font-medium text-amber-300 hover:text-amber-200">Read the security model <i data-lucide="arrow-up-right" class="h-4 w-4"></i></a>
+        </aside>
+    </section>
+</div>
+{% endblock %}
