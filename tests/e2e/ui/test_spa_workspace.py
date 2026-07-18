@@ -75,6 +75,20 @@ def test_command_palette_and_lazy_workspace_routes(authenticated_page: Page, app
     assert not errors, f"Browser console errors: {errors}"
 
 
+def test_authenticated_product_guide_and_api_docs(authenticated_page: Page, app_url: str) -> None:
+    """Authenticated operators can reach the guide and private Swagger surface."""
+    page = authenticated_page
+
+    help_response = page.goto(f"{app_url}/help", wait_until="domcontentloaded")
+    assert help_response is not None and help_response.ok
+    expect(page.get_by_role("heading", name="Getting Started", exact=True)).to_be_visible()
+
+    docs_response = page.goto(f"{app_url}/docs/api", wait_until="domcontentloaded")
+    assert docs_response is not None and docs_response.ok
+    expect(page).to_have_title(re.compile("API Documentation"))
+    expect(page.locator("#swagger-ui")).to_be_visible(timeout=30_000)
+
+
 def test_mobile_navigation_has_no_horizontal_overflow(authenticated_page: Page, app_url: str) -> None:
     """The real mobile navigation is reachable and the workspace fits a phone viewport."""
     page = authenticated_page
