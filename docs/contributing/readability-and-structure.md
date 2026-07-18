@@ -43,7 +43,7 @@ Use judgment, not dogma:
 - **Services**: one public class or module-level API per file is easier to navigate than many unrelated helpers in one giant module.
 - **Lifespan / factory**: keep startup linear and short; move each init step to a named `async def _init_foo(app)` in the same package or `bootstrap/` helpers.
 
-Compat and cleanup backlog items are tracked in [Legacy cleanup backlog](../runbooks/legacy-cleanup-backlog.md).
+Compat and cleanup work is tracked through reviewed issues and pull requests; shipped changes are recorded in `CHANGELOG.md`.
 
 ## Tooling (already enforced)
 
