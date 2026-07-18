@@ -237,7 +237,11 @@ services:
     security_opt:
       - "no-new-privileges:true"
     healthcheck:
-      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      # TensorZero connects through ClickHouse's HTTP interface (8123).  The
+      # native client can be ready several seconds before that listener, which
+      # otherwise lets TensorZero start against a port that still refuses
+      # connections during a cold compose boot.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8123/ping | grep -q '^Ok$'"]
       interval: 10s
       timeout: 5s
       retries: 10
