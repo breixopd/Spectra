@@ -23,6 +23,17 @@ export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-spectra-full-matrix}"
 export SPECTRA_CONTAINER_PREFIX="${SPECTRA_CONTAINER_PREFIX:-spectra-full-matrix-}"
 cd "$ROOT"
 
+cleanup_matrix_stack() {
+  local exit_status=$?
+  docker compose -f "$ROOT/deploy/docker/compose.yaml" --profile app --profile test down -v --remove-orphans \
+    >/dev/null 2>&1 || true
+  exit "$exit_status"
+}
+
+# The matrix uses an isolated Compose project; always remove its containers and
+# volumes, including when a late API/UI/live suite fails.
+trap cleanup_matrix_stack EXIT
+
 ensure_env_test() {
   if [[ -f .env.test ]]; then
     return 0
@@ -39,6 +50,7 @@ ensure_env_test() {
 export ENCRYPTION_KEY="${ENCRYPTION_KEY:-test-encryption-key}"
 
 ensure_env_test
+export ENV_FILE="${ENV_FILE:-$ROOT/.env.test}"
 
 run_ci_parity() {
   echo ">>> [full-test-matrix] ci-parity.sh all"

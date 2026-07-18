@@ -11,6 +11,7 @@ are exceeded.
 from __future__ import annotations
 
 import logging
+import math
 import os
 import time
 from collections import deque
@@ -180,6 +181,54 @@ class AutoScaler:
     # Evaluation
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _finite_number(value: object) -> float | None:
+        """Return a finite numeric value, rejecting booleans and NaN/inf."""
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        number = float(value)
+        return number if math.isfinite(number) else None
+
+    @classmethod
+    def _non_negative_int(cls, value: object) -> int | None:
+        """Return a non-negative integer metric or ``None`` when malformed."""
+        number = cls._finite_number(value)
+        if number is None or not number.is_integer() or number < 0:
+            return None
+        return int(number)
+
+    @classmethod
+    def _policy_metric_error(cls, role: str, metrics: dict) -> str | None:
+        """Validate the metrics required before making a policy decision."""
+        replicas_key = f"{role}_replicas"
+        utilization_key = f"{role}_utilization"
+        if cls._non_negative_int(metrics.get(replicas_key)) is None:
+            return f"invalid or missing {replicas_key}"
+
+        utilization = cls._finite_number(metrics.get(utilization_key))
+        if utilization is None or not 0.0 <= utilization <= 1.0:
+            return f"invalid or missing {utilization_key}"
+
+        if role == "worker":
+            if metrics.get("queue_valid") is not True:
+                return "queue metrics are missing or invalid"
+            if cls._non_negative_int(metrics.get("queue_depth")) is None:
+                return "invalid or missing queue_depth"
+        return None
+
+    @classmethod
+    def _cluster_service_metric_error(cls, service: object) -> str | None:
+        """Validate a service metric object before adapting it to flat metrics."""
+        if getattr(service, "valid", False) is not True:
+            return "collector marked service metrics invalid"
+        for field_name in ("replicas", "desired_replicas", "running_tasks", "failed_tasks"):
+            if cls._non_negative_int(getattr(service, field_name, None)) is None:
+                return f"invalid {field_name}"
+        cpu = cls._finite_number(getattr(service, "cpu_percent", None))
+        if cpu is None or cpu < 0:
+            return "invalid cpu_percent"
+        return None
+
     async def evaluate(
         self,
         metrics: dict,
@@ -242,6 +291,11 @@ class AutoScaler:
             if cluster is not None and policy.service_name not in cluster.services:
                 logger.warning("Autoscaling held for %s: service metrics are unavailable", policy.service_name)
                 continue
+            if cluster is not None:
+                service_error = self._cluster_service_metric_error(cluster.services[policy.service_name])
+                if service_error:
+                    logger.warning("Autoscaling held for %s: %s", policy.service_name, service_error)
+                    continue
             last_action = self._last_scale_action.get(role, 0.0)
             if now - last_action < policy.cooldown_secs:
                 continue
@@ -272,13 +326,32 @@ class AutoScaler:
         cluster_mem_max: float = 0.0,
         effective_max_replicas: int | None = None,
     ) -> ScalingDecision:
-        current = metrics.get(f"{role}_replicas", 1)
-        utilization = metrics.get(f"{role}_utilization", 0.0)
-        queue_depth = metrics.get("queue_depth", 0)
+        current = self._non_negative_int(metrics.get(f"{role}_replicas"))
+        if current is None:
+            current = policy.min_replicas
+        utilization = self._finite_number(metrics.get(f"{role}_utilization"))
+        if utilization is None:
+            utilization = 0.0
+        queue_depth = self._non_negative_int(metrics.get("queue_depth"))
+        if queue_depth is None:
+            queue_depth = 0
+        queue_age = self._finite_number(metrics.get("queue_oldest_age_secs"))
+        if queue_age is None or queue_age < 0:
+            queue_age = 0.0
         queue_idle_since = self._queue_idle_since.get(role, 0.0)
         max_reps = effective_max_replicas if effective_max_replicas is not None else policy.max_replicas
 
         svc = policy.service_name
+
+        metric_error = self._policy_metric_error(role, metrics)
+        if metric_error:
+            return ScalingDecision(
+                svc,
+                "none",
+                current,
+                current,
+                f"Metrics unavailable: {metric_error}",
+            )
 
         # --- Emergency: cluster memory pressure (>95%) ---
         if cluster_mem_max > self.config.memory_critical_percent and role == "worker" and current > policy.min_replicas:
@@ -302,10 +375,24 @@ class AutoScaler:
                     f"Cluster CPU avg {cluster_cpu_avg:.1f}% > {policy.scale_up_threshold:.0%}",
                 )
 
-        # --- Scale UP on queue depth ---
-        if role == "worker" and queue_depth > policy.scale_up_queue_depth and current < max_reps:
+        # --- Scale UP on queue age/depth ---
+        queue_threshold = max(1, policy.scale_up_queue_depth)
+        if (
+            role == "worker"
+            and policy.scale_up_queue_age_secs > 0
+            and queue_age > policy.scale_up_queue_age_secs
+            and current < max_reps
+        ):
+            return ScalingDecision(
+                svc,
+                "scale_up",
+                current,
+                min(current + 1, max_reps),
+                f"Oldest queued job {queue_age:.1f}s > age threshold {policy.scale_up_queue_age_secs:.1f}s",
+            )
+        if role == "worker" and queue_depth > queue_threshold and current < max_reps:
             desired = min(
-                current + max(1, queue_depth // policy.scale_up_queue_depth),
+                current + max(1, queue_depth // queue_threshold),
                 max_reps,
             )
             return ScalingDecision(
@@ -313,7 +400,7 @@ class AutoScaler:
                 "scale_up",
                 current,
                 desired,
-                f"Queue depth {queue_depth} > threshold {policy.scale_up_queue_depth}",
+                f"Queue depth {queue_depth} > threshold {queue_threshold}",
             )
 
         # --- Scale UP on utilization ---
@@ -327,7 +414,13 @@ class AutoScaler:
             )
 
         # --- Scale DOWN ---
-        if role == "worker" and queue_depth == 0:
+        if role == "worker":
+            if queue_depth > 0:
+                # Clear the idle timer before evaluating utilization.  The
+                # previous implementation kept a stale local timestamp and
+                # could scale down after work appeared in the queue.
+                self._queue_idle_since[role] = 0
+                return ScalingDecision(svc, "none", current, current, "Queue is not idle")
             if queue_idle_since == 0:
                 self._queue_idle_since[role] = now
             elif now - queue_idle_since > policy.idle_timeout_secs and current > policy.min_replicas:
@@ -593,6 +686,9 @@ class AutoScaler:
         flat: dict = {
             "queue_depth": cluster.queue.depth,
             "in_progress": cluster.queue.in_progress,
+            "queue_oldest_age_secs": cluster.queue.oldest_job_secs,
+            "queue_avg_wait_secs": cluster.queue.avg_wait_secs,
+            "queue_valid": getattr(cluster.queue, "valid", False),
         }
 
         _role_map = {
@@ -602,13 +698,15 @@ class AutoScaler:
             "scheduler": "scheduler",
         }
         for svc_name, svc in cluster.services.items():
+            if getattr(svc, "valid", False) is not True:
+                continue
             for keyword, role in _role_map.items():
                 if keyword in svc_name.lower():
                     flat[f"{role}_replicas"] = svc.replicas
                     flat[f"{role}_utilization"] = min(1.0, svc.cpu_percent / 100.0)
                     break
 
-        if "worker_utilization" not in flat:
+        if "worker_utilization" not in flat and flat.get("queue_valid") is True:
             worker_count = flat.get("worker_replicas", 1)
             in_progress = flat.get("in_progress", 0)
             flat["worker_utilization"] = min(1.0, in_progress / max(1, worker_count))
@@ -630,6 +728,7 @@ class AutoScaler:
                 "scale_up_threshold": policy.scale_up_threshold,
                 "scale_down_threshold": policy.scale_down_threshold,
                 "scale_up_queue_depth": policy.scale_up_queue_depth,
+                "scale_up_queue_age_secs": policy.scale_up_queue_age_secs,
                 "cooldown_secs": policy.cooldown_secs,
                 "cooldown_remaining_secs": round(cooldown_remaining, 1),
                 "idle_since_secs": round(now - idle_since, 1) if idle_since else 0,

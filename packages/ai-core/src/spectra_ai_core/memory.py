@@ -22,6 +22,7 @@ How it's used:
 import contextlib
 import json
 import logging
+import re
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -41,11 +42,15 @@ _MAX_EXPLOIT_LESSONS_RAM = 250
 
 # Files containing potentially sensitive data (exploit chains, credentials)
 _ENCRYPTED_FILES: frozenset[str] = frozenset({"exploit_lessons.json"})
+_MAX_MEMORY_FILE_BYTES = 10 * 1024 * 1024
+_SAFE_USER_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 
 def _memory_dir_for_user(user_id: str | None) -> Path:
     if not user_id:
         return MEMORY_DIR
+    if not isinstance(user_id, str) or not _SAFE_USER_ID.fullmatch(user_id):
+        raise ValueError("user_id must be a simple tenant identifier (letters, numbers, '.', '_' or '-')")
     return MEMORY_DIR / "users" / user_id
 
 
@@ -188,14 +193,15 @@ class MissionMemory:
 
     def _read_maybe_encrypted(self, path: Path, filename: str) -> str:
         """Read a file, decrypting it if it's in the encrypted set."""
+        if path.stat().st_size > _MAX_MEMORY_FILE_BYTES:
+            raise ValueError(f"memory file exceeds {_MAX_MEMORY_FILE_BYTES} byte limit")
         if filename in _ENCRYPTED_FILES:
-            try:
-                from spectra_common.encryption import decrypt_file
+            from spectra_common.encryption import decrypt_file
 
-                return decrypt_file(path).decode("utf-8")
-            except Exception:
-                # Fall back to plaintext (pre-encryption data or missing key)
-                pass
+            # Sensitive memory is deliberately fail-closed. A missing key,
+            # corrupted ciphertext, or legacy plaintext file must not be
+            # silently returned to an agent as trusted memory.
+            return decrypt_file(path).decode("utf-8")
         return path.read_text()
 
     def _load_raw(self, filename: str) -> Any:
@@ -211,8 +217,8 @@ class MissionMemory:
                 bak = self.memory_dir / f"{filename}.{i}.bak"
                 if bak.exists():
                     try:
-                        return json.loads(bak.read_text())
-                    except (OSError, ValueError):
+                        return json.loads(self._read_maybe_encrypted(bak, filename))
+                    except (OSError, ValueError, RuntimeError):
                         continue
             return None
 
@@ -222,10 +228,10 @@ class MissionMemory:
             bak = self.memory_dir / f"{filename}.{i}.bak"
             if bak.exists():
                 try:
-                    data = json.loads(bak.read_text())
+                    data = json.loads(self._read_maybe_encrypted(bak, filename))
                     logger.info("Recovered %s from backup %d", filename, i)
                     return [model_cls(**item) for item in data if isinstance(item, dict)]
-                except (OSError, ValueError):
+                except (OSError, ValueError, RuntimeError):
                     continue
         return []
 
@@ -300,16 +306,17 @@ class MissionMemory:
         try:
             tmp.write_text(json.dumps(data, indent=2, default=str))
             if filename in _ENCRYPTED_FILES:
-                try:
-                    from spectra_common.encryption import encrypt_file
+                from spectra_common.encryption import encrypt_file
 
-                    encrypt_file(tmp)
-                except Exception as e:
-                    logger.warning("Failed to encrypt %s (saving plaintext): %s", filename, e)
+                # Never downgrade sensitive memory to plaintext. If the key
+                # or crypto backend is unavailable, retain the previous
+                # encrypted snapshot and surface the failure in logs.
+                encrypt_file(tmp)
             tmp.rename(path)
-        except OSError as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.warning("Failed to save %s: %s", filename, e)
-            if tmp.exists():
+        finally:
+            with contextlib.suppress(OSError):
                 tmp.unlink()
 
     # --- Recording Lessons ---

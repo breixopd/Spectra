@@ -13,6 +13,8 @@ Each micro-task has:
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 from dataclasses import dataclass, field
 from typing import Any
@@ -20,6 +22,25 @@ from typing import Any
 from spectra_mission.framework_loader import FrameworkSpec, get_framework
 
 logger = logging.getLogger(__name__)
+
+
+def _stable_task_digest(task: Any, phase: str = "") -> str:
+    """Return a process-independent digest for a plan task.
+
+    Python's built-in ``hash`` is intentionally randomized between processes,
+    which made persisted task IDs change after a worker restart.  Plan tasks
+    are JSON-shaped, so canonical JSON gives us a stable and auditable ID
+    source while retaining a safe fallback for extension fields.
+    """
+
+    canonical = json.dumps(
+        {"phase": phase, "task": task},
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+        default=str,
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
 
 
 @dataclass
@@ -36,6 +57,9 @@ class MicroTask:
     max_retries: int = 2
     expected_output_type: str = "structured"  # structured, text, binary
     metadata: dict[str, Any] = field(default_factory=dict)
+    # Appended after the historical fields to keep positional construction
+    # compatible for embedders while allowing bounded executor attempts.
+    timeout_seconds: float | None = None
 
 
 class TaskDecomposer:
@@ -70,12 +94,13 @@ class TaskDecomposer:
         if tool_name:
             return [
                 MicroTask(
-                    id=f"{task_type}_{tool_name}_{hash(str(plan_task)) % 10000}",
+                    id=f"{task_type}_{tool_name}_{_stable_task_digest(plan_task, phase)}",
                     tool_name=tool_name,
                     tool_args=plan_task.get("args") or plan_task.get("tool_args") or {},
                     technique_category=self._infer_technique(task_type, tool_name),
                     phase=phase,
                     priority=priority,
+                    timeout_seconds=plan_task.get("timeout_seconds"),
                 )
             ]
 
@@ -89,12 +114,13 @@ class TaskDecomposer:
         # Default: single micro-task with generic tool
         return [
             MicroTask(
-                id=f"{task_type}_default_{hash(str(plan_task)) % 10000}",
+                id=f"{task_type}_default_{_stable_task_digest(plan_task, phase)}",
                 tool_name=tool_name or "generic",
                 tool_args=plan_task.get("args") or {},
                 technique_category=self._infer_technique(task_type, ""),
                 phase=phase,
                 priority=priority,
+                timeout_seconds=plan_task.get("timeout_seconds"),
             )
         ]
 
@@ -104,7 +130,7 @@ class TaskDecomposer:
         """Break a scan task into parallel port scan + service detection."""
         base_args = task.get("args") or {}
         target = base_args.get("target", "")
-        task_id = f"scan_{hash(str(task)) % 10000}"
+        task_id = f"scan_{_stable_task_digest(task, phase)}"
 
         return [
             MicroTask(
@@ -114,6 +140,7 @@ class TaskDecomposer:
                 technique_category="port_scanning",
                 phase=phase,
                 priority=priority,
+                timeout_seconds=task.get("timeout_seconds"),
             ),
             MicroTask(
                 id=f"{task_id}_sv",
@@ -123,6 +150,7 @@ class TaskDecomposer:
                 phase=phase,
                 depends_on=[f"{task_id}_tcp"],
                 priority=priority + 1,
+                timeout_seconds=task.get("timeout_seconds"),
             ),
         ]
 
@@ -130,7 +158,7 @@ class TaskDecomposer:
         """Break exploit task into craft + execute + verify steps."""
         tool = task.get("tool", "")
         target = (task.get("args") or {}).get("target", "")
-        task_id = f"exploit_{hash(str(task)) % 10000}"
+        task_id = f"exploit_{_stable_task_digest(task, phase)}"
 
         return [
             MicroTask(
@@ -140,6 +168,7 @@ class TaskDecomposer:
                 technique_category="exploitation",
                 phase=phase,
                 priority=priority,
+                timeout_seconds=task.get("timeout_seconds"),
             ),
             MicroTask(
                 id=f"{task_id}_exec",
@@ -149,6 +178,7 @@ class TaskDecomposer:
                 phase=phase,
                 depends_on=[f"{task_id}_craft"],
                 priority=priority + 1,
+                timeout_seconds=task.get("timeout_seconds"),
             ),
             MicroTask(
                 id=f"{task_id}_verify",
@@ -158,6 +188,7 @@ class TaskDecomposer:
                 phase=phase,
                 depends_on=[f"{task_id}_exec"],
                 priority=priority + 2,
+                timeout_seconds=task.get("timeout_seconds"),
             ),
         ]
 

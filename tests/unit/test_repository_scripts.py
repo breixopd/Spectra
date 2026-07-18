@@ -285,6 +285,9 @@ def test_local_ci_parity_uses_the_same_integration_topology_as_ci() -> None:
     assert "db redis garage tensorzero metasploitable dvwa" in script
     assert "app ai-svc worker tools caddy" in script
     assert "run --rm --no-deps test-runner" in script
+    # The final runner must inherit the same test env file as the bootstrap
+    # calls; otherwise Compose falls back to a missing local `.env` on CI.
+    assert 'ENV_FILE="$ENV_FILE" "${COMPOSE[@]}" --profile app --profile test run --rm --no-deps test-runner' in script
 
 
 def test_landing_hero_uses_a_tracked_product_preview() -> None:

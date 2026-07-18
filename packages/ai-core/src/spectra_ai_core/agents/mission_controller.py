@@ -11,6 +11,7 @@ Responsible for:
 
 from __future__ import annotations
 
+import json
 import logging
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -116,6 +117,8 @@ class MissionController(Agent[MissionInput, MissionPlan | PhaseTransition | Stee
     name: ClassVar[str] = "MissionController"
     enable_reflection: ClassVar[bool] = True
     reflection_threshold: ClassVar[float] = 0.7
+    max_plan_tasks: ClassVar[int] = 100
+    max_task_parameters_bytes: ClassVar[int] = 64 * 1024
 
     def __init__(self, llm: LLMClient):
         super().__init__(llm)
@@ -296,6 +299,7 @@ IMPORTANT OPERATIONAL GUIDELINES:
                         max_tokens=4096,
                     )
                     plan = self._enforce_directive_constraints(plan, input_data)
+                    self._validate_plan(plan)
                     if not plan.tasks:
                         raise ValueError("LLM returned an empty mission plan")
                     return plan
@@ -337,7 +341,77 @@ IMPORTANT OPERATIONAL GUIDELINES:
             plan.reasoning = f"{plan.reasoning} Quick validation requested; preserving LLM-authored tasks."
             plan.estimated_duration_minutes = min(plan.estimated_duration_minutes, 15)
 
+        # A plan containing exploitation or post-exploitation work is not a
+        # low-risk planning action, even when an LLM forgot to set its risk
+        # field. This keeps the PLAN quality gate active for high-impact work.
+        if any(
+            task.phase in {AssessmentPhase.EXPLOITATION, AssessmentPhase.POST_EXPLOITATION}
+            or "exploit" in task.agent_type.lower()
+            for task in plan.tasks
+        ):
+            current_risk = getattr(plan.risk_level, "value", plan.risk_level)
+            risk_rank = {risk.value: index for index, risk in enumerate(ActionRisk)}
+            if risk_rank.get(str(current_risk), 0) < risk_rank[ActionRisk.HIGH.value]:
+                plan.risk_level = ActionRisk.HIGH
+
         return plan
+
+    def _validate_plan(self, plan: MissionPlan) -> None:
+        """Validate the LLM-authored task graph before it is persisted.
+
+        This deterministic gate catches duplicate IDs, missing dependencies,
+        cycles, phase regressions, and oversized tool arguments before the
+        executor can silently deadlock or run an unintended task.
+        """
+        if len(plan.tasks) > self.max_plan_tasks:
+            raise ValueError(f"Mission plan contains too many tasks (max {self.max_plan_tasks})")
+
+        task_ids = [task.task_id.strip() for task in plan.tasks]
+        if any(not task_id for task_id in task_ids):
+            raise ValueError("Mission plan task IDs must be non-empty")
+        if len(task_ids) != len(set(task_ids)):
+            raise ValueError("Mission plan task IDs must be unique")
+        known = set(task_ids)
+        phase_order = {phase.value: index for index, phase in enumerate(AssessmentPhase)}
+        graph: dict[str, list[str]] = {task_id: [] for task_id in task_ids}
+        for task in plan.tasks:
+            if len(task.task_id) > 128:
+                raise ValueError(f"Mission plan task ID is too long: {task.task_id[:32]}")
+            try:
+                encoded_parameters = json.dumps(task.parameters, sort_keys=True, default=str).encode()
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"Task {task.task_id} parameters are not serializable") from exc
+            if len(encoded_parameters) > self.max_task_parameters_bytes:
+                raise ValueError(f"Task {task.task_id} parameters exceed size limit")
+            for dependency in task.dependencies:
+                if dependency not in known:
+                    raise ValueError(f"Task {task.task_id} references unknown dependency {dependency}")
+                if dependency == task.task_id:
+                    raise ValueError(f"Task {task.task_id} cannot depend on itself")
+                dependency_task = plan.tasks[task_ids.index(dependency)]
+                dependency_phase = getattr(dependency_task.phase, "value", dependency_task.phase)
+                task_phase = getattr(task.phase, "value", task.phase)
+                if phase_order[str(dependency_phase)] > phase_order[str(task_phase)]:
+                    raise ValueError(f"Task {task.task_id} depends on a later phase task {dependency}")
+                graph[dependency].append(task.task_id)
+
+        # Kahn's algorithm gives a deterministic cycle check without relying
+        # on recursive depth or Python's hash randomization.
+        indegree = dict.fromkeys(task_ids, 0)
+        for dependents in graph.values():
+            for dependent in dependents:
+                indegree[dependent] += 1
+        ready = [task_id for task_id, degree in indegree.items() if degree == 0]
+        visited = 0
+        while ready:
+            current = ready.pop()
+            visited += 1
+            for dependent in graph[current]:
+                indegree[dependent] -= 1
+                if indegree[dependent] == 0:
+                    ready.append(dependent)
+        if visited != len(task_ids):
+            raise ValueError("Mission plan dependencies contain a cycle")
 
     async def _handle_steering(
         self,

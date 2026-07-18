@@ -23,16 +23,19 @@ VALID_TRANSITIONS: dict[MissionStatus, set[MissionStatus]] = {
     MissionStatus.INITIALIZING: {
         MissionStatus.SCOPING,
         MissionStatus.FAILED,
+        MissionStatus.TIMED_OUT,
         MissionStatus.CANCELLED,
     },
     MissionStatus.SCOPING: {
         MissionStatus.PLANNING,
         MissionStatus.FAILED,
+        MissionStatus.TIMED_OUT,
         MissionStatus.CANCELLED,
     },
     MissionStatus.PLANNING: {
         MissionStatus.EXECUTING,
         MissionStatus.FAILED,
+        MissionStatus.TIMED_OUT,
         MissionStatus.CANCELLED,
     },
     MissionStatus.EXECUTING: {
@@ -40,6 +43,7 @@ VALID_TRANSITIONS: dict[MissionStatus, set[MissionStatus]] = {
         MissionStatus.REPORTING,
         MissionStatus.COMPLETED,
         MissionStatus.FAILED,
+        MissionStatus.TIMED_OUT,
         MissionStatus.CANCELLED,
         MissionStatus.PAUSED,
         MissionStatus.SCANNING,
@@ -49,30 +53,35 @@ VALID_TRANSITIONS: dict[MissionStatus, set[MissionStatus]] = {
         MissionStatus.EXECUTING,
         MissionStatus.ANALYZING,
         MissionStatus.FAILED,
+        MissionStatus.TIMED_OUT,
         MissionStatus.CANCELLED,
     },
     MissionStatus.ANALYZING: {
         MissionStatus.EXECUTING,
         MissionStatus.EXPLOITING,
         MissionStatus.FAILED,
+        MissionStatus.TIMED_OUT,
         MissionStatus.CANCELLED,
     },
     MissionStatus.EXPLOITING: {
         MissionStatus.REPORTING,
         MissionStatus.COMPLETED,
         MissionStatus.FAILED,
+        MissionStatus.TIMED_OUT,
         MissionStatus.CANCELLED,
         MissionStatus.PAUSED,
     },
     MissionStatus.REPORTING: {
         MissionStatus.COMPLETED,
         MissionStatus.FAILED,
+        MissionStatus.TIMED_OUT,
         MissionStatus.CANCELLED,
     },
     MissionStatus.PAUSED: {
         MissionStatus.EXECUTING,
         MissionStatus.EXPLOITING,
         MissionStatus.FAILED,
+        MissionStatus.TIMED_OUT,
         MissionStatus.CANCELLED,
     },
     MissionStatus.RUNNING: {
@@ -80,6 +89,7 @@ VALID_TRANSITIONS: dict[MissionStatus, set[MissionStatus]] = {
         MissionStatus.SCANNING,
         MissionStatus.COMPLETED,
         MissionStatus.FAILED,
+        MissionStatus.TIMED_OUT,
         MissionStatus.CANCELLED,
         MissionStatus.STOPPING,
         MissionStatus.PAUSED,
@@ -87,11 +97,13 @@ VALID_TRANSITIONS: dict[MissionStatus, set[MissionStatus]] = {
     MissionStatus.STOPPING: {
         MissionStatus.CANCELLED,
         MissionStatus.FAILED,
+        MissionStatus.TIMED_OUT,
     },
     # Terminal states - no valid transitions out
     MissionStatus.COMPLETED: set(),
     MissionStatus.FAILED: set(),
     MissionStatus.CANCELLED: set(),
+    MissionStatus.TIMED_OUT: set(),
 }
 
 
@@ -134,6 +146,36 @@ class MissionStateMachine:
         self._history: list[StateTransition] = []
         self._created_at = datetime.now(UTC)
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any], mission_id: str) -> "MissionStateMachine":
+        """Rehydrate a checkpointed FSM without bypassing its audit history."""
+        if not isinstance(data, dict):
+            raise ValueError("FSM checkpoint must be an object")
+        state = MissionStatus(data.get("current_state", MissionStatus.CREATED.value))
+        if data.get("mission_id") not in (None, mission_id):
+            raise ValueError("FSM checkpoint mission_id does not match mission")
+        fsm = cls(mission_id, initial_state=state)
+        created_at = data.get("created_at")
+        if created_at:
+            fsm._created_at = datetime.fromisoformat(created_at)
+        history: list[StateTransition] = []
+        for raw in data.get("history", []):
+            if not isinstance(raw, dict):
+                raise ValueError("FSM history entries must be objects")
+            history.append(
+                StateTransition(
+                    from_state=MissionStatus(raw["from_state"]),
+                    to_state=MissionStatus(raw["to_state"]),
+                    timestamp=datetime.fromisoformat(raw["timestamp"]),
+                    reason=raw.get("reason"),
+                    metadata=raw.get("metadata") or {},
+                )
+            )
+        if history and history[-1].to_state != state:
+            raise ValueError("FSM history does not end at current_state")
+        fsm._history = history
+        return fsm
+
     @property
     def state(self) -> MissionStatus:
         """Get current state."""
@@ -146,6 +188,7 @@ class MissionStateMachine:
             MissionStatus.COMPLETED,
             MissionStatus.FAILED,
             MissionStatus.CANCELLED,
+            MissionStatus.TIMED_OUT,
         }
 
     @property

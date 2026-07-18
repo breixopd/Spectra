@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlparse
 
 from spectra_mission.framework_enforcer import FrameworkEnforcer
 from spectra_mission.framework_loader import get_framework
@@ -102,14 +103,41 @@ class ScopeEnforcer:
         """Verify the action targets are within scope."""
         target = getattr(self.mission, "target", None)
         if not target:
-            return ScopeCheck(allowed=True, check_type="target_scope", reason="No target specified")
+            return ScopeCheck(
+                allowed=False,
+                check_type="target_scope",
+                reason="Mission has no declared target",
+            )
 
-        # Simple check: target should appear in the action command
-        # (More sophisticated parsing happens in perceptor layer)
-        if target not in action:
-            logger.info("Action target '%s' not found in command, may be indirect", target)
+        action_lower = action.lower()
+        scope_values = list(getattr(self.mission, "scope_targets", []) or [target])
+        tokens: set[str] = set()
+        for value in scope_values:
+            value = str(value).strip()
+            if not value:
+                continue
+            tokens.add(value.lower())
+            parsed = urlparse(value if "://" in value else f"//{value}")
+            if parsed.hostname:
+                tokens.add(parsed.hostname.lower())
 
-        return ScopeCheck(allowed=True, check_type="target_scope")
+        if any(token and token in action_lower for token in tokens):
+            return ScopeCheck(allowed=True, check_type="target_scope")
+
+        if getattr(self.mission, "allow_indirect_targets", False):
+            logger.info("Action target is indirect; explicit mission policy permits it")
+            return ScopeCheck(
+                allowed=True,
+                check_type="target_scope",
+                reason="Indirect target allowed by mission policy",
+            )
+
+        return ScopeCheck(
+            allowed=False,
+            check_type="target_scope",
+            reason="Action does not contain a declared in-scope target",
+            details={"scope_targets": scope_values},
+        )
 
     def _check_framework_phase(self, technique: str, phase: str) -> ScopeCheck:
         """Check if the technique is allowed in the current framework phase."""

@@ -350,7 +350,7 @@ class ToolExecutionService:
         Forbidden techniques and unconfirmed authorization are always blocked. Out-of-phase
         techniques are blocked only in ``strict`` mode; otherwise they are logged as advisory.
         Unmappable tools (no matching technique category) are allowed. Returns an error
-        result when blocked, else ``None``. Never raises — enforcement failures fail open.
+        result when blocked, else ``None``. Enforcement failures fail closed.
         """
         try:
             from spectra_common.config import settings
@@ -360,8 +360,12 @@ class ToolExecutionService:
             framework_id = getattr(mission, "pentest_framework", None)
             phase = getattr(mission, "current_phase", "") or ""
             config = getattr(adapter, "config", None)
-            if config is None or not phase:
-                return None
+            if config is None:
+                return create_error_result(
+                    tool_name, target, "Blocked: tool configuration unavailable for framework check"
+                )
+            if not phase:
+                return create_error_result(tool_name, target, "Blocked: mission execution phase is unavailable")
 
             # Build the tool's signal set from category, capabilities and tags.
             signals: set[str] = set()
@@ -405,8 +409,8 @@ class ToolExecutionService:
                 )
             return None
         except (AttributeError, ValueError, RuntimeError, KeyError) as e:
-            logger.debug("Framework enforcement skipped for %s: %s", tool_name, e)
-            return None
+            logger.error("Framework enforcement failed closed for %s: %s", tool_name, e)
+            return create_error_result(tool_name, target, "Blocked: framework enforcement unavailable")
 
     async def _validate_and_resolve_tool(self, mission, tool_name, target, args):
         return await validate_and_resolve_tool(

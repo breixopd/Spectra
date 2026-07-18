@@ -531,15 +531,17 @@ class TestMissionFSMIntegration:
         assert m.status == "initializing"
         assert m.fsm.state == MissionStatus.INITIALIZING
 
-    def test_set_status_invalid_transition_still_sets_raw(self):
+    def test_set_status_invalid_transition_reconciles_fsm(self):
         from spectra_mission.mission import Mission
 
         m = Mission("10.0.0.1", "test")
-        # CREATED -> COMPLETED is invalid, but raw status still updates
+        # CREATED -> COMPLETED is non-linear; the lifecycle adapter records a
+        # forced, auditable transition so persisted status and the FSM cannot
+        # diverge after a restart.
         m.set_status("completed")
         assert m.status == "completed"
-        # FSM stays at CREATED since transition was invalid
-        assert m.fsm.state == MissionStatus.CREATED
+        assert m.fsm.state == MissionStatus.COMPLETED
+        assert m.fsm.is_terminal
 
     def test_set_status_unknown_value(self):
         from spectra_mission.mission import Mission

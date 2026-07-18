@@ -46,8 +46,9 @@ async def embedded_ops_loop(service_label: str, interval_secs: int = 3600) -> No
                 prune_images,
             )
 
-            await prune_containers(filters={"until": ["72h"]})
-            await prune_images(filters={"dangling": ["true"], "until": ["240h"]})
+            managed_filter = {"label": ["spectra.managed=true"]}
+            await prune_containers(filters={**managed_filter, "until": ["72h"]})
+            await prune_images(filters={**managed_filter, "dangling": ["true"], "until": ["240h"]})
             last_prune = now
             logger.info("embedded_ops[%s]: light docker prune completed", service_label)
         except Exception as e:
