@@ -42,7 +42,7 @@ fi
 FAILED=0
 
 for i in $(seq 0 "$MAX_RETRIES"); do
-    if curl -sf --max-time 10 "$URL" > /dev/null 2>&1; then
+    if curl -sfL --max-time 10 "$URL" > /dev/null 2>&1; then
         echo "Health check passed: $URL (attempt $((i + 1)))"
         break
     fi
@@ -63,7 +63,7 @@ done
 BASE_URL=$(echo "$URL" | sed -E 's|/api(/v1)?/health.*||')
 
 # Canonical public health endpoint — verifies public API routes work
-if curl -sf --max-time 10 "${BASE_URL}/api/v1/health?scope=public" > /dev/null 2>&1; then
+if curl -sfL --max-time 10 "${BASE_URL}/api/v1/health?scope=public" > /dev/null 2>&1; then
     echo "Supplementary check passed: canonical public health"
 else
     echo "WARN: /api/v1/health?scope=public did not respond (non-critical)"

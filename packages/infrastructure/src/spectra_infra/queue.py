@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import inspect
 import logging
 import re
 import uuid
@@ -20,7 +21,7 @@ def _claimable_job_predicate():
         JobQueue.status == "queued",
         and_(
             JobQueue.status == "pending",
-            JobQueue.next_retry_at <= datetime.now(UTC),
+            or_(JobQueue.next_retry_at.is_(None), JobQueue.next_retry_at <= datetime.now(UTC)),
         ),
     )
 
@@ -188,7 +189,7 @@ class Job:
                     return None
                 if job.status == "completed":
                     return job.result
-                if job.status == "failed":
+                if job.status in {"failed", "dead_letter"}:
                     raise Exception(job.error or "Job failed")
 
             if timeout is not None and (time.monotonic() - start) >= timeout:
@@ -298,10 +299,15 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
                         raise ValueError(f"Function {job.function} not registered")
 
                     job_timeout = job.timeout or 1800  # Default 30 min
-                    if asyncio.iscoroutinefunction(func):
+                    if inspect.iscoroutinefunction(func):
                         res = await asyncio.wait_for(func(*job.args, **job.kwargs), timeout=job_timeout)
                     else:
-                        res = func(*job.args, **job.kwargs)
+                        # Synchronous tool handlers must not block the worker's
+                        # event loop or starve queue heartbeats.
+                        res = await asyncio.wait_for(
+                            asyncio.to_thread(func, *job.args, **job.kwargs),
+                            timeout=job_timeout,
+                        )
 
                     # 4. Success -> Completed
                     async with async_session_maker() as session:
@@ -335,7 +341,7 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
                             stmt = (
                                 update(JobQueue)
                                 .where(JobQueue.id == current_job_id)
-                                .values(status="pending", started_at=None)
+                                .values(status="pending", started_at=None, next_retry_at=datetime.now(UTC))
                             )
                             await session.execute(stmt)
                             await session.commit()

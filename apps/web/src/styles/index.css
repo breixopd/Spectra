@@ -18,8 +18,28 @@
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
+  :where(a, button, [role="button"], input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  :where(a, button, [role="button"], input, select, textarea, [tabindex]):focus:not(:focus-visible) {
+    outline: none;
+  }
+
   ::selection {
     @apply bg-primary/30 text-foreground;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

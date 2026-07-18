@@ -25,7 +25,8 @@ LABEL org.opencontainers.image.title="Spectra Scheduler" \
       org.opencontainers.image.description="Automated penetration testing platform — scheduler/scaling" \
       org.opencontainers.image.source="https://github.com/breixopd/Spectra" \
       org.opencontainers.image.vendor="breixopd" \
-      org.opencontainers.image.version="${BUILD_VERSION}"
+      org.opencontainers.image.version="${BUILD_VERSION}" \
+      spectra.managed="true"
 
 WORKDIR /app
 RUN printf '%s' "${BUILD_VERSION}" > /app/.build-version

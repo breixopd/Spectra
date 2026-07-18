@@ -71,6 +71,7 @@ class ScalingDecision:
     current_replicas: int
     desired_replicas: int
     reason: str
+    executed: bool | None = None
 
 
 class AutoScaler:
@@ -127,8 +128,10 @@ class AutoScaler:
             pool = get_pool_manager()
             capacity = await pool.get_cluster_capacity()
             per_service = capacity.get("per_service_max_replicas", {})
-            dynamic_max = per_service.get(service_name, policy.max_replicas)
-            return min(dynamic_max, policy.max_replicas)
+            dynamic_max = int(per_service.get(service_name, policy.max_replicas))
+            # A partial/stale capacity report must never lower the effective
+            # limit below the policy floor or create an invalid range.
+            return max(policy.min_replicas, min(dynamic_max, policy.max_replicas))
         except Exception:
             logger.debug(
                 "Failed to calculate dynamic max replicas for %s, using policy default",
@@ -183,8 +186,26 @@ class AutoScaler:
         cluster: ClusterMetrics | None = None,
     ) -> list[ScalingDecision]:
         """Evaluate all policies and return scaling decisions."""
+        if not self.config.enabled:
+            return []
+
         decisions: list[ScalingDecision] = []
         now = time.monotonic()
+
+        if cluster is not None:
+            age = (datetime.now(UTC) - cluster.timestamp).total_seconds()
+            if age > self.config.metrics_stale_after_secs:
+                logger.warning(
+                    "Autoscaling held: metrics are stale (age=%.1fs, limit=%ss)",
+                    age,
+                    self.config.metrics_stale_after_secs,
+                )
+                return []
+            # An empty cluster result is indistinguishable from a collector
+            # failure and contains no safe signal for scale-down.
+            if not cluster.services and cluster.nodes_total == 0 and cluster.cluster_node_metrics is None:
+                logger.warning("Autoscaling held: metrics collector returned no cluster data")
+                return []
 
         # Extract cluster-wide resource pressure signals
         cluster_alerts: list[str] = []
@@ -218,6 +239,9 @@ class AutoScaler:
             dynamic_max[role] = await self.calculate_max_replicas(role)
 
         for role, policy in self.config.policies.items():
+            if cluster is not None and policy.service_name not in cluster.services:
+                logger.warning("Autoscaling held for %s: service metrics are unavailable", policy.service_name)
+                continue
             last_action = self._last_scale_action.get(role, 0.0)
             if now - last_action < policy.cooldown_secs:
                 continue
@@ -333,7 +357,7 @@ class AutoScaler:
 
     async def execute(self, decision: ScalingDecision) -> bool:
         """Execute a scaling decision via the orchestrator backend."""
-        if decision.action == "none":
+        if not self.config.enabled or decision.action == "none":
             return True
 
         try:
@@ -384,6 +408,9 @@ class AutoScaler:
         infra_alerts: list[str] | None = None,
     ) -> list[ScalingDecision]:
         """Evaluate all policies, execute scaling decisions, auto-heal, and alert."""
+        if not self.config.enabled:
+            return []
+
         cluster: ClusterMetrics | None = None
         flat_metrics: dict
 
@@ -396,7 +423,7 @@ class AutoScaler:
         decisions = await self.evaluate(flat_metrics, cluster=cluster)
         for decision in decisions:
             if decision.action != "none":
-                await self.execute(decision)
+                decision.executed = await self.execute(decision)
 
         # --- Auto-healing ---
         heal_actions: list[str] = []
@@ -458,7 +485,7 @@ class AutoScaler:
                 continue
 
             last_heal = self._heal_timestamps.get(name, 0.0)
-            if svc.running_tasks > 0 and now - last_heal < self.config.heal_cooldown_secs:
+            if now - last_heal < self.config.heal_cooldown_secs:
                 continue
 
             logger.warning("Auto-heal: %s \u2014 %s, attempting restart", name, reason)

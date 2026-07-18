@@ -711,6 +711,15 @@ async def test_tool(
     """
     tool = _get_tool_or_404(registry, tool_id)
 
+    # This endpoint dispatches an arbitrary worker command and has no durable
+    # mission context of its own.  Keep it as an explicitly audited operator
+    # diagnostic instead of exposing a scope/safety bypass to ordinary users.
+    if not _current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Direct tool diagnostics require a superuser; run tools from an authorized mission.",
+        )
+
     try:
         from spectra_infra.queue import Job, PostgresJobQueue
 

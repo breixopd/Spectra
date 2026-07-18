@@ -29,15 +29,15 @@ AI / worker / scheduler entrypoints.
 
 Workers are the most common scaling target. Multiple worker instances safely share the job queue via `SELECT ... FOR UPDATE SKIP LOCKED`.
 
-When auto-scaling is enabled (`AUTOSCALE_ENABLED=true`), worker replicas are adjusted automatically based on queue depth. For manual scaling:
+When auto-scaling is enabled (`AUTOSCALE_ENABLED=true`) on a Docker Swarm deployment, worker replicas are adjusted automatically based on queue depth. Compose deployments use manual scaling only. For manual scaling:
 
 ```bash
 # Docker Compose
-docker compose -f deploy/docker/compose.yaml up -d --scale worker=3
+docker compose -f deploy/docker/compose.yaml --profile app up -d --scale worker=3
 ```
 
 ```yaml
-# Docker Swarm (replicas managed automatically when auto-scaling is on)
+# Docker Swarm (automatic decisions are supported when auto-scaling is on)
 services:
   worker:
     deploy:
@@ -49,7 +49,7 @@ services:
 For high LLM throughput, scale the AI service:
 
 ```bash
-docker compose -f deploy/docker/compose.yaml up -d --scale ai-svc=2
+docker compose -f deploy/docker/compose.yaml --profile app up -d --scale ai-svc=2
 ```
 
 The app service routes AI requests to `AI_SERVICE_URL`. With multiple replicas behind Docker's internal DNS round-robin, requests are distributed automatically.
@@ -65,7 +65,7 @@ Individual tasks (backups, DB maintenance, stale job recovery, exploit DB refres
 Scale the API service for more web/API capacity:
 
 ```bash
-docker compose -f deploy/docker/compose.yaml up -d --scale app=2
+docker compose -f deploy/docker/compose.yaml --profile app up -d --scale app=2
 ```
 
 When scaling the API, ensure Caddy (or your reverse proxy) load-balances across all API instances.
@@ -280,7 +280,8 @@ See [API Reference](api-reference.md) for request/response schemas.
 | `GET /system/services/health` | Health check all registered services (local + remote) |
 | `GET /system/services/topology` | Current topology — which services are local vs remote |
 | `GET /api/healthz` | Process liveness used by Caddy and container probes |
-| `GET /api/health` | Dependency-aware platform diagnostic for operators |
+| `GET /api/health/ready` | Dependency readiness; returns 503 until required services are ready |
+| `GET /api/v1/health?scope=public` | Dependency-aware public platform diagnostic for operators |
 
 ### Automatic Health Checks
 
@@ -302,18 +303,18 @@ Available via the observability endpoints:
 
 ## Auto-Scaling
 
-Spectra includes a reactive auto-scaling engine (`packages/scaling/src/spectra_scaling/auto_scaler.py`) that monitors queue depth and service utilization to automatically adjust replica counts. Auto-scaling works with both Docker Compose and Docker Swarm; **Docker Swarm is the recommended production deployment** because it handles multi-host replica placement automatically.
+Spectra includes a reactive auto-scaling engine (`packages/scaling/src/spectra_scaling/auto_scaler.py`) that monitors queue depth and service utilization to automatically adjust replica counts. It is **disabled by default** and its production execution backend is Docker Swarm; **Docker Swarm is therefore required for automatic decisions and auto-heal**. Docker Compose remains useful for single-host deployments and supports deliberate/manual `docker compose up --scale` changes, but the scheduler will fail closed rather than pretending to scale Compose replicas.
 
 ### How It Works
 
 1. The scheduler's `capacity_monitor` loop runs every 60 seconds
 2. When `AUTOSCALE_ENABLED=true`, the `AutoScaler` collects metrics (queue depth, replica counts, utilization)
 3. Per-service `ScalingPolicy` objects define thresholds that trigger scale-up or scale-down decisions
-4. Decisions execute via `docker service scale` (Swarm) or `docker compose up --scale` (Compose)
+4. Decisions execute via `docker service scale` on Swarm; Compose operators apply manual `docker compose up --scale` changes when needed
 5. A cooldown period prevents thrashing between scale actions
 6. Admins add new hosts via **Admin UI → Scaling tab**; the engine handles the rest
 
-After initial setup — enabling auto-scaling and adding hosts to the server pool — scaling is fully hands-off.
+After initial setup — deploying Swarm, adding hosts to the server pool, and explicitly enabling auto-scaling — scaling is hands-off within the configured bounds. Keep it disabled for Compose or when Docker Swarm manager access is unavailable.
 
 **Auto-heal (Swarm):** when the collector reports Swarm tasks in **`failed`** or **`rejected`** state (or very recent failures in the task history), the scheduler may restart the affected service. **`failed_tasks` is not** `desired_replicas - running_tasks`, so brief replica gaps during rolling updates do not count as failures.
 
@@ -354,7 +355,7 @@ All settings are initial defaults from environment variables. After first boot, 
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `AUTOSCALE_ENABLED` | `false` | Enable auto-scaling (opt-in) |
+| `AUTOSCALE_ENABLED` | `false` | Enable Swarm auto-scaling (opt-in; Compose remains manual) |
 | `AUTOSCALE_WORKER_MIN` | `1` | Minimum worker replicas |
 | `AUTOSCALE_WORKER_MAX` | `10` | Maximum worker replicas |
 | `AUTOSCALE_API_MIN` | `1` | Minimum API replicas |

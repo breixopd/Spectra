@@ -101,9 +101,15 @@ class ServerProvisioner:
 
                 version = app_version or "latest"
 
-                # Filter reserved keys from extra_env to prevent format conflicts
-                _reserved = {"service_port", "env_vars", "spectra_host", "registry", "version"}
-                safe_extra = {k: v for k, v in config.extra_env.items() if k not in _reserved}
+                # Only the db-backup recipe has format placeholders supplied by
+                # the API.  Quote their values before interpolation because the
+                # resulting command runs through a remote shell.
+                _backup_keys = {"db_host", "db_user", "db_pass", "db_name"}
+                safe_extra = {
+                    k: shlex.quote(str(v))
+                    for k, v in config.extra_env.items()
+                    if config.service_type == "db_backup" and k in _backup_keys
+                }
 
                 for step in recipe:
                     result.logs.append(f"\n--- Step: {step.name} ---")
@@ -326,9 +332,10 @@ class ServerProvisioner:
         await asyncio.to_thread(known_hosts_path.touch, exist_ok=True)
         await asyncio.to_thread(known_hosts_path.chmod, 0o600)
 
+        validated_host = self._validate_scan_target(config.host, config.port)
         existing_text = await asyncio.to_thread(known_hosts_path.read_text, encoding="utf-8")
         existing_lines = existing_text.splitlines()
-        expected_host = self._known_hosts_target(config.host, config.port)
+        expected_host = self._known_hosts_target(validated_host, config.port)
 
         if config.ssh_known_host is not None:
             pinned_lines = self._normalize_known_host_lines(config.ssh_known_host)
@@ -349,7 +356,7 @@ class ServerProvisioner:
             if self._line_matches_known_host(line, expected_host):
                 return known_hosts_path
 
-        scan_host = self._validate_scan_target(config.host, config.port)
+        scan_host = validated_host
         ssh_keyscan = self._ssh_keyscan_executable()
 
         try:
@@ -408,7 +415,7 @@ class ServerProvisioner:
         """Format environment variables for docker command, safely quoted."""
         parts = []
         for key, value in env.items():
-            if not key.replace("_", "").isalnum():
+            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
                 logger.warning("Skipping invalid env var key: %s", key)
                 continue
             parts.append(f"-e {shlex.quote(f'{key}={value}')}")

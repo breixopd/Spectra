@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 import time
+from contextlib import suppress
 from typing import Any, cast
 
 from spectra_ai_core.agents.base import AgentContext
@@ -73,9 +75,11 @@ class MissionExecutionManager:
             return
 
         cost_tracker = self._setup_cost_tracking(mission, context)
-        await self._create_sandbox(mission)
-
+        control_watcher = asyncio.create_task(
+            self._watch_durable_control(mission), name=f"mission-control-{mission.id}"
+        )
         try:
+            await self._create_sandbox(mission)
             self._bind_mission_to_consensus_agents(mission)
             await self._run_mission_phases(mission, context, cost_tracker, recorder, resume=resume)
         except asyncio.CancelledError:
@@ -91,8 +95,33 @@ class MissionExecutionManager:
             self._broadcast_state("mission_controller", "failed")
             await self.lifecycle.update_db_status(mission)
         finally:
+            control_watcher.cancel()
+            # A real task is awaitable; keeping this guard makes the cleanup
+            # path compatible with lightweight task doubles used by embedders
+            # and tests without weakening production cancellation semantics.
+            if inspect.isawaitable(control_watcher):
+                with suppress(asyncio.CancelledError):
+                    await control_watcher
             await self._finalize_demo_recorder(mission, recorder)
             await self._cleanup_mission(mission)
+
+    async def _watch_durable_control(self, mission: Mission) -> None:
+        """Apply stop/pause commands issued through another API replica."""
+        terminal_statuses = {"completed", "failed", "cancelled", "timed_out"}
+        while mission.is_stopped() is not True and mission.status not in terminal_statuses:
+            await asyncio.sleep(2)
+            status = await self.lifecycle.get_db_control_status(mission.id)
+            if status == "stopping":
+                mission.stop()
+                return
+            paused_event = getattr(mission, "_paused_event", None)
+            is_paused = bool(paused_event is not None and not paused_event.is_set())
+            if status == "paused" and is_paused:
+                continue
+            if status == "paused" and mission.status != "paused":
+                mission.pause()
+            elif status in {"running", "resuming"} and mission.status == "paused":
+                mission.resume()
 
     async def _llm_provider_healthy(self, mission: Mission) -> bool:
         """Fail visibly before a long mission if the LLM gateway is unavailable."""
@@ -194,7 +223,9 @@ class MissionExecutionManager:
                         if _local:
                             vpn_path = str(_local)
                         else:
-                            mission.log(f"[WARN] VPN config '{mission.vpn_config}' not found in S3, skipping VPN")
+                            raise RuntimeError(
+                                f"VPN config '{mission.vpn_config}' not found in S3; refusing direct-network fallback"
+                            )
 
                     sandbox_info = await pool.create(
                         mission.id,
@@ -206,6 +237,10 @@ class MissionExecutionManager:
                 )
                 return sandbox_info
             except Exception as e:
+                if mission.vpn_config:
+                    # A mission that explicitly requested a VPN must never
+                    # continue through the shared worker without that tunnel.
+                    raise RuntimeError(f"VPN-protected sandbox unavailable: {e}") from e
                 logger.warning("Sandbox creation failed for mission %s: %s", mission.id, e, exc_info=True)
 
         # Containerized deployment: tools run via shared worker queue
@@ -263,6 +298,12 @@ class MissionExecutionManager:
             raise RuntimeError("No plan created")
 
         await self._execute_mission_tasks(mission, context)
+
+        if mission.is_stopped() is True:
+            mission.set_status("cancelled")
+            mission.log("Mission cancelled by operator")
+            await self.lifecycle.update_db_status(mission)
+            return
 
         record_mission_lessons(mission)
         await index_to_rag(mission)

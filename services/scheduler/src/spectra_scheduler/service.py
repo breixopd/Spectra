@@ -26,8 +26,16 @@ class SchedulerService(
         self.running = False
         self.tasks: list[asyncio.Task] = []
         self._named_tasks: dict[str, asyncio.Task] = {}
+        # ``_task_restarts`` is a cumulative retry counter.  The separate
+        # recovered set lets health distinguish a loop that is actively
+        # backing off from one that has already entered a replacement run.
         self._task_restarts: dict[str, int] = {}
+        self._task_recovered: set[str] = set()
         self._task_last_failure: dict[str, str] = {}
+        # Keep autoscaler state across collection cycles.  Recreating it every
+        # minute resets cooldown, idle hysteresis, and auto-heal backoff.
+        self._autoscaler = None
+        self._autoscaler_config_fingerprint: tuple | None = None
 
     async def _supervise_task(self, task_name: str, method_name: str) -> None:
         """Keep a scheduler loop alive after an unexpected return or exception.
@@ -39,18 +47,27 @@ class SchedulerService(
         """
         failures = 0
         while self.running:
+            # A replacement loop is about to start.  Mark it recovered before
+            # invoking it so health reflects the live replacement rather than
+            # leaving the service degraded after a transient failure.
+            if failures:
+                self._task_recovered.add(task_name)
             failure = "returned unexpectedly"
             try:
                 await getattr(self, method_name)()
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
+                self._task_recovered.discard(task_name)
                 failure = f"{type(exc).__name__}: {exc}"
                 logger.exception("Scheduler task '%s' crashed", task_name)
 
             if not self.running:
                 break
 
+            # A normal return while the service is still running is also a
+            # failed attempt; clear the recovered marker before backing off.
+            self._task_recovered.discard(task_name)
             failures += 1
             self._task_restarts[task_name] = failures
             self._task_last_failure[task_name] = failure
@@ -66,6 +83,12 @@ class SchedulerService(
 
     async def start(self):
         self.running = True
+        # A new service run should not inherit an active recovery marker from
+        # a previous stop/start cycle.  Restart counters are scoped to the
+        # active service run and therefore reset here.
+        self._task_restarts.clear()
+        self._task_recovered.clear()
+        self._task_last_failure.clear()
         logger.info("Scheduler service starting...")
 
         self._named_tasks = {
@@ -95,7 +118,7 @@ class SchedulerService(
                 task_status[task_name] = "missing"
             elif task.done():
                 task_status[task_name] = "dead"
-            elif task_name in self._task_restarts:
+            elif task_name in self._task_restarts and task_name not in self._task_recovered:
                 task_status[task_name] = "recovering"
             else:
                 task_status[task_name] = "alive"

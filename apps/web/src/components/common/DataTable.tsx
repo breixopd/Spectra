@@ -12,7 +12,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowDown, ArrowDownUp, ArrowUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -91,7 +91,7 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn("space-y-3", className)} aria-busy={isLoading || undefined}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-1 flex-wrap items-center gap-2">{toolbar}</div>
         <DropdownMenu>
@@ -123,11 +123,53 @@ export function DataTable<TData, TValue>({
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
+                {headerGroup.headers.map((header) => {
+                  const sorted = header.column.getIsSorted();
+                  const canSort = header.column.getCanSort();
+                  const label =
+                    typeof header.column.columnDef.header === "string"
+                      ? header.column.columnDef.header
+                      : header.column.id.replaceAll("_", " ");
+
+                  return (
+                    <TableHead
+                      key={header.id}
+                      aria-sort={
+                        canSort
+                          ? sorted === "asc"
+                            ? "ascending"
+                            : sorted === "desc"
+                              ? "descending"
+                              : "none"
+                          : undefined
+                      }
+                    >
+                      {header.isPlaceholder ? null : canSort ? (
+                        <button
+                          type="button"
+                          className="group inline-flex items-center gap-1 rounded-sm text-left hover:text-foreground"
+                          onClick={header.column.getToggleSortingHandler()}
+                          aria-label={`Sort by ${label}`}
+                          title={`Sort by ${label}`}
+                        >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {sorted === "asc" ? (
+                            <ArrowUp aria-hidden="true" className="h-3.5 w-3.5 text-primary" />
+                          ) : sorted === "desc" ? (
+                            <ArrowDown aria-hidden="true" className="h-3.5 w-3.5 text-primary" />
+                          ) : (
+                            <ArrowDownUp
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5 text-muted-foreground/60 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+                            />
+                          )}
+                        </button>
+                      ) : (
+                        flexRender(header.column.columnDef.header, header.getContext())
+                      )}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             ))}
           </TableHeader>
@@ -135,7 +177,7 @@ export function DataTable<TData, TValue>({
             {isLoading ? (
               Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={`skeleton-${index}`}>
-                  {columns.map((_, colIndex) => (
+                  {table.getVisibleLeafColumns().map((_column, colIndex) => (
                     <TableCell key={colIndex}>
                       <Skeleton className="h-4 w-full max-w-[12rem]" />
                     </TableCell>
@@ -152,7 +194,10 @@ export function DataTable<TData, TValue>({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-sm text-muted-foreground">
+                <TableCell
+                  colSpan={table.getVisibleLeafColumns().length}
+                  className="h-24 text-center text-sm text-muted-foreground"
+                >
                   {emptyMessage}
                 </TableCell>
               </TableRow>

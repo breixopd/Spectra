@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "remote-tools": {
+      "command": "ssh",
+      "args": [
+        "-i",
+        "/path/to/id_ed25519",
+        "operator@example.invalid",
+        "/opt/spectra/.venv/bin/python",
+        "-m",
+        "your_mcp_server"
+      ],
+      "env": {
+        "SPECTRA_MCP_USER_ID": "replace-with-an-authorized-user-id"
+      }
+    }
+  }
+}

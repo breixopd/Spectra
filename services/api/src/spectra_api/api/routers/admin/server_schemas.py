@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+import re
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class ServerConnectionRequest(BaseModel):
-    host: str
-    port: int = 22
-    username: str = "root"
+    host: str = Field(..., min_length=1, max_length=253)
+    port: int = Field(22, ge=1, le=65535)
+    username: str = Field("root", min_length=1, max_length=64, pattern=r"^[A-Za-z_][A-Za-z0-9_.-]*$")
     password: str | None = None
     private_key: str | None = None
     ssh_known_host: str | None = None
@@ -16,8 +18,18 @@ class ServerConnectionRequest(BaseModel):
 
 class ProvisionRequest(ServerConnectionRequest):
     service_type: str
-    service_port: int = 8080
-    extra_env: dict[str, str] = Field(default_factory=dict)
+    service_port: int = Field(8080, ge=1, le=65535)
+    extra_env: dict[str, str] = Field(default_factory=dict, max_length=16)
+
+    @field_validator("extra_env")
+    @classmethod
+    def validate_extra_env(cls, value: dict[str, str]) -> dict[str, str]:
+        for key, env_value in value.items():
+            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+                raise ValueError(f"Invalid environment variable name: {key}")
+            if len(env_value) > 4096:
+                raise ValueError(f"Environment variable '{key}' exceeds 4096 characters")
+        return value
 
 
 class DeprovisionRequest(ServerConnectionRequest):

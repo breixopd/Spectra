@@ -374,9 +374,11 @@ class PaymentService:
         else:
             from spectra_common.config import get_settings
 
-            provider = get_settings().PAYMENT_PROVIDER
-            adapter_cls = _ADAPTERS.get(provider, ManualPaymentAdapter)
-            self._adapter = adapter_cls()
+            # An unknown provider is a deployment/configuration error.  Do not
+            # silently downgrade to manual billing, which could make checkout
+            # appear successful while no external payment was processed.
+            provider = str(get_settings().PAYMENT_PROVIDER or "").strip().lower()
+            self._adapter = get_payment_adapter(provider)
 
     @staticmethod
     def _normalize_subscription_status(status: str | None) -> str:

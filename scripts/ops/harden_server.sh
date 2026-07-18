@@ -113,6 +113,12 @@ case "${ROLE}" in
     ;;
   worker)
     # Tool execution / sandbox host — minimal exposure
+    # Swarm workers still need the control, gossip, and overlay ports, but
+    # expose them only on the private WireGuard interface.
+    ufw allow in on wg0 proto tcp to any port 2377 comment "Swarm mgmt (wg0)"
+    ufw allow in on wg0 proto tcp to any port 7946 comment "Swarm node (wg0)"
+    ufw allow in on wg0 proto udp to any port 7946 comment "Swarm node (wg0)"
+    ufw allow in on wg0 proto udp to any port 4789 comment "Swarm overlay (wg0)"
     # Docker network isolation: restrict container egress by default
     iptables -I FORWARD 1 -i docker0 ! -o docker0 -j DROP 2>/dev/null || true
     iptables -I FORWARD 1 -i docker0 -o wg+ -j ACCEPT 2>/dev/null || true
@@ -125,7 +131,7 @@ case "${ROLE}" in
       mkdir -p /etc/iptables
       iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
     fi
-    log "Worker role: SSH only, Docker containers network-isolated"
+    log "Worker role: SSH + private WireGuard Swarm ports, Docker containers network-isolated"
     ;;
   all)
     # Full access — current behavior unchanged
@@ -231,7 +237,7 @@ systemctl restart sshd || systemctl restart ssh
 case "${ROLE}" in
   edge)   FW_SUMMARY="SSH, HTTP, HTTPS (Swarm on wg0 only)";;
   db)     FW_SUMMARY="SSH, Postgres/Redis/Garage (wg0 only)";;
-  worker) FW_SUMMARY="SSH only (Docker network-isolated)";;
+  worker) FW_SUMMARY="SSH, private WireGuard Swarm ports (Docker network-isolated)";;
   all)    FW_SUMMARY="SSH, HTTP, HTTPS, Swarm ports";;
 esac
 

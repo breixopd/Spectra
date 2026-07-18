@@ -10,7 +10,7 @@ Use this checklist before tagging a release or deploying production images. All 
    ./scripts/runbooks/ci-parity.sh all
    ```
 
-   Minimum for a hotfix branch if integration time is blocked: `./scripts/runbooks/ci-parity.sh ci`. This does **not** by itself replace **`deps`** (`pip-audit`), **`version-check`**, **`docker-build`** (Trivy), or push-only **`compose-smoke`** — run those separately when needed (see `.github/workflows/ci.yml`).
+   Minimum for a hotfix branch if integration time is blocked: `./scripts/runbooks/ci-parity.sh ci`. This does **not** by itself replace **`deps`** (`pip-audit`), **`version-check`**, **`docker-build`** (Trivy), or PR/main-merge **`compose-smoke`** — run those separately when needed (see `.github/workflows/ci.yml`).
 
 2. **Compose files valid** (matches CI `docker-build` compose step):
 
@@ -26,18 +26,17 @@ Use this checklist before tagging a release or deploying production images. All 
    docker run --rm spectra-test-ci bandit -r packages/ services/ -c pyproject.toml --severity-level high --confidence-level high
    ```
 
-4. **Dependency audit** (host Python; matches CI `deps` job intent):
+4. **Dependency audit** (matches CI `deps` exactly; audit the frozen workspace lock):
 
    ```bash
-   pip install pip-audit
-   pip install -r requirements/app.txt
-   pip-audit --fix --dry-run -l --ignore-vuln PYSEC-2024-65 --ignore-vuln PYSEC-2024-66 --ignore-vuln CVE-2026-3219
+   uv export --frozen --all-packages --no-emit-workspace --format requirements.txt -o /tmp/spectra-uv-lock-export.txt
+   uvx pip-audit --strict --require-hashes -r /tmp/spectra-uv-lock-export.txt
    ```
 
 ## Staging / smoke (strongly recommended)
 
-- **Compose smoke** (push-only in CI; run manually before major releases): see [compose-smoke-ci.md](compose-smoke-ci.md).
-- **Health**: `./scripts/health_check.sh https://<staging-host>/api/health`
+- **Compose smoke** (pull requests and `main` pushes in CI; run manually before major releases): see [compose-smoke-ci.md](compose-smoke-ci.md).
+- **Health**: `./scripts/health_check.sh https://<staging-host>/api/healthz` followed by the public platform check at `/api/v1/health?scope=public`.
 - **Browser smoke**: `./tests/run_ui_tests.sh` against staging URL if configured.
 
 ## Operational readiness

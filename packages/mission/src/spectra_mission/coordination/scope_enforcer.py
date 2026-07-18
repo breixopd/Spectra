@@ -141,7 +141,7 @@ class ScopeEnforcer:
     def _check_authorization(self) -> ScopeCheck:
         """Verify authorization is confirmed for this mission."""
         auth = getattr(self.mission, "authorization_confirmed", None)
-        if auth is False:
+        if auth is not True:
             return ScopeCheck(
                 allowed=False,
                 check_type="authorization",

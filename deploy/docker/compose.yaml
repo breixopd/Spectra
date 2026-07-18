@@ -30,8 +30,6 @@ x-security: &security-defaults
   # (Tailscale host search + broken embedded-only forwarding is common on single-node dev hosts).
   dns:
     - 127.0.0.11
-    - 8.8.8.8
-    - 1.1.1.1
   dns_search: []
   dns_opt:
     - ndots:1
@@ -42,8 +40,6 @@ x-security-stateful: &security-stateful
   security_opt: ["no-new-privileges:true"]
   dns:
     - 127.0.0.11
-    - 8.8.8.8
-    - 1.1.1.1
   dns_search: []
   dns_opt:
     - ndots:1
@@ -67,7 +63,7 @@ services:
 
   garage:
     image: dxflrs/garage:v2.2.0
-    container_name: spectra-garage
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}garage
     labels:
       spectra.managed: "true"
       spectra.role: "storage"
@@ -102,7 +98,7 @@ services:
   # with TLS + htpasswd auth; locally it is internal to the backend network.
   registry:
     image: registry:2.8.3
-    container_name: spectra-registry
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}registry
     profiles: [app, dev, test]
     labels:
       spectra.managed: "true"
@@ -144,7 +140,7 @@ services:
 
   db:
     image: pgvector/pgvector:pg16
-    container_name: spectra-db
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}db
     dns_search: []
     labels:
       spectra.managed: "true"
@@ -185,7 +181,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: spectra-redis
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}redis
     dns_search: []
     labels:
       spectra.managed: "true"
@@ -213,7 +209,7 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:24.11-alpine
-    container_name: spectra-clickhouse
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}clickhouse
     dns_search: []
     labels:
       spectra.managed: "true"
@@ -258,7 +254,7 @@ services:
 
   tensorzero:
     image: ${TENSORZERO_IMAGE:-tensorzero/gateway:2026.6.0}
-    container_name: spectra-tensorzero
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}tensorzero
     labels:
       spectra.managed: "true"
       spectra.role: "ai-gateway"
@@ -298,7 +294,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.caddy
-    container_name: spectra-caddy
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}caddy
     profiles: [app, test]
     labels:
       spectra.managed: "true"
@@ -343,14 +339,16 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.api
-    container_name: spectra-app
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}app
     dns_search: []
     profiles: [app, test]
     labels:
       spectra.managed: "true"
       spectra.role: "api"
     ports:
-      - "5000:5000"
+      # Keep the application behind Caddy in production; local-only access is
+      # sufficient for diagnostics and avoids bypassing TLS/rate limits.
+      - "127.0.0.1:${APP_PORT:-5000}:5000"
     env_file:
       - ${ENV_FILE:-../../.env}
     # The container health check is a liveness probe. Full platform readiness is
@@ -410,7 +408,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.ai
-    container_name: spectra-ai
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}ai
     profiles: [app, test]
     labels:
       spectra.managed: "true"
@@ -465,7 +463,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.scheduler
-    container_name: spectra-scheduler
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}scheduler
     profiles: [app, test]
     labels:
       spectra.managed: "true"
@@ -519,7 +517,7 @@ services:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.worker
     profiles: [app, test]
-    container_name: spectra-worker
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}worker
     labels:
       spectra.managed: "true"
       spectra.role: "worker"
@@ -568,7 +566,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.api
-    container_name: spectra-app-replica
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}app-replica
     profiles: [dev, test]
     labels:
       spectra.managed: "true"
@@ -623,7 +621,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.worker
-    container_name: spectra-tools
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}tools
     profiles: [dev, test]
     labels:
       spectra.managed: "true"
@@ -659,7 +657,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.test
-    container_name: spectra-test-runner
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}test-runner
     profiles: [test]
     labels:
       spectra.managed: "true"
@@ -688,9 +686,9 @@ services:
       - WEB_TARGET_URL=http://testphp.vulnweb.com
       - SAFE_MODE=true
       - PERMISSION_BOUNDARY=${SPECTRA_TARGETS_SUBNET:-10.254.0.0/24}
-      # Chromium applies HTTPS-first upgrades to the single-label `app` host.
-      # `spectra-app` is the stable container-name alias on the same network.
-      - APP_BASE_URL=http://spectra-app:5000
+      # Chromium applies HTTPS-first upgrades to a single-label `app` host.
+      # The configurable container alias keeps parallel worktrees isolated.
+      - APP_BASE_URL=http://${SPECTRA_CONTAINER_PREFIX:-spectra-}app:5000
       - APP_USERNAME=admin
       - APP_PASSWORD=${ADMIN_PASSWORD:-TestPassword123!}
       - AI_SERVICE_URL=http://ai-svc:5010
@@ -702,6 +700,7 @@ services:
     volumes:
       - ../../packages:/app/packages:ro
       - ../../services:/app/services:ro
+      - ../../scripts:/app/scripts:ro
       - ../../tests:/app/tests:ro
       - ../../plugins:/app/plugins
       # Live plugin e2e exercises the golden-image Docker build path.
@@ -733,7 +732,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.test
-    container_name: spectra-load-test-runner
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}load-test-runner
     profiles: [test]
     labels:
       spectra.managed: "true"
@@ -792,7 +791,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.test
-    container_name: spectra-settings-test-runner
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}settings-test-runner
     profiles: [test]
     labels:
       spectra.managed: "true"
@@ -837,7 +836,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.test
-    container_name: spectra-unit-test-runner
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}unit-test-runner
     profiles: [test]
     labels:
       spectra.managed: "true"
@@ -863,6 +862,7 @@ services:
       - ../../.github:/app/.github:ro
       - ../../packages:/app/packages:ro
       - ../../services:/app/services:ro
+      - ../../scripts:/app/scripts:ro
       - ../../tests:/app/tests:ro
       - ../../pyproject.toml:/app/pyproject.toml:ro
       - ../docker:/app/deploy/docker:ro
@@ -879,7 +879,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.playwright
-    container_name: spectra-ui-test-runner
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}ui-test-runner
     profiles: [test]
     labels:
       spectra.managed: "true"
@@ -910,7 +910,7 @@ services:
 
   metasploitable:
     image: tleemcjr/metasploitable2
-    container_name: spectra-metasploitable
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}metasploitable
     profiles: [targets, test]
     labels:
       spectra.role: test-target
@@ -921,7 +921,7 @@ services:
 
   dvwa:
     image: vulnerables/web-dvwa
-    container_name: spectra-dvwa
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}dvwa
     profiles: [targets, test]
     labels:
       spectra.role: test-target
@@ -935,7 +935,7 @@ services:
     build:
       context: targets
       dockerfile: Dockerfile.vuln-web
-    container_name: spectra-vuln-web
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}vuln-web
     profiles: [targets, test]
     labels:
       spectra.role: test-target
@@ -959,7 +959,7 @@ services:
     build:
       context: targets
       dockerfile: Dockerfile.vuln-ssh
-    container_name: spectra-vuln-ssh
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}vuln-ssh
     profiles: [targets, test]
     labels:
       spectra.role: test-target
@@ -983,7 +983,7 @@ services:
     build:
       context: targets
       dockerfile: Dockerfile.vuln-network
-    container_name: spectra-vuln-network
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}vuln-network
     profiles: [targets, test]
     labels:
       spectra.role: test-target
@@ -1010,7 +1010,7 @@ services:
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
-    container_name: spectra-cadvisor
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}cadvisor
     profiles: [observability]
     labels:
       spectra.managed: "true"
@@ -1029,7 +1029,7 @@ services:
 
   pyroscope:
     image: grafana/pyroscope:1.12.0
-    container_name: spectra-pyroscope
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}pyroscope
     profiles: [observability]
     labels:
       spectra.managed: "true"
@@ -1048,9 +1048,6 @@ networks:
   backend:
     driver: bridge
     internal: true
-    ipam:
-      config:
-        - subnet: 172.31.0.0/16
   # Only PostgreSQL and ephemeral tool sandboxes join this network. Sandbox
   # egress happens via a separate per-mission network created by the scheduler.
   sandbox:

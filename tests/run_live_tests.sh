@@ -15,6 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 COMPOSE_BASE="deploy/docker/compose.yaml"
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-spectra-live-tests}"
+export SPECTRA_CONTAINER_PREFIX="${SPECTRA_CONTAINER_PREFIX:-spectra-live-tests-}"
 
 cd "$PROJECT_DIR"
 
@@ -148,7 +149,7 @@ curl -sf http://localhost:5000/api/health > /dev/null || {
 wait_for_tools_worker_ready
 
 echo "Waiting for vulnerable targets to be healthy..."
-for target in spectra-vuln-web spectra-vuln-ssh spectra-vuln-network; do
+for target in "${SPECTRA_CONTAINER_PREFIX}vuln-web" "${SPECTRA_CONTAINER_PREFIX}vuln-ssh" "${SPECTRA_CONTAINER_PREFIX}vuln-network"; do
     target_healthy=false
     for i in $(seq 1 30); do
         if docker inspect --format='{{.State.Health.Status}}' "$target" 2>/dev/null | grep -q healthy; then

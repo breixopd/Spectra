@@ -419,7 +419,7 @@ graph TB
 | **ClickHouse** | — | `clickhouse-client --query "SELECT 1"` |
 | **TensorZero** | ClickHouse | `wget http://localhost:3000/health` |
 | **AI Service** | PostgreSQL, TensorZero | `curl http://localhost:5010/health` |
-| **App** | PostgreSQL, Redis, Garage, AI Service, TensorZero | `curl http://localhost:5000/api/health` |
+| **App** | PostgreSQL, Redis, Garage, AI Service, TensorZero | `curl http://localhost:5000/api/healthz` (liveness) or `curl http://localhost:5000/api/health/ready` (readiness) |
 | **Scheduler** | PostgreSQL | `curl http://localhost:5011/health` |
 | **Worker** | PostgreSQL | `curl http://localhost:5012/health` |
 | **Caddy** | App | `wget http://localhost:80` |

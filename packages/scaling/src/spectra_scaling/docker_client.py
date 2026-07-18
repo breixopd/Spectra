@@ -283,7 +283,7 @@ async def restart_container(name: str, timeout: int = 30) -> bool:
 
 
 async def update_service_image(name: str, image: str, registry_auth: bool = True) -> bool:
-    """Update a service to a new image (rolling update)."""
+    """Update a service to a new image and verify Swarm convergence."""
     try:
         client = _get_client()
         try:
@@ -299,7 +299,19 @@ async def update_service_image(name: str, image: str, registry_auth: bool = True
                 force_update=current_force + 1,
                 fetch_current_spec=True,
             )
-            return True
+            desired = int(spec.get("Mode", {}).get("Replicated", {}).get("Replicas", 1) or 1)
+            deadline = asyncio.get_running_loop().time() + 180
+            while asyncio.get_running_loop().time() < deadline:
+                tasks = await _run_sync(svc.tasks, filters={"desired-state": "running"})
+                states = [str(task.get("Status", {}).get("State", "")) for task in tasks]
+                if any(state in {"failed", "rejected", "orphaned"} for state in states):
+                    logger.error("Swarm rollout for %s has a failed task: %s", name, states)
+                    return False
+                if sum(state == "running" for state in states) >= desired:
+                    return True
+                await asyncio.sleep(2)
+            logger.error("Timed out waiting for Swarm rollout of %s to converge", name)
+            return False
         finally:
             client.close()
     except (DockerException, APIError) as exc:
@@ -654,7 +666,14 @@ async def _get_registry_digest_v2(image_ref: str) -> str | None:
 
     import httpx
 
-    for scheme in ("https", "http"):
+    from spectra_common.config import get_settings
+
+    schemes = ["https"]
+    if get_settings().IMAGE_ALLOW_INSECURE_REGISTRY_HTTP:
+        logger.warning("Polling registry %s over insecure HTTP by explicit configuration", registry)
+        schemes.append("http")
+
+    for scheme in schemes:
         url = f"{scheme}://{registry}/v2/{repo}/manifests/{tag}"
         try:
             async with httpx.AsyncClient(timeout=10) as http_client:

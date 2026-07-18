@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 COMPOSE_FILE="deploy/docker/compose.yaml"
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-spectra-ui-tests}"
+export SPECTRA_CONTAINER_PREFIX="${SPECTRA_CONTAINER_PREFIX:-spectra-ui-tests-}"
 export GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}"
 export GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
 # Test credentials are deterministic fixtures; keep their values out of local and CI logs.
@@ -77,8 +78,8 @@ except urllib.error.HTTPError as exc:
 echo "Running UI tests..."
 docker compose -f "${COMPOSE_FILE}" --profile test build ui-test-runner
 # Chromium's HTTPS-first policy upgrades the single-label `app` hostname to TLS.
-# The stable compose container alias avoids that upgrade while still staying on the
-# private Docker network (Caddy on host :15080 is only for manual browser testing).
-docker compose -f "${COMPOSE_FILE}" --profile test run --rm -e APP_BASE_URL=http://spectra-app:5000 ui-test-runner tests/e2e/ui/test_spa_workspace.py -v --tb=short -x -p no:cov --confcutdir=tests/e2e/ui --override-ini=addopts= "$@"
+# The prefixed compose container alias avoids that upgrade while keeping each
+# worktree isolated on its private Docker network.
+docker compose -f "${COMPOSE_FILE}" --profile test run --rm -e "APP_BASE_URL=http://${SPECTRA_CONTAINER_PREFIX}app:5000" ui-test-runner tests/e2e/ui/test_spa_workspace.py -v --tb=short -x -p no:cov --confcutdir=tests/e2e/ui --override-ini=addopts= "$@"
 
 echo "=== Done ==="

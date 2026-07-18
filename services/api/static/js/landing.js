@@ -4,20 +4,32 @@
 (function () {
   "use strict";
 
+  // Mark the progressive-enhancement path only once JavaScript is available.
+  // The stylesheet keeps the page fully readable without this class.
+  document.documentElement.classList.add("js");
+
   var nav = document.getElementById("nav");
   var toggle = document.getElementById("navToggle");
   var links = document.getElementById("navLinks");
+
+  if (!nav || !toggle || !links) {
+    return;
+  }
 
   // Nav background once the hero top leaves the viewport (sentinel-based).
   var sentinel = document.createElement("div");
   sentinel.style.cssText = "position:absolute;top:0;left:0;height:48px;width:1px;pointer-events:none;";
   document.body.prepend(sentinel);
-  new IntersectionObserver(
-    function (entries) {
-      nav.classList.toggle("scrolled", !entries[0].isIntersecting);
-    },
-    { threshold: 0 },
-  ).observe(sentinel);
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(
+      function (entries) {
+        nav.classList.toggle("scrolled", !entries[0].isIntersecting);
+      },
+      { threshold: 0 },
+    ).observe(sentinel);
+  } else {
+    nav.classList.add("scrolled");
+  }
 
   toggle.addEventListener("click", function () {
     var open = links.classList.toggle("open");
@@ -31,10 +43,25 @@
     }
   });
 
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && links.classList.contains("open")) {
+      links.classList.remove("open");
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.focus();
+    }
+  });
+
   // Scroll reveals, disabled under reduced motion (CSS also neutralizes).
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var reveals = document.querySelectorAll(".reveal");
   if (reduceMotion) {
+    reveals.forEach(function (el) {
+      el.classList.add("visible");
+    });
+    return;
+  }
+
+  if (!("IntersectionObserver" in window)) {
     reveals.forEach(function (el) {
       el.classList.add("visible");
     });

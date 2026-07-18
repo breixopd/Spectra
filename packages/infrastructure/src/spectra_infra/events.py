@@ -110,6 +110,8 @@ class EventBus:
         self._max_history = 1000
         self._event_history: deque[Event] = deque(maxlen=self._max_history)
         self._handlers: dict[str, list[tuple[Callable, bool]]] = {}
+        self._pending_tasks: set[asyncio.Task[Any]] = set()
+        self._max_pending_tasks = 256
 
     def subscribe(
         self,
@@ -187,7 +189,7 @@ class EventBus:
                 result = handler(event)
                 if asyncio.iscoroutine(result):
                     await result
-            except (OSError, RuntimeError, ValueError) as e:
+            except Exception as e:
                 logger.error("Event handler error for %s: %s", event_name, e, exc_info=True)
                 if critical:
                     raise
@@ -207,7 +209,16 @@ class EventBus:
             asyncio.get_running_loop()
             from spectra_common.tasks import create_safe_task
 
-            create_safe_task(self.emit(event_type, source, **data), name="event_emit")
+            if len(self._pending_tasks) >= self._max_pending_tasks:
+                logger.warning(
+                    "Dropping async event %s: dispatch backlog reached %d tasks",
+                    event_type,
+                    self._max_pending_tasks,
+                )
+                return
+            task = create_safe_task(self.emit(event_type, source, **data), name="event_emit")
+            self._pending_tasks.add(task)
+            task.add_done_callback(self._pending_tasks.discard)
         except RuntimeError:
             # No running loop - skip async handlers
             event_name = event_type.value if isinstance(event_type, EventType) else event_type

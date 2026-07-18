@@ -73,6 +73,16 @@ a {
   text-decoration: none;
 }
 
+/* Keep keyboard navigation obvious without changing the pointer experience. */
+:where(a, button, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--green-bright);
+  outline-offset: 3px;
+}
+
+:where(a, button, summary, [tabindex]):focus:not(:focus-visible) {
+  outline: none;
+}
+
 img {
   max-width: 100%;
   display: block;
@@ -1205,12 +1215,19 @@ section {
    -------------------------------------------------------------------------- */
 
 .reveal {
-  opacity: 0;
-  transform: translateY(14px);
+  /* Content stays visible when scripts are disabled. */
+  opacity: 1;
+  transform: none;
   transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1), transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.reveal.visible {
+html.js .reveal {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.reveal.visible,
+html.js .reveal.visible {
   opacity: 1;
   transform: none;
 }
@@ -1220,7 +1237,9 @@ section {
     scroll-behavior: auto;
   }
 
-  .reveal {
+  .reveal,
+  html.js .reveal,
+  html.js .reveal.visible {
     opacity: 1;
     transform: none;
     transition: none;
@@ -1273,10 +1292,36 @@ section {
   }
 
   .nav-toggle {
+    display: none;
+  }
+
+  html.js .nav-toggle {
     display: flex;
   }
 
-  .nav-links {
+  /* If JavaScript is unavailable, keep the mobile navigation in normal flow
+     so every destination remains reachable without a hidden menu. */
+  html:not(.js) .nav {
+    position: static;
+    height: auto;
+  }
+
+  html:not(.js) .nav-inner {
+    height: auto;
+    flex-wrap: wrap;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  html:not(.js) .nav-links {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+    padding-top: 0.5rem;
+  }
+
+  html.js .nav-links {
     position: fixed;
     top: var(--nav-h);
     left: 0;
@@ -1291,7 +1336,7 @@ section {
     display: none;
   }
 
-  .nav-links.open {
+  html.js .nav-links.open {
     display: flex;
   }
 

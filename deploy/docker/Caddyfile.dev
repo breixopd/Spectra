@@ -21,21 +21,21 @@ import Caddyfile.snippets
 
 		handle /static/* {
 			header Cache-Control "public, max-age=3600"
-			reverse_proxy {$APP_UPSTREAM:spectra-app:5000}
+			reverse_proxy {$APP_UPSTREAM:app:5000}
 		}
 
 		handle /assets/* {
 			header Cache-Control "public, max-age=604800, immutable"
-			reverse_proxy {$APP_UPSTREAM:spectra-app:5000}
+			reverse_proxy {$APP_UPSTREAM:app:5000}
 		}
 
 		handle @websocket {
-			reverse_proxy {$APP_UPSTREAM:spectra-app:5000}
+			reverse_proxy {$APP_UPSTREAM:app:5000}
 		}
 
 		import rate_limit_public 30
 
-		reverse_proxy {$APP_UPSTREAM:spectra-app:5000} {
+		reverse_proxy {$APP_UPSTREAM:app:5000} {
 			# Use process liveness for proxy membership.  /api/health is an
 			# intentionally dependency-aware platform diagnostic and can be
 			# degraded while this API instance remains safe to serve.

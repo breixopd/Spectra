@@ -22,12 +22,28 @@ commit-level change list and published image references.
 
 - Made `main` the release-ready branch and documented `dev` plus isolated
   worktree development as the supported contribution flow.
+- Hardened Swarm scaling, scheduler leadership, durable mission controls, and
+  managed maintenance cleanup so transient failures fail closed and recover
+  without silently affecting unrelated Docker workloads.
+- Tightened upload, provisioning, endpoint, backup, image-promotion, and VPN
+  safety boundaries, with explicit production configuration and deployment
+  readiness checks.
+- Reworked the public landing page and application state surfaces for a more
+  accessible, responsive experience with no-JavaScript and reduced-motion
+  fallbacks.
 - Rebuilt the API frontend stage on Node 22, added npm audit gates, and aligned
   Playwright's container browser image with the locked client version.
 - Separated API liveness from platform readiness so UI verification does not
   need external AI providers, while deployment gates retain full readiness.
 - Made Caddy use `/api/healthz` for upstream and container liveness, so a
   transient optional dependency cannot take a live API instance out of service.
+- Made the anonymous `/api/health` default use the cheap, redacted public scope;
+  explicit platform and readiness scopes remain available for operators.
+- Removed the fixed backend Docker subnet so parallel worktrees receive
+  collision-free networks, and fixed Caddy's default upstream to the Compose
+  service alias instead of a checkout-specific container name.
+- Fixed the vulnerable network target's healthcheck image dependency and made
+  live-target harnesses honor `SPECTRA_CONTAINER_PREFIX` for isolated runs.
 - Restored authenticated API documentation and help routes, with a responsive
   help surface that matches the authenticated application boundary.
 
@@ -54,5 +70,8 @@ commit-level change list and published image references.
 - Added browser coverage for authenticated help/API docs and a same-second
   token uniqueness regression for logout followed by immediate re-login.
 - Rebased the unit-coverage ratchet on the measured full-suite baseline: CI and
-  release now enforce 67% rather than an unreachable 70%, with no source areas
-  excluded from the gate.
+  release now enforce a 65% floor across every first-party package, with no
+  source areas excluded from the gate.
+- Final verification covers 3,943 Docker unit tests, full Compose service
+  health, performance smoke, live API e2e, authenticated Playwright UI flows,
+  strict dependency auditing, secret scanning, and workflow security checks.

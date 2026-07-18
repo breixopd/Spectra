@@ -27,6 +27,7 @@ AI provider, model, API keys, and routing settings are configured through the **
 |----------|------|---------|-------------|
 | `JWT_SECRET_KEY` | SecretStr | `""` | Secret key for JWT tokens. Auto-generated if empty or placeholder. Set for stable sessions across restarts |
 | `ENCRYPTION_KEY` | str | `""` | Separate key for encrypting MFA TOTP secrets and credentials. Falls back to `JWT_SECRET_KEY` if not set. Set explicitly to isolate signing and encryption key domains |
+| `SPECTRA_SETUP_TOKEN` | SecretStr | `""` | One-time administrator enrollment token for `/api/v1/auth/setup`; required in production (Swarm: `SPECTRA_SETUP_TOKEN_FILE`) |
 | `JWT_ALGORITHM` | str | `"HS256"` | JWT signing algorithm |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | int | `1440` | Token lifetime in minutes (default: 24 hours) |
 
@@ -269,13 +270,16 @@ When a setting is changed via the Admin UI, all running replicas are notified vi
 
 ## Auto-Scaling
 
-Auto-scaling is opt-in and disabled by default. See [Scaling](scaling.md#auto-scaling) for architecture and policy details.
+Auto-scaling is opt-in and disabled by default. Automatic decisions require a
+Docker Swarm manager; Docker Compose deployments use manual
+`docker compose up --scale` changes. See [Scaling](scaling.md#auto-scaling) for
+architecture and policy details.
 
 > **Note:** Environment variables below serve as initial defaults. After first boot, the **database** (managed via Admin UI → Scaling tab) is the source of truth. Changes made in the Admin UI override `.env` values.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `AUTOSCALE_ENABLED` | bool | `false` | Enable reactive auto-scaling |
+| `AUTOSCALE_ENABLED` | bool | `false` | Enable reactive Swarm auto-scaling (Compose remains manual) |
 | `AUTOSCALE_WORKER_MIN` | int | `1` | Minimum worker replicas |
 | `AUTOSCALE_WORKER_MAX` | int | `10` | Maximum worker replicas (4 GB+ each; diminishing returns beyond 10) |
 | `AUTOSCALE_API_MIN` | int | `1` | Minimum API replicas |
