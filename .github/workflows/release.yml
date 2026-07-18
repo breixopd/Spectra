@@ -722,6 +722,8 @@ jobs:
           VERSION: ${{ needs.release.outputs.version }}
           RELEASE_SHA: ${{ needs.release.outputs.release_sha }}
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "v${VERSION}" -m "Release ${VERSION}" "${RELEASE_SHA}"
           git push origin "refs/tags/v${VERSION}:refs/tags/v${VERSION}"
 
