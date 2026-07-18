@@ -34,7 +34,7 @@ jobs:
       packages: write
     env:
       ENCRYPTION_KEY: test-encryption-key
-      ENV_FILE: ../.env.test
+      ENV_FILE: ../../.env.test
       GHCR_USERNAME: ${{ github.repository_owner }}
     concurrency:
       group: release
