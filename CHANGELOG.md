@@ -10,6 +10,8 @@ commit-level change list and published image references.
 
 - Refreshed the locked Python dependency set to remediated upstream releases
   and made the dependency audit fail closed without advisory exemptions.
+- Added a unique JWT ID to access and refresh tokens so rapid logout/login
+  cycles cannot revoke a newly issued token with the same second-level claims.
 - Added full-history secret scanning and GitHub Actions security analysis to CI.
 - Hardened release workflow permissions and artifact handling.
 - Replaced two rejected inline-Python plugin checks with first-party worker
@@ -26,6 +28,8 @@ commit-level change list and published image references.
   need external AI providers, while deployment gates retain full readiness.
 - Made Caddy use `/api/healthz` for upstream and container liveness, so a
   transient optional dependency cannot take a live API instance out of service.
+- Restored authenticated API documentation and help routes, with a responsive
+  help surface that matches the authenticated application boundary.
 
 ### Added
 
@@ -47,6 +51,8 @@ commit-level change list and published image references.
 - Added regressions for Caddy liveness, parallel-worktree target subnets,
   TensorZero's test-only provider configuration, worker CLI entry points, and
   first-party plugin input boundaries.
+- Added browser coverage for authenticated help/API docs and a same-second
+  token uniqueness regression for logout followed by immediate re-login.
 - Rebased the unit-coverage ratchet on the measured full-suite baseline: CI and
   release now enforce 67% rather than an unreachable 70%, with no source areas
   excluded from the gate.
