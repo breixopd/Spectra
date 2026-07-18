@@ -275,7 +275,10 @@ def _raise_if_token_invalidated(user: User, payload: dict[str, object]) -> None:
         return
 
     token_iat = payload.get("iat")
-    if isinstance(token_iat, (int, float)) and datetime.fromtimestamp(token_iat, tz=UTC) < user.invalidated_before:
+    # JWT NumericDate claims have whole-second precision while the database
+    # timestamp includes microseconds. Compare at the token's precision so an
+    # immediate re-login after logout is not rejected as stale.
+    if isinstance(token_iat, (int, float)) and int(token_iat) < int(user.invalidated_before.timestamp()):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session invalidated",

@@ -83,8 +83,10 @@ async def _load_active_user_from_payload_with_session(
         token_iat = payload.get("iat")
         if not token_iat:
             return None
-        token_issued_at = datetime.fromtimestamp(token_iat, tz=UTC)
-        if token_issued_at < user.invalidated_before:
+        # JWT NumericDate claims have whole-second precision while the database
+        # timestamp includes microseconds. Compare at the token's precision so
+        # a legitimate login immediately after logout is not rejected as stale.
+        if int(token_iat) < int(user.invalidated_before.timestamp()):
             return None
 
     return user

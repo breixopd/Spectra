@@ -173,6 +173,17 @@ class TestLogoutRevokesRefreshToken:
         assert exc.value.status_code == 401
         assert "invalidated" in exc.value.detail.lower()
 
+    def test_token_issued_in_same_jwt_second_as_logout_remains_usable(self):
+        """JWT NumericDate precision must not reject an immediate re-login."""
+        from spectra_api.api.routers.auth._helpers import _raise_if_token_invalidated
+
+        token_iat = int(datetime.now(UTC).timestamp())
+        payload = {"iat": token_iat}
+        user = MagicMock()
+        user.invalidated_before = datetime.fromtimestamp(token_iat, tz=UTC) + timedelta(microseconds=1)
+
+        _raise_if_token_invalidated(user, payload)
+
 
 # ---------------------------------------------------------------------------
 # MFA cancel invalidates pending token
