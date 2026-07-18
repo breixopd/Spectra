@@ -90,7 +90,7 @@ The scheduler service handles most recurring maintenance automatically. These ta
 | DB maintenance | `DB_MAINTENANCE_INTERVAL` (7 days) | VACUUM ANALYZE on key tables |
 | Stale job recovery | `STALE_JOB_RECOVERY_INTERVAL` (5 min) | Recovers jobs stuck in `in_progress` for >30 min |
 | Exploit DB refresh | `EXPLOIT_DB_REFRESH_HOURS` (168h) | Updates exploit database indexes |
-| Docker cleanup | `DOCKER_CLEANUP_INTERVAL` (7 days) | Prunes exited containers, dangling images, orphaned volumes |
+| Docker cleanup | `DOCKER_CLEANUP_INTERVAL` (7 days) | Prunes only Spectra-managed exited containers and dangling images; managed volumes are opt-in |
 | Disk monitor | Periodic | Monitors disk usage and warns on low space |
 | Capacity monitor | 60s | Tracks server pool utilization, drives auto-scaling |
 
@@ -100,7 +100,11 @@ Manual scripts under `scripts/ops/` are still available for on-demand operations
 
 ## Auto-Scaling Management
 
-When `AUTOSCALE_ENABLED=true`, the scheduler's capacity monitor automatically adjusts replica counts. See [Scaling](scaling.md#auto-scaling) for configuration and policy details.
+When `AUTOSCALE_ENABLED=true` on Docker Swarm, the scheduler's capacity monitor
+automatically adjusts replica counts through the Swarm backend. Compose
+deployments remain manual (`docker compose up --scale`); keep this setting off
+unless a Swarm manager is available. See [Scaling](scaling.md#auto-scaling) for
+configuration and policy details.
 
 To monitor auto-scaling activity:
 

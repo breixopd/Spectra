@@ -5,11 +5,49 @@ set -euo pipefail
 # Assists with migrating Spectra to a new server
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 log() { echo -e "${GREEN}[MIGRATE]${NC} $*"; }
 warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
 err() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
+
+S3_SYNC_ARGS=()
+
+load_storage_env() {
+    if [[ -f "${PROJECT_ROOT}/.env" ]]; then
+        set -a
+        # shellcheck disable=SC1091
+        source "${PROJECT_ROOT}/.env"
+        set +a
+    fi
+    : "${S3_ENDPOINT_URL:?S3_ENDPOINT_URL must be configured for migration}"
+    : "${S3_ACCESS_KEY:?S3_ACCESS_KEY must be configured for migration}"
+    : "${S3_SECRET_KEY:?S3_SECRET_KEY must be configured for migration}"
+    : "${S3_REGION:=us-east-1}"
+    if ! command -v aws >/dev/null 2>&1; then
+        err "AWS CLI is required for S3 migration (install awscli v2 and retry)"
+        exit 1
+    fi
+    S3_SYNC_ARGS=(--endpoint-url "${S3_ENDPOINT_URL}" --region "${S3_REGION}" --no-progress)
+}
+
+s3_sync_bucket_to_bundle() {
+    local bucket="$1" destination="$2"
+    mkdir -p "${destination}"
+    log "  Exporting ${bucket}..."
+    AWS_ACCESS_KEY_ID="${S3_ACCESS_KEY}" AWS_SECRET_ACCESS_KEY="${S3_SECRET_KEY}" \
+        AWS_EC2_METADATA_DISABLED=true aws s3 sync "s3://${bucket}" "${destination}" "${S3_SYNC_ARGS[@]}" \
+        || { err "S3 export failed for ${bucket}"; exit 1; }
+}
+
+s3_sync_bundle_to_bucket() {
+    local source="$1" bucket="$2"
+    log "  Restoring ${bucket}..."
+    AWS_ACCESS_KEY_ID="${S3_ACCESS_KEY}" AWS_SECRET_ACCESS_KEY="${S3_SECRET_KEY}" \
+        AWS_EC2_METADATA_DISABLED=true aws s3 sync "${source}" "s3://${bucket}" "${S3_SYNC_ARGS[@]}" \
+        || { err "S3 import failed for ${bucket}"; exit 1; }
+}
 
 usage() {
     cat <<EOF
@@ -55,13 +93,12 @@ export_bundle() {
         pg_dump -U spectra spectra -Fc > "${output}/db/spectra.dump"
     log "Database dump: $(du -h "${output}/db/spectra.dump" | cut -f1)"
 
-    # 2. S3 data export
+    # 2. S3 data export.  Keep the objects, not just empty directory markers;
+    # the previous helper silently produced a data-less migration bundle.
+    load_storage_env
     log "Exporting S3 buckets..."
     for bucket in spectra-missions spectra-sessions spectra-knowledge spectra-backups; do
-        mkdir -p "${output}/s3/${bucket}"
-        docker compose -f deploy/docker/compose.yaml exec -T garage \
-            /garage bucket list 2>/dev/null | grep -q "${bucket}" && \
-        log "  Exporting ${bucket}..." || { warn "  Bucket ${bucket} not found, skipping"; continue; }
+        s3_sync_bucket_to_bundle "${bucket}" "${output}/s3/${bucket}"
     done
 
     # 3. Config files
@@ -109,8 +146,22 @@ import_bundle() {
         log "Database restored"
     fi
 
-    # 3. VPN configs (stored in S3 — included in S3 data migration)
-    log "VPN configs are in S3 (spectra-sessions bucket, vpn/ prefix) — no filesystem restore needed"
+    # 3. S3 data restore
+    if [[ "${skip_s3}" != "true" ]]; then
+        load_storage_env
+        for bucket in spectra-missions spectra-sessions spectra-knowledge spectra-backups; do
+            [[ -d "${bundle}/s3/${bucket}" ]] || {
+                err "Missing S3 export for ${bucket}"
+                exit 1
+            }
+            s3_sync_bundle_to_bucket "${bundle}/s3/${bucket}" "${bucket}"
+        done
+    else
+        warn "Skipping S3 restore by request"
+    fi
+
+    # VPN configs live under the sessions bucket and are restored with it.
+    log "VPN configs are restored with the spectra-sessions S3 bucket"
 
     log "Import complete. Restart services: docker compose -f deploy/docker/compose.yaml restart"
 }

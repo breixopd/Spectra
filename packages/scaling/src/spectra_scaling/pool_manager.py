@@ -56,30 +56,16 @@ class ServerPoolManager:
         await session.flush()
         logger.info("Added %s node: %s (%s)", service_type, name, url)
 
-        # Auto-enable autoscale when any new host joins the pool
-        await self._auto_enable_autoscale(session)
-
         return node.to_dict()
 
     async def _auto_enable_autoscale(self, session: AsyncSession) -> None:
-        """Enable AUTOSCALE_ENABLED in runtime settings if not already on."""
-        import spectra_common.config as config
+        """Compatibility hook: node registration never changes autoscale state.
 
-        if config.settings.AUTOSCALE_ENABLED:
-            return  # already enabled
-        try:
-            from spectra_system.runtime_settings import upsert_system_config_values
-
-            await upsert_system_config_values(
-                session,
-                {
-                    "AUTOSCALE_ENABLED": ("true", False),
-                },
-            )
-            config.settings.AUTOSCALE_ENABLED = True
-            logger.info("Auto-scaling enabled — new compute host detected")
-        except Exception:
-            logger.warning("Failed to auto-enable autoscale", exc_info=True)
+        Kept as a no-op for integrations that used to patch this hook.  Scaling
+        remains an explicit operator setting and is not enabled by provisioning.
+        """
+        _ = session
+        logger.debug("Autoscale state left unchanged when registering a node")
 
     async def remove_node(self, session: AsyncSession, node_id: int) -> bool:
         """Remove a server node."""
@@ -286,9 +272,24 @@ class ServerPoolManager:
         logger.info("Health check complete: %s", {k: len(v) for k, v in results.items()})
         return results
 
-    async def register_local_node(self) -> dict:
-        """Register the current machine as a pool node if not already registered."""
+    async def register_local_node(self, *, service_mode: str | None = None) -> dict | None:
+        """Register a workload node when its endpoint is actually routable.
+
+        The scheduler is a control-plane service, not a worker pool node.  It
+        used to register itself as ``all`` at ``127.0.0.1:5000``; from inside
+        the scheduler container that address points at the wrong process and
+        produced a permanently unhealthy node.  Skip scheduler registration
+        entirely.  Workload nodes are still registered by their explicit
+        provisioning/admin paths, where the advertised URL is known to be
+        reachable from peers.
+        """
+        import os
         import socket
+
+        mode = (service_mode or os.environ.get("SERVICE_MODE", "")).strip().lower()
+        if mode == "scheduler":
+            logger.info("Skipping local pool registration for scheduler control plane")
+            return None
 
         import psutil
 

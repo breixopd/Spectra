@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.routers.admin.server_schemas import (
@@ -723,6 +723,22 @@ class ScalingConfigUpdate(BaseModel):
     infra_monitor_redis_threshold: int | None = Field(None, ge=50, le=99)
     infra_monitor_storage_threshold: int | None = Field(None, ge=50, le=99)
 
+    @model_validator(mode="after")
+    def validate_cross_field_bounds(self) -> ScalingConfigUpdate:
+        for minimum, maximum, label in (
+            (self.autoscale_worker_min, self.autoscale_worker_max, "worker"),
+            (self.autoscale_api_min, self.autoscale_api_max, "api"),
+        ):
+            if minimum is not None and maximum is not None and minimum > maximum:
+                raise ValueError(f"{label} minimum replicas cannot exceed maximum replicas")
+        if (
+            self.autoscale_cpu_up_threshold is not None
+            and self.autoscale_cpu_down_threshold is not None
+            and self.autoscale_cpu_up_threshold <= self.autoscale_cpu_down_threshold
+        ):
+            raise ValueError("CPU scale-up threshold must be greater than scale-down threshold")
+        return self
+
 
 # Map from ScalingConfigUpdate field names to DB config keys
 _SCALING_FIELD_TO_DB_KEY: dict[str, tuple[str, str]] = {
@@ -786,10 +802,40 @@ async def update_scaling_config(
     current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Update auto-scaling configuration. Changes take effect on next evaluation cycle."""
+    from spectra_common.config import get_settings as _get_settings
     from spectra_system.runtime_settings import (
         hydrate_runtime_settings_from_db,
         upsert_system_config_values,
     )
+
+    # Validate the effective post-update policy, not just fields present in a
+    # partial request.  This prevents an admin from persisting an inverted
+    # min/max pair across two separate updates.
+    current_settings = _get_settings()
+    prospective = {
+        field_name: getattr(current_settings, field_name.upper(), None)
+        for field_name in (
+            "autoscale_worker_min",
+            "autoscale_worker_max",
+            "autoscale_api_min",
+            "autoscale_api_max",
+            "autoscale_cpu_up_threshold",
+            "autoscale_cpu_down_threshold",
+        )
+    }
+    prospective.update(update.model_dump(exclude_unset=True))
+    for minimum, maximum, label in (
+        (prospective["autoscale_worker_min"], prospective["autoscale_worker_max"], "worker"),
+        (prospective["autoscale_api_min"], prospective["autoscale_api_max"], "api"),
+    ):
+        if minimum is not None and maximum is not None and minimum > maximum:
+            raise HTTPException(status_code=422, detail=f"{label} minimum replicas cannot exceed maximum replicas")
+    if (
+        prospective["autoscale_cpu_up_threshold"] is not None
+        and prospective["autoscale_cpu_down_threshold"] is not None
+        and prospective["autoscale_cpu_up_threshold"] <= prospective["autoscale_cpu_down_threshold"]
+    ):
+        raise HTTPException(status_code=422, detail="CPU scale-up threshold must be greater than scale-down threshold")
 
     db_values: dict[str, tuple[str, bool]] = {}
     for field_name, value in update.model_dump(exclude_unset=True).items():

@@ -20,6 +20,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-spectra-full-matrix}"
+export SPECTRA_CONTAINER_PREFIX="${SPECTRA_CONTAINER_PREFIX:-spectra-full-matrix-}"
 cd "$ROOT"
 
 ensure_env_test() {

@@ -11,7 +11,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://docs.docker.com/compose/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-[Wiki](docs/wiki/home.md) · [Quick Start](#quick-start) · [API Reference](docs/wiki/api-reference.md) · [Contributing](CONTRIBUTING.md)
+[Wiki](docs/wiki/Home.md) · [Quick Start](#quick-start) · [API Reference](docs/wiki/api-reference.md) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -72,7 +72,7 @@ docker compose -f deploy/docker/compose.yaml --profile app up -d
 
 ### 3. Access the dashboard
 
-Open <http://localhost:5000> — on first run you are redirected to `/setup` to create an admin account.
+Open <http://localhost:5000> (or the Caddy port shown by `scripts/first_run.sh`) — on first run you are redirected to `/setup`. Production-like setups require the one-time `SPECTRA_SETUP_TOKEN` enrollment token before an admin account can be created.
 
 ### 4. Configure the LLM gateway
 
@@ -137,7 +137,7 @@ ruff check packages/ services/
 
 | Topic | Link |
 | ----- | ---- |
-| Wiki home | [docs/wiki/home.md](docs/wiki/home.md) · [GitHub Wiki](https://github.com/breixopd/Spectra/wiki) |
+| Wiki home | [docs/wiki/Home.md](docs/wiki/Home.md) · [GitHub Wiki](https://github.com/breixopd/Spectra/wiki) |
 | Deployment (start here) | [docs/wiki/deployment-guide.md](docs/wiki/deployment-guide.md) |
 | CI/CD and images | [docs/wiki/deployment.md](docs/wiki/deployment.md) |
 | Operations | [docs/wiki/operations.md](docs/wiki/operations.md) |

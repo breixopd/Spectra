@@ -17,6 +17,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class RoeUnavailable(RuntimeError):
+    """Raised when a mission's persisted RoE cannot be read safely."""
+
+
 class RoeValidator:
     """Validator for Rules of Engagement constraints."""
 
@@ -161,10 +165,10 @@ class RoeValidator:
 
         if pattern.startswith("*."):
             domain_suffix = pattern[2:]
-            return target.endswith(domain_suffix)
+            return target.endswith("." + domain_suffix)
 
         if "." in pattern:
-            return target.endswith(pattern) or target == pattern
+            return target == pattern or target.endswith("." + pattern)
 
         return False
 
@@ -181,5 +185,5 @@ async def get_mission_roe(mission_id: str) -> RulesOfEngagement | None:
             result = await session.execute(select(RulesOfEngagement).where(RulesOfEngagement.mission_id == mission_id))
             return result.scalar_one_or_none()
     except Exception as e:
-        logger.warning("Failed to load RoE for mission %s: %s", mission_id, e)
-        return None
+        logger.error("Failed to load RoE for mission %s; refusing execution: %s", mission_id, e)
+        raise RoeUnavailable(f"RoE unavailable for mission {mission_id}") from e

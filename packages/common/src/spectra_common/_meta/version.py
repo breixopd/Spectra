@@ -10,7 +10,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-DEFAULT_VERSION = "2026.03.07"
+# Source checkouts and local host runs are development builds.  Release images
+# always inject the immutable CalVer through ``SPECTRA_BUILD_VERSION`` or the
+# build-version file, so this fallback must never masquerade as an old release.
+DEFAULT_VERSION = "dev"
 _VERSION_ENV_VAR = "SPECTRA_BUILD_VERSION"
 _VERSION_FILE_ENV_VAR = "SPECTRA_BUILD_VERSION_FILE"
 _DEFAULT_VERSION_FILE = Path("/app/.build-version")

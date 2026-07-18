@@ -255,6 +255,8 @@ async def launch_mission_for_user(
         playbook_id=mission_request.playbook_id,
         scan_mode=eff_scan,
         pentest_framework=mission_request.pentest_framework,
+        training_opt_in=mission_request.training_opt_in,
+        authorization_confirmed=mission_request.authorization_confirmed,
     )
     mission = await mission_manager.get_mission(mission_id)
 
@@ -282,7 +284,9 @@ async def launch_mission_for_user(
             db.add(roe)
             await db.commit()
         except Exception as e:
-            logger.warning("Failed to create RoE for mission %s: %s", mission_id, e)
+            logger.error("Failed to create RoE for mission %s; stopping unsafe mission: %s", mission_id, e)
+            await mission_manager.stop_mission(mission_id)
+            raise HTTPException(status_code=500, detail="Mission rules could not be persisted") from e
 
     # Audit log
     await audit_log_event(

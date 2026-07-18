@@ -94,7 +94,7 @@ Lazy imports inside functions are allowed. This keeps the dependency direction c
 All services run as microservices by default:
 
 ```bash
-docker compose -f deploy/docker/compose.yaml up -d
+docker compose -f deploy/docker/compose.yaml --profile app up -d
 ```
 
 The main compose file includes `app`, `ai-svc`, `scheduler`, and `worker` as separate containers, each with `SERVICE_MODE` set in their environment.
@@ -267,13 +267,14 @@ The `ServiceRegistry` (`packages/ai-core/src/spectra_ai_core/gateway/service_reg
 
 ## Health Endpoints
 
-Every service exposes a `GET /health` endpoint:
+Each service exposes a cheap process liveness endpoint; the Core API also
+exposes a dependency-aware readiness endpoint:
 
 | Service | URL | Response |
 |---------|-----|----------|
-| App | `http://app:5000/api/health` | `{"status": "healthy", "components": {"database": {...}}}` |
+| App | `http://app:5000/api/healthz` (liveness), `http://app:5000/api/health/ready` (readiness) | Liveness is dependency-free; readiness returns 503 until required services are ready |
 | AI Service | `http://ai-svc:5010/health` | `{"status": "healthy", "service": "ai"}` |
-| Scheduler | `http://scheduler:5011/health` | `{"status": "healthy", "service": "scheduler"}` |
+| Scheduler | `http://scheduler:5011/healthz` | `{"status": "healthy", "service": "scheduler"}` |
 | Worker | `http://worker:5012/health` | `{"status": "healthy", "service": "worker"}` |
 
 Docker Compose health checks poll these endpoints to determine container readiness.
@@ -286,7 +287,7 @@ Docker Compose health checks poll these endpoints to determine container readine
 
 ```bash
 # All services (microservices by default):
-docker compose -f deploy/docker/compose.yaml up -d
+docker compose -f deploy/docker/compose.yaml --profile app up -d
 ```
 
 ### Multi-Server (Docker Swarm)
@@ -301,7 +302,7 @@ See [Deployment Guide](deployment-guide.md) for full instructions. See [Topology
 
 ## Auto-Scaling
 
-The scheduler includes a reactive auto-scaling engine that adjusts service replica counts based on queue depth and utilization metrics. Auto-scaling defaults **on** (`AUTOSCALE_ENABLED=true` in `Settings`); set `AUTOSCALE_ENABLED=false` only as an emergency override. It works with both Docker Compose and Docker Swarm. API, worker, and AI containers also start a lightweight **embedded ops** loop (disk metrics and optional Docker prune when the socket is mounted); full DB/heal/image loops remain scheduler-owned.
+The scheduler includes a reactive auto-scaling engine that adjusts service replica counts based on queue depth and utilization metrics. Auto-scaling is explicitly **opt-in** (`AUTOSCALE_ENABLED=false` by default) and executes through the Docker Swarm backend only. Docker Compose remains supported for manual replica changes (`docker compose up --scale`), but it does not receive automatic scale decisions. API, worker, and AI containers also start a lightweight **embedded ops** loop (disk metrics and optional Docker prune when the socket is mounted); full DB/heal/image loops remain scheduler-owned.
 
 See [Scaling](scaling.md#auto-scaling) for full configuration and policy details.
 

@@ -17,6 +17,7 @@ import logging
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from functools import wraps
+from inspect import iscoroutinefunction
 from typing import Any, ParamSpec, TypeVar
 
 try:
@@ -306,9 +307,7 @@ class CacheService:
 
         # Compute value
         if callable(factory):
-            import asyncio
-
-            if asyncio.iscoroutinefunction(factory):
+            if iscoroutinefunction(factory):
                 value = await factory()
             else:
                 value = factory()

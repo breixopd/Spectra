@@ -18,7 +18,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.easy-web
-    container_name: spectra-target-easy
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}target-easy
     networks:
       - spectra-network
     restart: unless-stopped
@@ -29,7 +29,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.medium-multi
-    container_name: spectra-target-medium
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}target-medium
     networks:
       - spectra-network
     restart: unless-stopped
@@ -40,7 +40,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.hard-hardened
-    container_name: spectra-target-hard
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}target-hard
     networks:
       - spectra-network
     restart: unless-stopped
@@ -48,7 +48,7 @@ services:
   # PRE-BUILT: DVWA (classic web vuln training)
   target-dvwa:
     image: vulnerables/web-dvwa:latest
-    container_name: spectra-target-dvwa
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}target-dvwa
     networks:
       - spectra-network
     restart: unless-stopped
@@ -56,7 +56,7 @@ services:
   # PRE-BUILT: Juice Shop (OWASP modern web)
   target-juice:
     image: bkimminich/juice-shop:latest
-    container_name: spectra-target-juice
+    container_name: ${SPECTRA_CONTAINER_PREFIX:-spectra-}target-juice
     networks:
       - spectra-network
     restart: unless-stopped

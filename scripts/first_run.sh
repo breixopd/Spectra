@@ -21,6 +21,7 @@ err() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
 generate_password() { openssl rand -base64 18 | tr -d '/+=' | head -c 24; }
 generate_secret()   { openssl rand -base64 32; }
+generate_setup_token() { openssl rand -base64 48 | tr -d '/+='; }
 generate_hex()      { openssl rand -hex 32; }
 # Garage requires access keys matching ^GK[0-9a-f]{24}$ and secrets ^[0-9a-f]{64}$.
 generate_garage_access_key() { echo "GK$(openssl rand -hex 12)"; }
@@ -106,6 +107,7 @@ generate_secrets() {
     env_set SECRET_KEY "$(generate_secret)"
     env_set SERVICE_AUTH_SECRET "$(generate_secret)"
     env_set ENCRYPTION_KEY "$(generate_secret)"
+    env_set SPECTRA_SETUP_TOKEN "$(generate_setup_token)"
 
     # S3 / Garage credentials — pre-generated so the running stack imports a known,
     # deterministic key (no two-phase parse-back dance) and the app + registry agree.
@@ -206,10 +208,22 @@ start_all() {
     # Re-read .env (now has Garage keys)
     docker compose -f "${COMPOSE_FILE}" --profile app up -d
 
-    log "Waiting for application to be healthy..."
+    # SPECTRA_PORT is the host-published Caddy port. APP_PORT is retained only
+    # as a compatibility fallback for operators with an older .env file. The
+    # scheme is explicit when supplied and otherwise follows the public port.
+    local health_port="${SPECTRA_PORT:-${APP_PORT:-80}}"
+    local health_scheme="${HEALTH_SCHEME:-http}"
+    if [[ -z "${HEALTH_SCHEME:-}" && ( "${health_port}" == "443" || "${health_port}" == "8443" ) ]]; then
+        health_scheme="https"
+    fi
+    local health_url="${health_scheme}://localhost:${health_port}/api/v1/health?scope=public"
+    local -a health_curl_args=(-sfL --max-time 10)
+    [[ "${health_scheme}" == "https" ]] && health_curl_args+=(--insecure)
+
+    log "Waiting for application to be healthy at ${health_url}..."
     local retries=30
     while [[ $retries -gt 0 ]]; do
-        if curl -sf "http://localhost:${APP_PORT:-443}/api/v1/health?scope=public" >/dev/null 2>&1; then
+        if curl "${health_curl_args[@]}" "${health_url}" >/dev/null 2>&1; then
             log "Application is healthy"
             return 0
         fi
@@ -224,9 +238,11 @@ start_all() {
 # ── Summary ──
 
 print_summary() {
-    local port="${APP_PORT:-443}"
-    local scheme="https"
-    [[ "$port" == "80" || "$port" == "15080" ]] && scheme="http"
+    local port="${SPECTRA_PORT:-${APP_PORT:-80}}"
+    local scheme="${HEALTH_SCHEME:-http}"
+    if [[ -z "${HEALTH_SCHEME:-}" && ( "${port}" == "443" || "${port}" == "8443" ) ]]; then
+        scheme="https"
+    fi
     local url="${scheme}://localhost:${port}"
 
     echo ""
@@ -235,6 +251,7 @@ print_summary() {
     echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
     echo ""
     echo -e "  ${GREEN}Open:${NC}  ${url}/setup"
+    echo -e "  ${GREEN}Setup token:${NC} read SPECTRA_SETUP_TOKEN from ${ENV_FILE} and enter it in the wizard"
     echo ""
     echo -e "  Create your admin account, then start your first assessment."
     echo ""

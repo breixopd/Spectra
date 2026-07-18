@@ -27,6 +27,11 @@ docker build -f deploy/docker/Dockerfile.worker -t spectra-worker .
 docker compose -f deploy/docker/compose.yaml build
 ```
 
+Compose container aliases default to the historic `spectra-*` names for
+operator compatibility. When running more than one checkout on the same Docker
+host, set a unique `SPECTRA_CONTAINER_PREFIX` alongside a unique
+`COMPOSE_PROJECT_NAME`; the test harnesses do this automatically.
+
 ### Image Sizes
 
 | Service | Dockerfile | Requirements File | Approx. Size |
@@ -48,6 +53,7 @@ all** of the following before any shared or production-like deployment:
 | `JWT_SECRET_KEY` | Token signing | Auto-generated in dev; **required** in prod |
 | `SECRET_KEY` | Session / CSRF | Same |
 | `ENCRYPTION_KEY` | MFA + BYOK encryption | Auto-generated in dev; **required** in prod |
+| `SPECTRA_SETUP_TOKEN` | One-time `/setup` enrollment token | Required in production; Swarm: `spectra_setup_token` secret |
 | `SERVICE_AUTH_SECRET` | Inter-service HMAC | Swarm: `_FILE` |
 | `GARAGE_ACCESS_KEY` | S3-compatible storage | Replace compose default |
 | `GARAGE_SECRET_KEY` | S3-compatible storage | Replace compose default |
@@ -68,7 +74,7 @@ After a **clean `git pull`** on the host, mirror the CI unit + coverage gate:
 
 The script lives at `scripts/ops/vps-verify-tests.sh` and uses `deploy/docker/compose.yaml`
 profile `test`. A tree that is missing new tests or still on an old commit can
-show **below 70%** aggregate coverage even when `main` is green — always verify
+show **below the 65% aggregate coverage floor** even when `main` is green — always verify
 `git rev-parse HEAD` matches the branch you intend.
 
 For the **full** extended matrix (load/perf/soak/UI/live/API e2e) on a VPS over SSH, use
@@ -114,7 +120,7 @@ Services can be scaled independently. The most common scaling target is the work
 
 ```bash
 # Scale workers horizontally
-docker compose -f deploy/docker/compose.yaml up -d --scale worker=3
+docker compose -f deploy/docker/compose.yaml --profile app up -d --scale worker=3
 
 # Workers use SELECT ... FOR UPDATE SKIP LOCKED, so multiple instances
 # naturally distribute jobs without conflicts.
@@ -148,7 +154,7 @@ All inter-service communication uses PostgreSQL as the persistent state store, P
 
 `RATE_LIMIT_STORAGE=memory://` is acceptable for tests or intentionally ephemeral local runs, but it is not the normal deployment recommendation. Keep Redis as the shared distributed rate-limiting backend for deployments. Use Caddy rate limiting only if you intentionally want rate limiting to live entirely at the edge.
 
-Swarm supports `_FILE` secret environment variables such as `POSTGRES_PASSWORD_FILE`, `SERVICE_AUTH_SECRET_FILE`, and `JWT_SECRET_KEY_FILE` while keeping the same internal hostnames and ports as Compose.
+Swarm supports `_FILE` secret environment variables such as `POSTGRES_PASSWORD_FILE`, `SERVICE_AUTH_SECRET_FILE`, `JWT_SECRET_KEY_FILE`, and `SPECTRA_SETUP_TOKEN_FILE` while keeping the same internal hostnames and ports as Compose. Production setup is locked until the one-time `SPECTRA_SETUP_TOKEN` is supplied in the `/setup` wizard (or `X-Spectra-Setup-Token` header).
 
 > **Tip:** Set `REGISTRY` and `VERSION` environment variables to control image sources.
 > Local dev uses `spectra-app:latest` by default; production can set
@@ -172,14 +178,15 @@ git clone <repo-url> && cd spectra
 cp .env.example .env
 # Edit .env — at minimum set JWT_SECRET_KEY
 
-cd docker && docker compose up -d
+docker compose -f deploy/docker/compose.yaml --profile app up -d
 ```
 
-- **Dev UI:** `http://localhost:5000`
-- Create your admin account at `/setup`
+- **Dev UI:** `http://localhost:5000` (or the Caddy host port, usually `15080`)
+- Create your admin account at `/setup`; `scripts/first_run.sh` generates and prints the enrollment token stored in `SPECTRA_SETUP_TOKEN`.
 - Configure your AI provider through the web UI
 - Health probes:
-  - Lightweight: `curl -f 'http://localhost:5000/api/health'`
+  - Liveness: `curl -f 'http://localhost:5000/api/healthz'`
+  - Readiness: `curl -f 'http://localhost:5000/api/health/ready'`
   - Public platform: `curl -f 'http://localhost:5000/api/v1/health?scope=public'`
   - Full admin/internal: `curl -f -H "X-Service-Auth: $SERVICE_AUTH_SECRET" 'http://localhost:5000/api/v1/health?detail=full&include=services,nodes'`
 
@@ -199,7 +206,7 @@ This handles:
 2. Bootstrapping S3 storage and creating required buckets
 3. Running database migrations
 4. Starting all application services
-5. Printing the setup URL for admin account creation
+5. Printing the setup URL and one-time enrollment token for admin account creation
 
 For a repeatable live smoke test, use:
 
@@ -216,16 +223,18 @@ APP_BASE_URL=https://spectra.example.com ./scripts/test.sh live-smoke
 
 ```bash
 # 1. Start services
-docker compose -f deploy/docker/compose.yaml up -d
+docker compose -f deploy/docker/compose.yaml --profile app up -d
 
 # 2. Bootstrap S3 storage
 bash deploy/docker/garage-init.sh
 
 # 3. Copy the printed S3 credentials to your .env file
-# 4. Restart to pick up new env vars
+# 4. Set a one-time production setup token before exposing /setup:
+export SPECTRA_SETUP_TOKEN="$(openssl rand -base64 48 | tr -d '/+=')"
+# 5. Restart to pick up new env vars
 docker compose -f deploy/docker/compose.yaml restart
 
-# 5. Open /setup in your browser to create the admin account
+# 6. Open /setup in your browser, paste SPECTRA_SETUP_TOKEN, and create the admin account
 ```
 
 ---
@@ -369,14 +378,14 @@ Triggered on every push/PR to `main` or `dev`.
 | **docker-build** | Builds runtime images, Trivy CRITICAL gate on images, validates Compose + Swarm config |
 | **deps** | `pip-audit` dependency audit |
 | **version-check** | Verifies version metadata in `packages/common/src/spectra_common/_meta/version.py` |
-| **compose-smoke** | Push-only: full compose stack + selected e2e/health/performance smoke tests |
+| **compose-smoke** | Pull requests to `main`/`dev` and pushes to `main`: full compose stack + selected e2e/health/performance smoke tests |
 
 ### `release.yml` — Build, Push & Deploy
 
 Triggered by **manual dispatch from `main` only**.
 
 1. Validate the operator-supplied CalVer release version
-2. Run unit and integration tests in Docker, Bandit on `packages/` and `services/` (HIGH gate), and Compose/Swarm config validation (see `.github/workflows/release.yml` — this path does **not** rerun CI Ruff, import boundaries, or Pyright)
+2. Run the release static-analysis gates (Ruff format/check, import boundaries, and Pyright) plus unit and integration tests in Docker, Bandit on `packages/` and `services/` (HIGH gate), and Compose/Swarm config validation
 3. Build & push Docker images to GHCR with `latest` + version tags
 4. SSH deploy only after the host resolves the currently deployed version and captures a pre-deploy PostgreSQL backup; the post-deploy gate now waits for the unauthenticated `/api/health/ready` probe to confirm database, AI service, TensorZero, scheduler, worker, LLM, and embeddings readiness
 5. Publish the git tag and GitHub Release with the generated changelog only after deploy succeeds
@@ -429,14 +438,16 @@ To migrate Spectra to a new server:
 
 | Endpoint | Auth | Purpose |
 |---|---|---|
-| `GET /api/health` | None | Liveness probe — checks DB, Redis, S3 |
-| `GET /api/health?verbose=true` | Required | Detailed status of all components |
-| `GET /api/health/ready` | None | Readiness probe — checks DB, AI service, TensorZero, scheduler, worker, LLM, and embeddings |
+| `GET /api/healthz` | None | Process liveness — cheap and dependency-free |
+| `GET /api/health/ready` | None | Dependency readiness — returns 503 until required services are ready |
+| `GET /api/v1/health?scope=public` | None | Public platform diagnostic (DB, storage, and compute-plane summary) |
+| `GET /api/health?verbose=true` | Admin/service auth required | Detailed status of all components |
 | `GET /api/health/services` | Required | Aggregate health of all backend microservices |
 
-For monitoring, use the basic endpoint:
+For monitoring, use the cheap liveness endpoint and reserve platform/deep checks for a slower operator cadence:
 ```bash
-curl -sf http://localhost/api/health | python3 -m json.tool
+curl -sf http://localhost/api/healthz | python3 -m json.tool
+curl -sf 'http://localhost/api/v1/health?scope=public' | python3 -m json.tool
 ```
 
 When running multiple replicas, Caddy load-balances health checks across instances. Use `/api/health/services` to check all backend services from any replica.
@@ -453,8 +464,9 @@ Use this section for rollback mechanics. For the broader operator workflow aroun
 cd /opt/spectra
 export VERSION=2026.03.06
 docker compose -f deploy/docker/compose.yaml pull
-docker compose -f deploy/docker/compose.yaml up -d
-curl -f https://spectra.example.com/api/health
+docker compose -f deploy/docker/compose.yaml --profile app up -d
+curl -f https://spectra.example.com/api/healthz
+curl -f 'https://spectra.example.com/api/v1/health?scope=public'
 ```
 
 ### Database Rollback

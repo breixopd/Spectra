@@ -34,7 +34,8 @@ LABEL org.opencontainers.image.title="Spectra Worker" \
       org.opencontainers.image.description="Security tools worker (Kali Linux)" \
       org.opencontainers.image.source="https://github.com/breixopd/Spectra" \
       org.opencontainers.image.vendor="breixopd" \
-      org.opencontainers.image.version="${BUILD_VERSION}"
+      org.opencontainers.image.version="${BUILD_VERSION}" \
+      spectra.managed="true"
 
 ENV SPECTRA_BUILD_VERSION="${BUILD_VERSION}" \
     PYTHONDONTWRITEBYTECODE=1 \

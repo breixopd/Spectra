@@ -1,6 +1,6 @@
 # Weekly extended verification: same Docker gate as local/VPS `ci-parity.sh all`
 # (static analysis + unit coverage + settings + integration). Does not run compose-smoke
-# (full stack + e2e perf) to avoid runner flake; trigger that path via push to main/dev.
+# (full stack + e2e perf); compose-smoke runs on pull requests and protected `main` pushes.
 name: Nightly extended verification
 
 on:

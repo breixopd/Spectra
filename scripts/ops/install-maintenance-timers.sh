@@ -4,8 +4,8 @@
 #
 # Installs four timer units:
 #   spectra-journal-vacuum  — weekly, vacuum systemd journals older than 14 days
-#   spectra-docker-prune    — weekly, prune unused Docker images/containers/build cache
-#   spectra-log-rotate      — daily, rotate /var/log files older than 30 days
+#   spectra-docker-prune    — weekly, prune only managed Docker images/containers
+#   spectra-log-rotate      — daily, run the host's configured logrotate policy
 #   spectra-disk-check      — daily, check disk usage and warn if >80%
 set -euo pipefail
 
@@ -51,19 +51,27 @@ WantedBy=timers.target
 EOF
 
 # ---------------------------------------------------------------------------
-# 2. Docker prune — runs weekly, prunes unused images/containers/build cache
+# 2. Docker prune — runs weekly, prunes only Spectra-managed images/containers.
+#    Volumes are deliberately excluded: database, object-storage, and operator data
+#    must never be removed by an unattended maintenance timer.
 # ---------------------------------------------------------------------------
 log "Installing spectra-docker-prune timer..."
 
 cat > "${SYSTEMD_DIR}/spectra-docker-prune.service" <<'EOF'
 [Unit]
-Description=Spectra — prune unused Docker images, containers, and build cache
+Description=Spectra — prune managed Docker images and containers
 After=docker.service
 Requires=docker.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/docker system prune -af --volumes
+# Keep other Docker projects and all volumes untouched. Compose and first-party
+# images carry this label; unlabelled images are retained for safety. Docker
+# build cache has no project-label filter, so it is intentionally not pruned by
+# this unattended timer; use host-maintenance.sh with PRUNE_BUILDER_CACHE=1 on
+# a dedicated host when a global cache prune is explicitly acceptable.
+ExecStart=/usr/bin/docker container prune -f --filter label=spectra.managed=true --filter until=168h
+ExecStart=/usr/bin/docker image prune -af --filter label=spectra.managed=true --filter until=168h
 StandardOutput=syslog
 StandardError=syslog
 SyslogIdentifier=spectra-docker-prune
@@ -84,18 +92,22 @@ WantedBy=timers.target
 EOF
 
 # ---------------------------------------------------------------------------
-# 3. Log rotate — runs daily, rotates /var/log files older than 30 days
+# 3. Log rotate — runs daily using the system's configured logrotate policy.
+#    Never recursively delete arbitrary files under /var/log: package-specific
+#    rotation rules handle ownership, compression, retention, and service reloads.
 # ---------------------------------------------------------------------------
 log "Installing spectra-log-rotate timer..."
 
 cat > "${SYSTEMD_DIR}/spectra-log-rotate.service" <<'EOF'
 [Unit]
-Description=Spectra — rotate /var/log files older than 30 days
+Description=Spectra — run configured logrotate policy
 After=local-fs.target
+ConditionPathExists=/etc/logrotate.conf
+ConditionFileIsExecutable=/usr/sbin/logrotate
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/find /var/log -type f -name "*.log" -mtime +30 -delete
+ExecStart=/usr/sbin/logrotate /etc/logrotate.conf
 StandardOutput=syslog
 StandardError=syslog
 SyslogIdentifier=spectra-log-rotate

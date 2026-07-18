@@ -196,11 +196,13 @@ def detect_host_resources() -> HostResources:
 
 
 def derive_autoscale_limits(resources: HostResources) -> dict[str, int]:
-    cpu = resources.cpu_count
-    mem = resources.memory_mb
-    worker_max = max(1, min(cpu, mem // 1500, 20))
-    api_max = max(1, min(cpu // 2, 8))
-    ai_max = max(1, min(cpu // 3, 6))
+    # Prefer cgroup limits inside containers; host totals would overcommit a
+    # small API/scheduler container on a large node.
+    cpu = max(0.1, resources.cpu_limit or float(resources.cpu_count))
+    mem = resources.memory_limit_mb or resources.memory_mb
+    worker_max = max(1, min(int(cpu), int(mem // 1500), 20))
+    api_max = max(1, min(int(cpu // 2), 8))
+    ai_max = max(1, min(int(cpu // 3), 6))
     return {"worker_max": worker_max, "api_max": api_max, "ai_max": ai_max}
 
 

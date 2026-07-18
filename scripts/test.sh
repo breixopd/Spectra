@@ -149,7 +149,7 @@ case "$CMD" in
             "python -m pytest tests/integration/ -q --override-ini=addopts= -k 'not live and not e2e'"
         ;;
     coverage)
-        run_unit_runner "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov=spectra_ai_core --cov=spectra_billing --cov=spectra_common --cov=spectra_mission --cov=spectra_persistence --cov=spectra_scaling --cov=spectra_storage_policy --cov=spectra_tools_core --cov-report=term-missing --cov-fail-under=67"
+        run_unit_runner "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov=spectra_ai_core --cov=spectra_billing --cov=spectra_common --cov=spectra_auth --cov=spectra_contracts --cov=spectra_domain --cov=spectra_infra --cov=spectra_mission --cov=spectra_observability --cov=spectra_persistence --cov=spectra_scaling --cov=spectra_storage_policy --cov=spectra_system --cov=spectra_tools --cov=spectra_tools_core --cov-report=term-missing --cov-fail-under=65"
         ;;
     load)
         run_stack_harness load "${@:2}"

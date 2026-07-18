@@ -20,6 +20,8 @@ class MetricsStore:
 
     async def start(self) -> None:
         """Start periodic snapshotting."""
+        if self._task is not None and not self._task.done():
+            return
         from spectra_common.tasks import create_safe_task
 
         self._task = create_safe_task(self._snapshot_loop(), name="metrics_snapshot")
@@ -34,6 +36,7 @@ class MetricsStore:
             self._task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._task
+            self._task = None
 
     async def _snapshot_loop(self) -> None:
         while True:
@@ -42,7 +45,7 @@ class MetricsStore:
                 self._take_snapshot()
             except asyncio.CancelledError:
                 break
-            except (OSError, RuntimeError, ValueError):
+            except Exception:
                 logger.exception("Error taking metrics snapshot")
 
     def _take_snapshot(self) -> None:

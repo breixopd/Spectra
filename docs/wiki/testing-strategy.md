@@ -61,10 +61,10 @@ Covered subsystems include:
 | E2E / UI tests (Playwright) | 4 browser acceptance tests | `tests/e2e/ui/test_spa_workspace.py` |
 | Load/performance/soak harnesses | Available | `tests/load/`, `tests/performance/`, `tests/soak/` |
 
-The merge and release gate uses a 67% aggregate unit-coverage floor. This is a
-measured ratchet (the full current suite is above it), not an omission-based
-shortcut: the gate retains every covered source area and should be raised only
-with corresponding test coverage.
+The merge and release gate uses a 65% aggregate unit-coverage floor across all
+first-party workspace packages. This is a measured baseline while lower-covered
+packages are brought into the report, not an omission-based shortcut: the gate
+retains every covered source area and should be raised as coverage improves.
 
 Pytest treats unawaited coroutine and unraisable background-task warnings as
 errors. Test doubles must preserve the synchronous/asynchronous contracts of
@@ -87,7 +87,7 @@ tests were removed rather than retained as a non-executing, misleading browser g
 | Environment | Purpose | Minimum verification |
 | --- | --- | --- |
 | Local developer loop | Fast feedback while iterating | Unit tests for touched code, targeted integration checks, and one local smoke path for the changed behavior |
-| CI verification | Default merge gate | **`static-analysis`** (Ruff, boundaries, Pyright, Bandit), **`test`** (unit + coverage + settings), **`integration-test`**, **`deps`** (`pip-audit`), **`docker-build`** (images + Trivy + compose validation), **`version-check`** |
+| CI verification | Default merge gate | **`static-analysis`** (Ruff, boundaries, Pyright, Bandit), **`test`** (unit + coverage + settings), **`integration-test`**, **`deps`** (`pip-audit`), **`docker-build`** (images + Trivy + compose validation), **`version-check`**, and **`compose-smoke`** on pull requests plus `main` pushes |
 | Release validation | Pre-release confidence on the version to ship | CI-equivalent checks plus release workflow checks, deploy health checks, and backup/rollback readiness |
 | Pre-production or staging | Optional but strongly recommended for operator-managed deployments | Run release candidate images against a staging stack, then execute browser smoke, live integration, config validation, health checks, and any migration or restore drill |
 | Production-safe smoke checks | Non-destructive verification after deploy or during incident response | Health endpoints, public-status, worker/storage health proxies, backup list/verify, and read-only config or container checks only |
@@ -117,14 +117,15 @@ Use the real commands already present in this repo.
 | TensorZero config validation | `python3 -c "import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')"` |
 | Dev compose validation | `docker compose --env-file .env.example -f deploy/docker/compose.yaml config --quiet` |
 | Swarm compose validation | `docker compose --env-file .env.example -f deploy/docker/docker-compose.swarm.yml config --quiet` |
-| Production-safe health check | `./scripts/health_check.sh http://localhost:5000/api/health` |
-| Deep health check | `HEALTH_CHECK_FULL=1 ./scripts/health_check.sh http://localhost:5000/api/health` |
+| Process liveness check | `./scripts/health_check.sh http://localhost:5000/api/healthz` |
+| Public platform health check | `./scripts/health_check.sh 'http://localhost:5000/api/v1/health?scope=public'` |
+| Deep health check | `HEALTH_CHECK_FULL=1 ./scripts/health_check.sh 'http://localhost:5000/api/v1/health?scope=public'` |
 | Backup inventory | Admin UI → Backups or `GET /api/admin/backups` |
 | Backup integrity check | Admin UI → Backups → Verify |
 
-`run_ui_tests.sh` sets `APP_BASE_URL=http://spectra-app:5000` for the `ui-test-runner` container (same Docker network as the API). This avoids Chromium's HTTPS-first upgrade of the single-label `app` hostname. Manual checks in a normal browser usually go through Caddy at `http://localhost:15080`.
+`run_ui_tests.sh` sets `APP_BASE_URL` to the prefixed API alias (for example, `http://spectra-ui-tests-app:5000`) for the `ui-test-runner` container (same Docker network as the API). This avoids Chromium's HTTPS-first upgrade of the single-label `app` hostname and keeps parallel worktrees isolated. Manual checks in a normal browser usually go through Caddy at `http://localhost:15080`.
 
-The vulnerable-target network defaults to `10.254.0.0/24`. For parallel worktrees or a local Docker subnet collision, set `SPECTRA_TARGETS_SUBNET`, `SPECTRA_METASPLOITABLE_IP`, and `SPECTRA_DVWA_IP` together in `.env.test`; the two addresses must remain inside that subnet.
+The vulnerable-target network defaults to `10.254.0.0/24`. For parallel worktrees or a local Docker subnet collision, set `SPECTRA_TARGETS_SUBNET`, `SPECTRA_METASPLOITABLE_IP`, and `SPECTRA_DVWA_IP` together in `.env.test`; the two addresses must remain inside that subnet. Also set a unique `SPECTRA_CONTAINER_PREFIX` (for example, `spectra-ui-tests-`) so Compose container aliases cannot collide with another checkout.
 
 Dependency-audit note: CI exports the frozen workspace lock and runs `uvx pip-audit --strict --require-hashes -r /tmp/uv-lock-export.txt`; no vulnerabilities are ignored.
 

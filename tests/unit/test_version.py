@@ -28,3 +28,14 @@ def test_version_uses_runtime_version_file(tmp_path, monkeypatch):
     reloaded = importlib.reload(version_module)
 
     assert reloaded.__version__ == "2026.04.13.1"
+
+
+def test_version_defaults_to_explicit_development_marker(monkeypatch):
+    import spectra_common._meta.version as version_module
+
+    monkeypatch.delenv("SPECTRA_BUILD_VERSION", raising=False)
+    monkeypatch.setenv("SPECTRA_BUILD_VERSION_FILE", "/tmp/spectra-version-file-does-not-exist")
+
+    reloaded = importlib.reload(version_module)
+
+    assert reloaded.__version__ == "dev"

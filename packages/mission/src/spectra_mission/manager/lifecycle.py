@@ -103,6 +103,7 @@ class MissionLifecycleManager:
         pentest_framework: str = "ptes",
         training_opt_in: bool = False,
         training_discount_pct: float = 0.0,
+        authorization_confirmed: bool = False,
     ) -> Mission:
         """Create and start a new mission."""
         effective_directive = _directive_with_playbook(playbook_id, directive)
@@ -120,6 +121,7 @@ class MissionLifecycleManager:
             pentest_framework=fw,
             training_opt_in=training_opt_in,
             training_discount_pct=training_discount_pct,
+            authorization_confirmed=authorization_confirmed,
         )
 
         # Persist to DB — quota check + row creation run inside one
@@ -229,7 +231,10 @@ class MissionLifecycleManager:
             await self.state_store.unregister(mission_id)
             cleanup_mission_workspace(mission_id)
             return True
-        return False
+        # A mission may be executing on another API replica.  Persist a
+        # distributed stop request so that replica's control watcher can stop
+        # its in-memory mission instead of returning a misleading 404.
+        return await self._request_durable_status(mission_id, "stopping", "[CONTROL] Stop requested by operator")
 
     async def pause_mission(self, mission_id: str) -> bool:
         """Pause a running mission."""
@@ -239,7 +244,7 @@ class MissionLifecycleManager:
             await self.update_db_status(mission)
             await self.save_checkpoint(mission)
             return True
-        return False
+        return await self._request_durable_status(mission_id, "paused", "[CONTROL] Pause requested by operator")
 
     async def resume_mission(self, mission_id: str) -> bool:
         """Resume a paused mission."""
@@ -248,6 +253,39 @@ class MissionLifecycleManager:
             await self.update_db_status(self.active_missions[mission_id])
             return True
         return False
+
+    async def _request_durable_status(self, mission_id: str, status: str, message: str) -> bool:
+        """Persist a lifecycle command when the runner lives on another replica."""
+        try:
+            async with async_session_maker() as session, session.begin():
+                db_mission = await session.get(MissionModel, mission_id, with_for_update=True)
+                if db_mission is None or db_mission.status in {
+                    "completed",
+                    "failed",
+                    "cancelled",
+                    "timed_out",
+                }:
+                    return False
+                logs = list(db_mission.logs or [])
+                logs.append(message)
+                db_mission.logs = logs
+                db_mission.status = status
+                if status == "paused":
+                    db_mission.resume = True
+                return True
+        except (OSError, RuntimeError, SQLAlchemyError) as exc:
+            logger.error("Failed to persist mission %s control request: %s", mission_id, exc)
+            raise RuntimeError(f"Mission control request could not be persisted: {exc}") from exc
+
+    async def get_db_control_status(self, mission_id: str) -> str | None:
+        """Read the durable status used by cross-replica execution watchers."""
+        try:
+            async with async_session_maker() as session:
+                db_mission = await session.get(MissionModel, mission_id)
+                return str(db_mission.status) if db_mission is not None else None
+        except (OSError, RuntimeError, SQLAlchemyError) as exc:
+            logger.warning("Failed to read mission %s control status: %s", mission_id, exc)
+            return None
 
     def get_mission(self, mission_id: str) -> Mission | None:
         """Get mission by ID."""
@@ -451,22 +489,21 @@ class MissionLifecycleManager:
 
                     vpn_mgr = VPNManager()
                     result = await vpn_mgr.connect(mission.vpn_config)
-                    mission.log(f"[VPN] Connected via '{mission.vpn_config}' (job: {result.get('job_id', 'N/A')})")
                     # Wait for VPN tunnel to establish
                     job_id = result.get("job_id")
-                    if job_id:
-                        try:
-                            from spectra_infra.queue import Job
+                    if not job_id:
+                        raise RuntimeError("VPN connect did not return a worker job id")
+                    from spectra_infra.queue import Job
 
-                            job = Job(job_id)
-                            await job.result(timeout=30)
-                            mission.log("[VPN] Tunnel established successfully")
-                        except (OSError, RuntimeError, TimeoutError):
-                            mission.log("[VPN] Warning: tunnel not confirmed after 30s, proceeding anyway")
-                            logger.warning("VPN tunnel not confirmed for mission %s after 30s", mission.id)
-                except (OSError, RuntimeError, ImportError) as vpn_err:
+                    job = Job(job_id)
+                    vpn_result = await job.result(timeout=30)
+                    if not isinstance(vpn_result, dict) or vpn_result.get("success") is not True:
+                        raise RuntimeError("VPN worker did not confirm a successful tunnel")
+                    mission.log(f"[VPN] Connected via '{mission.vpn_config}' (job: {job_id})")
+                except Exception as vpn_err:
                     mission.log(f"[VPN] Failed to connect '{mission.vpn_config}': {vpn_err}")
                     logger.error("VPN connect failed for mission %s: %s", mission.id, vpn_err)
+                    raise RuntimeError(f"VPN connection required for mission but unavailable: {vpn_err}") from vpn_err
             else:
                 # Log VPN status
                 try:

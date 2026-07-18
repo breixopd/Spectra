@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Worker Queue Management
 # Usage: ./scripts/ops/worker_management.sh <command>
-# ⚠ NOTE — Job queue management will be available in the Admin UI
-# in a future release. Use this script for now.
 set -euo pipefail
 
 DB_CONTAINER="${DB_CONTAINER:-spectra-db}"
@@ -67,7 +65,6 @@ case "${1:-}" in
         ;;
     retry-job)
         [[ -z "${2:-}" ]] && echo "Usage: $0 retry-job <job-id>" && exit 1
-        local safe_id
         safe_id=$(sql_escape "$2")
         run_sql "UPDATE job_queue SET status = 'pending', error = NULL, started_at = NULL, completed_at = NULL WHERE id = '${safe_id}';"
         echo "Job $2 moved to pending."

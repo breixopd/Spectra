@@ -52,15 +52,18 @@ async def perform_safety_check(
 
         safety_result = await safety_supervisor.execute(safety_context, safety_input)
 
-        if (
-            safety_result.success
-            and isinstance(safety_result.action, SafetyAction)
-            and not safety_result.action.allowed
-        ):
+        # Safety is fail-closed: only an explicit successful, typed allow
+        # decision can dispatch a command.  Provider errors or malformed
+        # results must never be interpreted as approval.
+        if not safety_result.success or not isinstance(safety_result.action, SafetyAction):
+            reason = "Safety Supervisor did not return an explicit decision"
+            mission.log(f"[BLOCK] {reason}")
+            return False, reason
+        if not safety_result.action.allowed:
             mission.log(f"[BLOCK] Safety check blocked: {safety_result.action.reason}")
-            return False, safety_result.action.reason
+            return False, safety_result.action.reason or "Safety Supervisor denied execution"
         return True, "Safe"
-    except (OSError, RuntimeError, ValueError, TimeoutError) as e:
+    except Exception as e:
         mission.log(f"Safety check failed verification: {e}")
         return False, str(e)
 

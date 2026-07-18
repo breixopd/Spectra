@@ -32,11 +32,15 @@ interface ErrorStateProps {
 
 export function ErrorState({ title = "Unable to load data", message, onRetry, className }: ErrorStateProps) {
   return (
-    <div className={cn("rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-6", className)}>
+    <div
+      role="alert"
+      aria-live="assertive"
+      className={cn("rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-6", className)}
+    >
       <h3 className="text-sm font-medium text-destructive">{title}</h3>
       <p className="mt-1 text-xs text-muted-foreground">{message}</p>
       {onRetry ? (
-        <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
+        <Button type="button" variant="outline" size="sm" className="mt-3" onClick={onRetry}>
           Retry
         </Button>
       ) : null}
@@ -51,8 +55,16 @@ interface LoadingStateProps {
 
 export function LoadingState({ label = "Loading…", className }: LoadingStateProps) {
   return (
-    <div className={cn("flex items-center justify-center py-12 text-sm text-muted-foreground", className)}>
-      <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-primary" />
+    <div
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      className={cn("flex items-center justify-center py-12 text-sm text-muted-foreground", className)}
+    >
+      <span
+        aria-hidden="true"
+        className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-primary"
+      />
       {label}
     </div>
   );

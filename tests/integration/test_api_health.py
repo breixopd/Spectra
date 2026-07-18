@@ -34,6 +34,8 @@ async def test_health_returns_healthy(client):
     assert "components" in data
     assert "services" in data
     assert "summary" in data
+    assert data["scope"] == "public"
+    assert set(data["services"]) == {"api"}
 
 
 @pytest.mark.asyncio

@@ -1,6 +1,7 @@
 """Unit tests for reactive auto-scaling engine."""
 
 import time
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -8,6 +9,7 @@ import pytest
 from spectra_scaling.auto_scaler import AutoScaler, ScalingDecision
 from spectra_scaling.backends import OrchestratorBackend, ScaleResult
 from spectra_scaling.config import AutoScalerConfig, ServicePolicy
+from spectra_scaling.metrics_collector import ClusterMetrics, ServiceMetrics
 from spectra_scaling.notifiers import ScalingNotifier
 
 # --- Test doubles ---
@@ -84,7 +86,7 @@ def _default_config(**overrides):
             idle_timeout_secs=0,
         ),
     }
-    return AutoScalerConfig(enabled=True, policies=policies, **overrides)
+    return AutoScalerConfig(policies=policies, enabled=overrides.pop("enabled", True), **overrides)
 
 
 # --- Fixtures ---
@@ -300,6 +302,11 @@ class TestFromSettings:
         # Falls back to env var value
         assert config.policies["worker"].min_replicas == 1
 
+    def test_missing_autoscale_setting_defaults_to_disabled(self, settings):
+        settings.AUTOSCALE_ENABLED = None
+        config = AutoScalerConfig.from_settings(settings)
+        assert config.enabled is False
+
 
 class TestReloadConfig:
     def test_reload_changes_policies(self, backend, notifier):
@@ -344,3 +351,25 @@ class TestGetConfigSnapshot:
         snap = scaler.get_config_snapshot()
         assert snap["scaling.worker.max_replicas"] == 6
         assert snap["scaling.enabled"] is True
+
+
+@pytest.mark.asyncio
+async def test_disabled_autoscaler_never_returns_or_executes_decisions(backend, notifier):
+    scaler = AutoScaler(_default_config(enabled=False), backend, notifier)
+    metrics = {"queue_depth": 100, "worker_replicas": 1, "worker_utilization": 1.0}
+    assert await scaler.evaluate(metrics) == []
+    assert await scaler.evaluate_and_execute(metrics) == []
+
+
+@pytest.mark.asyncio
+async def test_stale_cluster_metrics_hold_scaling(scaler):
+    cluster = ClusterMetrics(
+        timestamp=datetime.now(UTC) - timedelta(minutes=10),
+        services={"spectra_worker": ServiceMetrics(name="spectra_worker", replicas=1)},
+    )
+    assert await scaler.evaluate_and_execute(cluster) == []
+
+
+@pytest.mark.asyncio
+async def test_empty_cluster_metrics_fail_closed(scaler):
+    assert await scaler.evaluate_and_execute(ClusterMetrics()) == []

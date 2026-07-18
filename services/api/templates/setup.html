@@ -20,6 +20,11 @@
         <form id="setup-form" class="space-y-6" role="form" aria-label="System setup">
             <input type="checkbox" id="custom-db" class="hidden" tabindex="-1" aria-hidden="true">
             <input type="hidden" name="database_url" id="database_url" value="" aria-hidden="true">
+            <div class="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100">
+                <label for="setup-token" class="block font-medium">First-run enrollment token</label>
+                <p class="mt-1 text-xs text-amber-100/80">Enter the value generated in <code>SPECTRA_SETUP_TOKEN</code>. It is used once to authorize administrator enrollment and is never stored.</p>
+                <input type="password" id="setup-token" name="setup_token" autocomplete="one-time-code" minlength="16" maxlength="256" class="mt-3 w-full bg-black/30 border border-amber-200/20 rounded-lg px-4 py-2 text-white focus:border-amber-300 focus:outline-none transition-colors" placeholder="Paste the operator token">
+            </div>
             <div class="space-y-4 border-b border-white/10 pb-6">
                 <h2 class="text-lg font-semibold text-white flex items-center gap-2">
                     <i data-lucide="user" class="w-5 h-5 inline-block"></i> Admin Account
@@ -412,6 +417,7 @@
             }
 
             const payload = {
+                setup_token: setupForm.setup_token?.value.trim() || null,
                 user: {
                     username: setupForm.username.value.trim(),
                     email: setupForm.email.value.trim(),

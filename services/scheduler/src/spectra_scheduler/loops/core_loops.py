@@ -234,16 +234,63 @@ class SchedulerCoreLoopsMixin:
 
                     settings = get_settings()
 
-                    # Re-create AutoScaler each cycle to pick up runtime setting changes
-                    scaler = None
-                    if settings.AUTOSCALE_ENABLED:
-                        from spectra_scaling.auto_scaler import AutoScaler
-                        from spectra_scaling.backends import DockerSwarmBackend
-                        from spectra_scaling.config import AutoScalerConfig
-                        from spectra_scaling.notifiers import SpectraNotifier
+                    # The API persists runtime settings in PostgreSQL.  Hydrate
+                    # them here as well because the scheduler is a separate
+                    # process and must not rely on its startup environment.
+                    try:
+                        from spectra_system.runtime_settings import hydrate_runtime_settings_from_db
 
-                        config = AutoScalerConfig.from_settings(settings)
-                        scaler = AutoScaler(config, DockerSwarmBackend(), SpectraNotifier())
+                        await hydrate_runtime_settings_from_db(reset_caches=False)
+                        settings = get_settings()
+                    except Exception:
+                        logger.warning(
+                            "Runtime settings refresh failed; retaining last autoscaler config", exc_info=True
+                        )
+
+                    from spectra_scaling.auto_scaler import AutoScaler
+                    from spectra_scaling.backends import DockerSwarmBackend
+                    from spectra_scaling.config import AutoScalerConfig
+                    from spectra_scaling.notifiers import SpectraNotifier
+
+                    config = AutoScalerConfig.from_settings(settings)
+                    fingerprint = (
+                        config.enabled,
+                        config.check_interval_secs,
+                        config.metrics_stale_after_secs,
+                        tuple(
+                            (
+                                role,
+                                p.service_name,
+                                p.min_replicas,
+                                p.max_replicas,
+                                p.scale_up_threshold,
+                                p.scale_down_threshold,
+                                p.scale_up_queue_depth,
+                                p.cooldown_secs,
+                                p.idle_timeout_secs,
+                            )
+                            for role, p in sorted(config.policies.items())
+                        ),
+                        config.heal_enabled,
+                        config.heal_max_retries,
+                        config.heal_cooldown_secs,
+                        config.memory_warning_percent,
+                        config.memory_critical_percent,
+                        config.disk_warning_gb,
+                        config.disk_critical_gb,
+                        config.system_memory_alert_threshold,
+                        config.system_disk_alert_threshold,
+                        config.system_load_alert_multiplier,
+                    )
+                    if self._autoscaler is None:
+                        self._autoscaler = AutoScaler(config, DockerSwarmBackend(), SpectraNotifier())
+                        self._autoscaler_config_fingerprint = fingerprint
+                    elif fingerprint != self._autoscaler_config_fingerprint:
+                        self._autoscaler.reload_config(config)
+                        self._autoscaler_config_fingerprint = fingerprint
+                        logger.info("Reloaded autoscaler configuration from runtime settings")
+
+                    scaler = self._autoscaler if config.enabled else None
 
                     # --- Auto-scaling with real metrics ---
                     if scaler is not None:
@@ -253,16 +300,20 @@ class SchedulerCoreLoopsMixin:
                         cluster_metrics = await collector.collect_all()
                         decisions = await scaler.evaluate_and_execute(cluster_metrics)
                         for decision in decisions:
-                            if decision.action != "none":
+                            if decision.action != "none" and decision.executed is not False:
+                                service_metrics = cluster_metrics.services.get(decision.service)
+                                utilization_pct = (
+                                    round(service_metrics.cpu_percent, 1) if service_metrics is not None else None
+                                )
                                 await self._send_capacity_alert(
                                     {
                                         "event": f"auto_scaled_{decision.action}",
                                         "service": decision.service,
                                         "replicas": f"{decision.current_replicas} → {decision.desired_replicas}",
                                         "reason": decision.reason,
-                                        "utilization_pct": 0,
-                                        "total_used": 0,
-                                        "total_capacity": 0,
+                                        "utilization_pct": utilization_pct,
+                                        "total_used": decision.current_replicas,
+                                        "total_capacity": decision.desired_replicas,
                                     }
                                 )
 
@@ -308,12 +359,18 @@ class SchedulerCoreLoopsMixin:
         try:
             from spectra_system.notifications import send_notification
 
+            utilization = status.get("utilization_pct")
+            if utilization is None:
+                utilization_text = "capacity metrics unavailable"
+            else:
+                utilization_text = (
+                    f"{float(utilization):.1f}% capacity "
+                    f"({status.get('total_used', 0)}/{status.get('total_capacity', 0)} containers)"
+                )
+
             await send_notification(
                 title="Capacity Alert",
-                message=(
-                    f"Network at {status['utilization_pct']:.1f}% capacity "
-                    f"({status['total_used']}/{status['total_capacity']} containers)"
-                ),
+                message=f"Network at {utilization_text}",
                 priority="urgent",
                 tags=["warning", "capacity"],
             )

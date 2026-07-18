@@ -3,6 +3,7 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from spectra_api.api.schemas.auth import UserCreate
+from spectra_common.utils.url_validation import validate_service_endpoint_url
 
 # --- Account Deletion ---
 
@@ -30,6 +31,9 @@ class HealthResponse(BaseModel):
 class SystemSetupRequest(BaseModel):
     """Schema for system setup."""
 
+    # Must match SPECTRA_SETUP_TOKEN (or the X-Spectra-Setup-Token header) on
+    # production first boot.  It is never persisted or echoed.
+    setup_token: str | None = Field(default=None, min_length=16, max_length=256)
     user: UserCreate
     # AI Gateway (TensorZero)
     tensorzero_gateway_url: str | None = None
@@ -53,6 +57,16 @@ class SystemSetupRequest(BaseModel):
     platform_base_url: str | None = None
     app_name: str | None = None
     contact_email: str | None = None
+
+    @field_validator(
+        "tensorzero_gateway_url",
+        "sandbox_orchestrator_url",
+        "s3_endpoint_url",
+        "platform_base_url",
+    )
+    @classmethod
+    def validate_service_urls(cls, value: str | None) -> str | None:
+        return validate_service_endpoint_url(value)
 
 
 class SettingsUpdate(BaseModel):
@@ -143,6 +157,17 @@ class SettingsUpdate(BaseModel):
             if parsed.scheme not in ("http", "https"):
                 raise ValueError("Webhook URL must use http or https scheme")
         return value
+
+    @field_validator(
+        "tensorzero_gateway_url",
+        "sandbox_orchestrator_url",
+        "s3_endpoint_url",
+        "crypto_payment_url",
+        "embedding_api_base_url",
+    )
+    @classmethod
+    def validate_service_urls(cls, value: str | None) -> str | None:
+        return validate_service_endpoint_url(value)
 
     @model_validator(mode="after")
     def enforce_string_max_length(self) -> "SettingsUpdate":
