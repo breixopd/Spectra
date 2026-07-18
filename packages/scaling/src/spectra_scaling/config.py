@@ -50,6 +50,9 @@ class ServicePolicy:
     scale_up_threshold: float = 0.75  # CPU/queue utilization
     scale_down_threshold: float = 0.25
     scale_up_queue_depth: int = 10  # queue depth trigger
+    # Queue age catches latency regressions even when the backlog is small.
+    # A non-positive value disables this trigger.
+    scale_up_queue_age_secs: float = 60.0
     cooldown_secs: int = 300
     idle_timeout_secs: int = 600
 
@@ -59,7 +62,12 @@ class ServicePolicy:
         self.max_replicas = max(self.min_replicas, int(self.max_replicas))
         self.scale_up_threshold = min(1.0, max(0.0, float(self.scale_up_threshold)))
         self.scale_down_threshold = min(self.scale_up_threshold, max(0.0, float(self.scale_down_threshold)))
-        self.scale_up_queue_depth = max(0, int(self.scale_up_queue_depth))
+        # A zero threshold would make queue-based replica math divide by zero
+        # and would turn every queued item into an unbounded scale-up signal.
+        # Queue triggers are intentionally always positive; policies that do
+        # not use queue depth simply ignore this field.
+        self.scale_up_queue_depth = max(1, int(self.scale_up_queue_depth))
+        self.scale_up_queue_age_secs = max(0.0, float(self.scale_up_queue_age_secs))
         self.cooldown_secs = max(0, int(self.cooldown_secs))
         self.idle_timeout_secs = max(0, int(self.idle_timeout_secs))
 
@@ -123,6 +131,7 @@ class AutoScalerConfig:
         cpu_up = _cfg("scaling.cpu_up_threshold", "AUTOSCALE_CPU_UP_THRESHOLD", 75) / 100.0
         cpu_down = _cfg("scaling.cpu_down_threshold", "AUTOSCALE_CPU_DOWN_THRESHOLD", 25) / 100.0
         queue_threshold = _cfg("scaling.queue_threshold", "AUTOSCALE_QUEUE_THRESHOLD", 5)
+        queue_age_secs = _cfg("scaling.queue_age_secs", "AUTOSCALE_QUEUE_AGE_SECS", 60.0, float)
         check_interval = _cfg("scaling.check_interval_secs", "AUTOSCALE_CHECK_INTERVAL_SECS", 60)
         metrics_stale_after = _cfg(
             "scaling.metrics_stale_after_secs",
@@ -156,6 +165,7 @@ class AutoScalerConfig:
                 scale_up_threshold=cpu_up,
                 scale_down_threshold=cpu_down,
                 scale_up_queue_depth=queue_threshold,
+                scale_up_queue_age_secs=queue_age_secs,
                 cooldown_secs=cooldown,
                 idle_timeout_secs=max(idle_secs, 600),
             ),
@@ -166,6 +176,7 @@ class AutoScalerConfig:
                 scale_up_threshold=cpu_up,
                 scale_down_threshold=cpu_down,
                 scale_up_queue_depth=0,
+                scale_up_queue_age_secs=0,
                 cooldown_secs=min(cooldown, 120),
                 idle_timeout_secs=min(idle_secs, 300),
             ),
@@ -176,6 +187,7 @@ class AutoScalerConfig:
                 scale_up_threshold=0.80,
                 scale_down_threshold=0.20,
                 scale_up_queue_depth=3,
+                scale_up_queue_age_secs=queue_age_secs,
                 cooldown_secs=cooldown,
                 idle_timeout_secs=max(idle_secs, 900),
             ),
@@ -186,6 +198,7 @@ class AutoScalerConfig:
                 scale_up_threshold=0,
                 scale_down_threshold=0,
                 scale_up_queue_depth=0,
+                scale_up_queue_age_secs=0,
                 cooldown_secs=600,
                 idle_timeout_secs=0,
             ),

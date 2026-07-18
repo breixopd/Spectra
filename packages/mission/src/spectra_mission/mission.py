@@ -61,6 +61,7 @@ _CHECKPOINT_REQUIRED_FIELDS = frozenset(
         "training_opt_in",
         "training_discount_pct",
         "completed_task_ids",
+        "authorization_confirmed",
     }
 )
 
@@ -129,6 +130,12 @@ class Mission:
         self.training_discount_pct = training_discount_pct
         self.automation_level = _SCAN_MODE_AUTOMATION.get(self.scan_mode, "full_auto")
         self.status = "created"
+        # Explicit execution phase consumed by tool/framework enforcement.
+        # Keeping this separate from the immutable plan cursor avoids a tool
+        # run observing a stale phase during replans or resumed missions.
+        self.current_phase = "scope"
+        self.scope_targets: list[str] = [target]
+        self.allow_indirect_targets = False
         self.start_time = datetime.now(UTC)
         self.plan: MissionPlan | None = None
         self.current_task_index = 0
@@ -179,29 +186,30 @@ class Mission:
     def stop(self) -> None:
         """Signal mission to stop."""
         self._stop_event.set()
-        self.status = "stopping"
+        self.set_status("stopping")
 
     def is_stopped(self) -> bool:
         """Check if mission has been stopped."""
         return self._stop_event.is_set()
 
     def set_status(self, status: str) -> None:
-        """Update mission status, validating via FSM when possible."""
+        """Update mission status while keeping the FSM and persisted status aligned."""
         try:
             new_state = MissionStatus(status)
             if self.fsm.can_transition_to(new_state):
                 self.fsm.transition_to(new_state)
             else:
                 logger.warning(
-                    "Invalid FSM transition %s -> %s for mission %s, setting raw status",
+                    "Invalid FSM transition %s -> %s for mission %s; recording forced transition",
                     self.fsm.state.value,
                     status,
                     self.id,
                 )
+                self.fsm.force_transition(new_state, reason="Lifecycle adapter requested non-linear transition")
+            self.status = new_state.value
         except ValueError:
-            # status string not in MissionStatus enum — just set raw
-            logger.debug("Status '%s' not in MissionStatus enum", status)
-        self.status = status
+            logger.error("Rejected unknown mission status '%s'", status)
+            raise ValueError(f"Unknown mission status: {status}") from None
 
     def pause(self) -> None:
         """Pause the mission."""
@@ -517,10 +525,6 @@ class Mission:
     def to_dict(self) -> dict[str, Any]:
         """Serialize mission to dictionary."""
         with self._state_lock:
-            current_phase: str | None = None
-            if self.plan and hasattr(self.plan, "current_phase"):
-                cp = self.plan.current_phase
-                current_phase = cp.value if hasattr(cp, "value") else str(cp)
             return {
                 "id": self.id,
                 "target": self.target,
@@ -528,7 +532,7 @@ class Mission:
                 "requirements": self.requirements,
                 "status": self.status,
                 "pentest_framework": getattr(self, "pentest_framework", "ptes"),
-                "current_phase": current_phase,
+                "current_phase": self.current_phase,
                 "start_time": self.start_time.isoformat(),
                 "current_task_index": self.current_task_index,
                 "findings_count": len(self.findings),
@@ -552,6 +556,16 @@ class Mission:
         Returns a JSON-serializable dict that captures enough state to
         reconstruct the mission later.
         """
+        try:
+            persisted_status = MissionStatus(self.status)
+        except ValueError as exc:
+            raise ValueError(f"Cannot checkpoint unknown mission status: {self.status}") from exc
+        if self.fsm.state != persisted_status:
+            # Repair legacy callers that assigned ``mission.status`` directly
+            # before persisting; never emit a checkpoint whose status and FSM
+            # disagree.
+            self.fsm.force_transition(persisted_status, reason="Checkpoint reconciled lifecycle status")
+
         plan_data = None
         if self.plan:
             try:
@@ -578,6 +592,11 @@ class Mission:
             "start_time": self.start_time.isoformat(),
             "current_task_index": self.current_task_index,
             "completed_task_ids": sorted(self.completed_task_ids),
+            "authorization_confirmed": self.authorization_confirmed,
+            "current_phase": self.current_phase,
+            "scope_targets": list(self.scope_targets),
+            "allow_indirect_targets": self.allow_indirect_targets,
+            "fsm": self.fsm.to_dict(),
             "findings": self.findings,
             "findings_ids": [f.get("id") or f.get("template-id", "") for f in self.findings],
             "tools_run": self.tools_run,
@@ -627,9 +646,31 @@ class Mission:
             pentest_framework=data.get("pentest_framework", "ptes"),
             training_opt_in=bool(data["training_opt_in"]),
             training_discount_pct=float(data["training_discount_pct"]),
+            authorization_confirmed=bool(data["authorization_confirmed"]),
         )
         mission.id = data["id"]
+        if not isinstance(mission.id, str) or not mission.id:
+            raise ValueError("Checkpoint id must be a non-empty string")
         mission.status = data.get("status", "created")
+        mission.current_phase = str(data.get("current_phase") or "scope")
+        scope_targets = data.get("scope_targets", [mission.target])
+        if not isinstance(scope_targets, list) or any(
+            not isinstance(value, str) or not value for value in scope_targets
+        ):
+            raise ValueError("Checkpoint has invalid scope_targets")
+        mission.scope_targets = list(dict.fromkeys(scope_targets))
+        mission.allow_indirect_targets = bool(data.get("allow_indirect_targets", False))
+        if data.get("fsm"):
+            try:
+                mission.fsm = MissionStateMachine.from_dict(data["fsm"], mission.id)
+            except (TypeError, ValueError, KeyError) as exc:
+                raise ValueError("Checkpoint has invalid FSM state") from exc
+            if mission.fsm.state.value != mission.status:
+                raise ValueError("Checkpoint status and FSM state do not match")
+        else:
+            # Versioned checkpoints created before FSM serialization are not
+            # safe to resume because their audit trail cannot be reconstructed.
+            raise ValueError("Checkpoint is missing FSM state")
         if start_time := data.get("start_time"):
             try:
                 mission.start_time = datetime.fromisoformat(start_time)
@@ -664,6 +705,19 @@ class Mission:
                 from spectra_ai_core.agents.mission_controller import MissionPlan
 
                 mission.plan = MissionPlan.model_validate(data["plan"])
+                plan_ids = [task.task_id for task in mission.plan.tasks]
+                if len(plan_ids) != len(set(plan_ids)):
+                    raise ValueError("Checkpoint plan contains duplicate task IDs")
+                known_ids = set(plan_ids)
+                for task in mission.plan.tasks:
+                    missing_dependencies = set(task.dependencies) - known_ids
+                    if missing_dependencies:
+                        raise ValueError(
+                            f"Checkpoint plan task {task.task_id} references unknown dependencies: "
+                            f"{', '.join(sorted(missing_dependencies))}"
+                        )
+                if not mission.completed_task_ids.issubset(known_ids):
+                    raise ValueError("Checkpoint completed_task_ids do not belong to the restored plan")
             except (ValueError, TypeError, KeyError) as exc:
                 raise ValueError("Checkpoint has invalid plan") from exc
 

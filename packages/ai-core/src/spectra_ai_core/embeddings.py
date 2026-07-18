@@ -54,7 +54,10 @@ class EmbeddingService:
         self._use_local = False
         self._local_embedder: object | None = None
         self._local_model_name: str = ""
-        self._init_lock: asyncio.Lock | None = None
+        # One lazy-loader per process; without a lock concurrent first
+        # requests can download/load the model more than once and race on
+        # backend state and embedding dimensions.
+        self._init_lock = asyncio.Lock()
         self._openai_client: object | None = None
         self._openai_model: str = ""
         self._embedding_dim: int | None = None
@@ -120,6 +123,13 @@ class EmbeddingService:
         """
         if self._api_ready:
             return
+        async with self._init_lock:
+            if self._api_ready:
+                return
+            await self._load_model_unlocked()
+
+    async def _load_model_unlocked(self) -> None:
+        """Load a backend while the initialization lock is held."""
         if self._configured_api_key():
             await self._init_api_backend()
             if self._api_ready:

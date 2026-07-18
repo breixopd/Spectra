@@ -12,13 +12,17 @@ Supports regression testing against baselines when models/config change.
 
 from __future__ import annotations
 
+import asyncio
+import inspect
 import json as _json
 import logging
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
 logger = logging.getLogger(__name__)
+_MISSING = object()
 
 
 @dataclass
@@ -115,8 +119,9 @@ class BenchmarkRunner:
         result = await runner.run_benchmark(BENCHMARK_TARGETS)
     """
 
-    def __init__(self, mission_manager=None):
+    def __init__(self, mission_manager=None, *, poll_interval_seconds: float = 1.0):
         self.mission_manager = mission_manager
+        self.poll_interval_seconds = max(0.0, float(poll_interval_seconds))
 
     async def run_benchmark(
         self,
@@ -151,23 +156,207 @@ class BenchmarkRunner:
         )
 
         try:
-            if self.mission_manager:
-                mission_id = await self.mission_manager.start_mission(
-                    target=target.target,
-                    directive=f"Security assessment of {target.name}",
-                    scan_mode="autonomous",
-                    pentest_framework="ptes",
-                )
-                run.mission_id = mission_id
-                run.success = True
+            if not self.mission_manager:
+                run.errors.append("Mission manager is not configured")
+                return run
 
-            run.end_time = time.time()
+            mission_ref = self.mission_manager.start_mission(
+                target=target.target,
+                directive=f"Security assessment of {target.name}",
+                scan_mode="autonomous",
+                pentest_framework="ptes",
+            )
+            if inspect.isawaitable(mission_ref):
+                mission_ref = await mission_ref
+            run.mission_id = self._mission_id(mission_ref)
+            if not run.mission_id:
+                raise ValueError("Mission manager returned no mission ID")
+
+            mission_state = await self._wait_for_terminal_state(run.mission_id, timeout)
+            self._populate_metrics(run, mission_state)
+
+            status = self._status(mission_state)
+            valid, postcondition_errors = self._validate_postconditions(target, status, run)
+            run.success = valid
+            run.errors.extend(postcondition_errors)
+
+        except TimeoutError:
+            run.errors.append(f"Mission did not reach a terminal state within {timeout:.1f}s")
 
         except Exception as exc:
             run.errors.append(str(exc))
+        finally:
             run.end_time = time.time()
 
         return run
+
+    async def _wait_for_terminal_state(self, mission_id: str, timeout: float) -> Any:
+        """Poll mission state until completion, failure, or cancellation."""
+
+        deadline = time.monotonic() + max(0.0, float(timeout))
+        while True:
+            state = await self._get_mission_state(mission_id)
+            if state is not None and self._status(state) in {
+                "completed",
+                "complete",
+                "success",
+                "succeeded",
+                "failed",
+                "cancelled",
+                "stopped",
+                "timed_out",
+                "timeout",
+                "error",
+            }:
+                return state
+
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError(f"Mission {mission_id} did not reach a terminal state")
+            await asyncio.sleep(min(self.poll_interval_seconds, remaining))
+
+    async def _get_mission_state(self, mission_id: str) -> Any:
+        """Read state from common manager/lifecycle interfaces.
+
+        The public manager returns an in-memory Mission object, while adapters
+        and test harnesses often expose a mapping or a dedicated state getter.
+        Supporting both keeps benchmark evaluation independent of deployment
+        topology.
+        """
+
+        owners = [self.mission_manager]
+        lifecycle = getattr(self.mission_manager, "lifecycle", None)
+        if lifecycle is not None:
+            owners.append(lifecycle)
+
+        for owner in owners:
+            if owner is None:
+                continue
+            for getter_name in ("get_mission", "get_mission_state", "get_status"):
+                getter = getattr(owner, getter_name, None)
+                if getter is None:
+                    continue
+                try:
+                    state = getter(mission_id)
+                    if inspect.isawaitable(state):
+                        state = await state
+                except (OSError, RuntimeError, KeyError, TypeError, AttributeError) as exc:
+                    logger.debug("Mission state poll failed via %s: %s", getter_name, exc)
+                    continue
+                if state is not None:
+                    if getter_name == "get_status" and isinstance(state, str):
+                        return {"status": state}
+                    return state
+        return None
+
+    @staticmethod
+    def _mission_id(mission_ref: Any) -> str:
+        """Normalize a manager's string, UUID, or Mission return value."""
+
+        if isinstance(mission_ref, str):
+            return mission_ref
+        if isinstance(mission_ref, Mapping):
+            value = mission_ref.get("id") or mission_ref.get("mission_id")
+            return str(value) if value else ""
+        value = getattr(mission_ref, "id", mission_ref)
+        return str(value) if value else ""
+
+    @staticmethod
+    def _state_value(state: Any, key: str, default: Any = None) -> Any:
+        if isinstance(state, Mapping):
+            value = state.get(key, _MISSING)
+            if value is not _MISSING:
+                return value
+            summary = state.get("summary")
+            if isinstance(summary, Mapping):
+                return summary.get(key, default)
+            return default
+        value = getattr(state, key, _MISSING)
+        if value is not _MISSING:
+            return value
+        summary = getattr(state, "summary", None)
+        if isinstance(summary, Mapping):
+            return summary.get(key, default)
+        return default
+
+    @classmethod
+    def _status(cls, state: Any) -> str:
+        raw = state if isinstance(state, str) else cls._state_value(state, "status", "unknown")
+        return str(getattr(raw, "value", raw)).strip().lower()
+
+    @classmethod
+    def _milestone_ids(cls, state: Any) -> list[str]:
+        raw = cls._state_value(state, "milestones", []) or cls._state_value(state, "completed_milestones", [])
+        if isinstance(raw, Mapping):
+            raw = [raw]
+        completed: list[str] = []
+        for entry in raw if isinstance(raw, list) else []:
+            if isinstance(entry, str):
+                completed.append(entry)
+                continue
+            if not isinstance(entry, Mapping):
+                continue
+            milestone_id = entry.get("milestone") or entry.get("id") or entry.get("name")
+            status = str(entry.get("status", "completed")).lower()
+            if milestone_id and status in {"completed", "complete", "done", "success", "succeeded"}:
+                completed.append(str(milestone_id))
+        return list(dict.fromkeys(completed))
+
+    @classmethod
+    def _finding_labels(cls, state: Any) -> list[str]:
+        raw = cls._state_value(state, "findings", []) or cls._state_value(state, "findings_found", [])
+        labels: list[str] = []
+        for entry in raw if isinstance(raw, list) else []:
+            if isinstance(entry, str):
+                labels.append(entry)
+            elif isinstance(entry, Mapping):
+                value = entry.get("title") or entry.get("name") or entry.get("id")
+                if value:
+                    labels.append(str(value))
+            else:
+                value = getattr(entry, "title", None) or getattr(entry, "name", None)
+                if value:
+                    labels.append(str(value))
+        return labels
+
+    @classmethod
+    def _populate_metrics(cls, run: BenchmarkRun, state: Any) -> None:
+        run.milestones_completed = cls._milestone_ids(state)
+        run.findings_found = cls._finding_labels(state)
+        tool_executions = cls._state_value(state, "tool_executions", []) or []
+        tools_run = cls._state_value(state, "tools_run", []) or []
+        run.tool_calls = int(cls._state_value(state, "tool_calls", len(tool_executions) or len(tools_run)) or 0)
+        run.llm_calls = int(cls._state_value(state, "llm_calls", 0) or 0)
+        run.estimated_cost = float(
+            cls._state_value(state, "estimated_cost", cls._state_value(state, "estimated_cost_usd", 0.0)) or 0.0
+        )
+
+    @staticmethod
+    def _validate_postconditions(
+        target: BenchmarkTarget,
+        status: str,
+        run: BenchmarkRun,
+    ) -> tuple[bool, list[str]]:
+        errors: list[str] = []
+        successful_status = status in {"completed", "complete", "success", "succeeded"}
+        if not successful_status:
+            errors.append(f"Mission ended with non-success status: {status}")
+
+        completed = set(run.milestones_completed)
+        missing_milestones = [item for item in target.expected_milestones if item not in completed]
+        if missing_milestones:
+            errors.append(f"Missing expected milestones: {', '.join(missing_milestones)}")
+
+        findings = [finding.lower() for finding in run.findings_found]
+        missing_vulns = [
+            expected
+            for expected in target.expected_vulns
+            if not any(expected.lower() in finding for finding in findings)
+        ]
+        if missing_vulns:
+            errors.append(f"Missing expected findings: {', '.join(missing_vulns)}")
+
+        return successful_status and not missing_milestones and not missing_vulns, errors
 
 
 # Standard benchmark targets

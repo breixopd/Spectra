@@ -102,6 +102,10 @@ class MissionExecutionManager:
             if inspect.isawaitable(control_watcher):
                 with suppress(asyncio.CancelledError):
                     await control_watcher
+            # Cost trackers are process-global so LLM callbacks can find the
+            # active mission. Always unregister them at the lifecycle
+            # boundary; otherwise completed missions are retained by workers.
+            cost_tracker.unregister()
             await self._finalize_demo_recorder(mission, recorder)
             await self._cleanup_mission(mission)
 
@@ -434,6 +438,17 @@ class MissionExecutionManager:
             raise RuntimeError("Scoping completed without an action")
 
         target_count = len(scope_action.targets)
+        mission.scope_targets = list(
+            dict.fromkeys(
+                value
+                for target_spec in scope_action.targets
+                for value in [
+                    target_spec if isinstance(target_spec, str) else getattr(target_spec, "value", ""),
+                    *([] if isinstance(target_spec, str) else (getattr(target_spec, "resolved_ips", []) or [])),
+                ]
+                if value
+            )
+        )
         mission.log(f"Scope defined: {target_count} targets")
 
     async def _run_planning_phase(self, mission: Mission, context: AgentContext) -> None:

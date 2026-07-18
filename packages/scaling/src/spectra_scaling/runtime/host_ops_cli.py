@@ -29,13 +29,17 @@ async def run_docker_prune_round(*, include_managed_volumes: bool = False) -> in
             prune_volumes,
         )
 
-        await prune_containers(filters={"until": ["48h"]})
-        await prune_images(filters={"dangling": ["true"], "until": ["168h"]})
+        managed_filter = {"label": ["spectra.managed=true"]}
+        await prune_containers(filters={**managed_filter, "until": ["48h"]})
+        await prune_images(filters={**managed_filter, "dangling": ["true"], "until": ["168h"]})
         if include_managed_volumes:
             await prune_volumes(filters={"label": ["spectra.managed=true"]})
         await prune_containers(
             filters={
-                "label": ["com.docker.swarm.task"],
+                # Swarm task containers do not inherit the image's managed
+                # label. Scope this exceptional cleanup to Spectra's stack
+                # namespace instead of retaining task debris indefinitely.
+                "label": ["com.docker.stack.namespace=spectra", "com.docker.swarm.task"],
                 "status": ["exited"],
                 "until": ["168h"],
             },

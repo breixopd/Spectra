@@ -432,6 +432,56 @@ async def test_metrics_collector_returns_compose_replicas_when_swarm_unavailable
     assert services["spectra_worker"].replicas == 2
 
 
+@pytest.mark.asyncio
+async def test_metrics_collector_marks_partial_service_stats_invalid(monkeypatch):
+    async def swarm_services():
+        return [
+            SimpleNamespace(
+                name="spectra_worker",
+                running_tasks=2,
+                desired_replicas=2,
+                failed_tasks=0,
+            )
+        ]
+
+    async def partial_stats():
+        return [
+            docker_client.ContainerStats(
+                container_id="a",
+                name="spectra_worker.1.node",
+                cpu_percent=15.0,
+                memory_mb=32.0,
+                memory_limit_mb=128.0,
+                labels={},
+            )
+        ]
+
+    monkeypatch.setattr("spectra_scaling.docker_client.list_services", swarm_services)
+    monkeypatch.setattr("spectra_scaling.docker_client.get_container_stats", partial_stats)
+
+    services = await metrics_collector.MetricsCollector()._collect_service_metrics()
+
+    assert services["spectra_worker"].valid is False
+
+
+@pytest.mark.asyncio
+async def test_metrics_collector_rejects_non_finite_queue_age(monkeypatch):
+    async def broken_queue_metrics():
+        return {
+            "depth": 1,
+            "in_progress": 0,
+            "avg_wait_seconds": 0.5,
+            "oldest_job_age_seconds": float("nan"),
+        }
+
+    monkeypatch.setattr("spectra_infra.queue.queue_metrics", broken_queue_metrics)
+
+    queue = await metrics_collector.MetricsCollector()._collect_queue_metrics()
+
+    assert queue.valid is False
+    assert queue.oldest_job_secs == 0.0
+
+
 def test_docker_client_detects_non_manager_swarm_socket():
     client = SimpleNamespace(info=lambda: {"Swarm": {"ControlAvailable": False}})
 

@@ -37,7 +37,16 @@ async def test_run_docker_prune_keeps_volumes_without_explicit_opt_in(monkeypatc
         code = await host_ops_cli.run_docker_prune_round()
 
     assert code == 0
-    prune_images.assert_awaited_once_with(filters={"dangling": ["true"], "until": ["168h"]})
+    prune_images.assert_awaited_once_with(
+        filters={"label": ["spectra.managed=true"], "dangling": ["true"], "until": ["168h"]}
+    )
+    assert prune_containers.await_args_list[-1].kwargs == {
+        "filters": {
+            "label": ["com.docker.stack.namespace=spectra", "com.docker.swarm.task"],
+            "status": ["exited"],
+            "until": ["168h"],
+        }
+    }
     prune_volumes.assert_not_awaited()
 
 

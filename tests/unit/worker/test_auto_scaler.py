@@ -9,7 +9,7 @@ import pytest
 from spectra_scaling.auto_scaler import AutoScaler, ScalingDecision
 from spectra_scaling.backends import OrchestratorBackend, ScaleResult
 from spectra_scaling.config import AutoScalerConfig, ServicePolicy
-from spectra_scaling.metrics_collector import ClusterMetrics, ServiceMetrics
+from spectra_scaling.metrics_collector import ClusterMetrics, QueueMetrics, ServiceMetrics
 from spectra_scaling.notifiers import ScalingNotifier
 
 # --- Test doubles ---
@@ -127,6 +127,12 @@ class TestServicePolicy:
         assert p.min_replicas == 1
         assert p.max_replicas == 10
         assert p.cooldown_secs == 300
+        assert p.scale_up_queue_age_secs == 60.0
+
+    def test_non_positive_queue_threshold_is_clamped_to_one(self):
+        policy = ServicePolicy(service_name="test", scale_up_queue_depth=0)
+
+        assert policy.scale_up_queue_depth == 1
 
 
 class TestAutoScaler:
@@ -149,7 +155,7 @@ class TestAutoScaler:
 
     def test_scale_up_on_high_queue_depth(self, scaler):
         policy = scaler.policies["worker"]
-        metrics = {"queue_depth": 20, "worker_replicas": 1, "worker_utilization": 0.5}
+        metrics = {"queue_depth": 20, "queue_valid": True, "worker_replicas": 1, "worker_utilization": 0.5}
 
         decision = scaler._evaluate_policy(
             "worker",
@@ -163,6 +169,25 @@ class TestAutoScaler:
         assert decision.service == policy.service_name
         assert decision.current_replicas == 1
         assert decision.desired_replicas == 5
+
+    def test_scale_up_on_oldest_queue_age(self, scaler):
+        policy = scaler.policies["worker"]
+        decision = scaler._evaluate_policy(
+            "worker",
+            policy,
+            {
+                "queue_depth": 1,
+                "queue_oldest_age_secs": 120,
+                "queue_valid": True,
+                "worker_replicas": 1,
+                "worker_utilization": 0.2,
+            },
+            now=1000.0,
+            effective_max_replicas=policy.max_replicas,
+        )
+
+        assert decision.action == "scale_up"
+        assert "Oldest queued job" in decision.reason
 
     @pytest.mark.asyncio
     async def test_scale_up_respects_max(self, scaler):
@@ -190,7 +215,7 @@ class TestAutoScaler:
         policy = scaler.policies["worker"]
         now = 1000.0
         scaler._queue_idle_since["worker"] = now - policy.idle_timeout_secs - 100
-        metrics = {"queue_depth": 0, "worker_replicas": 3, "worker_utilization": 0.1}
+        metrics = {"queue_depth": 0, "queue_valid": True, "worker_replicas": 3, "worker_utilization": 0.1}
 
         decision = scaler._evaluate_policy(
             "worker",
@@ -204,6 +229,24 @@ class TestAutoScaler:
         assert decision.service == policy.service_name
         assert decision.current_replicas == 3
         assert decision.desired_replicas == 2
+
+    def test_scale_down_is_blocked_when_queue_is_non_empty(self, scaler):
+        """A stale idle timestamp must not override a newly observed queue item."""
+        policy = scaler.policies["worker"]
+        now = 1000.0
+        scaler._queue_idle_since["worker"] = now - policy.idle_timeout_secs - 100
+        metrics = {"queue_depth": 1, "queue_valid": True, "worker_replicas": 3, "worker_utilization": 0.1}
+
+        decision = scaler._evaluate_policy(
+            "worker",
+            policy,
+            metrics,
+            now=now,
+            effective_max_replicas=policy.max_replicas,
+        )
+
+        assert decision.action == "none"
+        assert scaler._queue_idle_since["worker"] == 0
 
     @pytest.mark.asyncio
     async def test_no_scale_down_below_min(self, scaler):
@@ -373,3 +416,46 @@ async def test_stale_cluster_metrics_hold_scaling(scaler):
 @pytest.mark.asyncio
 async def test_empty_cluster_metrics_fail_closed(scaler):
     assert await scaler.evaluate_and_execute(ClusterMetrics()) == []
+
+
+@pytest.mark.asyncio
+async def test_missing_queue_validity_holds_worker_scaling(scaler):
+    metrics = {"queue_depth": 100, "worker_replicas": 1, "worker_utilization": 0.5}
+
+    decisions = await scaler.evaluate(metrics)
+
+    assert decisions == []
+
+
+@pytest.mark.asyncio
+async def test_non_finite_service_metric_holds_worker_scaling(scaler):
+    metrics = {
+        "queue_depth": 100,
+        "queue_valid": True,
+        "worker_replicas": 1,
+        "worker_utilization": float("nan"),
+    }
+
+    decisions = await scaler.evaluate(metrics)
+
+    assert decisions == []
+
+
+@pytest.mark.asyncio
+async def test_invalid_cluster_service_metrics_hold_scaling(scaler):
+    cluster = ClusterMetrics(
+        services={
+            "spectra_worker": ServiceMetrics(
+                name="spectra_worker",
+                replicas=1,
+                desired_replicas=1,
+                running_tasks=1,
+                valid=False,
+            )
+        },
+        queue=QueueMetrics(depth=100, in_progress=0, valid=True),
+    )
+
+    decisions = await scaler.evaluate_and_execute(cluster)
+
+    assert decisions == []

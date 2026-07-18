@@ -1,10 +1,12 @@
 """Tests for MEM-002 (indexing), MEM-003 (backup rotation), MEM-006 (aggregation)."""
 
 import json
+from unittest.mock import patch
 
 import pytest
+from cryptography.fernet import InvalidToken
 
-from spectra_ai_core.memory import MissionMemory
+from spectra_ai_core.memory import MissionMemory, _memory_dir_for_user
 
 
 @pytest.fixture
@@ -172,3 +174,19 @@ class TestKnowledgeAggregation:
     def test_aggregate_empty(self, memory):
         result = memory.aggregate_knowledge()
         assert result["service_profiles"] == {}
+
+
+def test_user_memory_paths_reject_traversal_and_absolute_segments() -> None:
+    with pytest.raises(ValueError):
+        _memory_dir_for_user("../other-tenant")
+    with pytest.raises(ValueError):
+        _memory_dir_for_user("tenant/../../secrets")
+
+
+def test_encrypted_memory_does_not_accept_plaintext_fallback(tmp_path) -> None:
+    (tmp_path / "exploit_lessons.json").write_text("[]")
+
+    memory = MissionMemory.__new__(MissionMemory)
+    with patch("spectra_common.encryption.decrypt_file", side_effect=InvalidToken):
+        with pytest.raises(InvalidToken):
+            memory._read_maybe_encrypted(tmp_path / "exploit_lessons.json", "exploit_lessons.json")
