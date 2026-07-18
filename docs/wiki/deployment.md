@@ -377,7 +377,6 @@ Triggered on every push/PR to `main` or `dev`.
 | **integration-test** | Integration pytest suite in Docker (Garage bootstrapped) |
 | **docker-build** | Builds runtime images, Trivy CRITICAL gate on images, validates Compose + Swarm config |
 | **deps** | `pip-audit` dependency audit |
-| **version-check** | Verifies version metadata in `packages/common/src/spectra_common/_meta/version.py` |
 | **compose-smoke** | Pull requests to `main`/`dev` and pushes to `main`: full compose stack + selected e2e/health/performance smoke tests |
 
 ### `release.yml` — Build, Push & Deploy

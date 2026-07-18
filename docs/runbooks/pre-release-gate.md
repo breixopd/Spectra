@@ -10,12 +10,12 @@ Use this checklist before tagging a release or deploying production images. All 
    ./scripts/runbooks/ci-parity.sh all
    ```
 
-   Minimum for a hotfix branch if integration time is blocked: `./scripts/runbooks/ci-parity.sh ci`. This does **not** by itself replace **`deps`** (`pip-audit`), **`version-check`**, **`docker-build`** (Trivy), or PR/main-merge **`compose-smoke`** — run those separately when needed (see `.github/workflows/ci.yml`).
+   Minimum for a hotfix branch if integration time is blocked: `./scripts/runbooks/ci-parity.sh ci`. This does **not** by itself replace **`deps`** (`pip-audit`), **`docker-build`** (Trivy), or PR/main-merge **`compose-smoke`** — run those separately when needed (see `.github/workflows/ci.yml`).
 
 2. **Compose files valid** (matches CI `docker-build` compose step):
 
    ```bash
-   docker compose --env-file .env.example -f deploy/docker/compose.yaml --profile app --profile test --profile targets config --quiet
+   ENV_FILE=../../.env.example docker compose --env-file .env.example -f deploy/docker/compose.yaml --profile app --profile test --profile targets config --quiet
    docker compose --env-file .env.example -f deploy/docker/docker-compose.swarm.yml config --quiet
    ```
 

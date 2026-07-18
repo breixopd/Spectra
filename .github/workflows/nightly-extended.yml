@@ -31,4 +31,17 @@ jobs:
       - name: Ensure .env.test for Compose
         run: test -f .env.test || cp .env.test.example .env.test
       - name: Run scripts/runbooks/ci-parity.sh all
-        run: bash scripts/runbooks/ci-parity.sh all
+        run: COMPOSE_DOWN=1 bash scripts/runbooks/ci-parity.sh all
+      - name: Collect compose diagnostics on failure
+        if: failure()
+        run: |
+          mkdir -p nightly-logs
+          docker compose -f deploy/docker/compose.yaml --profile app --profile test logs --no-color > nightly-logs/compose.log 2>&1 || true
+      - name: Upload compose diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
+        with:
+          name: nightly-compose-logs
+          path: nightly-logs/
+          if-no-files-found: warn
+          retention-days: 14

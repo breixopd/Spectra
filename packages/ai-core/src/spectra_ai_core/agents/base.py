@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, ClassVar, Generic, TypeVar, cast
+from typing import Annotated, Any, ClassVar, Generic, TypeVar, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -76,7 +76,7 @@ class AgentContext(BaseModel):
 
     # Constraints
     stealth_mode: bool = False
-    max_concurrency: int = 3
+    max_concurrency: Annotated[int, Field(ge=1, le=32)] = 3
 
     # Extra context from blackboard/intelligence
     extra_context: str = ""
@@ -114,7 +114,7 @@ class ParallelToolAction(AgentAction):
 
     action_type: str = "run_tools_parallel"
     tools: list[ToolAction] = Field(..., description="Tools to run concurrently")
-    max_concurrency: int = Field(3, description="Max parallel tool executions")
+    max_concurrency: Annotated[int, Field(ge=1, le=32, description="Max parallel tool executions")] = 3
 
 
 class SteeringAction(AgentAction):

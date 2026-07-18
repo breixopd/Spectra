@@ -118,6 +118,18 @@ bootstrap_test_garage() {
         "$PROJECT_ROOT/deploy/docker/garage-init.sh"
 }
 
+bootstrap_integration_stack() {
+    echo -e "${CYAN}Starting integration dependencies...${NC}"
+    compose --profile app --profile test up -d --wait \
+        db redis garage tensorzero metasploitable dvwa
+    GARAGE_CONTAINER="$(compose ps -q garage)" \
+    GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}" \
+    GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}" \
+    GARAGE_PRINT_CREDENTIALS=0 \
+        "$PROJECT_ROOT/deploy/docker/garage-init.sh"
+    compose --profile app --profile test up -d --build --wait app ai-svc worker tools caddy
+}
+
 run_live_smoke() {
     if [[ "${START_STACK:-0}" == "1" ]]; then
         echo -e "${CYAN}Starting test stack for live smoke...${NC}"
@@ -140,11 +152,13 @@ case "$CMD" in
         ;;
     integration)
         echo -e "${CYAN}Running integration tests via Compose (profiles app + test)...${NC}"
+        bootstrap_integration_stack
         compose --profile app --profile test run --rm test-runner \
             "python -m pytest tests/integration/ -q --override-ini=addopts= -x -k 'not live and not e2e'"
         ;;
     all)
         run_unit_runner "python -m pytest tests/unit/ -q --override-ini=addopts="
+        bootstrap_integration_stack
         compose --profile app --profile test run --rm test-runner \
             "python -m pytest tests/integration/ -q --override-ini=addopts= -k 'not live and not e2e'"
         ;;

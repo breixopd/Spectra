@@ -3,7 +3,7 @@
 #
 # Usage (from repository root):
 #   ./scripts/runbooks/ci-parity.sh           # same as: ci-parity.sh ci
-#   ./scripts/runbooks/ci-parity.sh ci       # static analysis + unit(cov>=50%) + settings
+#   ./scripts/runbooks/ci-parity.sh ci       # static analysis + unit(cov>=65%) + settings
 #   ./scripts/runbooks/ci-parity.sh all      # ci + full integration stack
 #   ./scripts/runbooks/ci-parity.sh static|lint|type|unit|settings|integration
 #
@@ -19,8 +19,22 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
 export ENCRYPTION_KEY="${ENCRYPTION_KEY:-test-encryption-key}"
+# Compose services use this variable in their env_file declarations. Export it
+# once so every `run` invocation uses the same deterministic test environment
+# instead of falling back to a local `.env` absent on clean CI runners.
+export ENV_FILE="${ENV_FILE:-../../.env.test}"
 IMAGE="${SPECTRA_CI_IMAGE:-spectra-test-ci}"
 COMPOSE=(docker compose -f deploy/docker/compose.yaml)
+
+cleanup_on_exit() {
+  local exit_status=$?
+  if [[ "${COMPOSE_DOWN:-0}" == "1" ]]; then
+    "${COMPOSE[@]}" --profile app --profile test down -v --remove-orphans >/dev/null 2>&1 || true
+  fi
+  exit "$exit_status"
+}
+
+trap cleanup_on_exit EXIT
 
 ensure_env_test() {
   if [[ -f .env.test ]]; then
@@ -115,7 +129,7 @@ integration_job() {
   ENV_FILE=../../.env.test "${COMPOSE[@]}" --profile app --profile test up -d --build --wait \
     app ai-svc worker tools caddy
   echo "==> Integration pytest (excludes live / e2e)"
-  "${COMPOSE[@]}" --profile app --profile test run --rm --no-deps test-runner \
+  ENV_FILE="$ENV_FILE" "${COMPOSE[@]}" --profile app --profile test run --rm --no-deps test-runner \
     "python -m pytest tests/integration/ -v --tb=short --timeout=120 --override-ini=addopts= -k 'not live and not e2e'"
 }
 

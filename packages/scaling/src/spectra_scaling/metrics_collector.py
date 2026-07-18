@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import math
 import shutil
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -25,6 +26,7 @@ class ServiceMetrics:
     healthy: bool = True
     failed_tasks: int = 0
     running_tasks: int = 0
+    valid: bool = False
 
 
 @dataclass
@@ -49,6 +51,7 @@ class QueueMetrics:
     completed: int = 0
     avg_wait_secs: float = 0.0
     oldest_job_secs: float = 0.0
+    valid: bool = False
 
 
 @dataclass
@@ -157,23 +160,33 @@ class MetricsCollector:
                 # Get container-level stats for CPU/memory
                 container_stats = await get_container_stats()
 
+            stats_seen: dict[str, int] = {}
             for cs in container_stats:
                 # Extract service name from container name
                 # e.g. spectra_app.1.xxx -> spectra_app
                 service_name = self._service_name_for_container(cs)
                 if service_name in services:
+                    stats_seen[service_name] = stats_seen.get(service_name, 0) + 1
                     services[service_name].cpu_percent += cs.cpu_percent
                     services[service_name].memory_mb += cs.memory_mb
                     services[service_name].memory_limit_mb += cs.memory_limit_mb
 
             # Average CPU across replicas
             for svc in services.values():
+                # A partial stats response is not safe for autoscaling: an
+                # underestimated average could trigger an incorrect
+                # scale-down. Require one sample per running replica.
+                svc.valid = svc.replicas == 0 or stats_seen.get(svc.name, 0) >= svc.replicas
                 if svc.replicas > 0:
                     svc.cpu_percent /= svc.replicas
                     svc.memory_limit_mb /= svc.replicas
                     svc.memory_percent = (
                         (svc.memory_mb / (svc.memory_limit_mb * svc.replicas)) * 100 if svc.memory_limit_mb > 0 else 0.0
                     )
+                elif svc.desired_replicas == 0:
+                    # A zero-replica service has no container sample by
+                    # definition; Swarm's replica state is still complete.
+                    svc.valid = True
 
         except Exception as exc:
             logger.warning("Failed to collect service metrics: %s", exc)
@@ -232,12 +245,39 @@ class MetricsCollector:
             from spectra_infra.queue import queue_metrics
 
             raw = await queue_metrics()
+            if not isinstance(raw, dict):
+                raise TypeError("queue metrics payload must be a mapping")
+            depth = raw.get("depth")
+            in_progress = raw.get("in_progress")
+            avg_wait = raw.get("avg_wait_seconds", 0.0)
+            oldest_age = raw.get("oldest_job_age_seconds", 0.0)
+
+            def valid_duration(value: object) -> bool:
+                return (
+                    isinstance(value, (int, float))
+                    and not isinstance(value, bool)
+                    and math.isfinite(value)
+                    and value >= 0
+                )
+
+            valid = (
+                raw.get("valid", True) is True
+                and isinstance(depth, int)
+                and not isinstance(depth, bool)
+                and depth >= 0
+                and isinstance(in_progress, int)
+                and not isinstance(in_progress, bool)
+                and in_progress >= 0
+                and valid_duration(avg_wait)
+                and valid_duration(oldest_age)
+            )
             return QueueMetrics(
-                depth=raw.get("depth", 0),
-                in_progress=raw.get("in_progress", 0),
+                depth=depth if isinstance(depth, int) and not isinstance(depth, bool) else 0,
+                in_progress=in_progress if isinstance(in_progress, int) and not isinstance(in_progress, bool) else 0,
                 completed=raw.get("completed", 0),
-                avg_wait_secs=raw.get("avg_wait_seconds", 0.0),
-                oldest_job_secs=raw.get("oldest_job_age_seconds", 0.0),
+                avg_wait_secs=float(avg_wait) if valid_duration(avg_wait) else 0.0,
+                oldest_job_secs=float(oldest_age) if valid_duration(oldest_age) else 0.0,
+                valid=valid,
             )
         except Exception as exc:
             logger.warning("Failed to collect queue metrics: %s", exc)

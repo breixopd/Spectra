@@ -22,6 +22,20 @@ commit-level change list and published image references.
 
 - Made `main` the release-ready branch and documented `dev` plus isolated
   worktree development as the supported contribution flow.
+- Hardened the agent execution runtime with stable process-independent task
+  identities, bounded concurrency, per-task timeouts, cancellation-safe
+  retries, dependency/deadlock propagation, and deterministic plan validation.
+- Made mission lifecycle status and its finite-state machine reconcile through
+  audited forced transitions, added `timed_out`, and persisted checkpoint
+  authorization, scope, plan, and FSM history for safe resume.
+- Made autoscaling and maintenance fail closed on stale or partial metrics,
+  protect queue-backed workers from unsafe downscaling, and restrict Docker
+  cleanup to Spectra-managed resources.
+- Made sensitive mission memory tenant-safe, size-bounded, and fail closed when
+  encryption is missing or corrupted; concurrent embedding initialization is
+  now serialized.
+- Added a gateway-backed LLM adapter for API deployments and kept an existing
+  application factory authoritative when one is configured.
 - Hardened Swarm scaling, scheduler leadership, durable mission controls, and
   managed maintenance cleanup so transient failures fail closed and recover
   without silently affecting unrelated Docker workloads.
@@ -49,6 +63,11 @@ commit-level change list and published image references.
 
 ### Added
 
+- Added benchmark polling and state-based postcondition grading instead of
+  treating mission submission as success, plus regression coverage for the
+  expanded agent/runtime and scaling contracts.
+- Added Hypothesis to the development test toolchain and expanded CI parity to
+  use deterministic Compose environment files and isolated cleanup.
 - Stable mission-finding identities, evidence bundles, and selected-finding
   report exports.
 - Real browser acceptance coverage for authentication, desktop routing, and
@@ -72,6 +91,6 @@ commit-level change list and published image references.
 - Rebased the unit-coverage ratchet on the measured full-suite baseline: CI and
   release now enforce a 65% floor across every first-party package, with no
   source areas excluded from the gate.
-- Final verification covers 3,943 Docker unit tests, full Compose service
+- Final verification covers 3,965 Docker unit tests, full Compose service
   health, performance smoke, live API e2e, authenticated Playwright UI flows,
   strict dependency auditing, secret scanning, and workflow security checks.

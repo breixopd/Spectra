@@ -341,6 +341,7 @@ async def _execute_task(
     copy_context: bool,
 ) -> None:
     _log_task_start(mission, index, task)
+    mission.current_phase = task.phase.value
     task_context = _task_execution_context(
         context,
         task,

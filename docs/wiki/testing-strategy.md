@@ -37,6 +37,27 @@ Covered subsystems include:
 
 ## Test Layers
 
+## Agent Evaluation Contract
+
+Agent tests must grade observable state and policy outcomes, not only whether a
+model returned text or whether a mission was accepted by the API. The shared
+benchmark runner now polls until a terminal state, records tool/LLM/cost
+telemetry, and checks explicit milestone and finding postconditions. New agent
+scenarios should provide:
+
+| Contract | Required evidence |
+| --- | --- |
+| Deterministic fixture | Seeded tool/provider responses, a versioned target/runtime image, and a replayable input trace. |
+| Typed execution trace | Action, observation, retry, timeout, cancellation, and policy-decision records with mission/task IDs. |
+| External grader | State-based assertions for milestones, findings, authorization, scope, and safety; model self-critique is advisory only. |
+| Failure coverage | Dependency failure, stale/partial metrics, provider errors, prompt/tool injection, cancellation, and restore/resume paths. |
+| Reliability score | Pass rate, pass@k or pass^k where appropriate, latency, cost, retries, and false-positive/false-negative counts. |
+
+This contract applies across unit/property tests, API/service integration,
+browser/UI scenarios, live target fixtures, load/soak runs, and release smoke
+tests. Hypothesis is included for invariant/property coverage; Playwright and
+stateful integration fixtures cover rendered and multi-step behavior.
+
 | Layer | What it verifies | Current path | Status |
 | --- | --- | --- | --- |
 | Unit tests | Local logic, validation, rate-limit behavior, service helpers, model/repository logic | `./scripts/test.sh unit` | Implemented |
@@ -56,7 +77,7 @@ Covered subsystems include:
 
 | Layer | Test Count | Location |
 | --- | --- | --- |
-| Unit tests | 3,911 | `tests/unit/` |
+| Unit tests | 3,965 | `tests/unit/` |
 | Integration tests | 200+ (selection depends on live/e2e markers) | `tests/integration/` |
 | E2E / UI tests (Playwright) | 4 browser acceptance tests | `tests/e2e/ui/test_spa_workspace.py` |
 | Load/performance/soak harnesses | Available | `tests/load/`, `tests/performance/`, `tests/soak/` |
@@ -87,7 +108,7 @@ tests were removed rather than retained as a non-executing, misleading browser g
 | Environment | Purpose | Minimum verification |
 | --- | --- | --- |
 | Local developer loop | Fast feedback while iterating | Unit tests for touched code, targeted integration checks, and one local smoke path for the changed behavior |
-| CI verification | Default merge gate | **`static-analysis`** (Ruff, boundaries, Pyright, Bandit), **`test`** (unit + coverage + settings), **`integration-test`**, **`deps`** (`pip-audit`), **`docker-build`** (images + Trivy + compose validation), **`version-check`**, and **`compose-smoke`** on pull requests plus `main` pushes |
+| CI verification | Default merge gate | **`static-analysis`** (Ruff, boundaries, Pyright, Bandit), **`test`** (unit + coverage + settings), **`integration-test`**, **`deps`** (`pip-audit`), **`docker-build`** (images + Trivy + compose validation), and **`compose-smoke`** on pull requests plus `main` pushes |
 | Release validation | Pre-release confidence on the version to ship | CI-equivalent checks plus release workflow checks, deploy health checks, and backup/rollback readiness |
 | Pre-production or staging | Optional but strongly recommended for operator-managed deployments | Run release candidate images against a staging stack, then execute browser smoke, live integration, config validation, health checks, and any migration or restore drill |
 | Production-safe smoke checks | Non-destructive verification after deploy or during incident response | Health endpoints, public-status, worker/storage health proxies, backup list/verify, and read-only config or container checks only |
@@ -115,7 +136,7 @@ Use the real commands already present in this repo.
 | Bandit (same CI job) | `bandit -r packages/ services/ -c pyproject.toml --severity-level high --confidence-level high` |
 | Dependency audit | See the dependency-audit note below. |
 | TensorZero config validation | `python3 -c "import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')"` |
-| Dev compose validation | `docker compose --env-file .env.example -f deploy/docker/compose.yaml config --quiet` |
+| Dev compose validation | `ENV_FILE=../../.env.example docker compose --env-file .env.example -f deploy/docker/compose.yaml config --quiet` |
 | Swarm compose validation | `docker compose --env-file .env.example -f deploy/docker/docker-compose.swarm.yml config --quiet` |
 | Process liveness check | `./scripts/health_check.sh http://localhost:5000/api/healthz` |
 | Public platform health check | `./scripts/health_check.sh 'http://localhost:5000/api/v1/health?scope=public'` |

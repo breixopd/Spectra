@@ -38,6 +38,31 @@ logger = logging.getLogger(__name__)
 _embedded_ops_task: asyncio.Task | None = None
 
 
+def _register_llm_client() -> None:
+    """Register the API-side LLM adapter before mission recovery starts.
+
+    In split deployments missions execute in the API process but inference
+    lives in ``ai-svc``.  Without this registration the first mission fails
+    with the abstract ai-core factory error even though the AI service is
+    healthy.
+    """
+    if not settings.AI_SERVICE_URL:
+        logger.warning("AI_SERVICE_URL is not configured; mission execution will remain unavailable")
+        return
+    import spectra_ai_core.llm as llm_module
+
+    # Respect an explicitly injected provider (used by the all-in-one service
+    # and deterministic tests); the split adapter is the default only when no
+    # factory has been registered yet.
+    if llm_module._llm_factory is not None:
+        return
+    from spectra_ai_core.gateway.llm_client import GatewayLLMClient
+    from spectra_ai_core.llm import register_llm_factory
+
+    register_llm_factory(lambda **_kwargs: GatewayLLMClient())
+    logger.info("[OK] Registered split-deployment LLM gateway client")
+
+
 async def run_startup_checks() -> None:
     """Run pre-flight checks and log results. Warns but does not block startup."""
     logger.info("[CHECK] Running startup checks...")
@@ -615,6 +640,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning("PLATFORM_BASE_URL is not set — payment callbacks and emails will use localhost fallback")
 
     try:
+        _register_llm_client()
         await _initialize_database(app)
         await _seed_default_data()
         await _initialize_services()
