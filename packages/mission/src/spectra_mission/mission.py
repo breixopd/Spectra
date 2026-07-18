@@ -95,6 +95,7 @@ class Mission:
         pentest_framework: str = "ptes",
         training_opt_in: bool = False,
         training_discount_pct: float = 0.0,
+        authorization_confirmed: bool = False,
     ):
         self.id = str(uuid.uuid4())
         self.target = target
@@ -103,6 +104,9 @@ class Mission:
         self.vpn_config = vpn_config
         self.user_id = user_id
         self.requires_approval = requires_approval
+        # Explicit authorization is a hard safety precondition.  Default false
+        # so direct/runtime-created missions cannot accidentally bypass RoE.
+        self.authorization_confirmed = authorization_confirmed is True
         self.record_demo = record_demo
         # Runtime state that is surfaced by mission execution, steering, and
         # the dashboard.  Keeping it on the entity (rather than attaching

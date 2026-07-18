@@ -23,7 +23,12 @@ function RouterWithAuth() {
 
   if (auth.isLoading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+      <div
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background"
+      >
         <BrandMark size="lg" subtitle="Loading session" />
         <p className="text-sm text-muted-foreground">Restoring your workspace…</p>
       </div>

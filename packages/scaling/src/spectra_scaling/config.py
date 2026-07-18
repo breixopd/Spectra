@@ -53,6 +53,16 @@ class ServicePolicy:
     cooldown_secs: int = 300
     idle_timeout_secs: int = 600
 
+    def __post_init__(self) -> None:
+        """Keep operator-provided policy bounds safe and internally consistent."""
+        self.min_replicas = max(1, int(self.min_replicas))
+        self.max_replicas = max(self.min_replicas, int(self.max_replicas))
+        self.scale_up_threshold = min(1.0, max(0.0, float(self.scale_up_threshold)))
+        self.scale_down_threshold = min(self.scale_up_threshold, max(0.0, float(self.scale_down_threshold)))
+        self.scale_up_queue_depth = max(0, int(self.scale_up_queue_depth))
+        self.cooldown_secs = max(0, int(self.cooldown_secs))
+        self.idle_timeout_secs = max(0, int(self.idle_timeout_secs))
+
 
 @dataclass
 class AutoScalerConfig:
@@ -61,6 +71,7 @@ class AutoScalerConfig:
     enabled: bool = False
     policies: dict[str, ServicePolicy] = field(default_factory=dict)
     check_interval_secs: int = 60
+    metrics_stale_after_secs: int = 180
 
     # Resource thresholds
     memory_warning_percent: float = 85.0
@@ -78,6 +89,10 @@ class AutoScalerConfig:
     system_memory_alert_threshold: float = 90.0
     system_disk_alert_threshold: float = 85.0
     system_load_alert_multiplier: float = 2.0
+
+    def __post_init__(self) -> None:
+        self.check_interval_secs = max(10, int(self.check_interval_secs))
+        self.metrics_stale_after_secs = max(self.check_interval_secs, int(self.metrics_stale_after_secs))
 
     @classmethod
     def from_settings(cls, settings, db_config: dict | None = None) -> AutoScalerConfig:
@@ -108,6 +123,12 @@ class AutoScalerConfig:
         cpu_up = _cfg("scaling.cpu_up_threshold", "AUTOSCALE_CPU_UP_THRESHOLD", 75) / 100.0
         cpu_down = _cfg("scaling.cpu_down_threshold", "AUTOSCALE_CPU_DOWN_THRESHOLD", 25) / 100.0
         queue_threshold = _cfg("scaling.queue_threshold", "AUTOSCALE_QUEUE_THRESHOLD", 5)
+        check_interval = _cfg("scaling.check_interval_secs", "AUTOSCALE_CHECK_INTERVAL_SECS", 60)
+        metrics_stale_after = _cfg(
+            "scaling.metrics_stale_after_secs",
+            "AUTOSCALE_METRICS_STALE_AFTER_SECS",
+            max(180, check_interval * 3),
+        )
 
         derived_enabled = _cfg("scaling.derived_enabled", "AUTOSCALE_DERIVED_ENABLED", True, cast_fn=_as_bool)
 
@@ -171,9 +192,14 @@ class AutoScalerConfig:
         }
 
         return cls(
-            enabled=_cfg("scaling.enabled", "AUTOSCALE_ENABLED", True, cast_fn=_as_bool),
+            # Scaling is an explicit operator opt-in.  A missing runtime setting
+            # must never turn a Swarm control loop on by accident.
+            enabled=_cfg("scaling.enabled", "AUTOSCALE_ENABLED", False, cast_fn=_as_bool),
             policies=policies,
             heal_enabled=_as_bool(getattr(settings, "AUTO_HEAL_ENABLED", True)),
+            check_interval_secs=check_interval,
+            metrics_stale_after_secs=metrics_stale_after,
+            heal_max_retries=int(getattr(settings, "AUTO_HEAL_MAX_RETRIES", 2)),
             heal_cooldown_secs=int(getattr(settings, "AUTO_HEAL_COOLDOWN_SECS", 300)),
             system_memory_alert_threshold=float(getattr(settings, "SYSTEM_MEMORY_ALERT_THRESHOLD", 90)),
             system_disk_alert_threshold=float(getattr(settings, "SYSTEM_DISK_ALERT_THRESHOLD", 85)),

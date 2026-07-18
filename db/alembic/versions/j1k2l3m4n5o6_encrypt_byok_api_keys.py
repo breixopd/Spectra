@@ -36,37 +36,46 @@ def upgrade() -> None:
         existing_nullable=True,
     )
 
-    # Encrypt any plaintext values that pre-date service-layer encryption
+    # Encrypt any plaintext values that pre-date service-layer encryption.
+    # Migration success must be fail-closed: swallowing an unavailable key or
+    # partial write would permanently leave credentials in plaintext while
+    # Alembic records the revision as applied.
+    from spectra_common.encryption import encrypt_byok_key
+
     bind = op.get_bind()
-    try:
-        from spectra_common.encryption import encrypt_byok_key
+    rows = bind.execute(
+        sa.text(
+            "SELECT user_id, llm_api_key, embedding_api_key "
+            "FROM user_preferences "
+            "WHERE llm_api_key IS NOT NULL OR embedding_api_key IS NOT NULL"
+        )
+    ).fetchall()
 
-        rows = bind.execute(
-            sa.text(
-                "SELECT user_id, llm_api_key, embedding_api_key "
-                "FROM user_preferences "
-                "WHERE llm_api_key IS NOT NULL OR embedding_api_key IS NOT NULL"
+    for row in rows:
+        user_id, llm_key, embed_key = row
+        updates: dict = {}
+        if llm_key and not llm_key.startswith("gAAAAA"):
+            updates["llm_api_key"] = encrypt_byok_key(llm_key)
+        if embed_key and not embed_key.startswith("gAAAAA"):
+            updates["embedding_api_key"] = encrypt_byok_key(embed_key)
+        if updates:
+            set_clause = ", ".join(f"{k} = :{k}" for k in updates)
+            updates["user_id"] = user_id
+            bind.execute(
+                sa.text(f"UPDATE user_preferences SET {set_clause} WHERE user_id = :user_id"),
+                updates,
             )
-        ).fetchall()
 
-        for row in rows:
-            user_id, llm_key, embed_key = row
-            updates: dict = {}
-            if llm_key and not llm_key.startswith("gAAAAA"):
-                updates["llm_api_key"] = encrypt_byok_key(llm_key)
-            if embed_key and not embed_key.startswith("gAAAAA"):
-                updates["embedding_api_key"] = encrypt_byok_key(embed_key)
-            if updates:
-                set_clause = ", ".join(f"{k} = :{k}" for k in updates)
-                updates["user_id"] = user_id
-                bind.execute(
-                    sa.text(f"UPDATE user_preferences SET {set_clause} WHERE user_id = :user_id"),
-                    updates,
-                )
-    except Exception as exc:
-        import logging
-
-        logging.getLogger("alembic").warning("BYOK key encryption skipped during migration: %s", type(exc).__name__)
+    remaining = bind.execute(
+        sa.text(
+            "SELECT user_id FROM user_preferences "
+            "WHERE (llm_api_key IS NOT NULL AND llm_api_key NOT LIKE 'gAAAAA%') "
+            "OR (embedding_api_key IS NOT NULL AND embedding_api_key NOT LIKE 'gAAAAA%') "
+            "LIMIT 1"
+        )
+    ).first()
+    if remaining is not None:
+        raise RuntimeError("BYOK encryption migration left plaintext credentials; transaction aborted")
 
 
 def downgrade() -> None:

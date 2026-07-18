@@ -29,6 +29,7 @@ _HEALTHY_STATES = {"healthy", "ok", "running", "ready", "not_configured", "not c
 # Simple in-memory TTL cache for health checks to avoid repeated probing
 _health_cache: dict[str, tuple[float, HealthMap]] = {}
 _HEALTH_CACHE_TTL_SECONDS = 10.0
+_HEALTH_CACHE_MAX_ENTRIES = 128
 
 # Reusable Redis client for health checks (initialised lazily)
 _redis_client: Any = None
@@ -438,8 +439,17 @@ async def collect_platform_health(
     """
     detail = (detail or "basic").lower()
     scope = (scope or "platform").lower()
-    include_tokens = {part.strip() for part in (include or "").split(",") if part.strip()}
-    cache_key = f"{detail}:{scope}:{include or ''}:{service or ''}"
+    include_tokens = {part.strip() for part in (include or "").split(",") if part.strip()} & {
+        "services",
+        "nodes",
+        "storage",
+        "s3",
+    }
+    configured_service_names = set(_configured_services())
+    if service not in configured_service_names:
+        service = None
+    canonical_include = ",".join(sorted(include_tokens))
+    cache_key = f"{detail}:{scope}:{canonical_include}:{service or ''}"
     now = time.monotonic()
     cached = _health_cache.get(cache_key)
     if cached is not None:
@@ -455,7 +465,7 @@ async def collect_platform_health(
         "database": await _check_database(db),
         "redis": await _check_redis(),
     }
-    if full or scope == "public" or "storage" in include_tokens or "s3" in include_tokens:
+    if full or "storage" in include_tokens or "s3" in include_tokens:
         components["s3"] = await _check_storage()
 
     if full:
@@ -476,7 +486,13 @@ async def collect_platform_health(
             }
         )
 
-    services = await _collect_services() if include_services else {}
+    if scope == "public" and not full:
+        # Public status is intentionally a cheap aggregate probe.  Downstream
+        # URLs and per-replica details require authentication and are covered
+        # by the services/full scopes.
+        services = {"api": _result("healthy", critical=True)}
+    else:
+        services = await _collect_services() if include_services else {}
     if service and service in services:
         services = {service: services[service]}
     nodes = await _collect_nodes(db, live_probe=full) if include_nodes else {}
@@ -485,6 +501,20 @@ async def collect_platform_health(
     if scope in {"platform", "services", "public", "ready"} or full:
         groups.append(services)
     status = _overall_status(groups)
+
+    # Anonymous/public probes only need aggregate state.  Do not return
+    # internal URLs, response bodies, latency details, or replica identity to
+    # unauthenticated callers; full diagnostics remain available to admins and
+    # service-authenticated callers.
+    if scope == "public" and not full:
+        components = {
+            name: {key: value for key, value in item.items() if key in {"status", "critical"}}
+            for name, item in components.items()
+        }
+        services = {
+            name: {key: value for key, value in item.items() if key in {"status", "critical"}}
+            for name, item in services.items()
+        }
 
     result: HealthMap = {
         "status": status,
@@ -499,6 +529,9 @@ async def collect_platform_health(
         "nodes": nodes,
         "summary": _summary(components, services, nodes),
     }
+    if len(_health_cache) >= _HEALTH_CACHE_MAX_ENTRIES:
+        oldest_key = min(_health_cache, key=lambda key: _health_cache[key][0])
+        _health_cache.pop(oldest_key, None)
     _health_cache[cache_key] = (now, result)
     return result
 

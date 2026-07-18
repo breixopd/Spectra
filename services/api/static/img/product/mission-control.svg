@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1380" height="900" viewBox="0 0 1380 900" role="img" aria-labelledby="title desc">
+  <title id="title">Spectra mission control</title>
+  <desc id="desc">A synthetic preview of the Spectra mission control dashboard showing mission health, verified findings, an attack graph, and agent activity.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111821"/>
+      <stop offset="1" stop-color="#090d13"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#171f29"/>
+      <stop offset="1" stop-color="#10161e"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#70e5ad"/>
+      <stop offset="1" stop-color="#3bbf83"/>
+    </linearGradient>
+    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse">
+      <path d="M36 0H0V36" fill="none" stroke="#24313c" stroke-opacity=".42"/>
+    </pattern>
+    <clipPath id="graphClip"><rect x="385" y="251" width="609" height="331" rx="12"/></clipPath>
+  </defs>
+
+  <rect width="1380" height="900" rx="18" fill="url(#bg)"/>
+  <rect x="1" y="1" width="1378" height="898" rx="17" fill="none" stroke="#2a3844"/>
+
+  <!-- app chrome -->
+  <rect x="0" y="0" width="1380" height="68" rx="18" fill="#10161e"/>
+  <path d="M0 68h1380" stroke="#293742"/>
+  <rect x="27" y="22" width="24" height="24" rx="7" fill="#173c31"/>
+  <path d="M39 26c6 4 8 9 8 12 0 6-8 10-8 10s-8-4-8-10V30l8-4Z" fill="none" stroke="#6ee6ab" stroke-width="2"/>
+  <text x="64" y="41" fill="#e7eef0" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700">SPECTRA</text>
+  <text x="195" y="41" fill="#61727e" font-family="Inter,Arial,sans-serif" font-size="13">Mission control</text>
+  <rect x="1082" y="20" width="119" height="28" rx="14" fill="#162b27" stroke="#2f654d"/>
+  <circle cx="1101" cy="34" r="4" fill="#6ee6ab"/>
+  <text x="1113" y="39" fill="#91e8bd" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="600">SYSTEM READY</text>
+  <circle cx="1240" cy="34" r="14" fill="#26313b"/>
+  <text x="1234" y="39" fill="#d0d9df" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="600">AR</text>
+  <path d="m1271 30 4 4-4 4m8-8 4 4-4 4" fill="none" stroke="#74848f" stroke-width="1.5"/>
+
+  <!-- sidebar -->
+  <rect x="0" y="68" width="226" height="832" fill="#0c1219"/>
+  <path d="M226 68v832" stroke="#26333e"/>
+  <text x="28" y="110" fill="#60727d" font-family="Inter,Arial,sans-serif" font-size="10" font-weight="700" letter-spacing="1.6">WORKSPACE</text>
+  <rect x="20" y="127" width="186" height="38" rx="8" fill="#172923" stroke="#2a5c47"/>
+  <circle cx="40" cy="146" r="6" fill="#60d99e"/>
+  <text x="55" y="151" fill="#e2ecea" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="600">Acme Security</text>
+  <path d="m186 143 4 4-4 4" fill="none" stroke="#69807a" stroke-width="1.5"/>
+  <text x="28" y="205" fill="#60727d" font-family="Inter,Arial,sans-serif" font-size="10" font-weight="700" letter-spacing="1.6">OPERATIONS</text>
+  <g font-family="Inter,Arial,sans-serif" font-size="13">
+    <rect x="20" y="220" width="186" height="39" rx="8" fill="#1a2c27"/>
+    <path d="M39 233v14m-6-8h12m-9-10h6" stroke="#70e5ad" stroke-width="1.8" stroke-linecap="round"/>
+    <text x="60" y="245" fill="#d9e9e2" font-weight="600">Mission control</text>
+    <path d="M35 283h10m-10 6h10m-10 6h7" stroke="#81919b" stroke-width="1.8" stroke-linecap="round"/>
+    <text x="60" y="291" fill="#9daab2">Missions</text>
+    <path d="M35 329h11m-11 5h8" stroke="#81919b" stroke-width="1.8" stroke-linecap="round"/>
+    <text x="60" y="337" fill="#9daab2">Findings</text>
+    <path d="M35 376h12m-12 6h8" stroke="#81919b" stroke-width="1.8" stroke-linecap="round"/>
+    <text x="60" y="384" fill="#9daab2">Evidence</text>
+    <path d="M35 423h11m-11 6h11" stroke="#81919b" stroke-width="1.8" stroke-linecap="round"/>
+    <text x="60" y="431" fill="#9daab2">Reports</text>
+  </g>
+  <path d="M20 468h186" stroke="#202c36"/>
+  <text x="28" y="500" fill="#60727d" font-family="Inter,Arial,sans-serif" font-size="10" font-weight="700" letter-spacing="1.6">CONFIGURATION</text>
+  <g fill="#9daab2" font-family="Inter,Arial,sans-serif" font-size="13">
+    <text x="60" y="538">Tools</text><text x="60" y="585">Settings</text>
+  </g>
+  <path d="M35 530h11m-11 6h11" stroke="#81919b" stroke-width="1.8" stroke-linecap="round"/>
+  <circle cx="40" cy="581" r="6" fill="none" stroke="#81919b" stroke-width="1.7"/><path d="m40 576 3 3-3 3-3-3 3-3" fill="none" stroke="#81919b" stroke-width="1.3"/>
+
+  <!-- page header -->
+  <text x="268" y="119" fill="#f0f5f4" font-family="Inter,Arial,sans-serif" font-size="26" font-weight="700">Mission control</text>
+  <text x="268" y="145" fill="#7f909a" font-family="Inter,Arial,sans-serif" font-size="13">Evidence-first visibility across every active assessment.</text>
+  <rect x="1125" y="105" width="126" height="37" rx="8" fill="url(#green)"/>
+  <path d="M1145 124h12m-6-6v12" stroke="#0b1713" stroke-width="2" stroke-linecap="round"/>
+  <text x="1165" y="129" fill="#0b1713" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="700">New mission</text>
+
+  <!-- summary cards -->
+  <g font-family="Inter,Arial,sans-serif">
+    <rect x="268" y="173" width="222" height="62" rx="10" fill="url(#panel)" stroke="#2a3945"/>
+    <text x="286" y="197" fill="#7f909a" font-size="11">ACTIVE MISSIONS</text><text x="286" y="221" fill="#edf4f1" font-size="23" font-weight="700">03</text><circle cx="468" cy="190" r="5" fill="#70e5ad"/>
+    <rect x="504" y="173" width="222" height="62" rx="10" fill="url(#panel)" stroke="#2a3945"/>
+    <text x="522" y="197" fill="#7f909a" font-size="11">VERIFIED FINDINGS</text><text x="522" y="221" fill="#edf4f1" font-size="23" font-weight="700">27</text><text x="679" y="220" fill="#69dda5" font-size="11">+8 this week</text>
+    <rect x="740" y="173" width="222" height="62" rx="10" fill="url(#panel)" stroke="#2a3945"/>
+    <text x="758" y="197" fill="#7f909a" font-size="11">QUEUE AGE</text><text x="758" y="221" fill="#edf4f1" font-size="23" font-weight="700">00:42</text><text x="907" y="220" fill="#69dda5" font-size="11">healthy</text>
+    <rect x="976" y="173" width="275" height="62" rx="10" fill="url(#panel)" stroke="#2a3945"/>
+    <text x="994" y="197" fill="#7f909a" font-size="11">CAPACITY</text><text x="994" y="221" fill="#edf4f1" font-size="23" font-weight="700">6 / 8</text><rect x="1082" y="213" width="146" height="6" rx="3" fill="#273b3d"/><rect x="1082" y="213" width="110" height="6" rx="3" fill="#56c993"/>
+  </g>
+
+  <!-- attack graph panel -->
+  <rect x="268" y="251" width="726" height="331" rx="12" fill="url(#panel)" stroke="#2a3945"/>
+  <text x="290" y="282" fill="#e9f1ef" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="650">Live attack graph</text>
+  <text x="290" y="303" fill="#73858e" font-family="Inter,Arial,sans-serif" font-size="11">mission-042 · updated 4s ago</text>
+  <rect x="385" y="251" width="609" height="331" rx="12" fill="url(#grid)"/>
+  <g clip-path="url(#graphClip)" fill="none" stroke="#426052" stroke-width="2">
+    <path d="M517 407 644 348l126 91 127-103"/><path d="M517 407 598 506l172-67 127 100"/><path d="M644 348 770 439l78-103"/>
+  </g>
+  <g font-family="Inter,Arial,sans-serif" text-anchor="middle">
+    <circle cx="517" cy="407" r="20" fill="#17362a" stroke="#68dfa8" stroke-width="2" filter="url(#glow)"/><text x="517" y="411" fill="#b7f1d2" font-size="11">WEB</text>
+    <circle cx="644" cy="348" r="17" fill="#222f3b" stroke="#6f9bb4" stroke-width="2"/><text x="644" y="352" fill="#c5d9e3" font-size="10">API</text>
+    <circle cx="770" cy="439" r="20" fill="#442e2c" stroke="#ef9a81" stroke-width="2"/><text x="770" y="443" fill="#ffd2c5" font-size="10">SQLi</text>
+    <circle cx="897" cy="336" r="17" fill="#222f3b" stroke="#6f9bb4" stroke-width="2"/><text x="897" y="340" fill="#c5d9e3" font-size="10">AUTH</text>
+    <circle cx="598" cy="506" r="17" fill="#222f3b" stroke="#6f9bb4" stroke-width="2"/><text x="598" y="510" fill="#c5d9e3" font-size="10">DB</text>
+    <circle cx="897" cy="539" r="17" fill="#17362a" stroke="#68dfa8" stroke-width="2"/><text x="897" y="543" fill="#b7f1d2" font-size="10">PROOF</text>
+  </g>
+  <rect x="290" y="526" width="78" height="24" rx="12" fill="#172b25"/><circle cx="303" cy="538" r="4" fill="#68dfa8"/><text x="313" y="542" fill="#a2eac4" font-family="Inter,Arial,sans-serif" font-size="10">verified path</text>
+
+  <!-- findings panel -->
+  <rect x="1010" y="251" width="241" height="331" rx="12" fill="url(#panel)" stroke="#2a3945"/>
+  <text x="1032" y="282" fill="#e9f1ef" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="650">Priority findings</text>
+  <text x="1032" y="303" fill="#73858e" font-family="Inter,Arial,sans-serif" font-size="11">verified evidence queue</text>
+  <g font-family="Inter,Arial,sans-serif">
+    <circle cx="1038" cy="342" r="5" fill="#ef807c"/><text x="1052" y="340" fill="#dbe5e3" font-size="11" font-weight="600">SQL injection</text><text x="1052" y="356" fill="#74868e" font-size="10">critical · 3 artifacts</text>
+    <path d="M1032 374h197" stroke="#26343f"/><circle cx="1038" cy="398" r="5" fill="#e4b65c"/><text x="1052" y="396" fill="#dbe5e3" font-size="11" font-weight="600">Exposed admin panel</text><text x="1052" y="412" fill="#74868e" font-size="10">high · consensus 3/3</text>
+    <path d="M1032 430h197" stroke="#26343f"/><circle cx="1038" cy="454" r="5" fill="#e4b65c"/><text x="1052" y="452" fill="#dbe5e3" font-size="11" font-weight="600">Weak session cookie</text><text x="1052" y="468" fill="#74868e" font-size="10">high · reproduced</text>
+    <path d="M1032 486h197" stroke="#26343f"/><circle cx="1038" cy="510" r="5" fill="#6e9dc2"/><text x="1052" y="508" fill="#dbe5e3" font-size="11" font-weight="600">Verbose error output</text><text x="1052" y="524" fill="#74868e" font-size="10">medium · pending review</text>
+  </g>
+
+  <!-- activity and mission list -->
+  <rect x="268" y="604" width="726" height="242" rx="12" fill="url(#panel)" stroke="#2a3945"/>
+  <text x="290" y="635" fill="#e9f1ef" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="650">Active missions</text>
+  <text x="290" y="656" fill="#73858e" font-family="Inter,Arial,sans-serif" font-size="11">agent activity and phase progress</text>
+  <g font-family="Inter,Arial,sans-serif">
+    <text x="290" y="694" fill="#dbe5e3" font-size="11" font-weight="600">Acme staging perimeter</text><text x="290" y="712" fill="#74868e" font-size="10">mission-042 · exploitation</text><rect x="496" y="703" width="238" height="6" rx="3" fill="#273b3d"/><rect x="496" y="703" width="184" height="6" rx="3" fill="#56c993"/><text x="750" y="711" fill="#a2eac4" font-size="10">78%</text><circle cx="867" cy="702" r="4" fill="#68dfa8"/><text x="880" y="706" fill="#9fe8c0" font-size="10">running</text>
+    <path d="M290 730h680" stroke="#26343f"/><text x="290" y="755" fill="#dbe5e3" font-size="11" font-weight="600">Northstar API review</text><text x="290" y="773" fill="#74868e" font-size="10">mission-041 · verification</text><rect x="496" y="764" width="238" height="6" rx="3" fill="#273b3d"/><rect x="496" y="764" width="214" height="6" rx="3" fill="#56c993"/><text x="750" y="772" fill="#a2eac4" font-size="10">91%</text><circle cx="867" cy="763" r="4" fill="#68dfa8"/><text x="880" y="767" fill="#9fe8c0" font-size="10">running</text>
+    <path d="M290 791h680" stroke="#26343f"/><text x="290" y="816" fill="#dbe5e3" font-size="11" font-weight="600">Portal regression sweep</text><text x="290" y="834" fill="#74868e" font-size="10">mission-039 · reporting</text><rect x="496" y="825" width="238" height="6" rx="3" fill="#273b3d"/><rect x="496" y="825" width="238" height="6" rx="3" fill="#56c993"/><text x="750" y="833" fill="#a2eac4" font-size="10">100%</text><circle cx="867" cy="824" r="4" fill="#6f9bb4"/><text x="880" y="828" fill="#a6bac5" font-size="10">finalizing</text>
+  </g>
+  <rect x="1010" y="604" width="241" height="242" rx="12" fill="url(#panel)" stroke="#2a3945"/>
+  <text x="1032" y="635" fill="#e9f1ef" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="650">Agent activity</text>
+  <text x="1032" y="656" fill="#73858e" font-family="Inter,Arial,sans-serif" font-size="11">mission-042</text>
+  <g font-family="Inter,Arial,sans-serif" font-size="10">
+    <circle cx="1039" cy="686" r="4" fill="#68dfa8"/><text x="1052" y="690" fill="#cbd8d5">Verifier reproduced finding</text><text x="1190" y="690" fill="#687a83">now</text>
+    <circle cx="1039" cy="721" r="4" fill="#6f9bb4"/><text x="1052" y="725" fill="#cbd8d5">Recon agent mapped API</text><text x="1190" y="725" fill="#687a83">1m</text>
+    <circle cx="1039" cy="756" r="4" fill="#e4b65c"/><text x="1052" y="760" fill="#cbd8d5">Safety gate awaiting approval</text><text x="1190" y="760" fill="#687a83">2m</text>
+    <circle cx="1039" cy="791" r="4" fill="#68dfa8"/><text x="1052" y="795" fill="#cbd8d5">Evidence bundle sealed</text><text x="1190" y="795" fill="#687a83">4m</text>
+  </g>
+</svg>

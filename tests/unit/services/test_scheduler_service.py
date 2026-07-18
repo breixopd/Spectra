@@ -97,6 +97,43 @@ async def test_supervisor_restarts_an_unexpectedly_returned_loop_with_backoff():
 
 
 @pytest.mark.asyncio
+async def test_supervisor_clears_recovery_state_after_transient_failure():
+    """A replacement loop should restore healthy state after one crash."""
+    service = scheduler_svc_mod.SchedulerService()
+    service.running = True
+    replacement_started = asyncio.Event()
+    release_replacement = asyncio.Event()
+    calls = 0
+
+    async def transient_loop():
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("temporary dependency outage")
+        replacement_started.set()
+        await release_replacement.wait()
+
+    service.transient_loop = transient_loop
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(scheduler_async_ops, "sleep", AsyncMock())
+        mp.setattr(scheduler_svc_mod, "_SCHEDULER_TASK_SPECS", (("transient", "transient_loop"),))
+        supervisor = asyncio.create_task(service._supervise_task("transient", "transient_loop"))
+        service._named_tasks = {"transient": supervisor}
+        await asyncio.wait_for(replacement_started.wait(), timeout=1)
+
+        # The loop is now running again; the retry remains in history but no
+        # longer marks the live service as degraded.
+        assert service._task_restarts == {"transient": 1}
+        assert service._task_recovered == {"transient"}
+        assert service.health()["status"] == "healthy"
+
+        service.running = False
+        release_replacement.set()
+        await supervisor
+
+
+@pytest.mark.asyncio
 async def test_postgres_pool_pressure_alerts_when_threshold_exceeded():
     import spectra_persistence.database as database
     import spectra_scheduler.main as scheduler_service

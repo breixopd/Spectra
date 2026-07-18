@@ -64,24 +64,21 @@ async def test_get_registry_digest_v2_prefers_verified_https():
 
 
 @pytest.mark.asyncio
-async def test_get_registry_digest_v2_falls_back_to_http_for_insecure_registries():
+async def test_get_registry_digest_v2_does_not_downgrade_to_http():
     _reset_fake_client()
     _FakeAsyncClient.outcomes = {
-        "https://registry.internal:5000/v2/team/image/manifests/latest": httpx.ConnectError("tls failed"),
-        "http://registry.internal:5000/v2/team/image/manifests/latest": _FakeResponse(
-            200,
-            {"Docker-Content-Digest": "sha256:" + "b" * 64},
-        ),
+        "https://registry.internal:5000/v2/team/image/manifests/latest": httpx.ConnectError("tls failed")
     }
 
-    with patch("httpx.AsyncClient", _FakeAsyncClient):
+    with (
+        patch("httpx.AsyncClient", _FakeAsyncClient),
+        patch("spectra_common.config.get_settings") as get_settings,
+    ):
+        get_settings.return_value.IMAGE_ALLOW_INSECURE_REGISTRY_HTTP = False
         digest = await _get_registry_digest_v2("registry.internal:5000/team/image")
 
-    assert digest == "b" * 64
-    assert _FakeAsyncClient.requested_urls == [
-        "https://registry.internal:5000/v2/team/image/manifests/latest",
-        "http://registry.internal:5000/v2/team/image/manifests/latest",
-    ]
+    assert digest is None
+    assert _FakeAsyncClient.requested_urls == ["https://registry.internal:5000/v2/team/image/manifests/latest"]
     assert all("verify" not in kwargs for kwargs in _FakeAsyncClient.init_kwargs)
 
 

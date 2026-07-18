@@ -3,7 +3,9 @@
 import asyncio
 import logging
 import os
+import re
 import tempfile
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlparse
@@ -11,6 +13,7 @@ from urllib.parse import urlparse
 logger = logging.getLogger(__name__)
 
 _RUNTIME_TMP_PARTS = ("runtime", "tmp")
+_BACKUP_ID_RE = re.compile(r"^backup_[A-Za-z0-9_-]{1,100}$")
 
 
 class BackupService:
@@ -35,7 +38,9 @@ class BackupService:
     async def create_backup(self, backup_type: str = "full") -> dict:
         """pg_dump → upload to S3 → prune old. Returns metadata dict."""
         timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-        backup_id = f"backup_{timestamp}"
+        # Include entropy so concurrent scheduler replicas cannot overwrite a
+        # same-second backup object.
+        backup_id = f"backup_{timestamp}_{uuid.uuid4().hex[:12]}"
         s3_key = f"backups/{backup_id}.dump"
 
         with tempfile.TemporaryDirectory(dir=self._temp_root()) as tmpdir:
@@ -78,6 +83,8 @@ class BackupService:
                 logger.info("pg_dump produced %.1f MB", size_bytes / 1024 / 1024)
 
             except TimeoutError:
+                proc.kill()
+                await proc.wait()
                 return {"status": "failed", "error": "pg_dump timed out after 600s"}
             except (OSError, RuntimeError, ValueError) as exc:
                 return {"status": "failed", "error": str(exc)}
@@ -108,6 +115,8 @@ class BackupService:
 
     async def restore_backup(self, backup_id: str) -> dict:
         """Download backup from S3 and restore into PostgreSQL."""
+        if not _BACKUP_ID_RE.fullmatch(backup_id):
+            return {"status": "failed", "error": "Invalid backup identifier"}
         s3_key = f"backups/{backup_id}.dump"
 
         from spectra_storage_policy.storage.service import get_storage_service
@@ -162,6 +171,8 @@ class BackupService:
                 return {"status": "success", "restored_from": f"s3://{self._bucket}/{s3_key}"}
 
             except TimeoutError:
+                proc.kill()
+                await proc.wait()
                 return {"status": "failed", "error": "pg_restore timed out after 600s"}
             except (OSError, RuntimeError, ValueError) as exc:
                 return {"status": "failed", "error": str(exc)}

@@ -15,7 +15,7 @@ All API endpoints are prefixed with `/api`.
 
 ## Authentication
 
-Most endpoints require a JWT token (exceptions: `/api/health`, `/api/v1/auth/setup`, `/api/v1/auth/setup/status`).
+Most endpoints require a JWT token (exceptions: `/api/healthz`, `/api/health/ready`, `/api/v1/health?scope=public`, `/api/v1/auth/setup/status`). Initial administrator enrollment at `/api/v1/auth/setup` additionally requires the one-time `SPECTRA_SETUP_TOKEN` in production (`X-Spectra-Setup-Token` header or `setup_token` body field).
 
 - **Header:** `Authorization: Bearer <token>`
 - **Obtaining a Token:** `POST /api/v1/auth/token` with username and password.
@@ -26,7 +26,9 @@ Most endpoints require a JWT token (exceptions: `/api/health`, `/api/v1/auth/set
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/health` | Basic health check. Returns `{"status": "ok"}`. No auth required. |
+| GET | `/api/healthz` | Process liveness. Returns `{"status": "alive"}` and does not query dependencies. |
+| GET | `/api/health/ready` | Dependency readiness. Returns 503 until required services are ready. |
+| GET | `/api/v1/health?scope=public` | Public platform health summary; returns 503 when degraded. |
 
 ---
 

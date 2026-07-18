@@ -20,8 +20,6 @@ x-security: &security-defaults
   security_opt: ["no-new-privileges:true"]
   dns:
     - 127.0.0.11
-    - 8.8.8.8
-    - 1.1.1.1
   dns_search: []
   dns_opt:
     - ndots:1
@@ -32,8 +30,6 @@ x-security-stateful: &security-stateful
   security_opt: ["no-new-privileges:true"]
   dns:
     - 127.0.0.11
-    - 8.8.8.8
-    - 1.1.1.1
   dns_search: []
   dns_opt:
     - ndots:1
@@ -161,6 +157,7 @@ services:
       JWT_SECRET_KEY_FILE: /run/secrets/jwt_secret
       SECRET_KEY_FILE: /run/secrets/secret_key
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+      SPECTRA_SETUP_TOKEN_FILE: /run/secrets/spectra_setup_token
       AI_SERVICE_URL: http://ai-svc:5010
       SCHEDULER_SERVICE_URL: http://scheduler:5011
       WORKER_SERVICE_URL: http://worker:5012
@@ -208,6 +205,7 @@ services:
       - db_url
       - secret_key
       - encryption_key
+      - spectra_setup_token
       - garage_access_key
       - garage_secret_key
       - garage_admin_token
@@ -425,6 +423,11 @@ services:
       placement:
         constraints:
           - node.labels.spectra.app == true
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+        window: 60s
       update_config:
         parallelism: 1
         delay: 10s
@@ -435,6 +438,13 @@ services:
         parallelism: 1
         delay: 5s
         order: start-first
+      resources:
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+        limits:
+          cpus: '0.5'
+          memory: 256M
     ports:
       - "80:80"
       - "443:443"
@@ -453,7 +463,7 @@ services:
     networks:
       - frontend
     healthcheck:
-      test: ["CMD-SHELL", "echo | nc -w1 localhost 80"]
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:80/api/healthz"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -502,6 +512,11 @@ services:
         parallelism: 1
         delay: 10s
         order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+        window: 60s
       resources:
         limits:
           memory: 512M
@@ -718,6 +733,8 @@ secrets:
   secret_key:
     external: true
   encryption_key:
+    external: true
+  spectra_setup_token:
     external: true
   redis_password:
     external: true

@@ -24,7 +24,7 @@ Modes:
 | `./scripts/runbooks/ci-parity.sh static` | Full CI **static-analysis** job (build once → ruff, boundaries, pyright, bandit) |
 | `./scripts/runbooks/ci-parity.sh lint` | Ruff + import boundaries only (builds test image) |
 | `./scripts/runbooks/ci-parity.sh type` | Pyright only (builds test image) |
-| `./scripts/runbooks/ci-parity.sh unit` | CI TensorZero parse + unit + coverage ≥67% |
+| `./scripts/runbooks/ci-parity.sh unit` | CI TensorZero parse + unit + coverage ≥65% across first-party packages |
 | `./scripts/runbooks/ci-parity.sh settings` | CI settings-test-runner |
 | `./scripts/runbooks/ci-parity.sh integration` | CI `integration-test` job |
 | `./scripts/runbooks/ci-parity.sh ci` | static analysis + unit + settings |
@@ -62,14 +62,14 @@ docker compose -f deploy/docker/compose.yaml --profile test build unit-test-runn
 docker compose -f deploy/docker/compose.yaml --profile test run --rm --no-deps unit-test-runner \
   "python -c \"import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')\""
 docker compose -f deploy/docker/compose.yaml --profile test run --rm unit-test-runner \
-  "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov=spectra_ai_core --cov=spectra_billing --cov=spectra_common --cov=spectra_mission --cov=spectra_persistence --cov=spectra_scaling --cov=spectra_storage_policy --cov=spectra_tools_core --cov-report=term-missing --cov-fail-under=67"
+  "python -m pytest tests/unit/ -q --timeout=120 --override-ini=addopts= --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov=spectra_ai_core --cov=spectra_billing --cov=spectra_common --cov=spectra_auth --cov=spectra_contracts --cov=spectra_domain --cov=spectra_infra --cov=spectra_mission --cov=spectra_observability --cov=spectra_persistence --cov=spectra_scaling --cov=spectra_storage_policy --cov=spectra_system --cov=spectra_tools --cov=spectra_tools_core --cov-report=term-missing --cov-fail-under=65"
 docker compose -f deploy/docker/compose.yaml --profile test run --rm settings-test-runner
 ```
 
 **Integration**
 
 ```bash
-ENV_FILE=../.env.test docker compose -f deploy/docker/compose.yaml --profile app --profile test up -d garage
+ENV_FILE=../../.env.test docker compose -f deploy/docker/compose.yaml --profile app --profile test up -d garage
 GARAGE_CONTAINER="$(docker compose -f deploy/docker/compose.yaml ps -q garage)" \
   GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}" \
   GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}" \
@@ -119,4 +119,9 @@ Images like `spectra-app:dev` are **built on the host** (not pulled from Docker 
 docker compose -f deploy/docker/compose.yaml --profile app up -d --build
 ```
 
-Then hit `http://<VPS_IP>:5000/api/health` (compose publishes **5000** on `0.0.0.0` when using the default `app` service ports).
+Then use the Caddy host port (the application container is loopback-bound by default):
+
+```bash
+curl -fsS "http://<VPS_IP>:${SPECTRA_PORT:-15080}/api/healthz"
+curl -fsS "http://<VPS_IP>:${SPECTRA_PORT:-15080}/api/v1/health?scope=public"
+```

@@ -53,7 +53,6 @@ case "${1:-}" in
         ;;
     invalidate-user)
         [[ -z "${2:-}" ]] && echo "Usage: $0 invalidate-user <username>" && exit 1
-        local safe_username
         safe_username=$(sql_escape "$2")
         echo "Invalidating sessions for user: $2"
         run_sql "UPDATE users SET invalidated_before = NOW() WHERE username = '${safe_username}';"
@@ -61,7 +60,6 @@ case "${1:-}" in
         ;;
     lock-user)
         [[ -z "${2:-}" ]] && echo "Usage: $0 lock-user <username>" && exit 1
-        local safe_username
         safe_username=$(sql_escape "$2")
         echo "Locking user: $2"
         run_sql "UPDATE users SET is_active = false WHERE username = '${safe_username}';"
@@ -69,7 +67,6 @@ case "${1:-}" in
         ;;
     unlock-user)
         [[ -z "${2:-}" ]] && echo "Usage: $0 unlock-user <username>" && exit 1
-        local safe_username
         safe_username=$(sql_escape "$2")
         echo "Unlocking user: $2"
         run_sql "UPDATE users SET is_active = true WHERE username = '${safe_username}';"
@@ -82,7 +79,6 @@ case "${1:-}" in
         ;;
     kill-mission)
         [[ -z "${2:-}" ]] && echo "Usage: $0 kill-mission <mission-id>" && exit 1
-        local safe_id
         safe_id=$(sql_escape "$2")
         echo "Cancelling mission: $2"
         run_sql "UPDATE missions SET status = 'cancelled' WHERE id = '${safe_id}';"

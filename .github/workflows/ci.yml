@@ -70,7 +70,7 @@ jobs:
         run: |
           set +e
           docker compose -f deploy/docker/compose.yaml --profile test run --name spectra-unit-coverage unit-test-runner \
-            "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov=spectra_ai_core --cov=spectra_billing --cov=spectra_common --cov=spectra_mission --cov=spectra_persistence --cov=spectra_scaling --cov=spectra_storage_policy --cov=spectra_tools_core --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=67"
+            "python -m pytest tests/unit/ -q --timeout=120 --override-ini=addopts= --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov=spectra_ai_core --cov=spectra_billing --cov=spectra_common --cov=spectra_auth --cov=spectra_contracts --cov=spectra_domain --cov=spectra_infra --cov=spectra_mission --cov=spectra_observability --cov=spectra_persistence --cov=spectra_scaling --cov=spectra_storage_policy --cov=spectra_system --cov=spectra_tools --cov=spectra_tools_core --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=65"
           status=$?
           docker cp spectra-unit-coverage:/tmp/coverage.xml coverage.xml 2>/dev/null || true
           docker rm -f spectra-unit-coverage >/dev/null 2>&1 || true
@@ -134,6 +134,19 @@ jobs:
         run: |
           docker compose -f deploy/docker/compose.yaml --profile app --profile test run --rm --no-deps test-runner \
             "python -m pytest tests/integration/ -v --tb=short --timeout=120 --override-ini=addopts= -k 'not live and not e2e'"
+      - name: Collect integration logs on failure
+        if: failure()
+        run: |
+          mkdir -p integration-logs
+          docker compose -f deploy/docker/compose.yaml --profile app --profile test logs --no-color > integration-logs/compose.log 2>&1 || true
+      - name: Upload integration logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
+        with:
+          name: integration-test-logs
+          path: integration-logs/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Tear down integration stack
         if: always()
         run: docker compose -f deploy/docker/compose.yaml --profile app --profile test down --volumes --remove-orphans
@@ -292,7 +305,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     needs: [test, integration-test]
-    if: github.event_name == 'push'
+    # Run the full live smoke for pull requests and the protected release
+    # branch. Feature branch pushes are covered by their pull request, avoiding
+    # a second expensive stack boot for the same commit.
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     env:
       ENCRYPTION_KEY: test-encryption-key
       ENV_FILE: ../../.env.test
@@ -315,30 +333,48 @@ jobs:
       - name: Wait for services to be healthy
         run: |
           echo "Waiting for services to become healthy..."
+          expected_services=(
+            db redis garage registry clickhouse tensorzero
+            app app-replica ai-svc scheduler tools worker caddy
+          )
+          compose=(docker compose -f deploy/docker/compose.yaml --profile app --profile targets --profile test)
           for i in $(seq 1 90); do
-            containers=$(docker ps --filter "label=spectra.managed=true" --format "{{.Names}}	{{.Status}}")
-            if [ -z "$containers" ]; then
-              echo "No managed containers found yet..."
-              sleep 5
-              continue
-            fi
-            explicitly_unhealthy=$(docker ps --filter "label=spectra.managed=true" --filter "health=unhealthy" --format "{{.Names}}" || true)
-            if [ -n "$explicitly_unhealthy" ]; then
-              echo "Unhealthy containers found:"
-              echo "$explicitly_unhealthy"
+            missing=()
+            pending=()
+            unhealthy=()
+            for service in "${expected_services[@]}"; do
+              container_id=$("${compose[@]}" ps -q "$service" 2>/dev/null || true)
+              if [ -z "$container_id" ]; then
+                missing+=("$service")
+                continue
+              fi
+              running=$(docker inspect --format '{{.State.Running}}' "$container_id" 2>/dev/null || echo false)
+              if [ "$running" != true ]; then
+                missing+=("$service")
+                continue
+              fi
+              health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id" 2>/dev/null || echo unknown)
+              case "$health" in
+                unhealthy) unhealthy+=("$service") ;;
+                starting|unknown) pending+=("$service") ;;
+              esac
+            done
+            if [ "${#unhealthy[@]}" -gt 0 ]; then
+              echo "Unhealthy expected services: ${unhealthy[*]}"
+              "${compose[@]}" ps
               exit 1
             fi
-            all_running=$(docker ps --filter "label=spectra.managed=true" --format "{{.Names}}" | wc -l)
-            if [ "$all_running" -ge 10 ]; then
-              echo "All $all_running managed containers are running."
-              echo "$containers"
+            if [ "${#missing[@]}" -eq 0 ] && [ "${#pending[@]}" -eq 0 ]; then
+              echo "All expected services are running and healthy (or have no healthcheck)."
+              "${compose[@]}" ps
               break
             fi
-            echo "Waiting... ($i/90) - $all_running containers running"
+            echo "Waiting... ($i/90) missing=${missing[*]:-none} pending=${pending[*]:-none}"
             sleep 5
           done
-          if [ "${all_running:-0}" -lt 10 ]; then
-            echo "Timed out waiting for all managed services to start" >&2
+          if [ "${#missing[@]}" -ne 0 ] || [ "${#pending[@]}" -ne 0 ]; then
+            echo "Timed out waiting for expected services to start" >&2
+            "${compose[@]}" ps >&2 || true
             docker ps -a --filter "label=spectra.managed=true" --format "{{.Names}}\t{{.Status}}" >&2 || true
             exit 1
           fi

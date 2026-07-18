@@ -18,6 +18,7 @@ from spectra_api.services.system.settings_service import (
     get_current_settings,
 )
 from spectra_common.config import settings
+from spectra_common.utils.url_validation import is_safe_url
 from spectra_persistence.database import get_async_session
 from spectra_persistence.models.user import User
 
@@ -95,7 +96,13 @@ async def test_tz_gateway(
 ):
     """Test TensorZero gateway connection (setup page)."""
     body = await request.json()
-    gw_url = body.get("gateway_url") or settings.TENSORZERO_GATEWAY_URL or "http://tensorzero:3000"
+    supplied_url = body.get("gateway_url")
+    gw_url = supplied_url or settings.TENSORZERO_GATEWAY_URL or "http://tensorzero:3000"
+    # The setup page is reachable before an account exists.  Only the known
+    # in-cluster gateway may bypass public-DNS SSRF checks; user-supplied
+    # addresses must resolve to a public HTTP(S) endpoint before probing.
+    if supplied_url and not await is_safe_url(str(gw_url)):
+        return {"success": False, "error": "Gateway URL is not a permitted public HTTP(S) endpoint"}
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(f"{gw_url}/health")

@@ -71,6 +71,20 @@ ensure_secret_var() {
   log "Generated ${var_name} in ${GENERATED_SECRETS_FILE}"
 }
 
+ensure_hex64_secret_var() {
+  local var_name="${1:?var name required}"
+  local current_value="${!var_name:-}"
+  if [[ -n "${current_value}" && "${current_value}" =~ ^[0-9a-fA-F]{64}$ ]]; then
+    return 0
+  fi
+  if [[ -n "${current_value}" ]]; then
+    die "${var_name} must be exactly 64 hexadecimal characters"
+  fi
+  export "${var_name}=$(openssl rand -hex 32)"
+  persist_generated_secret "${var_name}" "${!var_name}"
+  log "Generated ${var_name} in ${GENERATED_SECRETS_FILE}"
+}
+
 check_swarm() {
   docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null | grep -q "active" \
     || die "Docker Swarm is not active. Run with --init first."
@@ -362,10 +376,11 @@ cmd_secrets() {
   ensure_secret_var "JWT_SECRET_KEY"
   ensure_secret_var "SECRET_KEY"
   ensure_secret_var "ENCRYPTION_KEY"
+  ensure_secret_var "SPECTRA_SETUP_TOKEN" "$(openssl rand -base64 48 | tr -d '/+=')"
   ensure_secret_var "REDIS_PASSWORD"
   ensure_secret_var "GARAGE_ACCESS_KEY" "GK$(openssl rand -hex 12)"
   ensure_secret_var "GARAGE_SECRET_KEY"
-  ensure_secret_var "GARAGE_RPC_SECRET"
+  ensure_hex64_secret_var "GARAGE_RPC_SECRET"
   ensure_secret_var "GARAGE_ADMIN_TOKEN"
   ensure_secret_var "CLICKHOUSE_PASSWORD"
   ensure_secret_var "OPENAI_API_KEY" "not-configured"
@@ -390,6 +405,7 @@ cmd_secrets() {
   create_secret "jwt_secret"          "${JWT_SECRET_KEY:?JWT_SECRET_KEY not set}"
   create_secret "secret_key"          "${SECRET_KEY:?SECRET_KEY not set}"
   create_secret "encryption_key"      "${ENCRYPTION_KEY:?ENCRYPTION_KEY not set}"
+  create_secret "spectra_setup_token" "${SPECTRA_SETUP_TOKEN:?SPECTRA_SETUP_TOKEN not set}"
   create_secret "redis_password"      "${REDIS_PASSWORD:?REDIS_PASSWORD not set}"
   create_secret "garage_access_key"   "${GARAGE_ACCESS_KEY:?GARAGE_ACCESS_KEY not set}"
   create_secret "garage_secret_key"   "${GARAGE_SECRET_KEY:?GARAGE_SECRET_KEY not set}"
@@ -419,6 +435,7 @@ cmd_preflight() {
     garage_access_key
     garage_secret_key
     garage_rpc_secret
+    spectra_setup_token
     garage_admin_token
     registry_http_secret
     clickhouse_password

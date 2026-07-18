@@ -14,7 +14,7 @@ LOG_DIR="$PROJECT_DIR/logs"
 LOG_FILE="$LOG_DIR/deploy.log"
 BACKUP_DIR="$PROJECT_DIR/data/backups"
 COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_DIR/deploy/docker/compose.yaml}"
-HEALTH_URL="${HEALTH_URL:-http://localhost:80/api/v1/health?scope=public}"
+HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:${APP_PORT:-5000}/api/health/ready}"
 DEPLOY_WEBHOOK_URL="${DEPLOY_WEBHOOK_URL:-}"
 TARGET_VERSION="${1:-}"
 
@@ -23,8 +23,7 @@ usage() {
 Usage: $(basename "$0") [version]
 
 Arguments:
-  version   Version tag to rollback to. If omitted, restores DB from latest
-            backup and restarts current containers.
+  version   Immutable version tag to rollback to (required; latest/dev are rejected).
 
 Environment variables:
   COMPOSE_FILE        Docker compose file (default: deploy/docker/compose.yaml)
@@ -33,7 +32,7 @@ Environment variables:
 
 Examples:
   $(basename "$0") 2026.03.11         # Rollback to specific version
-  $(basename "$0")                     # Restart + restore latest DB backup
+  $(basename "$0") 2026.07.18.1 --yes # Restore a known release
 EOF
     exit 0
 }
@@ -134,27 +133,26 @@ main() {
         exit 1
     fi
 
+    local version_arg="${TARGET_VERSION:-latest}"
+    if [[ -z "$version_arg" || "$version_arg" == "latest" || "$version_arg" == "dev" ]]; then
+        log "ERROR: Cannot rollback without an immutable pinned version"
+        log "Usage: $(basename "$0") <version>  (e.g. 2026.07.18.1)"
+        notify "FAILED" "Cannot rollback — no pinned version"
+        exit 1
+    fi
+
     # Stop current containers
     log "Stopping current containers..."
     docker compose -f "$COMPOSE_FILE" down --timeout 30 2>/dev/null || true
 
     # Restart with target version (or current)
-    local version_arg="${TARGET_VERSION:-latest}"
-
-    if [[ -z "$version_arg" || "$version_arg" == "latest" ]]; then
-        log "ERROR: Cannot rollback — no pinned version found. Set VERSION explicitly."
-        log "Usage: $(basename "$0") <version>  (e.g. 2026.03.11)"
-        notify "FAILED" "Cannot rollback — no pinned version"
-        exit 1
-    fi
-
     log "Starting containers with version: $version_arg"
 
     if [ -n "$TARGET_VERSION" ]; then
         VERSION="$TARGET_VERSION" docker compose -f "$COMPOSE_FILE" pull
     fi
 
-    VERSION="$version_arg" docker compose -f "$COMPOSE_FILE" up -d
+    VERSION="$version_arg" docker compose -f "$COMPOSE_FILE" --profile app up -d
 
     # Wait for DB before restoring
     log "Waiting for services to start..."

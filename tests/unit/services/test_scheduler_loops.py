@@ -226,12 +226,14 @@ async def test_docker_cleanup_runs_prune_sequence_when_lock_acquired():
         mp.setattr(scheduler_async_ops, "sleep", AsyncMock(side_effect=sleep_then_stop_after_second_iteration))
         await service._docker_cleanup()
 
-    prune_containers.assert_any_await(filters={"until": ["48h"]})
-    prune_images.assert_awaited_once_with(filters={"dangling": ["true"], "until": ["168h"]})
+    prune_containers.assert_any_await(filters={"label": ["spectra.managed=true"], "until": ["48h"]})
+    prune_images.assert_awaited_once_with(
+        filters={"label": ["spectra.managed=true"], "dangling": ["true"], "until": ["168h"]}
+    )
     prune_volumes.assert_not_awaited()
     prune_containers.assert_any_await(
         filters={
-            "label": ["com.docker.swarm.task"],
+            "label": ["com.docker.stack.namespace=spectra", "com.docker.swarm.task"],
             "status": ["exited"],
             "until": ["168h"],
         }

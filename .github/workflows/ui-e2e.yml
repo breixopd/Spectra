@@ -9,7 +9,7 @@ on:
     paths:
       - "services/api/templates/**"
       - "services/api/static/**"
-      - ".github/workflows/release.yml"
+      - ".github/workflows/ui-e2e.yml"
       - "services/api/src/spectra_api/api/dependencies.py"
       - "services/api/src/spectra_api/api/routers/auth/**"
       - "packages/auth/**"
@@ -24,7 +24,7 @@ on:
     paths:
       - "services/api/templates/**"
       - "services/api/static/**"
-      - ".github/workflows/release.yml"
+      - ".github/workflows/ui-e2e.yml"
       - "services/api/src/spectra_api/api/dependencies.py"
       - "services/api/src/spectra_api/api/routers/auth/**"
       - "packages/auth/**"

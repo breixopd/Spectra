@@ -3,7 +3,7 @@
 #
 # Usage (from repository root):
 #   ./scripts/runbooks/ci-parity.sh           # same as: ci-parity.sh ci
-#   ./scripts/runbooks/ci-parity.sh ci       # static analysis + unit(cov>=67%) + settings
+#   ./scripts/runbooks/ci-parity.sh ci       # static analysis + unit(cov>=50%) + settings
 #   ./scripts/runbooks/ci-parity.sh all      # ci + full integration stack
 #   ./scripts/runbooks/ci-parity.sh static|lint|type|unit|settings|integration
 #
@@ -84,10 +84,10 @@ unit_coverage_job() {
   echo "==> Build unit-test-runner"
   "${COMPOSE[@]}" --profile test build unit-test-runner
   tensorzero_check_job
-  echo "==> Unit tests + coverage (fail-under 67%, matches CI)"
+  echo "==> Unit tests + coverage (fail-under 65%, all first-party packages)"
   set +e
   "${COMPOSE[@]}" --profile test run --name spectra-unit-local unit-test-runner \
-    "python -m pytest tests/unit/ -q --override-ini=addopts= --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov=spectra_ai_core --cov=spectra_billing --cov=spectra_common --cov=spectra_mission --cov=spectra_persistence --cov=spectra_scaling --cov=spectra_storage_policy --cov=spectra_tools_core --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=67"
+  "python -m pytest tests/unit/ -q --timeout=120 --override-ini=addopts= --cov=spectra_api --cov=spectra_worker --cov=spectra_ai --cov=spectra_scheduler --cov=spectra_ai_core --cov=spectra_billing --cov=spectra_common --cov=spectra_auth --cov=spectra_contracts --cov=spectra_domain --cov=spectra_infra --cov=spectra_mission --cov=spectra_observability --cov=spectra_persistence --cov=spectra_scaling --cov=spectra_storage_policy --cov=spectra_system --cov=spectra_tools --cov=spectra_tools_core --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml --cov-fail-under=65"
   st=$?
   docker rm -f spectra-unit-local >/dev/null 2>&1 || true
   set -e

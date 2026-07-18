@@ -1,6 +1,6 @@
 # Compose smoke (CI `compose-smoke` job)
 
-The GitHub Actions job **compose-smoke** (on `push` to configured branches) brings up a large Compose stack, bootstraps Garage, waits for managed containers, then runs live API, health, and performance tests inside `test-runner`.
+The GitHub Actions job **compose-smoke** runs for pull requests targeting `main`/`dev` and for pushes to the protected `main` branch. It brings up a large Compose stack, bootstraps Garage, verifies the explicit expected service set, then runs live API, health, and performance tests inside `test-runner`.
 
 Use this when you need **maximum** confidence before launch—not for every commit.
 
@@ -14,7 +14,7 @@ Use this when you need **maximum** confidence before launch—not for every comm
 ```bash
 test -f .env.test || cp .env.test.example .env.test
 export ENCRYPTION_KEY=test-encryption-key
-export ENV_FILE=../.env.test
+export ENV_FILE=../../.env.test
 
 docker compose -f deploy/docker/compose.yaml --profile app --profile targets --profile test up -d --build
 
@@ -25,7 +25,7 @@ GARAGE_CONTAINER="$(docker compose -f deploy/docker/compose.yaml ps -q garage)" 
   bash deploy/docker/garage-init.sh
 ```
 
-Wait until managed `spectra` containers are healthy (same loop as CI: check `label=spectra.managed=true`, no `health=unhealthy`, at least 10 running—or adjust for your profile set).
+Wait until each expected long-running service is running and healthy (or has no healthcheck): `db`, `redis`, `garage`, `registry`, `clickhouse`, `tensorzero`, `app`, `app-replica`, `ai-svc`, `scheduler`, `tools`, `worker`, and `caddy`. The workflow fails closed on a missing or unhealthy expected service; test-runner containers and vulnerable targets are intentionally not counted as long-running platform services.
 
 Then:
 

@@ -37,19 +37,24 @@ class SchedulerDockerMaintenanceMixin:
                         prune_volumes,
                     )
 
-                    # Keep recent stopped containers for diagnosis and only remove
-                    # untagged images. Docker image prune includes non-dangling
-                    # unused images unless ``dangling=true`` is explicit.
-                    await prune_containers(filters={"until": ["48h"]})
-                    await prune_images(filters={"dangling": ["true"], "until": ["168h"]})
+                    # Keep other Docker projects and operator workloads untouched.
+                    # The managed label is applied to Spectra Compose containers
+                    # and first-party images; unlabelled resources are retained.
+                    managed_label = ["spectra.managed=true"]
+                    await prune_containers(filters={"label": managed_label, "until": ["48h"]})
+                    # Docker image prune includes non-dangling unused images unless
+                    # ``dangling=true`` is explicit. Keep the scope labelled too.
+                    await prune_images(filters={"label": managed_label, "dangling": ["true"], "until": ["168h"]})
                     # Volumes can carry databases, backups, and operator data. They
                     # are never pruned by default; opt-in only targets project labels.
                     if settings.DOCKER_PRUNE_VOLUMES:
                         await prune_volumes(filters={"label": ["spectra.managed=true"]})
-                    # Prune only old exited Swarm task containers.
+                    # Swarm task containers do not inherit image labels. Docker
+                    # adds the stack namespace to each task, so keep this path
+                    # project-scoped without touching another stack's tasks.
                     await prune_containers(
                         filters={
-                            "label": ["com.docker.swarm.task"],
+                            "label": ["com.docker.stack.namespace=spectra", "com.docker.swarm.task"],
                             "status": ["exited"],
                             "until": ["168h"],
                         }

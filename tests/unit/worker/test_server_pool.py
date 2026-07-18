@@ -65,15 +65,7 @@ class TestAddNode:
 
         mock_instance = _make_mock_node(name="new-worker")
 
-        with (
-            patch("spectra_persistence.models.server_node.ServerNode", return_value=mock_instance),
-            patch.object(
-                ServerPoolManager,
-                "_auto_enable_autoscale",
-                new_callable=AsyncMock,
-                return_value=None,
-            ),
-        ):
+        with patch("spectra_persistence.models.server_node.ServerNode", return_value=mock_instance):
             result = await mgr.add_node(
                 session,
                 "sandbox_worker",
@@ -390,6 +382,36 @@ class TestGetPoolManager:
         mgr2 = mod.get_pool_manager()
         assert mgr is mgr2
         mod._pool_manager = None  # cleanup
+
+
+class TestLocalNodeRegistration:
+    """Control-plane services must not advertise an unroutable pool node."""
+
+    @pytest.mark.asyncio
+    async def test_scheduler_does_not_register_loopback_node(self, monkeypatch):
+        from spectra_scaling.pool_manager import ServerPoolManager
+
+        monkeypatch.setenv("SERVICE_MODE", "scheduler")
+        mgr = ServerPoolManager()
+
+        with patch("spectra_scaling.pool_manager.async_session_maker") as session_maker:
+            result = await mgr.register_local_node()
+
+        assert result is None
+        session_maker.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_explicit_scheduler_role_skips_even_without_environment(self, monkeypatch):
+        from spectra_scaling.pool_manager import ServerPoolManager
+
+        monkeypatch.delenv("SERVICE_MODE", raising=False)
+        mgr = ServerPoolManager()
+
+        with patch("spectra_scaling.pool_manager.async_session_maker") as session_maker:
+            result = await mgr.register_local_node(service_mode="scheduler")
+
+        assert result is None
+        session_maker.assert_not_called()
 
 
 class TestGetNode:

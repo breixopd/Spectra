@@ -125,6 +125,14 @@ class TestCheckSubscriptionActive:
 
 @pytest.mark.asyncio
 class TestPaymentServiceExternalCancellation:
+    async def test_unknown_configured_provider_fails_closed(self):
+        with patch(
+            "spectra_common.config.get_settings",
+            return_value=MagicMock(PAYMENT_PROVIDER="provider-that-is-not-installed"),
+        ):
+            with pytest.raises(ValueError, match="Unknown payment provider"):
+                PaymentService()
+
     async def test_stripe_adapter_cancels_immediately_instead_of_at_period_end(self):
         fake_subscription_api = MagicMock()
         fake_subscription_api.delete = MagicMock(return_value={"id": "sub_123", "status": "canceled"})

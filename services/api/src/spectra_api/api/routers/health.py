@@ -79,7 +79,7 @@ async def health_check(
     db: AsyncSession = Depends(get_async_session),
     verbose: bool = Query(False, description="Include detailed component status"),
     detail: str = Query("basic", pattern="^(basic|full|verbose|detailed)$", description="Health detail level"),
-    scope: str = Query("platform", pattern="^(platform|services|nodes|public|ready)$", description="Health scope"),
+    scope: str = Query("public", pattern="^(platform|services|nodes|public|ready)$", description="Health scope"),
     include: str | None = Query(None, description="Comma-separated optional sections, e.g. services,nodes"),
     service: str | None = Query(None, description="Limit service details to one service key"),
 ) -> dict[str, Any]:
@@ -90,7 +90,10 @@ async def health_check(
     """
     verbose_enabled = _query_default(verbose, False) is True
     requested_detail = "full" if verbose_enabled else _query_default(detail, "basic")
-    scope = _query_default(scope, "platform")
+    # The unauthenticated default must be the cheap, redacted public view.
+    # Operators can request the platform/services/node views explicitly, and
+    # detailed views remain protected by admin or service authentication.
+    scope = _query_default(scope, "public")
     include = _query_default(include, None)
     service = _query_default(service, None)
     wants_full = requested_detail in {"full", "verbose", "detailed"}

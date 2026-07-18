@@ -36,6 +36,7 @@ class Settings(BaseSettings):
             "SECRET_KEY_FILE": "SECRET_KEY",
             "DATABASE_URL_FILE": "DATABASE_URL",
             "SERVICE_AUTH_SECRET_FILE": "SERVICE_AUTH_SECRET",
+            "SPECTRA_SETUP_TOKEN_FILE": "SPECTRA_SETUP_TOKEN",
             "ENCRYPTION_KEY_FILE": "ENCRYPTION_KEY",
             "S3_ACCESS_KEY_FILE": "S3_ACCESS_KEY",
             "S3_SECRET_KEY_FILE": "S3_SECRET_KEY",
@@ -208,6 +209,9 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"  # Effective algorithm is EdDSA whenever a keypair is configured
     # Security
     SECRET_KEY: SecretStr = SecretStr("")  # Must be set via env var; get_settings() validates
+    # One-time first-run enrollment secret.  Production setup refuses to run
+    # without this value; first_run.sh generates it and prints it once.
+    SPECTRA_SETUP_TOKEN: SecretStr = SecretStr("")
     ENCRYPTION_KEY: str = (
         ""  # Separate key for data encryption (MFA secrets, BYOK credentials). Falls back to JWT_SECRET_KEY.
     )
@@ -233,7 +237,10 @@ class Settings(BaseSettings):
 
     CONNECT_BACK_HOST: str = "spectra-app"
 
-    DOCKER_REGISTRY: str = "ghcr.io/spectra"
+    # The published images live under the public GitHub owner namespace.  Keep
+    # this explicit so remote provisioning never falls back to a non-existent
+    # ``ghcr.io/spectra`` repository.
+    DOCKER_REGISTRY: str = "ghcr.io/breixopd"
 
     # Platform-owned OCI registry for golden/worker image distribution. When set, the
     # golden-image builder pushes successful builds here so all nodes/sandboxes pull the
@@ -414,7 +421,9 @@ class Settings(BaseSettings):
     ADMIN_IP_ALLOWLIST: str = ""  # Comma-separated list of allowed IPs/CIDRs for admin routes, empty = disabled
 
     # --- Auto-Scaling ---
-    AUTOSCALE_ENABLED: bool = True  # On by default; set AUTOSCALE_ENABLED=false to disable
+    # Autoscaling mutates Swarm desired state and is therefore an explicit
+    # operator opt-in.  Swarm deployments set this deliberately in their env.
+    AUTOSCALE_ENABLED: bool = False
     AUTOSCALE_WORKER_MIN: int = 1
     AUTOSCALE_WORKER_MAX: int = 10
     AUTOSCALE_API_MIN: int = 1
@@ -423,6 +432,8 @@ class Settings(BaseSettings):
     AUTOSCALE_QUEUE_THRESHOLD: int = 10  # Queue depth to trigger scale-up
     AUTOSCALE_COOLDOWN_SECS: int = 300  # 5 min between scale actions
     AUTOSCALE_IDLE_SECS: int = 300  # 5 min idle before scale-down
+    AUTOSCALE_CHECK_INTERVAL_SECS: int = 60
+    AUTOSCALE_METRICS_STALE_AFTER_SECS: int = 180
     AUTOSCALE_CPU_UP_THRESHOLD: int = 75  # CPU % to trigger scale-up
     AUTOSCALE_CPU_DOWN_THRESHOLD: int = 25  # CPU % to trigger scale-down
     AUTOSCALE_DERIVED_ENABLED: bool = True  # Auto-detect cgroup limits for max values
@@ -467,6 +478,10 @@ class Settings(BaseSettings):
     )
     IMAGE_CHECK_INTERVAL: int = Field(
         default=60, description="Seconds between automatic image update checks when enabled"
+    )
+    IMAGE_ALLOW_INSECURE_REGISTRY_HTTP: bool = Field(
+        default=False,
+        description="Allow HTTP registry polling only for an explicitly isolated development registry",
     )
 
     @field_validator("IMAGE_CHECK_INTERVAL")

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Spectra Production Deploy Script
-# Usage: ./scripts/deploy.sh [version]
+# Usage: ./scripts/deploy.sh <version>
 # Environment: DEPLOY_WEBHOOK_URL, COMPOSE_FILE, DATABASE_URL
 #
 # Features:
@@ -24,12 +24,14 @@ LOG_FILE="$LOG_DIR/deploy.log"
 BACKUP_DIR="$PROJECT_DIR/data/backups"
 COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_DIR/deploy/docker/compose.yaml}"
 export COMPOSE_PROFILES="${COMPOSE_PROFILES:-app}"
-HEALTH_URL="${HEALTH_URL:-http://localhost:80/api/v1/health?scope=public}"
-VERSION="${1:-latest}"
+HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:${APP_PORT:-5000}/api/health/ready}"
+SCHEDULER_HEALTH_URL="${SCHEDULER_HEALTH_URL:-http://127.0.0.1:5011/health}"
+VERSION="${1:-}"
 DEPLOY_WEBHOOK_URL="${DEPLOY_WEBHOOK_URL:-}"
 OLD_CONTAINER=""
 NEW_CONTAINER=""
 DB_BACKUP_FILE=""
+DEPLOY_STARTED=false
 
 # ── Helpers ──────────────────────────────────────────────────────
 
@@ -38,17 +40,17 @@ usage() {
 Usage: $(basename "$0") [version]
 
 Arguments:
-  version   Docker image version tag to deploy (default: latest)
+  version   Immutable Docker image version tag to deploy (required; latest/dev are rejected)
 
 Environment variables:
   COMPOSE_FILE        Docker compose file (default: deploy/docker/compose.yaml)
   DEPLOY_WEBHOOK_URL  Webhook URL for deploy notifications (optional)
-  HEALTH_URL          Health check URL (default: http://localhost:80/api/v1/health?scope=public)
+  HEALTH_URL          Health check URL (default: local app readiness on 127.0.0.1:${APP_PORT:-5000})
   DATABASE_URL        PostgreSQL connection URL (for pg_dump)
 
 Examples:
-  $(basename "$0") 2026.03.12
-  DEPLOY_WEBHOOK_URL=https://hooks.slack.com/... $(basename "$0") latest
+  $(basename "$0") 2026.07.18.1
+  DEPLOY_WEBHOOK_URL=https://hooks.slack.com/... $(basename "$0") 2026.07.18.1
 EOF
     exit 0
 }
@@ -80,6 +82,17 @@ cleanup_lock() {
     rm -f "$LOCK_FILE"
 }
 
+validate_version() {
+    if [[ -z "$VERSION" || "$VERSION" == "latest" || "$VERSION" == "dev" || "$VERSION" == "main" ]]; then
+        log "ERROR: an immutable version tag is required; refusing mutable deploy target '$VERSION'"
+        exit 1
+    fi
+    if [[ ! "$VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]; then
+        log "ERROR: invalid version tag '$VERSION'"
+        exit 1
+    fi
+}
+
 # ── Signal handling ──────────────────────────────────────────────
 
 on_exit() {
@@ -87,7 +100,11 @@ on_exit() {
     if [ $exit_code -ne 0 ]; then
         log "ERROR: Deploy interrupted or failed (exit code: $exit_code)"
         notify "FAILED" "Deploy interrupted (exit $exit_code)"
-        rollback
+        if [ "$DEPLOY_STARTED" = true ]; then
+            rollback
+        else
+            log "No deployment started; skipping rollback"
+        fi
     fi
     cleanup_lock
 }
@@ -120,8 +137,12 @@ backup_database() {
         size=$(du -h "$DB_BACKUP_FILE" | cut -f1)
         log "Database backup complete: $DB_BACKUP_FILE ($size)"
     else
-        log "WARN: Database backup failed — container may not be running. Continuing..."
         DB_BACKUP_FILE=""
+        if docker ps -q -f "name=spectra-db" 2>/dev/null | grep -q .; then
+            log "ERROR: Database backup failed while an existing database is running"
+            return 1
+        fi
+        log "No existing database container; backup not required for fresh deploy"
     fi
 }
 
@@ -140,7 +161,11 @@ rollback() {
 
     # Restart old containers
     log "Restarting previous deployment..."
-    VERSION="${OLD_VERSION:-latest}" docker compose -f "$COMPOSE_FILE" --profile app up -d --remove-orphans 2>/dev/null || true
+    if [ -z "${OLD_VERSION:-}" ] || [ "${OLD_VERSION:-}" = "latest" ]; then
+        log "ERROR: No pinned previous version recorded; refusing mutable rollback"
+        return 1
+    fi
+    VERSION="$OLD_VERSION" docker compose -f "$COMPOSE_FILE" --profile app up -d --remove-orphans
 
     # Restore DB if backup exists and migration may have run
     if [ -n "$DB_BACKUP_FILE" ] && [ -f "$DB_BACKUP_FILE" ]; then
@@ -186,11 +211,16 @@ pre_deploy_check() {
     fi
 
     # Record current running version for rollback
-    OLD_VERSION=$(docker inspect --format='{{ index .Config.Labels "org.opencontainers.image.version" }}' spectra-app 2>/dev/null || echo "latest")
+    OLD_VERSION=$(docker inspect --format='{{ index .Config.Labels "org.opencontainers.image.version" }}' spectra-app 2>/dev/null || echo "")
+    [[ "$OLD_VERSION" == "<no value>" ]] && OLD_VERSION=""
     log "Current running version: $OLD_VERSION"
 
     # Check current deployment health (non-fatal — may be first deploy)
     if docker ps -q -f "name=spectra-app" 2>/dev/null | grep -q .; then
+        if [ -z "$OLD_VERSION" ] || [ "$OLD_VERSION" = "latest" ] || [ "$OLD_VERSION" = "dev" ]; then
+            log "ERROR: Existing deployment has no immutable version label; refusing deploy without rollback pin"
+            exit 1
+        fi
         if bash "$HEALTH_CHECK" "$HEALTH_URL" 2 3 2>/dev/null; then
             log "Current deployment is healthy"
         else
@@ -228,7 +258,7 @@ deploy() {
 
     # Clean up old images
     log "Pruning old images..."
-    docker image prune -f --filter "until=24h" > /dev/null 2>&1 || true
+    docker image prune -f --filter "label=spectra.managed=true" --filter "until=24h" > /dev/null 2>&1 || true
 
     # Clean up old backups (keep last 10)
     if [ -d "$BACKUP_DIR" ]; then
@@ -247,17 +277,11 @@ deploy() {
 verify_maintenance_services() {
     log "Verifying maintenance services..."
 
-    # Ensure BACKUP_ENABLED is set if not already configured
-    if ! grep -q "BACKUP_ENABLED" "$PROJECT_DIR/.env" 2>/dev/null; then
-        log "Setting BACKUP_ENABLED=true in .env (not previously configured)"
-        echo "BACKUP_ENABLED=true" >> "$PROJECT_DIR/.env"
-    fi
-
     # Verify scheduler service is running and healthy
     local scheduler_healthy=false
     for i in 1 2 3 4 5; do
-        local scheduler_url="http://localhost:5011/health"
-        if curl -sf --max-time 5 "$scheduler_url" 2>/dev/null | grep -q '"status"'; then
+        if docker compose -f "$COMPOSE_FILE" --profile app exec -T scheduler \
+            curl -sf --max-time 5 "http://127.0.0.1:5011/healthz" 2>/dev/null | grep -q '"status"'; then
             scheduler_healthy=true
             break
         fi
@@ -267,17 +291,20 @@ verify_maintenance_services() {
     if [ "$scheduler_healthy" = true ]; then
         log "Scheduler service is healthy — automated maintenance active"
     else
-        log "WARN: Scheduler health check failed — maintenance tasks may not be running"
+        log "ERROR: Scheduler health check failed — maintenance tasks are not verified"
+        return 1
     fi
 }
 
 # ── Main ─────────────────────────────────────────────────────────
 
 main() {
+    validate_version
     log "=== Deploy started: version=$VERSION ==="
     acquire_lock
     pre_deploy_check
     backup_database
+    DEPLOY_STARTED=true
     deploy
     verify_maintenance_services
     log "=== Deploy finished ==="

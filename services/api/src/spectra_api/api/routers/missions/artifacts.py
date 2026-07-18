@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spectra_api.api.dependencies import check_resource_owner, get_current_active_user, validate_uuid_param
+from spectra_common.config import settings
 from spectra_mission.artifact_workspace import MissionArtifact, MissionArtifactWorkspace
 from spectra_persistence.database import get_async_session
 from spectra_persistence.models.audit_log import AuditEventType
@@ -17,6 +18,12 @@ from spectra_persistence.repositories.mission import MissionRepository
 from spectra_system.audit import log_event as audit_log_event
 
 router = APIRouter()
+
+# Keep the read itself bounded.  Checking ``len(await file.read())`` after an
+# unbounded read still lets a client allocate arbitrary memory before the
+# request is rejected.  This follows the platform-wide multipart limit while
+# retaining one extra byte to detect an over-limit upload.
+MAX_ARTIFACT_SIZE = settings.MAX_UPLOAD_SIZE
 
 
 class ArtifactResponse(BaseModel):
@@ -89,7 +96,12 @@ async def upload_mission_artifact(
     current_user: User = Depends(get_current_active_user),
 ) -> ArtifactResponse:
     await _ensure_mission_owner(mission_id, session, current_user)
-    content = await file.read()
+    content = await file.read(MAX_ARTIFACT_SIZE + 1)
+    if len(content) > MAX_ARTIFACT_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=f"Artifact exceeds {MAX_ARTIFACT_SIZE // (1024 * 1024)}MB limit",
+        )
     if not content:
         raise HTTPException(status_code=400, detail="Artifact file is empty")
     workspace = MissionArtifactWorkspace(mission_id)

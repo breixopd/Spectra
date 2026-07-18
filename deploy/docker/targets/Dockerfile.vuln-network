@@ -7,7 +7,7 @@ LABEL spectra.target="vuln-network" \
       spectra.difficulty="easy" \
       spectra.services="ftp,http,https,mysql"
 
-RUN apk add --no-cache socat lighttpd openssl bash
+RUN apk add --no-cache socat lighttpd openssl bash netcat-openbsd
 
 # Generate self-signed cert for HTTPS
 RUN mkdir -p /etc/ssl/private && \

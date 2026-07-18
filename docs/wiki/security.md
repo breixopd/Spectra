@@ -67,7 +67,7 @@ Role-based access control with three tiers:
 
 - Browser UI/API requests can authenticate via the `access_token` cookie
 - Programmatic clients can authenticate with `Authorization: Bearer <token>` or `X-API-Key`
-- Public endpoints: `/api/health`, `/api/v1/auth/setup`, `/api/v1/auth/setup/status`
+- Public endpoints: `/api/healthz`, `/api/health/ready`, `/api/v1/health?scope=public`, and `/api/v1/auth/setup/status`. The initial `/api/v1/auth/setup` enrollment is token-gated in production by `SPECTRA_SETUP_TOKEN`.
 - Admin-only endpoints: `/api/admin/*`, `/api/v1/system/*`, server provisioning
 - Superuser checks enforced at the router level
 

@@ -17,6 +17,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from functools import wraps
+from inspect import iscoroutinefunction
 from typing import Any, ParamSpec, TypeVar
 
 logger = logging.getLogger(__name__)
@@ -299,9 +300,7 @@ class TelemetryCollector:
                     self.end_span(span, "error", str(e))
                     raise
 
-            import asyncio
-
-            if asyncio.iscoroutinefunction(func):
+            if iscoroutinefunction(func):
                 return async_wrapper  # type: ignore[return-value]
             return sync_wrapper
 

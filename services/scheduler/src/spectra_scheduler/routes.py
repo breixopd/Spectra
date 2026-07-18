@@ -47,6 +47,7 @@ def task_health_details(scheduler: SchedulerService) -> tuple[dict[str, dict[str
     details: dict[str, dict[str, Any]] = {}
     degraded = False
     restart_counts = getattr(scheduler, "_task_restarts", {})
+    recovered = getattr(scheduler, "_task_recovered", set())
     last_failures = getattr(scheduler, "_task_last_failure", {})
     for task_name, _method_name in _SCHEDULER_TASK_SPECS:
         task = scheduler._named_tasks.get(task_name)
@@ -56,7 +57,7 @@ def task_health_details(scheduler: SchedulerService) -> tuple[dict[str, dict[str
         elif task.done():
             details[task_name] = {"state": "dead"}
             degraded = True
-        elif task_name in restart_counts:
+        elif task_name in restart_counts and task_name not in recovered:
             details[task_name] = {
                 "state": "recovering",
                 "restart_count": restart_counts[task_name],
@@ -104,8 +105,14 @@ async def lifespan(fastapi_app: FastAPI):
         from spectra_scaling.pool_manager import get_pool_manager
 
         pool = get_pool_manager()
-        node = await pool.register_local_node()
-        logger.info("Local pool node ready: %s (id=%s)", node.get("name"), node.get("id"))
+        # This process is always the scheduler control plane.  Pass the role
+        # explicitly so host-run deployments cannot accidentally inherit a
+        # default SERVICE_MODE=api and advertise the wrong loopback endpoint.
+        node = await pool.register_local_node(service_mode="scheduler")
+        if node is None:
+            logger.info("Local pool node registration skipped for control-plane scheduler")
+        else:
+            logger.info("Local pool node ready: %s (id=%s)", node.get("name"), node.get("id"))
     except Exception:
         logger.warning("Failed to auto-register local node — continuing", exc_info=True)
 

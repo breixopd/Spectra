@@ -6,6 +6,49 @@ import socket
 import urllib.parse
 
 
+def validate_service_endpoint_url(url: str | None) -> str | None:
+    """Validate a configured service URL before it can receive credentials.
+
+    Configuration values are allowed to point at Docker service names (for
+    example ``http://tensorzero:3000``), but URL credentials, non-HTTP
+    schemes, metadata aliases, and literal private addresses are rejected.
+    DNS resolution is deliberately performed by callers immediately before a
+    request as well; this synchronous check prevents the most common SSRF and
+    credential-exfiltration mistakes at the API boundary.
+    """
+    if url is None or url == "":
+        return url
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError("Service endpoint URL must use http or https scheme")
+    if parsed.username or parsed.password:
+        raise ValueError("Service endpoint URL must not contain embedded credentials")
+    if parsed.fragment or not parsed.hostname:
+        raise ValueError("Service endpoint URL must include a valid host")
+
+    hostname = parsed.hostname.rstrip(".").lower()
+    try:
+        ip = ipaddress.ip_address(hostname)
+    except ValueError:
+        # Bare Docker/Kubernetes service names are expected in the compose
+        # topology.  Dotted internal aliases and cloud metadata names are not.
+        if hostname in {"localhost", "metadata.google.internal", "metadata", "instance-data"}:
+            raise ValueError("Service endpoint URL must not target local or metadata services")
+        if hostname.endswith((".local", ".internal", ".localhost")):
+            raise ValueError("Service endpoint URL must not target internal DNS names")
+    else:
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip.is_unspecified
+        ):
+            raise ValueError("Service endpoint URL must not target internal/private IP addresses")
+    return url
+
+
 async def is_safe_url(url: str) -> bool:
     """Validate that a URL does not target internal/private networks.
 
