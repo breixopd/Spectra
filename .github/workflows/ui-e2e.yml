@@ -9,6 +9,9 @@ on:
     paths:
       - "services/api/templates/**"
       - "services/api/static/**"
+      - "services/api/src/spectra_api/api/dependencies.py"
+      - "services/api/src/spectra_api/api/routers/auth/**"
+      - "packages/auth/**"
       - "tests/e2e/**"
       - "tests/run_ui_tests.sh"
       - "deploy/docker/Dockerfile.playwright"
@@ -20,6 +23,9 @@ on:
     paths:
       - "services/api/templates/**"
       - "services/api/static/**"
+      - "services/api/src/spectra_api/api/dependencies.py"
+      - "services/api/src/spectra_api/api/routers/auth/**"
+      - "packages/auth/**"
       - "tests/e2e/**"
       - "tests/run_ui_tests.sh"
       - "deploy/docker/Dockerfile.playwright"

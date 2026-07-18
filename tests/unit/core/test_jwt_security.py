@@ -87,6 +87,20 @@ async def test_refresh_token_has_type_refresh():
     assert payload["type"] == "refresh"
 
 
+@pytest.mark.asyncio
+async def test_repeated_auth_tokens_have_unique_jti():
+    """Tokens issued in one JWT second must remain independently revocable."""
+    first_access = await decode_token(create_access_token(data={"sub": "testuser"}))
+    second_access = await decode_token(create_access_token(data={"sub": "testuser"}))
+    first_refresh = await decode_token(create_refresh_token(data={"sub": "testuser"}))
+    second_refresh = await decode_token(create_refresh_token(data={"sub": "testuser"}))
+
+    assert first_access["jti"]
+    assert first_access["jti"] != second_access["jti"]
+    assert first_refresh["jti"]
+    assert first_refresh["jti"] != second_refresh["jti"]
+
+
 # ---------------------------------------------------------------------------
 # Refresh tokens rejected for API access
 # ---------------------------------------------------------------------------

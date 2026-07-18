@@ -12,6 +12,7 @@ import logging
 import time as _time
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from uuid import uuid4
 
 import bcrypt
 import jwt
@@ -333,6 +334,10 @@ def create_access_token(
             "exp": expire,
             "iat": now,
             "type": "access",
+            # JWT NumericDate claims have one-second precision.  A unique JTI
+            # keeps rapid login/logout/login cycles from producing the same
+            # token and accidentally revoking the newly issued token.
+            "jti": uuid4().hex,
         }
     )
 
@@ -366,6 +371,7 @@ def create_refresh_token(
             "exp": expire,
             "iat": now,
             "type": "refresh",
+            "jti": uuid4().hex,
         }
     )
 
