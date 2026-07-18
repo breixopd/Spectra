@@ -20,6 +20,9 @@ commit-level change list and published image references.
 
 ### Changed
 
+- Removed internal perfection-prompt and repository-instruction artifacts from
+  the tracked product tree; engineering guidance now lives in the external
+  contribution workflow and release documentation.
 - Made `main` the release-ready branch and documented `dev` plus isolated
   worktree development as the supported contribution flow.
 - Hardened the agent execution runtime with stable process-independent task
