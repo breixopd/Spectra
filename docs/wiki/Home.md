@@ -26,7 +26,6 @@ Welcome to the Spectra documentation wiki. Spectra is an automated penetration t
 | [Runbooks](runbooks.md) | CI parity, pre-release checklist, compose-smoke — executable files live in the repo; see also [About the wiki](about-the-wiki.md) |
 | [Frontend Patterns](frontend-patterns.md) | CSP-safe event delegation, modal macro, feature gates, test attributes |
 | [Design Tokens](design-tokens.md) | CSS custom properties, color palette, typography, spacing, animations |
-| [Roadmap](roadmap.md) | Future improvements and completed milestones |
 
 ## Quick Links
 
