@@ -60,6 +60,11 @@ async def is_safe_url(url: str) -> bool:
         parsed = urllib.parse.urlparse(url)
         if parsed.scheme not in ("http", "https"):
             return False
+        # Outbound webhooks do not need URL userinfo. Reject embedded
+        # credentials before DNS resolution so secrets cannot leak through
+        # logs, proxies, or a redirected request.
+        if parsed.username or parsed.password:
+            return False
         hostname = parsed.hostname
         if not hostname:
             return False

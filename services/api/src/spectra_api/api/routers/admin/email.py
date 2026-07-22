@@ -41,6 +41,15 @@ class AnnouncementRequest(BaseModel):
     test_only: bool = False
 
 
+def _render_announcement_content(title: str, content: str) -> str:
+    """Render announcement input as inert text inside the HTML template."""
+    from spectra_system.email.templates import TEMPLATES
+
+    safe_title = html_escape(" ".join(title.split())[:200])
+    safe_content = html_escape(content).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "<br>\n")
+    return TEMPLATES["announcement"].format(title=safe_title, content=safe_content)
+
+
 def _unsubscribe_url(user_id: str) -> str:
     """Build the one-click unsubscribe URL for a user."""
     token = create_unsubscribe_token(user_id)
@@ -114,15 +123,14 @@ async def send_announcement(
     If test_only=True, sends only to the admin's own email.
     """
     from spectra_system.email.service import EmailService
-    from spectra_system.email.templates import TEMPLATES, wrap_email
+    from spectra_system.email.templates import wrap_email
 
     svc = EmailService()
-    template = TEMPLATES["announcement"]
     sent = 0
 
     if body.test_only:
         unsub_url = _unsubscribe_url(str(current_user.id))
-        content = template.format(title=html_escape(body.title), content=body.content)
+        content = _render_announcement_content(body.title, body.content)
         html = wrap_email(content, unsubscribe_url=unsub_url)
         ok = await svc.send_email(
             to=current_user.email,
@@ -147,7 +155,7 @@ async def send_announcement(
 
         for user_id, email in recipients:
             unsub_url = _unsubscribe_url(str(user_id))
-            content = template.format(title=html_escape(body.title), content=body.content)
+            content = _render_announcement_content(body.title, body.content)
             html = wrap_email(content, unsubscribe_url=unsub_url)
             ok = await svc.send_email(
                 to=email,

@@ -6,8 +6,10 @@ Protects sensitive endpoints from abuse.
 """
 
 import logging
+import math
 import os
 import re
+import time
 from collections.abc import Callable
 
 import jwt
@@ -261,14 +263,23 @@ def _build_rate_limit_exceeded_response(
         limit=str(detail),
     )
 
-    # Compute retry-after from the limit window
-    retry_after = 60  # Default fallback
-    limit = getattr(exc, "limit", None)
-    if limit:
-        try:
-            retry_after = int(limit.get_expiry())
-        except (OSError, RuntimeError, ValueError, AttributeError, TypeError):
-            logger.debug("Rate limit retry-after computation failed", exc_info=True)
+    # Compute retry-after from the storage window.  slowapi's ``Limit`` wrapper
+    # intentionally exposes the parsed ``limits`` item, not a ``get_expiry``
+    # method.  The active limiter stores the exact key and item on the request;
+    # use that metadata when available and keep a safe deterministic fallback for
+    # unit tests, storage outages, and older middleware integrations.
+    retry_after = 60
+    view_rate_limit = getattr(getattr(request, "state", None), "view_rate_limit", None)
+    if isinstance(view_rate_limit, tuple) and len(view_rate_limit) == 2:
+        rate_item, key_args = view_rate_limit
+        if isinstance(key_args, (list, tuple)) and hasattr(rate_item, "key_for"):
+            try:
+                storage = getattr(limiter, "_storage", None)
+                if storage is not None:
+                    expiry = storage.get_expiry(rate_item.key_for(*key_args))
+                    retry_after = max(1, math.ceil(float(expiry) - time.time()))
+            except (OSError, RuntimeError, ValueError, TypeError, AttributeError):
+                logger.debug("Rate limit retry-after computation failed", exc_info=True)
 
     return JSONResponse(
         status_code=429,

@@ -63,6 +63,11 @@ class TestIsSafeUrl:
         assert await is_safe_url("ftp://evil.com/data") is False
 
     @pytest.mark.asyncio
+    async def test_rejects_embedded_credentials(self):
+        """Outbound notification URLs must not carry userinfo credentials."""
+        assert await is_safe_url("https://user:password@example.com/hook") is False
+
+    @pytest.mark.asyncio
     async def test_rejects_empty_string(self):
         assert await is_safe_url("") is False
 

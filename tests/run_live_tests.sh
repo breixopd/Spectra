@@ -24,10 +24,32 @@ cd "$PROJECT_DIR"
 if [ -z "${ENV_FILE:-}" ] && [ -f "$PROJECT_DIR/.env.test" ]; then
   export ENV_FILE="$PROJECT_DIR/.env.test"
 fi
+# Compose resolves service-level `env_file` paths relative to the compose file,
+# while callers naturally pass paths relative to the repository. Normalize the
+# override once so both target-only and full runs use the same environment.
+case "${ENV_FILE:-}" in
+  "") ;;
+  /*) ;;
+  *)
+    ENV_FILE="$(realpath "$ENV_FILE")"
+    export ENV_FILE
+    ;;
+esac
+if [ -n "${ENV_FILE:-}" ] && [ ! -f "$ENV_FILE" ]; then
+  echo "ERROR: ENV_FILE does not exist: $ENV_FILE" >&2
+  exit 1
+fi
 
 TARGETS_ONLY=false
 if [ "${1:-}" = "--targets" ]; then
     TARGETS_ONLY=true
+fi
+
+# Target-only scans exercise the application and gateway health paths but do
+# not invoke a model. Supply an inert provider key so TensorZero can validate
+# its config without requiring customer credentials or network access.
+if [ "$TARGETS_ONLY" = true ] && [ -z "${DEEPSEEK_API_KEY:-}" ]; then
+    export DEEPSEEK_API_KEY="spectra-live-target-test-key"
 fi
 
 # ── Compose commands ──────────────────────────────────────────
@@ -48,7 +70,7 @@ else
         echo "  Or run with --targets for target-only tests."
         exit 0
     fi
-    COMPOSE="docker compose -f $COMPOSE_BASE --profile app --profile targets --profile test --env-file .env.test"
+    COMPOSE="docker compose -f $COMPOSE_BASE --profile app --profile targets --profile test --env-file ${ENV_FILE:-$PROJECT_DIR/.env.test}"
 fi
 
 echo "=== Spectra Live Integration Tests ==="
@@ -108,6 +130,30 @@ wait_for_tools_worker_ready() {
     exit 1
 }
 
+wait_for_service_health() {
+    local service="$1"
+    local container=""
+
+    container="$($COMPOSE ps -q "$service")"
+    if [ -z "$container" ]; then
+        echo "ERROR: could not resolve $service container id" >&2
+        exit 1
+    fi
+
+    echo "Waiting for $service to become healthy..."
+    for i in $(seq 1 120); do
+        if docker inspect --format='{{.State.Health.Status}}' "$container" 2>/dev/null | grep -q healthy; then
+            echo "  $service is healthy (attempt $i)"
+            return
+        fi
+        sleep 1
+    done
+
+    echo "ERROR: $service did not become healthy" >&2
+    $COMPOSE logs --tail=80 "$service" >&2 || true
+    exit 1
+}
+
 cleanup() {
     echo ""
     echo "=== Collecting logs ==="
@@ -128,7 +174,7 @@ fi
 
 bootstrap_garage
 
-$COMPOSE up -d --build app app-replica caddy tools
+$COMPOSE up -d --build app app-replica caddy ai-svc scheduler worker tools
 
 # ── Step 2: Wait for health checks ──────────────────────────
 echo "Waiting for app to be ready..."
@@ -147,6 +193,8 @@ curl -sf http://localhost:5000/api/health > /dev/null || {
 }
 
 wait_for_tools_worker_ready
+wait_for_service_health scheduler
+wait_for_service_health worker
 
 echo "Waiting for vulnerable targets to be healthy..."
 for target in "${SPECTRA_CONTAINER_PREFIX}vuln-web" "${SPECTRA_CONTAINER_PREFIX}vuln-ssh" "${SPECTRA_CONTAINER_PREFIX}vuln-network"; do
@@ -173,7 +221,11 @@ echo "Running live integration tests..."
 
 if [ "$TARGETS_ONLY" = true ]; then
     # Run only the target-scan tests
-    $COMPOSE run --rm --no-deps --entrypoint sh test-runner -c \
+    $COMPOSE run --rm --no-deps \
+        -e VULN_WEB_HOST="${SPECTRA_CONTAINER_PREFIX}vuln-web" \
+        -e VULN_SSH_HOST="${SPECTRA_CONTAINER_PREFIX}vuln-ssh" \
+        -e VULN_NETWORK_HOST="${SPECTRA_CONTAINER_PREFIX}vuln-network" \
+        --entrypoint sh test-runner -c \
         "python3 -m pytest tests/integration/test_live_scan.py -v -m live --timeout=120 --tb=short --override-ini=addopts= -p no:cov"
 else
     # Full suite: LLM + target tests
@@ -181,22 +233,24 @@ else
         "python3 -m pytest tests/integration/test_live_targets.py tests/integration/test_live_scan.py -v --timeout=600 --tb=short --override-ini=addopts= -p no:cov"
 fi
 
-OPS_DB_CONTAINER="$($COMPOSE ps -q db)"
-OPS_APP_CONTAINER="$($COMPOSE ps -q app)"
-OPS_GARAGE_CONTAINER="$($COMPOSE ps -q garage)"
-export OPS_DB_CONTAINER OPS_APP_CONTAINER OPS_GARAGE_CONTAINER
+if [ "$TARGETS_ONLY" != true ]; then
+    OPS_DB_CONTAINER="$($COMPOSE ps -q db)"
+    OPS_APP_CONTAINER="$($COMPOSE ps -q app)"
+    OPS_GARAGE_CONTAINER="$($COMPOSE ps -q garage)"
+    export OPS_DB_CONTAINER OPS_APP_CONTAINER OPS_GARAGE_CONTAINER
 
-echo ""
-echo "Preparing S3 buckets for read-only ops smoke tests..."
-GARAGE_CONTAINER="${OPS_GARAGE_CONTAINER}" \
-GARAGE_ADMIN_URL="${OPS_GARAGE_ADMIN_URL}" \
-GARAGE_ACCESS_KEY="${OPS_GARAGE_ACCESS_KEY}" \
-GARAGE_SECRET_KEY="${OPS_GARAGE_SECRET_KEY}" \
-./scripts/ops/s3_management.sh create-buckets >/dev/null
+    echo ""
+    echo "Preparing S3 buckets for read-only ops smoke tests..."
+    GARAGE_CONTAINER="${OPS_GARAGE_CONTAINER}" \
+    GARAGE_ADMIN_URL="${OPS_GARAGE_ADMIN_URL}" \
+    GARAGE_ACCESS_KEY="${OPS_GARAGE_ACCESS_KEY}" \
+    GARAGE_SECRET_KEY="${OPS_GARAGE_SECRET_KEY}" \
+    ./scripts/ops/s3_management.sh create-buckets >/dev/null
 
-echo "Running live ops smoke tests..."
-$COMPOSE run --rm --no-deps --entrypoint sh test-runner -c \
-    "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests/integration/test_ops_scripts_live.py -v -m live --tb=short --override-ini=addopts= -p no:cov -p pytest_asyncio.plugin"
+    echo "Running live ops smoke tests..."
+    $COMPOSE run --rm --no-deps --entrypoint sh test-runner -c \
+        "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests/integration/test_ops_scripts_live.py -v -m live --tb=short --override-ini=addopts= -p no:cov -p pytest_asyncio.plugin"
+fi
 
 # ── Step 4: Collect results ──────────────────────────────────
 echo ""

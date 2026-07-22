@@ -127,7 +127,7 @@ bootstrap_integration_stack() {
     GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}" \
     GARAGE_PRINT_CREDENTIALS=0 \
         "$PROJECT_ROOT/deploy/docker/garage-init.sh"
-    compose --profile app --profile test up -d --build --wait app ai-svc worker tools caddy
+    compose --profile app --profile test up -d --build --wait app ai-svc scheduler worker tools caddy
 }
 
 run_live_smoke() {

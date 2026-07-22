@@ -11,6 +11,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 import pytest
+from pydantic import SecretStr
 
 
 def get_env_int(name: str, default: int) -> int:
@@ -28,6 +29,39 @@ def get_env_bool(name: str, default: bool = False) -> bool:
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+async def sync_runtime_jwt_keypair() -> None:
+    """Load the API replica's persisted JWT keypair for token-generating tests.
+
+    API startup persists an Ed25519 keypair in ``system_config`` and applies it
+    to the long-lived server process.  A load-test runner is a separate process,
+    so its environment-only HS256 fallback can otherwise create tokens the API
+    correctly rejects.  Reading the durable source keeps the test aligned with
+    the production key-rotation/bootstrap path without logging key material.
+    """
+    from sqlalchemy import select
+
+    from spectra_auth.security import settings as auth_settings
+    from spectra_persistence.database import async_session_maker
+    from spectra_persistence.models.config import SystemConfig
+
+    async with async_session_maker() as session:
+        result = await session.execute(
+            select(SystemConfig).where(SystemConfig.key.in_(("JWT_PRIVATE_KEY", "JWT_PUBLIC_KEY")))
+        )
+        rows = result.scalars().all()
+
+    values = {row.key: row.value for row in rows if row.value}
+    private_key = values.get("JWT_PRIVATE_KEY")
+    public_key = values.get("JWT_PUBLIC_KEY")
+    if not (
+        private_key and public_key and private_key.startswith("-----BEGIN") and public_key.startswith("-----BEGIN")
+    ):
+        raise RuntimeError("API JWT signing keypair is unavailable in system_config")
+
+    auth_settings.JWT_PRIVATE_KEY = SecretStr(private_key)
+    auth_settings.JWT_PUBLIC_KEY = public_key
 
 
 def get_app_base_url() -> str:

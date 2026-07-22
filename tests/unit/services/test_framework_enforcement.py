@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from spectra_mission.coordination.scope_enforcer import ScopeEnforcer
 from spectra_tools.service import ToolExecutionService
 
 
@@ -44,12 +45,21 @@ def test_in_phase_technique_allowed(service):
     assert result is None
 
 
-def test_unmapped_tool_allowed(service):
+def test_unmapped_tool_blocks_framework_enforcement(service):
     mission = FakeMission("discovery")
     result = service._apply_framework_enforcement(
         mission, _adapter(["totally-unknown-tag"]), "x", "10.0.0.1", "x 10.0.0.1"
     )
-    assert result is None
+    assert result is not None
+    assert result.success is False
+
+
+def test_scope_matching_requires_a_host_boundary():
+    """A declared host must not authorize a look-alike attacker-controlled host."""
+    mission = FakeMission("discovery")
+    mission.target = "example.com"
+    verdict = ScopeEnforcer(mission).validate("curl https://example.com.evil/", "port_scanning", "discovery")
+    assert verdict.allowed is False
 
 
 def test_out_of_phase_advisory_allows_but_logs(service, monkeypatch):

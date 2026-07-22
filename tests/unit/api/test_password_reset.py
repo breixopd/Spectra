@@ -19,6 +19,11 @@ class TestCreatePasswordResetToken:
         # Round-trip: verify should return the user_id
         assert verify_password_reset_token(token) == "user-123"
 
+    def test_tokens_are_unique_within_same_clock_second(self):
+        from spectra_auth.security import create_password_reset_token
+
+        assert create_password_reset_token("user-123") != create_password_reset_token("user-123")
+
 
 class TestVerifyPasswordResetToken:
     def test_returns_user_id_for_valid_token(self):
@@ -142,6 +147,11 @@ class TestResetPasswordEndpoint:
                     return_value=fake_user,
                 ),
                 patch("spectra_api.api.routers.auth.password.audit_log_event", new_callable=AsyncMock),
+                patch(
+                    "spectra_api.api.routers.auth.password.is_token_blacklisted",
+                    new_callable=AsyncMock,
+                    return_value=False,
+                ),
                 patch("spectra_api.api.routers.auth.password.invalidate_token", new_callable=AsyncMock),
             ):
                 mock_limiter.limit.return_value = lambda f: f
@@ -151,6 +161,26 @@ class TestResetPasswordEndpoint:
                 )
             assert resp.status_code == 200
             assert "reset" in resp.json().get("message", "").lower()
+
+    async def test_revoked_token_cannot_reset_password_again(self):
+        from spectra_auth.security import create_password_reset_token
+
+        token = create_password_reset_token("user-reset")
+        async with _build_test_client() as (client, _mock_session):
+            with (
+                patch("spectra_api.api.routers.auth.password.limiter") as mock_limiter,
+                patch(
+                    "spectra_api.api.routers.auth.password.is_token_blacklisted",
+                    new_callable=AsyncMock,
+                    return_value=True,
+                ),
+            ):
+                mock_limiter.limit.return_value = lambda f: f
+                resp = await client.post(
+                    "/api/v1/auth/reset-password",
+                    json={"token": token, "new_password": "NewPass123"},
+                )
+        assert resp.status_code == 400
 
     async def test_invalid_token_returns_400(self):
         async with _build_test_client() as (client, _):

@@ -11,6 +11,7 @@ No action executes without passing all checks. Violations are logged and blocked
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urlparse
@@ -42,6 +43,22 @@ class EnforcementVerdict:
     @property
     def blocked_checks(self) -> list[ScopeCheck]:
         return [c for c in self.checks if not c.allowed]
+
+
+def _contains_scope_token(action: str, token: str) -> bool:
+    """Match a declared host without accepting a look-alike host.
+
+    Domain scopes intentionally include subdomains (``sub.example.com``), but
+    must not match ``example.com.evil`` or ``notexample.com``.  IP literals
+    use stricter boundaries so an appended label cannot be treated as the
+    declared address.
+    """
+    escaped = re.escape(token)
+    if any(char.isalpha() for char in token):
+        pattern = rf"(?<![a-z0-9-]){escaped}(?![a-z0-9.-])"
+    else:
+        pattern = rf"(?<![a-z0-9.:-]){escaped}(?![a-z0-9.:-])"
+    return re.search(pattern, action, flags=re.IGNORECASE) is not None
 
 
 class ScopeEnforcer:
@@ -121,7 +138,7 @@ class ScopeEnforcer:
             if parsed.hostname:
                 tokens.add(parsed.hostname.lower())
 
-        if any(token and token in action_lower for token in tokens):
+        if any(token and _contains_scope_token(action_lower, token) for token in tokens):
             return ScopeCheck(allowed=True, check_type="target_scope")
 
         if getattr(self.mission, "allow_indirect_targets", False):

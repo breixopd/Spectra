@@ -4,16 +4,39 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+MAX_CHAT_MESSAGES = 128
+MAX_CHAT_CONTENT_CHARS = 64_000
+MAX_EMBEDDING_TEXTS = 128
+MAX_EMBEDDING_TEXT_CHARS = 32_000
 
 
 class ChatRequest(BaseModel):
-    messages: list[dict[str, Any]]
+    messages: list[dict[str, Any]] = Field(min_length=1, max_length=MAX_CHAT_MESSAGES)
     model: str | None = None
-    tier: int = 2
-    temperature: float = 0.7
-    max_tokens: int | None = None
+    tier: int = Field(default=2, ge=1, le=3)
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    max_tokens: int | None = Field(default=None, ge=1, le=32_000)
     user_id: str | None = None
+
+    @model_validator(mode="after")
+    def validate_message_budget(self) -> ChatRequest:
+        """Bound request size before it reaches a model or queue worker."""
+
+        def content_size(value: Any) -> int:
+            if isinstance(value, str):
+                return len(value)
+            if isinstance(value, dict):
+                return sum(content_size(item) for item in value.values())
+            if isinstance(value, (list, tuple)):
+                return sum(content_size(item) for item in value)
+            return 0
+
+        total = sum(content_size(message.get("content")) for message in self.messages)
+        if total > MAX_CHAT_CONTENT_CHARS:
+            raise ValueError(f"message content budget exceeds {MAX_CHAT_CONTENT_CHARS} characters")
+        return self
 
 
 class ChatResponse(BaseModel):
@@ -23,9 +46,16 @@ class ChatResponse(BaseModel):
 
 
 class EmbeddingRequest(BaseModel):
-    texts: list[str]
+    texts: list[str] = Field(min_length=1, max_length=MAX_EMBEDDING_TEXTS)
     model: str | None = None
     user_id: str | None = None
+
+    @field_validator("texts")
+    @classmethod
+    def validate_text_sizes(cls, texts: list[str]) -> list[str]:
+        if any(len(text) > MAX_EMBEDDING_TEXT_CHARS for text in texts):
+            raise ValueError(f"embedding text exceeds {MAX_EMBEDDING_TEXT_CHARS} characters")
+        return texts
 
 
 class EmbeddingResponse(BaseModel):
@@ -39,9 +69,9 @@ class RAGRequest(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    query: str
+    query: str = Field(min_length=1, max_length=32_000)
     collection: str = "default"
-    top_k: int = 5
+    top_k: int = Field(default=5, ge=1, le=100)
     filters: dict[str, Any] | None = None
     doc_type: str | None = None
     doc_types: list[str] | None = None

@@ -16,6 +16,11 @@ from spectra_system.webhooks.service import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _allow_test_webhook_urls(monkeypatch):
+    monkeypatch.setattr("spectra_system.webhooks.service.is_safe_url", AsyncMock(return_value=True))
+
+
 def _make_webhook(**overrides):
     wh = MagicMock()
     wh.id = overrides.get("id", "wh-1")
@@ -200,7 +205,7 @@ async def test_fire_does_not_duplicate_delivery_to_same_hook():
                 return MagicMock()
 
             mock_task.side_effect = _close_coro
-            await svc.fire("mission.completed", {"id": "m-1"})
+            await svc.fire("mission.completed", {"id": "m-1"}, user_id="user-1")
 
     assert mock_task.call_count == 1
 
@@ -219,7 +224,7 @@ async def test_fire_skips_inactive_hooks():
     svc = WebhookService(session)
 
     with patch("spectra_common.tasks.create_safe_task") as mock_task:
-        await svc.fire("mission.completed", {"id": "m-1"})
+        await svc.fire("mission.completed", {"id": "m-1"}, user_id="user-1")
 
     mock_task.assert_not_called()
 
@@ -246,6 +251,6 @@ async def test_fire_multiple_hooks_each_get_one_delivery():
                 return MagicMock()
 
             mock_task.side_effect = _close_coro
-            await svc.fire("mission.completed", {"id": "m-1"})
+            await svc.fire("mission.completed", {"id": "m-1"}, user_id="user-1")
 
     assert mock_task.call_count == 2
