@@ -10,6 +10,10 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  # TensorZero validates provider credentials at boot even for tests that do
+  # not invoke an LLM. This inert value is never used for inference and keeps
+  # CI health checks deterministic without storing customer credentials.
+  DEEPSEEK_API_KEY: spectra-ci-test-key
 
 permissions:
   contents: read
@@ -129,7 +133,7 @@ jobs:
       - name: Build and start integration services
         run: |
           ENV_FILE=../../.env.test docker compose -f deploy/docker/compose.yaml --profile app --profile test up -d --build --wait \
-            app ai-svc worker tools caddy
+            app ai-svc scheduler worker tools caddy
       - name: Run integration tests in Docker
         run: |
           docker compose -f deploy/docker/compose.yaml --profile app --profile test run --rm --no-deps test-runner \
@@ -298,7 +302,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Audit GitHub Actions workflow security
-        run: uvx --from zizmor==1.27.0 zizmor .github/workflows
+        run: uvx --from zizmor==1.28.0 zizmor .github/workflows
 
   compose-smoke:
     name: Compose Smoke Tests
@@ -398,6 +402,14 @@ jobs:
             -e APP_BASE_URL=http://app:5000 \
             test-runner \
             "python -m pytest tests/integration/test_api_health_live.py -v --tb=short --timeout=120 --override-ini=addopts="
+      - name: Run vulnerable-target live scan
+        run: |
+          docker compose -f deploy/docker/compose.yaml --profile app --profile targets --profile test run --rm --no-deps \
+            -e VULN_WEB_HOST=spectra-vuln-web \
+            -e VULN_SSH_HOST=spectra-vuln-ssh \
+            -e VULN_NETWORK_HOST=spectra-vuln-network \
+            test-runner \
+            "python -m pytest tests/integration/test_live_scan.py -v -m live --timeout=120 --tb=short --override-ini=addopts= -p no:cov"
       - name: Collect logs on failure
         if: failure()
         run: |

@@ -22,7 +22,12 @@ async def send_webhook_notification(payload: dict, webhook_url: str) -> bool:
     import httpx
 
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
+            # Re-check immediately before connecting to reduce DNS-rebinding
+            # exposure; redirects are disabled to prevent internal pivots.
+            if not await is_safe_url(webhook_url):
+                logger.warning("Blocked webhook destination that became unsafe: %s", webhook_url)
+                return False
             resp = await client.post(webhook_url, json=payload)
             success = resp.status_code < 400
             if not success:

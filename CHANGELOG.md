@@ -17,8 +17,23 @@ commit-level change list and published image references.
 - Replaced two rejected inline-Python plugin checks with first-party worker
   executables. The metadata probe now accepts only recognized metadata hosts,
   and the GraphQL probe validates its URL, headers, and bounded operation set.
+- Enforced tenant ownership when firing webhook subscriptions and blocked
+  embedded URL credentials, unsafe redirects, and delivery-time SSRF changes.
+- Made unmapped agent tools fail closed, tightened target-scope matching, and
+  escaped administrator announcement content before email rendering.
+- Made password-reset revocation durable across replicas and bounded AI chat,
+  embedding, and retrieval request sizes before model work begins.
+- Refreshed the frontend lockfile to remove the high-severity transitive SVG
+  parser advisory and updated the workflow security scanner to a non-yanked
+  release.
 
 ### Changed
+
+- Made load and live-target harnesses use deterministic test secrets, shared
+  rate-limit budgets, scheduler/worker health gates, direct target networks,
+  and persisted runtime JWT keys for replica-faithful tests.
+- Structured rate-limit responses now derive retry windows from the active
+  storage key while retaining a safe fallback when storage is unavailable.
 
 - Removed internal perfection-prompt and repository-instruction artifacts from
   the tracked product tree; engineering guidance now lives in the external

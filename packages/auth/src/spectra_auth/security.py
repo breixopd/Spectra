@@ -382,7 +382,10 @@ def create_password_reset_token(user_id: str, expires_minutes: int = 30) -> str:
     """Create a time-limited password reset JWT."""
     now = datetime.now(UTC)
     expire = now + timedelta(minutes=expires_minutes)
-    return _jwt_encode({"sub": user_id, "type": "password_reset", "exp": expire, "iat": now})
+    # Reset tokens are durable, one-time credentials.  A unique JTI prevents
+    # two requests in the same clock second from producing the same token and
+    # accidentally revoking a newly issued reset link when the first is used.
+    return _jwt_encode({"sub": user_id, "type": "password_reset", "jti": str(uuid4()), "exp": expire, "iat": now})
 
 
 def verify_password_reset_token(token: str) -> str | None:

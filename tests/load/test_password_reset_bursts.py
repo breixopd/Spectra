@@ -4,7 +4,12 @@ import httpx
 import pytest
 
 from spectra_auth.security import create_password_reset_token
-from tests.platform_harness import create_public_test_user, get_app_base_url, get_env_int
+from tests.platform_harness import (
+    create_public_test_user,
+    get_app_base_url,
+    get_env_int,
+    sync_runtime_jwt_keypair,
+)
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.live, pytest.mark.load]
 
@@ -46,6 +51,8 @@ async def test_reset_password_burst_returns_structured_429() -> None:
 
     async with httpx.AsyncClient(base_url=get_app_base_url(), timeout=15.0) as setup_client:
         user = await create_public_test_user(setup_client, prefix="load-reset-apply")
+
+    await sync_runtime_jwt_keypair()
 
     async with httpx.AsyncClient(base_url=get_app_base_url(), timeout=15.0) as client:
         responses = []

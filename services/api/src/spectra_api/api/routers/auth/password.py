@@ -14,6 +14,7 @@ from spectra_auth.security import (
     create_password_reset_token,
     get_password_hash,
     invalidate_token,
+    is_token_blacklisted,
     verify_password,
     verify_password_reset_token,
 )
@@ -98,7 +99,20 @@ async def reset_password(
     """Reset password using a valid reset token."""
     _ = response
     user_id = verify_password_reset_token(body.token)
+    if user_id:
+        # Password-reset tokens are one-time credentials.  The synchronous
+        # signature check above cannot consult the durable revocation cache;
+        # check it before changing the password so replay after a successful
+        # reset is rejected across API replicas.
+        try:
+            if await is_token_blacklisted(body.token):
+                logger.debug("Password reset rejected: token is revoked")
+                user_id = None
+        except Exception:
+            logger.exception("Unable to verify password reset token revocation state")
+            user_id = None
     if not user_id:
+        logger.debug("Password reset rejected: token signature or type invalid")
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
     from spectra_persistence.repositories.user import UserRepository
@@ -106,6 +120,7 @@ async def reset_password(
     user_repo = UserRepository(session)
     user = await user_repo.get_by_id(user_id)
     if not user:
+        logger.debug("Password reset rejected: user %s not found", user_id)
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
     user.hashed_password = get_password_hash(body.new_password)

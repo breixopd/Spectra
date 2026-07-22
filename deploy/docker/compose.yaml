@@ -270,6 +270,10 @@ services:
     environment:
       TENSORZERO_CONFIG_FILE: /app/config/tensorzero.toml
       TENSORZERO_CLICKHOUSE_URL: http://default:${CLICKHOUSE_PASSWORD:-}@clickhouse:8123/tensorzero
+      # Keep production fail-closed when no provider key is configured. The
+      # target-only live harness supplies an inert test value so the gateway
+      # can boot without making outbound model calls.
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
       interval: 10s
@@ -370,6 +374,10 @@ services:
       CONNECT_BACK_HOST: ${CALLBACK_RELAY_HOST:-worker}
       SHELL_ROUTING_MODE: proxy
       RATE_LIMIT_STORAGE: redis://:${REDIS_PASSWORD:-spectra_test_redis}@redis:6379/0
+      # Keep the test topology's auth budgets explicit; production can
+      # override these values through the environment at deployment time.
+      RATE_LIMIT_LOGIN: ${RATE_LIMIT_LOGIN:-15/minute}
+      RATE_LIMIT_REGISTER: ${RATE_LIMIT_REGISTER:-10/minute}
       TEST_TARGET_IP: ${TEST_TARGET_IP:-}
       TEST_TARGET_URL: ${TEST_TARGET_URL:-}
     volumes:
@@ -581,6 +589,8 @@ services:
       CONNECT_BACK_HOST: ${CALLBACK_RELAY_HOST:-worker}
       SHELL_ROUTING_MODE: proxy
       RATE_LIMIT_STORAGE: redis://:${REDIS_PASSWORD:-spectra_test_redis}@redis:6379/0
+      RATE_LIMIT_LOGIN: ${RATE_LIMIT_LOGIN:-15/minute}
+      RATE_LIMIT_REGISTER: ${RATE_LIMIT_REGISTER:-10/minute}
       SKIP_MIGRATIONS: "true"
       TEST_TARGET_IP: ${TEST_TARGET_IP:-}
       TEST_TARGET_URL: ${TEST_TARGET_URL:-}
@@ -727,6 +737,10 @@ services:
     networks:
       - frontend
       - backend
+      # The live target suite performs direct HTTP assertions against the
+      # intentionally vulnerable fixtures. This service is only enabled by
+      # the test profile and already runs with the test-only Docker socket.
+      - targets
 
   load-test-runner:
     build:

@@ -19,6 +19,11 @@ from spectra_system.webhooks.service import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _allow_test_webhook_urls(monkeypatch):
+    monkeypatch.setattr("spectra_system.webhooks.service.is_safe_url", AsyncMock(return_value=True))
+
+
 def _mock_webhook(**overrides):
     """Build a mock Webhook ORM object."""
     wh = MagicMock()
@@ -438,7 +443,7 @@ class TestWebhookFire:
                     return MagicMock()
 
                 mock_task.side_effect = _close_coro
-                await svc.fire("mission.completed", {"id": "m-1"})
+                await svc.fire("mission.completed", {"id": "m-1"}, user_id="user-1")
 
         assert mock_task.call_count == 1
 
@@ -453,7 +458,7 @@ class TestWebhookFire:
         svc = WebhookService(session)
 
         with patch("spectra_common.tasks.create_safe_task") as mock_task:
-            await svc.fire("mission.completed", {})
+            await svc.fire("mission.completed", {}, user_id="user-1")
 
         mock_task.assert_not_called()
 
@@ -467,6 +472,6 @@ class TestWebhookFire:
         svc = WebhookService(session)
 
         with patch("spectra_common.tasks.create_safe_task") as mock_task:
-            await svc.fire("mission.completed", {})
+            await svc.fire("mission.completed", {}, user_id="user-1")
 
         mock_task.assert_not_called()

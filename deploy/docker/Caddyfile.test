@@ -27,7 +27,8 @@ import Caddyfile.snippets
 			reverse_proxy app:5000 app-replica:5000
 		}
 
-		# High limits for burst/load testing
+		# Keep broad auth limits high so the app's own limiter can be tested
+		# independently from this focused edge-limit assertion.
 		import rate_limit_public 10000
 
 		rate_limit {
@@ -36,7 +37,7 @@ import Caddyfile.snippets
 					path /api/v1/auth/setup/status
 				}
 				key {remote_host}
-				events 10000
+				events 10
 				window 1m
 			}
 		}

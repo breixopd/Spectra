@@ -35,7 +35,13 @@ async def send_notification(
         if tags:
             headers["Tags"] = ",".join(tags)
 
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
+            # DNS can change between configuration validation and delivery;
+            # re-check immediately before the request and never follow a safe
+            # first hop into an internal redirect target.
+            if not await is_safe_url(url):
+                logger.warning("Blocked notification to unsafe webhook URL at delivery: %s", url)
+                return False
             response = await client.post(url, content=message, headers=headers)
             return response.status_code < 400
     except (OSError, RuntimeError, ConnectionError, TimeoutError) as e:

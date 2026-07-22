@@ -83,9 +83,20 @@ class WebhookService:
         await self._session.commit()
         return True
 
-    async def fire(self, event: str, payload: dict[str, Any]) -> None:
-        """Deliver an event to all matching active webhooks (fire-and-forget)."""
-        result = await self._session.execute(select(Webhook).where(Webhook.is_active.is_(True)))
+    async def fire(self, event: str, payload: dict[str, Any], *, user_id: str | None = None) -> None:
+        """Deliver an event only to the owning user's matching webhooks.
+
+        ``user_id`` is mandatory in practice.  A missing owner is treated as a
+        programming error and fails closed rather than broadcasting sensitive
+        mission/finding data to every registered endpoint.
+        """
+        if not user_id:
+            logger.error("Refusing to fire tenant-owned webhook event %s without an owner", event)
+            return
+
+        result = await self._session.execute(
+            select(Webhook).where(Webhook.user_id == user_id, Webhook.is_active.is_(True))
+        )
         hooks = result.scalars().all()
         for wh in hooks:
             if event in (wh.events or []):
@@ -114,9 +125,16 @@ async def _deliver(wh: Webhook, event: str, payload: dict[str, Any]) -> None:
         sig = hmac.new(wh.secret.encode(), sig_payload, hashlib.sha256).hexdigest()
         headers["X-Spectra-Signature"] = f"sha256={sig}"
 
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
         for attempt in range(MAX_RETRIES):
             try:
+                # Re-resolve immediately before every attempt.  Registration
+                # validation alone is vulnerable to DNS changes between the
+                # check and delivery; redirects are disabled so a safe first
+                # hop cannot pivot to an internal destination.
+                if not await is_safe_url(wh.url):
+                    logger.warning("Blocked unsafe webhook destination for %s", wh.id)
+                    return
                 resp = await client.post(wh.url, json=body, headers=headers)
                 if resp.status_code < 400:
                     logger.info("Webhook %s delivered %s (status %d)", wh.id, event, resp.status_code)

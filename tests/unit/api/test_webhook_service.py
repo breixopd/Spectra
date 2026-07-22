@@ -15,6 +15,12 @@ from spectra_system.webhooks.service import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _allow_test_webhook_urls(monkeypatch):
+    """Keep delivery unit tests offline while exercising runtime URL checks."""
+    monkeypatch.setattr("spectra_system.webhooks.service.is_safe_url", AsyncMock(return_value=True))
+
+
 def _make_webhook(**overrides):
     """Create a mock Webhook object."""
     wh = MagicMock()
@@ -126,6 +132,24 @@ async def test_deliver_no_signature_without_secret():
     assert "X-Spectra-Signature" not in kwargs["headers"]
 
 
+@pytest.mark.asyncio
+async def test_deliver_rejects_url_that_becomes_unsafe():
+    """Delivery re-checks the destination and never follows redirects."""
+    wh = _make_webhook(url="https://hook.example.com/callback")
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    with (
+        patch("spectra_system.webhooks.service.is_safe_url", AsyncMock(return_value=False)),
+        patch("spectra_system.webhooks.service.httpx.AsyncClient", return_value=mock_client) as client_factory,
+    ):
+        await _deliver(wh, "finding.new", {"id": "f-1"})
+
+    mock_client.post.assert_not_awaited()
+    assert client_factory.call_args.kwargs["follow_redirects"] is False
+
+
 # ---------------------------------------------------------------------------
 # Retry logic
 # ---------------------------------------------------------------------------
@@ -217,7 +241,7 @@ async def test_fire_only_delivers_to_matching_hooks():
 
             mock_task.side_effect = _close_coro
 
-            await svc.fire("mission.completed", {"id": "m-1"})
+            await svc.fire("mission.completed", {"id": "m-1"}, user_id="user-1")
 
     # create_safe_task called once (only for subscribed hook)
     assert mock_task.call_count == 1
@@ -235,7 +259,20 @@ async def test_fire_no_delivery_when_no_matching_hooks():
 
     svc = WebhookService(session)
 
+    with patch("spectra_common.tasks.create_safe_task"):
+        await svc.fire("finding.new", {"id": "f-1"}, user_id="user-1")
+
+
+@pytest.mark.asyncio
+async def test_fire_without_owner_is_fail_closed():
+    """A tenant-owned event must never fan out globally when its owner is absent."""
+    session = AsyncMock()
+    svc = WebhookService(session)
+
     with patch("spectra_common.tasks.create_safe_task") as mock_task:
-        await svc.fire("finding.new", {"id": "f-1"})
+        await svc.fire("mission.completed", {"id": "m-1"})
+
+    session.execute.assert_not_awaited()
+    mock_task.assert_not_called()
 
     mock_task.assert_not_called()

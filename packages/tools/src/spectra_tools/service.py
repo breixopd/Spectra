@@ -349,8 +349,10 @@ class ToolExecutionService:
 
         Forbidden techniques and unconfirmed authorization are always blocked. Out-of-phase
         techniques are blocked only in ``strict`` mode; otherwise they are logged as advisory.
-        Unmappable tools (no matching technique category) are allowed. Returns an error
-        result when blocked, else ``None``. Enforcement failures fail closed.
+        Unmappable tools (no matching technique category) are blocked. Unknown
+        metadata must not create an authorization or target-scope bypass.
+        Returns an error result when blocked, else ``None``. Enforcement
+        failures fail closed.
         """
         try:
             from spectra_common.config import settings
@@ -381,7 +383,9 @@ class ToolExecutionService:
             spec = get_framework(framework_id)
             matches = [tc for tc in spec.technique_categories if signals & {t.lower() for t in tc.tool_types}]
             if not matches:
-                return None  # Tool not mapped to any technique — nothing to enforce.
+                reason = f"Tool '{tool_name}' is not mapped to a framework technique"
+                mission.log(f"[FRAMEWORK-BLOCK] {tool_name}: {reason}")
+                return create_error_result(tool_name, target, f"Blocked by framework policy: {reason}")
 
             # Prefer a technique allowed in the current phase; fall back to the first match.
             technique = next((tc for tc in matches if phase in tc.allowed_in_phases), matches[0])

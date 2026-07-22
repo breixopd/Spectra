@@ -127,7 +127,7 @@ integration_job() {
     bash deploy/docker/garage-init.sh
   echo "==> Build and start integration services"
   ENV_FILE=../../.env.test "${COMPOSE[@]}" --profile app --profile test up -d --build --wait \
-    app ai-svc worker tools caddy
+    app ai-svc scheduler worker tools caddy
   echo "==> Integration pytest (excludes live / e2e)"
   ENV_FILE="$ENV_FILE" "${COMPOSE[@]}" --profile app --profile test run --rm --no-deps test-runner \
     "python -m pytest tests/integration/ -v --tb=short --timeout=120 --override-ini=addopts= -k 'not live and not e2e'"

@@ -283,7 +283,7 @@ def test_local_ci_parity_uses_the_same_integration_topology_as_ci() -> None:
 
     assert "ENV_FILE=../../.env.test" in script
     assert "db redis garage tensorzero metasploitable dvwa" in script
-    assert "app ai-svc worker tools caddy" in script
+    assert "app ai-svc scheduler worker tools caddy" in script
     assert "run --rm --no-deps test-runner" in script
     # The final runner must inherit the same test env file as the bootstrap
     # calls; otherwise Compose falls back to a missing local `.env` on CI.

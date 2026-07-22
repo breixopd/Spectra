@@ -8,6 +8,16 @@ COMPOSE_FILE="${PROJECT_DIR}/deploy/docker/compose.yaml"
 KEEP_STACK="${KEEP_STACK:-0}"
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-spectra-load-tests}"
 export SPECTRA_CONTAINER_PREFIX="${SPECTRA_CONTAINER_PREFIX:-spectra-load-tests-}"
+# Keep app, Caddy, and the load runner on the same deterministic test config.
+# Without this, app services fall back to the local .env while the runner uses
+# .env.test, which makes locally-generated JWTs unverifiable by the API.
+export ENV_FILE="${ENV_FILE:-../../.env.test}"
+export CADDYFILE="${CADDYFILE:-./Caddyfile.test}"
+# The load assertions intentionally exercise the documented default auth
+# budgets. Local .env files may raise these for UI automation; do not let that
+# make the reliability gate nondeterministic.
+export RATE_LIMIT_LOGIN="${RATE_LIMIT_LOGIN:-15/minute}"
+export RATE_LIMIT_REGISTER="${RATE_LIMIT_REGISTER:-10/minute}"
 # Enable app + test profiles for every compose invocation (load-test-runner is profile `test`;
 # without this, `compose run load-test-runner` can miss the service or join the wrong project context).
 export COMPOSE_PROFILES="${COMPOSE_PROFILES:-app,test}"
