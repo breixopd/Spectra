@@ -26,7 +26,7 @@ jobs:
       # Fine-grained PAT with contents read/write on this repository's wiki.
       SPECTRA_WIKI_TOKEN: ${{ secrets.SPECTRA_WIKI_TOKEN }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6.0.0
         with:
           persist-credentials: false
 
